@@ -190,6 +190,337 @@ describe('createReplSession', () => {
   });
 });
 
+describe('parameter prompting', () => {
+  const addTask = defineCommand({
+    id: 'add',
+    description: 'Add a task',
+    inputSchema: z.object({
+      title: z.string().describe('Task title'),
+      priority: z.enum(['low', 'medium', 'high']).optional().describe('Task priority'),
+      due: z.string().optional().describe('Due date'),
+    }),
+    prompt: {
+      promptForDefaults: false,
+      promptOptional: ['priority'],
+    },
+    execute: async ({ title, priority }) => ({
+      text: `Added: ${title} [${priority ?? 'none'}]`,
+    }),
+  });
+
+  const addRequired = defineCommand({
+    id: 'add-req',
+    description: 'Add with required fields',
+    inputSchema: z.object({
+      title: z.string().describe('Task title'),
+      body: z.string().describe('Task body'),
+    }),
+    prompt: {},
+    execute: async ({ title, body }) => ({
+      text: `${title}: ${body}`,
+    }),
+  });
+
+  const addDefaults = defineCommand({
+    id: 'add-def',
+    description: 'Add with defaults prompting',
+    inputSchema: z.object({
+      title: z.string().describe('Task title'),
+      priority: z.enum(['low', 'medium', 'high']).default('medium').describe('Task priority'),
+    }),
+    prompt: {
+      promptForDefaults: true,
+    },
+    execute: async ({ title, priority }) => ({
+      text: `${title} [${priority}]`,
+    }),
+  });
+
+  function makeSession(commands: Parameters<typeof defineCli>[0]['commands']) {
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands,
+      interactive: { welcome: '' },
+    });
+    return createReplSession({
+      cli,
+      context: { workspace: createMemoryWorkspace(), config: {} },
+    });
+  }
+
+  it('does not prompt when all required fields are provided', async () => {
+    const session = makeSession([addTask]);
+    const result = await session.processInput('/add --title "Buy milk"');
+    expect(result.type).toBe('result');
+    expect(session.isPrompting).toBe(false);
+  });
+
+  it('includes promptOptional fields when prompting for missing required', async () => {
+    const session = makeSession([addTask]);
+    // title is required and missing → triggers prompting, which also asks for priority
+    const r1 = await session.processInput('/add');
+    expect(r1.type).toBe('prompt');
+    expect(r1.promptLabel).toBe('title');
+
+    const r2 = await session.processInput('Buy milk');
+    expect(r2.type).toBe('prompt');
+    expect(r2.promptLabel).toBe('priority');
+
+    const r3 = await session.processInput('high');
+    expect(r3.type).toBe('result');
+    expect(r3.text).toContain('Buy milk');
+    expect(r3.text).toContain('high');
+    expect(session.isPrompting).toBe(false);
+  });
+
+  it('accepts empty input for optional prompted field', async () => {
+    const session = makeSession([addTask]);
+    await session.processInput('/add');
+    await session.processInput('Buy milk');
+    // priority prompt — accept default (skip)
+    const result = await session.processInput('');
+    expect(result.type).toBe('result');
+    expect(result.text).toContain('Buy milk');
+  });
+
+  it('prompts for missing required fields when command has prompt config', async () => {
+    const session = makeSession([addRequired]);
+    const result = await session.processInput('/add-req');
+    expect(result.type).toBe('prompt');
+    expect(result.promptLabel).toBe('title');
+  });
+
+  it('prompts for each required field sequentially', async () => {
+    const session = makeSession([addRequired]);
+    await session.processInput('/add-req');
+    const r2 = await session.processInput('My Task');
+    expect(r2.type).toBe('prompt');
+    expect(r2.promptLabel).toBe('body');
+    const r3 = await session.processInput('Task details');
+    expect(r3.type).toBe('result');
+    expect(r3.text).toContain('My Task');
+    expect(r3.text).toContain('Task details');
+  });
+
+  it('re-prompts when required field is left empty', async () => {
+    const session = makeSession([addRequired]);
+    await session.processInput('/add-req');
+    const r2 = await session.processInput('');
+    expect(r2.type).toBe('prompt');
+    expect(r2.promptLabel).toBe('title');
+    expect(r2.text).toContain('required');
+  });
+
+  it('skips prompting when all args are provided', async () => {
+    const session = makeSession([addTask]);
+    const result = await session.processInput('/add --title "Buy milk" --priority high');
+    expect(result.type).toBe('result');
+    expect(session.isPrompting).toBe(false);
+  });
+
+  it('promptForDefaults includes default fields when prompting is triggered', async () => {
+    const session = makeSession([addDefaults]);
+    // title is required and missing → triggers prompting
+    // promptForDefaults means priority (which has a default) also gets prompted
+    const r1 = await session.processInput('/add-def');
+    expect(r1.type).toBe('prompt');
+    expect(r1.promptLabel).toBe('title');
+
+    const r2 = await session.processInput('Task');
+    expect(r2.type).toBe('prompt');
+    expect(r2.promptLabel).toBe('priority');
+  });
+
+  it('accepts default value on empty input when promptForDefaults', async () => {
+    const session = makeSession([addDefaults]);
+    await session.processInput('/add-def');
+    await session.processInput('Task');
+    const result = await session.processInput('');
+    expect(result.type).toBe('result');
+    expect(result.text).toContain('medium'); // default applied
+  });
+
+  it('does not prompt for defaults when all required fields are provided', async () => {
+    const session = makeSession([addDefaults]);
+    const result = await session.processInput('/add-def --title "Task"');
+    expect(result.type).toBe('result');
+    expect(result.text).toContain('medium');
+  });
+
+  it('disables completions during prompting', async () => {
+    const session = makeSession([addTask]);
+    await session.processInput('/add');
+    expect(session.getCompletions('/add')).toEqual([]);
+    expect(session.getGhostSuggestion('/add')).toBeNull();
+  });
+
+  it('prompts for boolean fields with true/false hint', async () => {
+    const boolCmd = defineCommand({
+      id: 'toggle',
+      description: 'Toggle',
+      inputSchema: z.object({
+        verbose: z.boolean().describe('Verbose output'),
+      }),
+      prompt: {},
+      execute: async ({ verbose }) => ({ text: `verbose=${verbose}` }),
+    });
+    const session = makeSession([boolCmd]);
+    const r1 = await session.processInput('/toggle');
+    expect(r1.type).toBe('prompt');
+    expect(r1.text).toContain('true/false');
+
+    const r2 = await session.processInput('true');
+    expect(r2.type).toBe('result');
+    expect(r2.text).toContain('verbose=true');
+  });
+
+  it('handles error during prompted command execution', async () => {
+    const failCmd = defineCommand({
+      id: 'fail',
+      description: 'Fails',
+      inputSchema: z.object({
+        x: z.string().describe('Value'),
+      }),
+      prompt: {},
+      execute: async () => { throw new Error('boom'); },
+    });
+    const session = makeSession([failCmd]);
+    await session.processInput('/fail');
+    const result = await session.processInput('test');
+    expect(result.type).toBe('error');
+    expect(result.text).toContain('boom');
+  });
+
+  it('enters prompting for missing required fields with partial args', async () => {
+    const session = makeSession([addRequired]);
+    // Provide title but not body — parseArgs throws, prompting catches it
+    const r1 = await session.processInput('/add-req --title "My Task"');
+    expect(r1.type).toBe('prompt');
+    expect(r1.promptLabel).toBe('body');
+
+    const r2 = await session.processInput('The body text');
+    expect(r2.type).toBe('result');
+    expect(r2.text).toContain('My Task');
+    expect(r2.text).toContain('The body text');
+  });
+
+  it('handles partial args with boolean flags when entering prompting', async () => {
+    const mixedCmd = defineCommand({
+      id: 'mixed',
+      description: 'Mixed fields',
+      inputSchema: z.object({
+        title: z.string().describe('Title'),
+        verbose: z.boolean().default(false).describe('Verbose'),
+      }),
+      prompt: {},
+      execute: async ({ title, verbose }) => ({ text: `${title} v=${verbose}` }),
+    });
+    const session = makeSession([mixedCmd]);
+    // Provide verbose but not title — title is required, triggers prompting via error path
+    const r1 = await session.processInput('/mixed --verbose');
+    expect(r1.type).toBe('prompt');
+    expect(r1.promptLabel).toBe('title');
+
+    const r2 = await session.processInput('Test');
+    expect(r2.type).toBe('result');
+    expect(r2.text).toContain('Test');
+    expect(r2.text).toContain('v=true');
+  });
+
+  it('uses field key when description is missing in prompt text', async () => {
+    const noDescCmd = defineCommand({
+      id: 'nodesc',
+      description: 'No desc fields',
+      inputSchema: z.object({
+        value: z.string(),
+      }),
+      prompt: {},
+      execute: async ({ value }) => ({ text: value }),
+    });
+    const session = makeSession([noDescCmd]);
+    const r1 = await session.processInput('/nodesc');
+    expect(r1.type).toBe('prompt');
+    expect(r1.text).toContain('value'); // falls back to key
+  });
+
+  it('skips optional prompted field on empty input when prompting is active', async () => {
+    const optCmd = defineCommand({
+      id: 'opt',
+      description: 'Optional prompting',
+      inputSchema: z.object({
+        name: z.string().describe('Name'),
+        note: z.string().optional().describe('Note'),
+      }),
+      prompt: { promptOptional: ['note'] },
+      execute: async ({ name, note }) => ({ text: `${name}:${note ?? 'none'}` }),
+    });
+    const session = makeSession([optCmd]);
+    // Omit required name → triggers prompting, which also asks for note (promptOptional)
+    const r1 = await session.processInput('/opt');
+    expect(r1.type).toBe('prompt');
+    expect(r1.promptLabel).toBe('name');
+
+    const r2 = await session.processInput('Test');
+    expect(r2.type).toBe('prompt');
+    expect(r2.promptLabel).toBe('note');
+
+    // Skip optional note
+    const r3 = await session.processInput('');
+    expect(r3.type).toBe('result');
+    expect(r3.text).toContain('none');
+  });
+
+  it('applies non-prompted defaults and includes promptOptional when required fields missing', async () => {
+    const mixedDefaultsCmd = defineCommand({
+      id: 'mixed-defaults',
+      description: 'Mixed defaults',
+      inputSchema: z.object({
+        title: z.string().describe('Title'),
+        priority: z.enum(['low', 'medium', 'high']).default('medium').describe('Priority'),
+        verbose: z.boolean().default(false).describe('Verbose'),
+      }),
+      prompt: {
+        promptOptional: ['priority'],  // priority is prompted when prompting is active, verbose is not
+      },
+      execute: async ({ title, priority, verbose }) => ({
+        text: `${title} [${priority}] v=${verbose}`,
+      }),
+    });
+    const session = makeSession([mixedDefaultsCmd]);
+    // Missing title triggers prompting; priority (promptOptional) also prompted; verbose gets default
+    const r1 = await session.processInput('/mixed-defaults');
+    expect(r1.type).toBe('prompt');
+    expect(r1.promptLabel).toBe('title');
+
+    const r2 = await session.processInput('Test');
+    expect(r2.type).toBe('prompt');
+    expect(r2.promptLabel).toBe('priority');
+
+    const r3 = await session.processInput('high');
+    expect(r3.type).toBe('result');
+    expect(r3.text).toContain('Test');
+    expect(r3.text).toContain('high');
+    expect(r3.text).toContain('v=false'); // verbose got its default
+  });
+
+  it('does not prompt for commands without prompt config', async () => {
+    const noPrompt = defineCommand({
+      id: 'simple',
+      description: 'Simple',
+      inputSchema: z.object({
+        name: z.string().describe('Name'),
+      }),
+      execute: async ({ name }) => name,
+    });
+    const session = makeSession([noPrompt]);
+    const result = await session.processInput('/simple');
+    expect(result.type).toBe('error');
+    expect(result.text).toContain('name');
+  });
+});
+
 describe('headless interactive mode via run()', () => {
   const greet = defineCommand({
     id: 'greet',

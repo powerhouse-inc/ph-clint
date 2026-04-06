@@ -74,15 +74,15 @@ describe('Interactive mode', () => {
     expect(completions).toContain('/exit');
   });
 
-  it('shows command signature as placeholder for /greet', () => {
+  it('shows ghost suggestion for /greet with first flag', () => {
     const session = makeSession();
-    const sig = session.getCommandSignature('/greet');
-    expect(sig).toBe('--name <name> [--loud]');
+    const ghost = session.getGhostSuggestion('/greet ');
+    expect(ghost).toContain('--name');
   });
 
-  it('hides signature once args are typed', () => {
+  it('returns null ghost suggestion for non-command input', () => {
     const session = makeSession();
-    expect(session.getCommandSignature('/greet --name')).toBeNull();
+    expect(session.getGhostSuggestion('hello')).toBeNull();
   });
 });
 

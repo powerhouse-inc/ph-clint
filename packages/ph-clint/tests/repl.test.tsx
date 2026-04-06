@@ -704,4 +704,76 @@ describe('Repl component', () => {
       expect(frame).toContain('Welcome!');
     });
   });
+
+  describe('parameter prompting', () => {
+    function makePromptSession() {
+      const addCmd = defineCommand({
+        id: 'add',
+        description: 'Add item',
+        inputSchema: z.object({
+          title: z.string().describe('Title'),
+          note: z.string().optional().describe('Note'),
+        }),
+        prompt: { promptOptional: ['note'] },
+        execute: async ({ title, note }) => `${title}:${note ?? 'none'}`,
+      });
+
+      const cli = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Test',
+        commands: [addCmd],
+        interactive: { welcome: 'Welcome!' },
+      });
+
+      return createReplSession({
+        cli,
+        context: { workspace: createMemoryWorkspace(), config: {} },
+      });
+    }
+
+    it('shows prompt label when prompting for a field', async () => {
+      const promptSession = makePromptSession();
+      const result = render(<Repl session={promptSession} />);
+      cleanup = result.unmount;
+
+      // Invoke without required title → triggers prompting
+      result.stdin.write('/add');
+      await delay();
+      result.stdin.write(KEYS.ENTER);
+      await delay(200);
+
+      const frame = stripAnsi(result.lastFrame()!);
+      expect(frame).toContain('title:');
+    });
+
+    it('completes prompting and shows result', async () => {
+      const promptSession = makePromptSession();
+      const result = render(<Repl session={promptSession} />);
+      cleanup = result.unmount;
+
+      // Trigger prompting (missing required title)
+      result.stdin.write('/add');
+      await delay();
+      result.stdin.write(KEYS.ENTER);
+      await delay(200);
+
+      // Answer title prompt
+      result.stdin.write('Test');
+      await delay();
+      result.stdin.write(KEYS.ENTER);
+      await delay(200);
+
+      // Answer note prompt (promptOptional)
+      result.stdin.write('my note');
+      await delay();
+      result.stdin.write(KEYS.ENTER);
+      await delay(200);
+
+      const frame = stripAnsi(result.lastFrame()!);
+      expect(frame).toContain('Test:my note');
+      // Should be back to normal prompt
+      expect(frame).toContain('>');
+    });
+  });
 });

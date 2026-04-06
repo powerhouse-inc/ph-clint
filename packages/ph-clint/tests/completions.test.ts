@@ -79,6 +79,18 @@ describe('getCompletions', () => {
       expect(result).not.toContain('--name');
       expect(result).toContain('--loud');
     });
+
+    it('suggests remaining flags after boolean flag with trailing space', () => {
+      const result = getCompletions('/greet --loud ', commands);
+      expect(result).toContain('--name');
+      expect(result).not.toContain('--loud');
+    });
+
+    it('suggests flags after single dash', () => {
+      const result = getCompletions('/greet -', commands);
+      expect(result).toContain('--name');
+      expect(result).toContain('--loud');
+    });
   });
 
   describe('enum value completion', () => {

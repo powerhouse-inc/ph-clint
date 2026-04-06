@@ -1,6 +1,8 @@
 import type { ReplOutput, ReplSession, ReplSessionOptions } from './types.js';
+import type { FieldInfo } from '../core/schema.js';
 import { parseReplInput } from './router.js';
 import { getCompletions, getGhostSuggestion, getCompletionSuffix } from './completions.js';
+import { getSchemaFields } from '../core/schema.js';
 import { renderMarkdown } from './markdown.js';
 
 /**
@@ -22,6 +24,96 @@ function formatResult(result: unknown): string {
 }
 
 /**
+ * Internal state for multi-step parameter prompting.
+ */
+interface PromptingState {
+  commandId: string;
+  collectedArgs: Record<string, unknown>;
+  remainingFields: FieldInfo[];
+}
+
+/**
+ * Determine which fields need interactive prompting for a command.
+ *
+ * @param explicitKeys - keys explicitly provided by the user (from argv flags)
+ *
+ * Prompting only triggers when required fields are missing. If all required
+ * fields are satisfied, the command executes immediately — even if there are
+ * optional fields listed in `promptOptional`.
+ *
+ * When prompting IS triggered (because required fields are missing):
+ * - Missing required fields → prompt
+ * - Fields in `promptOptional` not explicitly provided → also prompt
+ * - Fields with defaults when `promptForDefaults` is true → also prompt
+ *
+ * This means `promptOptional` = "if you're already prompting, ask for these too".
+ */
+function getFieldsToPrompt(
+  commandId: string,
+  explicitKeys: Set<string>,
+  cli: ReplSessionOptions['cli'],
+): FieldInfo[] {
+  const cmd = cli.getCommand(commandId);
+  if (!cmd) return [];
+
+  const fields = getSchemaFields(cmd.inputSchema);
+  const prompt = cmd.prompt;
+
+  // First check: are any required fields missing?
+  const missingRequired = fields.filter(
+    (f) => !explicitKeys.has(f.key) && !f.isOptional && !f.hasDefault,
+  );
+
+  // If no required fields are missing, don't prompt at all
+  if (missingRequired.length === 0) return [];
+
+  // Required fields are missing — collect all fields to prompt for
+  return fields.filter((f) => {
+    if (explicitKeys.has(f.key)) return false; // user explicitly provided it
+    if (!f.isOptional && !f.hasDefault) return true; // required, must prompt
+    if (prompt?.promptForDefaults && f.hasDefault) return true;
+    if (prompt?.promptOptional?.includes(f.key)) return true;
+    return false;
+  });
+}
+
+/**
+ * Extract which flag keys the user explicitly provided from raw argv tokens.
+ */
+function getExplicitKeys(argv: string[]): Set<string> {
+  const keys = new Set<string>();
+  for (const arg of argv) {
+    if (arg.startsWith('--')) {
+      keys.add(arg.slice(2));
+    }
+  }
+  return keys;
+}
+
+/**
+ * Build the prompt text for a field, including type hint and default.
+ */
+function buildPromptText(field: FieldInfo): string {
+  const parts: string[] = [];
+
+  // Show enum values or type hint
+  if (field.baseType === 'enum') {
+    // We can't easily get enum values from FieldInfo alone, but the description helps
+    parts.push(field.description ?? field.key);
+  } else if (field.baseType === 'boolean') {
+    parts.push(`${field.description ?? field.key} (true/false)`);
+  } else {
+    parts.push(field.description ?? field.key);
+  }
+
+  if (field.hasDefault) {
+    parts.push(`[${field.defaultValue}]`);
+  }
+
+  return parts.join(' ');
+}
+
+/**
  * Create a REPL session — the testable logic layer for interactive mode.
  *
  * The session processes input lines (e.g. `/greet --name Alice`),
@@ -32,6 +124,9 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   const { cli, context } = opts;
   const commands = cli.listCommands();
   const commandIds = commands.map((c) => c.id);
+
+  // Prompting state — null when not prompting
+  let prompting: PromptingState | null = null;
 
   function generateHelp(): string {
     const lines = ['Available commands:'];
@@ -44,7 +139,78 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     return lines.join('\n');
   }
 
+  /**
+   * Return the next prompt output for the current prompting state,
+   * or execute the command if all fields are collected.
+   */
+  async function advancePrompt(): Promise<ReplOutput> {
+    const state = prompting!;
+    if (state.remainingFields.length === 0) {
+      // All fields collected — execute the command
+      const { commandId, collectedArgs } = state;
+      prompting = null;
+      try {
+        const args = cli.parseArgs(commandId, argsToArgv(collectedArgs));
+        const result = await cli.execute(commandId, args, context);
+        const text = formatResult(result);
+        return { text: renderMarkdown(text), type: 'result' };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { text: msg, type: 'error' };
+      }
+    }
+
+    // Prompt for the next field
+    const field = state.remainingFields[0]!;
+    const promptText = buildPromptText(field);
+    return { text: promptText, type: 'prompt', promptLabel: field.key };
+  }
+
+  /**
+   * Convert a collected args map back to argv-style tokens for parseArgs.
+   */
+  function argsToArgv(args: Record<string, unknown>): string[] {
+    const argv: string[] = [];
+    for (const [key, value] of Object.entries(args)) {
+      if (typeof value === 'boolean') {
+        if (value) argv.push(`--${key}`);
+      } else if (value !== undefined && value !== null && value !== '') {
+        argv.push(`--${key}`, String(value));
+      }
+    }
+    return argv;
+  }
+
+  async function handlePromptAnswer(input: string): Promise<ReplOutput> {
+    if (!prompting) return { text: '', type: 'empty' };
+
+    const field = prompting.remainingFields[0]!;
+    const trimmed = input.trim();
+
+    if (trimmed === '' && field.hasDefault) {
+      // Accept default — don't add to collected args, parseArgs will apply the default
+    } else if (trimmed === '' && (field.isOptional || field.hasDefault)) {
+      // Skip optional field
+    } else if (trimmed === '') {
+      // Required field with no default — re-prompt
+      return { text: `${field.key} is required`, type: 'prompt', promptLabel: field.key };
+    } else if (field.baseType === 'boolean') {
+      prompting.collectedArgs[field.key] = trimmed === 'true' || trimmed === '1' || trimmed === 'yes';
+    } else {
+      prompting.collectedArgs[field.key] = trimmed;
+    }
+
+    // Move to next field
+    prompting.remainingFields = prompting.remainingFields.slice(1);
+    return advancePrompt();
+  }
+
   async function processInput(input: string): Promise<ReplOutput> {
+    // If we're in prompting mode, handle the input as a prompt answer
+    if (prompting) {
+      return handlePromptAnswer(input);
+    }
+
     const parsed = parseReplInput(input, commandIds);
 
     switch (parsed.type) {
@@ -70,24 +236,100 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         };
 
       case 'command': {
+        const explicitKeys = getExplicitKeys(parsed.args!);
+
         try {
+          // Parse provided args first
           const args = cli.parseArgs(parsed.commandId!, parsed.args!);
+
+          // Check if any fields need prompting
+          const fieldsToPrompt = getFieldsToPrompt(parsed.commandId!, explicitKeys, cli);
+
+          if (fieldsToPrompt.length > 0) {
+            // Enter prompting mode
+            prompting = {
+              commandId: parsed.commandId!,
+              collectedArgs: { ...args },
+              remainingFields: fieldsToPrompt,
+            };
+            return advancePrompt();
+          }
+
+          // No prompting needed — execute directly
           const result = await cli.execute(parsed.commandId!, args, context);
           const text = formatResult(result);
           return { text: renderMarkdown(text), type: 'result' };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
+
+          // If the error is about a missing required field and the command has prompt config,
+          // enter prompting mode with what we have
+          const cmd = cli.getCommand(parsed.commandId!);
+          if (cmd?.prompt && msg.includes('Missing required option')) {
+            const partialArgs = parseArgsPartial(parsed.args!, cmd);
+            const fieldsToPrompt = getFieldsToPrompt(parsed.commandId!, explicitKeys, cli);
+
+            if (fieldsToPrompt.length > 0) {
+              prompting = {
+                commandId: parsed.commandId!,
+                collectedArgs: partialArgs,
+                remainingFields: fieldsToPrompt,
+              };
+              return advancePrompt();
+            }
+          }
+
           return { text: msg, type: 'error' };
         }
       }
     }
   }
 
+  /**
+   * Parse args without throwing on missing required fields.
+   * Used to collect whatever args were provided before entering prompting.
+   */
+  function parseArgsPartial(argv: string[], cmd: ReturnType<typeof cli.getCommand>): Record<string, unknown> {
+    if (!cmd) return {};
+    const fields = getSchemaFields(cmd.inputSchema);
+    const result: Record<string, unknown> = {};
+
+    for (let i = 0; i < argv.length; i++) {
+      const arg = argv[i]!;
+      if (!arg.startsWith('--')) continue;
+
+      const flagName = arg.slice(2);
+      const field = fields.find((f) => f.key === flagName);
+      if (!field) continue;
+
+      if (field.baseType === 'boolean') {
+        result[field.key] = true;
+      } else {
+        const nextArg = argv[i + 1];
+        if (nextArg !== undefined && !nextArg.startsWith('--')) {
+          result[field.key] = nextArg;
+          i++;
+        }
+      }
+    }
+
+    // Apply defaults for non-prompted fields
+    for (const field of fields) {
+      if (field.key in result) continue;
+      if (field.hasDefault && !cmd.prompt?.promptOptional?.includes(field.key) && !cmd.prompt?.promptForDefaults) {
+        result[field.key] = field.defaultValue;
+      }
+    }
+
+    return result;
+  }
+
   return {
     processInput,
-    getCompletions: (partial: string) => getCompletions(partial, commands),
-    getGhostSuggestion: (input: string) => getGhostSuggestion(input, commands),
+    getCompletions: (partial: string) => prompting ? [] : getCompletions(partial, commands),
+    getGhostSuggestion: (input: string) => prompting ? null : getGhostSuggestion(input, commands),
     getCompletionSuffix: (completion: string, input: string) => getCompletionSuffix(completion, input, commands),
+    get isPrompting() { return prompting !== null; },
     welcome: cli.interactive?.welcome,
   };
 }

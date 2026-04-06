@@ -8,7 +8,7 @@ export default {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.test.tsx', '**/tests/**/*.integration.test.ts'],
-  collectCoverageFrom: ['src/**/*.ts', 'src/**/*.tsx', '!src/interactive/start.tsx'],
+  collectCoverageFrom: ['src/**/*.ts', 'src/**/*.tsx', '!src/interactive/start.tsx', '!src/**/*.d.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
   coverageThreshold: {

@@ -15,6 +15,7 @@ import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
 import { createReplSession } from '../interactive/session.js';
+import { renderMarkdown } from '../interactive/markdown.js';
 
 /**
  * Format a command result for output.
@@ -276,7 +277,7 @@ export function defineCli(options: CliOptions): Cli {
         const result = await cmd.execute(parsed, context);
         const output = formatResult(result);
         if (output !== undefined) {
-          stdout(output);
+          stdout(renderMarkdown(output));
         }
       });
     }

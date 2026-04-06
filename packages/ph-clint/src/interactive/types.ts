@@ -5,7 +5,9 @@ import type { Cli, CommandContext } from '../core/types.js';
  */
 export interface ReplOutput {
   text: string;
-  type: 'result' | 'error' | 'help' | 'exit' | 'empty';
+  type: 'result' | 'error' | 'help' | 'exit' | 'empty' | 'prompt';
+  /** When type is 'prompt', the label to show instead of '> ' (e.g. "priority"). */
+  promptLabel?: string;
 }
 
 /**
@@ -27,6 +29,8 @@ export interface ReplSession {
   getGhostSuggestion(input: string): string | null;
   /** Get suffix to append after applying a completion (e.g. ` "` for string flags). */
   getCompletionSuffix(completion: string, input: string): string;
+  /** True when the session is waiting for a prompt answer. */
+  readonly isPrompting: boolean;
   welcome: string | undefined;
 }
 

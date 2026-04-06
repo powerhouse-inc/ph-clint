@@ -40,6 +40,7 @@ export function Repl({ session }: ReplProps) {
   const [input, setInput] = useState('');
   const [cursorOffset, setCursorOffset] = useState<number | undefined>(undefined);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [promptLabel, setPromptLabel] = useState<string | null>(null);
   const nextId = useRef(0);
 
   // Interaction mode tracking
@@ -48,6 +49,7 @@ export function Repl({ session }: ReplProps) {
   // Tab completion state
   const [tabIndex, setTabIndex] = useState<number | null>(null);
   const tabCompletionsRef = useRef<string[]>([]);
+  const tabBaseInputRef = useRef('');
 
   // History cycling state
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
@@ -58,6 +60,7 @@ export function Repl({ session }: ReplProps) {
     setMode('typing');
     setTabIndex(null);
     tabCompletionsRef.current = [];
+    tabBaseInputRef.current = '';
     setHistoryIndex(null);
     setSavedInput('');
   }, []);
@@ -71,7 +74,8 @@ export function Repl({ session }: ReplProps) {
   const handleSubmit = useCallback(
     async (value: string) => {
       const trimmed = value.trim();
-      if (!trimmed) return;
+      // Allow empty submit during prompting (to accept defaults)
+      if (!trimmed && !session.isPrompting) return;
 
       setInput('');
       setCursorOffset(0);
@@ -93,6 +97,22 @@ export function Repl({ session }: ReplProps) {
         exit();
         return;
       }
+
+      if (result.type === 'prompt') {
+        // Show the user's input in history (if they typed something)
+        if (trimmed) {
+          setHistory((h) => [
+            ...h,
+            { id: nextId.current++, input: trimmed, output: '', type: 'empty' },
+          ]);
+        }
+        setPromptLabel(result.promptLabel ?? null);
+        setPhase('idle');
+        return;
+      }
+
+      // Clear prompt label when command completes
+      setPromptLabel(null);
 
       setHistory((h) => [
         ...h,
@@ -138,14 +158,25 @@ export function Repl({ session }: ReplProps) {
           return;
         }
 
+        const baseInput = mode === 'tab-cycling' ? tabBaseInputRef.current : input;
         const completions = mode === 'tab-cycling'
           ? tabCompletionsRef.current
-          : session.getCompletions(input);
+          : session.getCompletions(baseInput);
 
-        if (completions.length === 0) return;
+        if (completions.length === 0) {
+          // No completions — but if there's a ghost suggestion (e.g. closing quote), apply it
+          const ghost = session.getGhostSuggestion(input);
+          if (ghost) {
+            setInputWithCursor(ghost);
+          }
+          return;
+        }
 
-        tabCompletionsRef.current = completions;
-        setMode('tab-cycling');
+        if (mode !== 'tab-cycling') {
+          tabBaseInputRef.current = input;
+          tabCompletionsRef.current = completions;
+          setMode('tab-cycling');
+        }
 
         const nextIndex = tabIndex === null
           ? 0
@@ -154,7 +185,7 @@ export function Repl({ session }: ReplProps) {
             : (tabIndex + 1) % completions.length;
 
         setTabIndex(nextIndex);
-        const completed = applyCompletion(input, completions[nextIndex]!) + session.getCompletionSuffix(completions[nextIndex]!, input);
+        const completed = applyCompletion(baseInput, completions[nextIndex]!) + session.getCompletionSuffix(completions[nextIndex]!, baseInput);
         setInputWithCursor(completed);
         setSuggestions(completions);
         return;
@@ -189,6 +220,7 @@ export function Repl({ session }: ReplProps) {
 
         // If already tab-cycling, Up/Down cycles through the same list
         if (mode === 'tab-cycling') {
+          const baseInput = tabBaseInputRef.current;
           const completions = tabCompletionsRef.current;
           if (completions.length === 0) return;
 
@@ -198,7 +230,7 @@ export function Repl({ session }: ReplProps) {
             : (idx + 1) % completions.length;
 
           setTabIndex(nextIndex);
-          const completed = applyCompletion(input, completions[nextIndex]!);
+          const completed = applyCompletion(baseInput, completions[nextIndex]!) + session.getCompletionSuffix(completions[nextIndex]!, baseInput);
           setInputWithCursor(completed);
           setSuggestions(completions);
           return;
@@ -208,12 +240,13 @@ export function Repl({ session }: ReplProps) {
         if (input.startsWith('/')) {
           const completions = session.getCompletions(input);
           if (completions.length > 0) {
+            tabBaseInputRef.current = input;
             tabCompletionsRef.current = completions;
             setMode('tab-cycling');
 
             const nextIndex = key.upArrow ? completions.length - 1 : 0;
             setTabIndex(nextIndex);
-            const completed = applyCompletion(input, completions[nextIndex]!);
+            const completed = applyCompletion(input, completions[nextIndex]!) + session.getCompletionSuffix(completions[nextIndex]!, input);
             setInputWithCursor(completed);
             setSuggestions(completions);
             return;
@@ -310,7 +343,9 @@ export function Repl({ session }: ReplProps) {
       ) : (
         <Box flexDirection="column">
           <Box>
-            <Text color="green">{'> '}</Text>
+            <Text color={promptLabel ? "cyan" : "green"}>
+              {promptLabel ? `${promptLabel}: ` : '> '}
+            </Text>
             <TextInput
               value={input}
               onChange={handleChange}

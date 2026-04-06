@@ -20,6 +20,6 @@ export function renderMarkdown(text: string): string {
     // marked.parse() should return a string synchronously with our config
     return text;
   }
-  // Trim trailing newline that marked adds
-  return rendered.replace(/\n$/, '');
+  // Trim trailing whitespace that marked/marked-terminal adds
+  return rendered.trimEnd();
 }

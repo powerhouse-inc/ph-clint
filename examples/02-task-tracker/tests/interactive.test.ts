@@ -45,7 +45,7 @@ describe('Interactive mode', () => {
     expect(session.welcome).toBe('Task Tracker — type /help for commands');
   });
 
-  it('/add --title creates a task', async () => {
+  it('/add --title creates a task with default priority', async () => {
     const result = await session.processInput('/add --title "Write tests"');
     expect(result.type).toBe('result');
     expect(result.text).toContain('Write tests');
@@ -59,6 +59,22 @@ describe('Interactive mode', () => {
     expect(result.type).toBe('result');
     expect(result.text).toContain('Urgent');
     expect(result.text).toContain('high');
+  });
+
+  it('/add without args prompts for required title then optional priority', async () => {
+    const r1 = await session.processInput('/add');
+    expect(r1.type).toBe('prompt');
+    expect(r1.promptLabel).toBe('title');
+
+    const r2 = await session.processInput('Buy milk');
+    expect(r2.type).toBe('prompt');
+    expect(r2.promptLabel).toBe('priority');
+
+    // Accept default
+    const r3 = await session.processInput('');
+    expect(r3.type).toBe('result');
+    expect(r3.text).toContain('Buy milk');
+    expect(r3.text).toContain('medium');
   });
 
   it('/list shows tasks', async () => {

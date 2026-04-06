@@ -185,6 +185,11 @@ export function getGhostSuggestion(
   input: string,
   commands: Command[],
 ): string | null {
+  // Inside an open quote — suggest closing it
+  const trimmed = input.trimStart();
+  const { inQuote } = tokenizeInput(trimmed);
+  if (inQuote) return input + '"';
+
   const completions = getCompletions(input, commands);
   if (completions.length === 0) return null;
 
