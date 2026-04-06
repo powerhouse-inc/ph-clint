@@ -1,51 +1,66 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Box, Text, Static, useInput, useApp } from 'ink';
-import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import type { ReplSession, HistoryEntry } from './types.js';
 import { renderMarkdown } from './markdown.js';
 import { applyCompletion } from './completions.js';
+import { TextInput } from './text-input.js';
 
 interface ReplProps {
   session: ReplSession;
 }
 
 /**
+ * Interaction mode for the useInput handler.
+ * - 'typing': normal text input
+ * - 'tab-cycling': Tab/Shift+Tab cycling through completions
+ * - 'command-cycling': Up/Down cycling through command matches
+ * - 'history-cycling': Up/Down cycling through history
+ */
+type InteractionMode = 'typing' | 'tab-cycling' | 'command-cycling' | 'history-cycling';
+
+/**
  * Main REPL component for interactive mode.
- *
- * Uses Ink's React component model:
- * - <Static> for immutable history entries
- * - TextInput for user input with Tab/Shift+Tab completion cycling
- * - Up/Down arrow for command match cycling (when typing `/`) or history cycling
- * - Spinner during command execution
- * - useInput for keyboard shortcuts (Escape, Tab, arrows)
  */
 export function Repl({ session }: ReplProps) {
   const { exit } = useApp();
   const [phase, setPhase] = useState<'idle' | 'executing'>('idle');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [input, setInput] = useState('');
-  const [streamingText, setStreamingText] = useState('');
+  const [cursorOffset, setCursorOffset] = useState<number | undefined>(undefined);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const nextId = useRef(0);
 
-  // Feature 1: Tab completion cycling
+  // Interaction mode tracking
+  const [mode, setMode] = useState<InteractionMode>('typing');
+
+  // Tab completion state
   const [tabIndex, setTabIndex] = useState<number | null>(null);
   const tabCompletionsRef = useRef<string[]>([]);
 
-  // Feature 2: Command match cycling (up/down when typing `/`)
+  // Command cycling state
   const [commandCycleIndex, setCommandCycleIndex] = useState<number | null>(null);
+  const commandCompletionsRef = useRef<string[]>([]);
 
-  // Feature 3: History cycling (up/down when not typing a command)
+  // History cycling state
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [savedInput, setSavedInput] = useState('');
 
-  // Reset all cycling state
-  const resetCycleState = useCallback(() => {
+  // Reset to typing mode
+  const resetToTyping = useCallback(() => {
+    setMode('typing');
     setTabIndex(null);
     tabCompletionsRef.current = [];
     setCommandCycleIndex(null);
+    commandCompletionsRef.current = [];
     setHistoryIndex(null);
+    setSavedInput('');
+  }, []);
+
+  // Set input and move cursor to end
+  const setInputWithCursor = useCallback((value: string) => {
+    setInput(value);
+    setCursorOffset(value.length);
   }, []);
 
   const handleSubmit = useCallback(
@@ -54,11 +69,10 @@ export function Repl({ session }: ReplProps) {
       if (!trimmed) return;
 
       setInput('');
+      setCursorOffset(0);
       setSuggestions([]);
-      resetCycleState();
-      setSavedInput('');
+      resetToTyping();
       setPhase('executing');
-      setStreamingText('');
 
       const result = await session.processInput(trimmed);
 
@@ -77,7 +91,7 @@ export function Repl({ session }: ReplProps) {
       ]);
       setPhase('idle');
     },
-    [session, exit, resetCycleState],
+    [session, exit, resetToTyping],
   );
 
   // Get unique history inputs (skip consecutive duplicates), most recent first
@@ -96,21 +110,28 @@ export function Repl({ session }: ReplProps) {
     (ch, key) => {
       if (phase !== 'idle') {
         if (key.escape) {
-          // TODO: cancel current execution via AbortController
           setPhase('idle');
         }
         return;
       }
 
-      // Feature 1: Tab/Shift+Tab cycles through completions inline
+      // --- Tab/Shift+Tab: tab completion cycling ---
       if (key.tab) {
-        const completions = tabIndex !== null
+        // If currently cycling history, Tab accepts the recalled entry
+        if (mode === 'history-cycling') {
+          resetToTyping();
+          return;
+        }
+
+        const completions = mode === 'tab-cycling'
           ? tabCompletionsRef.current
           : session.getCompletions(input);
 
         if (completions.length === 0) return;
 
         tabCompletionsRef.current = completions;
+        setMode('tab-cycling');
+
         const nextIndex = tabIndex === null
           ? 0
           : key.shift
@@ -118,64 +139,104 @@ export function Repl({ session }: ReplProps) {
             : (tabIndex + 1) % completions.length;
 
         setTabIndex(nextIndex);
-        setInput(applyCompletion(input, completions[nextIndex]!));
+        const completed = applyCompletion(input, completions[nextIndex]!);
+        setInputWithCursor(completed);
         setSuggestions(completions.length > 1 ? completions : []);
         return;
       }
 
-      // Feature 2: Up/Down cycles command matches when typing `/` prefix (no space)
-      const isCommandPrefix = input.startsWith('/') && !input.includes(' ');
+      // --- Up/Down arrow ---
+      if (key.upArrow || key.downArrow) {
+        // If already cycling history, continue in history mode
+        if (mode === 'history-cycling') {
+          const uniqueHistory = getUniqueHistory();
+          if (uniqueHistory.length === 0) return;
 
-      if ((key.upArrow || key.downArrow) && isCommandPrefix) {
-        const completions = session.getCompletions(input);
-        if (completions.length === 0) return;
+          if (key.upArrow) {
+            if (historyIndex !== null && historyIndex < uniqueHistory.length - 1) {
+              const next = historyIndex + 1;
+              setHistoryIndex(next);
+              setInputWithCursor(uniqueHistory[next]!);
+            }
+          } else {
+            if (historyIndex !== null && historyIndex > 0) {
+              const next = historyIndex - 1;
+              setHistoryIndex(next);
+              setInputWithCursor(uniqueHistory[next]!);
+            } else if (historyIndex === 0) {
+              setHistoryIndex(null);
+              setInputWithCursor(savedInput);
+              setMode(savedInput.startsWith('/') && !savedInput.includes(' ') ? 'typing' : 'typing');
+            }
+          }
+          return;
+        }
 
-        const nextIndex = commandCycleIndex === null
-          ? (key.upArrow ? completions.length - 1 : 0)
-          : key.upArrow
-            ? (commandCycleIndex - 1 + completions.length) % completions.length
-            : (commandCycleIndex + 1) % completions.length;
+        // If already cycling commands, continue
+        if (mode === 'command-cycling') {
+          const completions = commandCompletionsRef.current;
+          if (completions.length === 0) return;
 
-        setCommandCycleIndex(nextIndex);
-        setInput(completions[nextIndex]!);
-        setSuggestions(completions);
-        setTabIndex(null);
-        tabCompletionsRef.current = [];
-        setHistoryIndex(null);
+          const idx = commandCycleIndex ?? 0;
+          const nextIndex = key.upArrow
+            ? (idx - 1 + completions.length) % completions.length
+            : (idx + 1) % completions.length;
+
+          setCommandCycleIndex(nextIndex);
+          setInputWithCursor(completions[nextIndex]!);
+          setSuggestions(completions);
+          return;
+        }
+
+        // Entering cycling mode from typing
+        const isCommandPrefix = input.startsWith('/') && !input.includes(' ');
+
+        if (isCommandPrefix) {
+          // Enter command cycling mode
+          const completions = session.getCompletions(input);
+          if (completions.length === 0) return;
+
+          commandCompletionsRef.current = completions;
+          setMode('command-cycling');
+
+          const nextIndex = key.upArrow ? completions.length - 1 : 0;
+          setCommandCycleIndex(nextIndex);
+          setInputWithCursor(completions[nextIndex]!);
+          setSuggestions(completions);
+          setTabIndex(null);
+          tabCompletionsRef.current = [];
+          return;
+        }
+
+        // Enter history cycling mode
+        if (key.upArrow) {
+          const uniqueHistory = getUniqueHistory();
+          if (uniqueHistory.length === 0) return;
+
+          setMode('history-cycling');
+          setSavedInput(input);
+          setHistoryIndex(0);
+          setInputWithCursor(uniqueHistory[0]!);
+          setSuggestions([]);
+          setTabIndex(null);
+          tabCompletionsRef.current = [];
+          setCommandCycleIndex(null);
+          commandCompletionsRef.current = [];
+        }
         return;
       }
 
-      // Feature 3: Up/Down cycles through history when not typing a command prefix
-      if (key.upArrow || key.downArrow) {
-        const uniqueHistory = getUniqueHistory();
-        if (uniqueHistory.length === 0) return;
-
-        if (key.upArrow) {
-          if (historyIndex === null) {
-            setSavedInput(input);
-            setHistoryIndex(0);
-            setInput(uniqueHistory[0]!);
-          } else if (historyIndex < uniqueHistory.length - 1) {
-            const next = historyIndex + 1;
-            setHistoryIndex(next);
-            setInput(uniqueHistory[next]!);
-          }
-        } else {
-          // downArrow
-          if (historyIndex === null) return;
-          if (historyIndex > 0) {
-            const next = historyIndex - 1;
-            setHistoryIndex(next);
-            setInput(uniqueHistory[next]!);
-          } else {
-            setHistoryIndex(null);
-            setInput(savedInput);
-          }
+      // --- Escape: cancel current cycling or do nothing ---
+      if (key.escape) {
+        if (mode === 'history-cycling') {
+          setInputWithCursor(savedInput);
+          resetToTyping();
+          return;
         }
-        setTabIndex(null);
-        tabCompletionsRef.current = [];
-        setCommandCycleIndex(null);
-        setSuggestions([]);
+        if (mode === 'command-cycling' || mode === 'tab-cycling') {
+          resetToTyping();
+          return;
+        }
         return;
       }
     },
@@ -185,12 +246,12 @@ export function Repl({ session }: ReplProps) {
   // Compute placeholder signature for the current input
   const signature = phase === 'idle' ? session.getCommandSignature(input) : null;
 
-  // Update suggestions as user types (resets cycling state)
+  // Update suggestions as user types (resets to typing mode)
   const handleChange = useCallback(
     (value: string) => {
       setInput(value);
-      resetCycleState();
-      setSavedInput('');
+      setCursorOffset(undefined);
+      resetToTyping();
       if (value.startsWith('/') && !value.includes(' ')) {
         const completions = session.getCompletions(value);
         setSuggestions(completions.length > 1 ? completions : []);
@@ -198,7 +259,7 @@ export function Repl({ session }: ReplProps) {
         setSuggestions([]);
       }
     },
-    [session, resetCycleState],
+    [session, resetToTyping],
   );
 
   return (
@@ -242,6 +303,7 @@ export function Repl({ session }: ReplProps) {
               value={input}
               onChange={handleChange}
               onSubmit={handleSubmit}
+              cursorOffset={cursorOffset}
             />
             {signature && (
               <Text dimColor>{' '}{signature}</Text>
