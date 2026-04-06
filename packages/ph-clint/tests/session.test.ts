@@ -6,7 +6,7 @@ import {
   createReplSession,
   createMemoryWorkspace,
 } from '../src/index.js';
-import type { ReplSession, CommandContext } from '../src/index.js';
+import type { ReplSession, CommandContext, AgentProvider, StreamChunk } from '../src/index.js';
 
 describe('createReplSession', () => {
   const greet = defineCommand({
@@ -612,5 +612,164 @@ describe('headless interactive mode via run()', () => {
 
     expect(errors[0]).toContain('not configured');
     expect(exitCode).toBe(1);
+  });
+});
+
+describe('default command — agent routing', () => {
+  function createTestAgent(
+    responses: Record<string, StreamChunk[]>,
+  ): AgentProvider {
+    return {
+      id: 'test-assistant',
+      async *stream(prompt) {
+        const chunks = responses[prompt] ?? [
+          { type: 'text-delta' as const, text: `Echo: ${prompt}` },
+        ];
+        for (const chunk of chunks) yield chunk;
+      },
+    };
+  }
+
+  const search = defineCommand({
+    id: 'search',
+    description: 'Search',
+    inputSchema: z.object({ query: z.string().describe('Query') }),
+    execute: async ({ query }) => ({ text: `Results for: ${query}` }),
+  });
+
+  it('routes bare text to agent when defaultCommand is set', async () => {
+    const agent = createTestAgent({
+      'What is TypeScript?': [
+        { type: 'text-delta', text: 'TypeScript is a typed superset of JavaScript.' },
+      ],
+    });
+
+    const cli = defineCli({
+      name: 'assist',
+      version: '1.0.0',
+      description: 'Assistant',
+      commands: [search],
+      integrations: [{ id: 'test', agents: [agent] }],
+      defaultCommand: 'agent:test-assistant',
+      interactive: { welcome: 'Hi!' },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const result = await session.processInput('What is TypeScript?');
+    expect(result.type).toBe('result');
+    expect(result.text).toContain('TypeScript is a typed superset of JavaScript.');
+  });
+
+  it('still routes /command to direct execution', async () => {
+    const agent = createTestAgent({});
+
+    const cli = defineCli({
+      name: 'assist',
+      version: '1.0.0',
+      description: 'Assistant',
+      commands: [search],
+      integrations: [{ id: 'test', agents: [agent] }],
+      defaultCommand: 'agent:test-assistant',
+      interactive: { welcome: 'Hi!' },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const result = await session.processInput('/search --query "hello"');
+    expect(result.type).toBe('result');
+    expect(result.text).toContain('Results for: hello');
+  });
+
+  it('streams tool-call and tool-result chunks into output', async () => {
+    const agent = createTestAgent({
+      'search for cats': [
+        { type: 'tool-call', toolName: 'search', args: { query: 'cats' } },
+        { type: 'tool-result', toolName: 'search', result: '3 results', isError: false },
+        { type: 'text-delta', text: 'Here are results about cats.' },
+      ],
+    });
+
+    const cli = defineCli({
+      name: 'assist',
+      version: '1.0.0',
+      description: 'Assistant',
+      commands: [search],
+      integrations: [{ id: 'test', agents: [agent] }],
+      defaultCommand: 'agent:test-assistant',
+      interactive: { welcome: '' },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const result = await session.processInput('search for cats');
+    expect(result.text).toContain('▶');
+    expect(result.text).toContain('search');
+    expect(result.text).toContain('✓');
+    expect(result.text).toContain('Here are results about cats.');
+  });
+
+  it('handles error chunks from agent', async () => {
+    const agent = createTestAgent({
+      'break': [
+        { type: 'text-delta', text: 'Starting...' },
+        { type: 'error', error: 'API rate limit exceeded' },
+      ],
+    });
+
+    const cli = defineCli({
+      name: 'assist',
+      version: '1.0.0',
+      description: 'Assistant',
+      commands: [search],
+      integrations: [{ id: 'test', agents: [agent] }],
+      defaultCommand: 'agent:test-assistant',
+      interactive: { welcome: '' },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const result = await session.processInput('break');
+    expect(result.text).toContain('Starting...');
+    expect(result.text).toContain('API rate limit exceeded');
+  });
+
+  it('returns error for bare text when no defaultCommand is set', async () => {
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [search],
+      interactive: { welcome: '' },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const session = createReplSession({ cli, context });
+
+    const result = await session.processInput('just some text');
+    expect(result.type).toBe('error');
+  });
+
+  it('returns error when agent provider is not found', async () => {
+    const cli = defineCli({
+      name: 'assist',
+      version: '1.0.0',
+      description: 'Assistant',
+      commands: [search],
+      integrations: [{ id: 'test', agents: [] }],
+      defaultCommand: 'agent:nonexistent',
+      interactive: { welcome: '' },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const session = createReplSession({ cli, context });
+
+    const result = await session.processInput('hello');
+    expect(result.type).toBe('error');
+    expect(result.text).toContain('nonexistent');
   });
 });

@@ -7,6 +7,7 @@ export { toUpperSnake, configKeyToEnvVar, resolveConfig } from './core/config.js
 export { createEventBus } from './core/events.js';
 export { createProcessManager } from './core/processes.js';
 export { createRoutine } from './core/routine.js';
+export { formatStreamChunk, renderStream } from './core/stream.js';
 export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
@@ -39,4 +40,12 @@ export type {
   ProcessManager,
   EventBus,
   RoutineConfig,
+  StreamChunk,
+  TextDeltaChunk,
+  ToolCallChunk,
+  ToolResultChunk,
+  ErrorChunk,
+  AgentProvider,
+  AgentStreamOptions,
+  Integration,
 } from './core/types.js';

@@ -4,7 +4,7 @@
  */
 
 export interface ParsedReplInput {
-  type: 'command' | 'help' | 'exit' | 'empty' | 'unknown';
+  type: 'command' | 'help' | 'exit' | 'empty' | 'unknown' | 'text';
   commandId?: string;
   args?: string[];
   raw: string;
@@ -22,6 +22,7 @@ export interface ParsedReplInput {
 export function parseReplInput(
   input: string,
   commandIds: string[],
+  hasDefaultCommand?: boolean,
 ): ParsedReplInput {
   const trimmed = input.trim();
   if (!trimmed) {
@@ -29,6 +30,9 @@ export function parseReplInput(
   }
 
   if (!trimmed.startsWith('/')) {
+    if (hasDefaultCommand) {
+      return { type: 'text', raw: trimmed };
+    }
     return { type: 'unknown', raw: trimmed };
   }
 

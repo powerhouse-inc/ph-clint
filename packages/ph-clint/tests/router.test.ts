@@ -61,6 +61,20 @@ describe('parseReplInput', () => {
     });
   });
 
+  it('returns text for bare text when hasDefaultCommand is true', () => {
+    expect(parseReplInput('hello world', commandIds, true)).toEqual({
+      type: 'text',
+      raw: 'hello world',
+    });
+  });
+
+  it('still returns unknown for bare text when hasDefaultCommand is false', () => {
+    expect(parseReplInput('hello world', commandIds, false)).toEqual({
+      type: 'unknown',
+      raw: 'hello world',
+    });
+  });
+
   it('trims whitespace from input', () => {
     expect(parseReplInput('  /list  ', commandIds)).toEqual({
       type: 'command',

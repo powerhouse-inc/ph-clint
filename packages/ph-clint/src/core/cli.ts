@@ -1,5 +1,6 @@
 import { Command as Commander } from 'commander';
 import type {
+  AgentProvider,
   Cli,
   CliOptions,
   Command,
@@ -8,6 +9,7 @@ import type {
   Routine,
   RunOptions,
 } from './types.js';
+import { formatStreamChunk } from './stream.js';
 import { getSchemaFields } from './schema.js';
 import { createMemoryWorkspace, createWorkspace } from './workspace.js';
 import { getConfigEnvVars, resolveConfig } from './config.js';
@@ -59,6 +61,16 @@ export function defineCli(options: CliOptions): Cli {
       eventBus,
       processManager,
     });
+  }
+
+  // Resolve agent provider from integrations for defaultCommand routing
+  let agentProvider: AgentProvider | undefined;
+  if (options.defaultCommand?.startsWith('agent:')) {
+    const agentId = options.defaultCommand.slice('agent:'.length);
+    for (const integration of options.integrations ?? []) {
+      agentProvider = integration.agents?.find((a) => a.id === agentId);
+      if (agentProvider) break;
+    }
   }
 
   function getCommand(id: string): Command | undefined {
@@ -253,6 +265,10 @@ export function defineCli(options: CliOptions): Cli {
       program.option('-w, --wait', 'Keep process alive with routine loop running');
     }
 
+    if (agentProvider) {
+      program.option('--resume <thread-id>', 'Resume a previous conversation');
+    }
+
     for (const cmd of commandMap.values()) {
       const sub = program.command(cmd.id).description(cmd.description);
 
@@ -303,8 +319,17 @@ export function defineCli(options: CliOptions): Cli {
       : {};
     const context = buildContext({ workspace, config });
 
-    // Check for interactive mode (-i or --interactive)
+    // Extract --resume <id> before Commander sees it
     const userArgs = argv.slice(2);
+    let resumeId = runOptions?.resume;
+    {
+      const resumeIdx = userArgs.indexOf('--resume');
+      if (resumeIdx !== -1 && resumeIdx + 1 < userArgs.length) {
+        resumeId = userArgs[resumeIdx + 1];
+      }
+    }
+
+    // Check for interactive mode (-i or --interactive)
     if (userArgs.includes('-i') || userArgs.includes('--interactive')) {
       if (!options.interactive) {
         stderr('Interactive mode is not configured for this CLI');
@@ -312,12 +337,13 @@ export function defineCli(options: CliOptions): Cli {
         return;
       }
 
-      const cli = {
+      const cliRef: Cli = {
         name: options.name,
         version: options.version,
         description: options.description,
         configSchema: options.configSchema,
         interactive: options.interactive,
+        defaultCommand: options.defaultCommand,
         getCommand,
         listCommands,
         execute,
@@ -329,7 +355,12 @@ export function defineCli(options: CliOptions): Cli {
         run,
         stopRoutine,
       };
-      const session = createReplSession({ cli, context });
+      const session = createReplSession({
+        cli: cliRef,
+        context,
+        agentProvider,
+        threadId: resumeId,
+      });
 
       if (runOptions?.interactiveInput) {
         // Headless mode for testing
@@ -355,11 +386,42 @@ export function defineCli(options: CliOptions): Cli {
     // Update the routine's context so it uses the resolved config/workspace
     if (routine) routine.setContext(context);
 
-    // Detect --wait before Commander sees it (it's a framework flag, not a command flag)
+    // Detect --wait and --resume before Commander sees them (framework flags)
     const waitFlag = userArgs.includes('--wait') || userArgs.includes('-w');
-    const commandArgv = waitFlag
+    let commandArgv = waitFlag
       ? argv.filter((a) => a !== '--wait' && a !== '-w')
-      : argv;
+      : [...argv];
+
+    // Strip --resume and its value from argv
+    {
+      const filtered: string[] = [];
+      for (let i = 0; i < commandArgv.length; i++) {
+        if (commandArgv[i] === '--resume' && i + 1 < commandArgv.length) {
+          i++; // skip the value
+        } else {
+          filtered.push(commandArgv[i]!);
+        }
+      }
+      commandArgv = filtered;
+    }
+
+    // Check if the first non-flag arg is a registered subcommand
+    // If not, and we have a defaultCommand, treat remaining args as an agent prompt
+    const nonFlagArgs = commandArgv.slice(2).filter((a) => !a.startsWith('-'));
+    const firstArg = nonFlagArgs[0];
+    const isSubcommand = firstArg && commandMap.has(firstArg);
+
+    if (!isSubcommand && agentProvider && nonFlagArgs.length > 0) {
+      // Agent prompt in command mode
+      const prompt = nonFlagArgs.join(' ');
+      const parts: string[] = [];
+      for await (const chunk of agentProvider.stream(prompt, { threadId: resumeId, tools: commandMap })) {
+        const text = formatStreamChunk(chunk);
+        parts.push(text);
+        stdout(text);
+      }
+      return;
+    }
 
     const program = buildProgram(stdout, context);
 
@@ -436,6 +498,7 @@ export function defineCli(options: CliOptions): Cli {
     description: options.description,
     configSchema: options.configSchema,
     interactive: options.interactive,
+    defaultCommand: options.defaultCommand,
     getCommand,
     listCommands,
     execute,

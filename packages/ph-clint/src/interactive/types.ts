@@ -1,4 +1,4 @@
-import type { Cli, CommandContext } from '../core/types.js';
+import type { AgentProvider, Cli, CommandContext } from '../core/types.js';
 
 /**
  * Output from processing a REPL input line.
@@ -16,6 +16,10 @@ export interface ReplOutput {
 export interface ReplSessionOptions {
   cli: Cli;
   context: CommandContext;
+  /** Agent provider for default command routing. Resolved by defineCli from integrations. */
+  agentProvider?: AgentProvider;
+  /** Thread ID for conversation memory (from --resume flag). */
+  threadId?: string;
 }
 
 /**

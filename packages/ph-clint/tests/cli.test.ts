@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
 import { defineCli } from '../src/core/cli.js';
 import { defineTrigger } from '../src/core/trigger.js';
+import type { AgentProvider, StreamChunk } from '../src/core/types.js';
 
 const echo = defineCommand({
   id: 'echo',
@@ -770,6 +771,125 @@ describe('defineCli', () => {
       // No routine → --wait is a no-op, run() returns normally without calling exit()
       expect(cap.exitCode).toBeUndefined();
     });
+    });
+
+    describe('default command — agent in command mode', () => {
+      function createTestAgent(
+        responses: Record<string, StreamChunk[]>,
+      ): AgentProvider {
+        return {
+          id: 'test-assistant',
+          async *stream(prompt) {
+            const chunks = responses[prompt] ?? [
+              { type: 'text-delta' as const, text: `Echo: ${prompt}` },
+            ];
+            for (const chunk of chunks) yield chunk;
+          },
+        };
+      }
+
+      it('routes positional text to agent when defaultCommand is set', async () => {
+        const agent = createTestAgent({
+          'What is TypeScript?': [
+            { type: 'text-delta', text: 'TypeScript is great.' },
+          ],
+        });
+
+        const agentCli = defineCli({
+          name: 'assist',
+          version: '1.0.0',
+          description: 'Assistant',
+          commands: [echo],
+          integrations: [{ id: 'test', agents: [agent] }],
+          defaultCommand: 'agent:test-assistant',
+        });
+
+        const cap = capture();
+        await agentCli.run(
+          ['node', 'assist', 'What is TypeScript?'],
+          cap.options,
+        );
+        expect(cap.output.join('')).toContain('TypeScript is great.');
+      });
+
+      it('passes --resume thread ID to agent', async () => {
+        let receivedThreadId: string | undefined;
+
+        const agent: AgentProvider = {
+          id: 'test-assistant',
+          async *stream(_prompt, opts) {
+            receivedThreadId = opts?.threadId;
+            yield { type: 'text-delta', text: 'resumed' };
+          },
+        };
+
+        const agentCli = defineCli({
+          name: 'assist',
+          version: '1.0.0',
+          description: 'Assistant',
+          commands: [echo],
+          integrations: [{ id: 'test', agents: [agent] }],
+          defaultCommand: 'agent:test-assistant',
+        });
+
+        const cap = capture();
+        await agentCli.run(
+          ['node', 'assist', '--resume', 'thread-abc-123', 'hello'],
+          cap.options,
+        );
+        expect(receivedThreadId).toBe('thread-abc-123');
+      });
+
+      it('still runs subcommands normally', async () => {
+        const agent = createTestAgent({});
+        const agentCli = defineCli({
+          name: 'assist',
+          version: '1.0.0',
+          description: 'Assistant',
+          commands: [echo],
+          integrations: [{ id: 'test', agents: [agent] }],
+          defaultCommand: 'agent:test-assistant',
+        });
+
+        const cap = capture();
+        await agentCli.run(
+          ['node', 'assist', 'echo', '--message', 'hi'],
+          cap.options,
+        );
+        expect(cap.output).toContain('hi');
+      });
+
+      it('headless interactive routes bare text to agent', async () => {
+        const agent = createTestAgent({
+          'tell me a joke': [
+            { type: 'text-delta', text: 'Why did the chicken...' },
+          ],
+        });
+
+        const agentCli = defineCli({
+          name: 'assist',
+          version: '1.0.0',
+          description: 'Assistant',
+          commands: [echo],
+          integrations: [{ id: 'test', agents: [agent] }],
+          defaultCommand: 'agent:test-assistant',
+          interactive: { welcome: 'Hi!' },
+        });
+
+        const output: string[] = [];
+        await agentCli.run(['node', 'assist', '-i'], {
+          stdout: (msg) => output.push(msg),
+          stderr: () => {},
+          exit: () => {},
+          interactiveInput: (async function* () {
+            yield 'tell me a joke';
+            yield '/exit';
+          })(),
+        });
+
+        expect(output[0]).toBe('Hi!');
+        expect(output.join('')).toContain('Why did the chicken...');
+      });
     });
   });
 });

@@ -53,6 +53,78 @@ export interface Command<
   execute: (input: z.output<TInput>, context: CommandContext) => Promise<TOutput>;
 }
 
+// ── Streaming ────────────────────────────────────────────────────
+
+/**
+ * Typed chunks for streaming command/agent output.
+ * Framework-agnostic — the Mastra integration maps its fullStream chunks
+ * to these types, and the REPL/CLI renders them.
+ */
+export interface TextDeltaChunk {
+  type: 'text-delta';
+  text: string;
+}
+
+export interface ToolCallChunk {
+  type: 'tool-call';
+  toolName: string;
+  args: unknown;
+}
+
+export interface ToolResultChunk {
+  type: 'tool-result';
+  toolName: string;
+  result: unknown;
+  isError: boolean;
+}
+
+export interface ErrorChunk {
+  type: 'error';
+  error: string;
+}
+
+export type StreamChunk =
+  | TextDeltaChunk
+  | ToolCallChunk
+  | ToolResultChunk
+  | ErrorChunk;
+
+// ── Agent Provider ───────────────────────────────────────────────
+
+/**
+ * Options for streaming an agent prompt.
+ */
+export interface AgentStreamOptions {
+  threadId?: string;
+  tools?: Map<string, Command>;
+}
+
+/**
+ * Abstract agent provider — the boundary between the core and
+ * agent integrations (Mastra, etc.). Core code never imports
+ * agent framework modules directly.
+ */
+export interface AgentProvider {
+  id: string;
+  stream(
+    prompt: string,
+    opts?: AgentStreamOptions,
+  ): AsyncGenerator<StreamChunk>;
+}
+
+// ── Integration ──────────────────────────────────────────────────
+
+/**
+ * An optional integration that plugs into the CLI lifecycle.
+ * Mastra and Powerhouse each implement this interface.
+ */
+export interface Integration {
+  id: string;
+  agents?: AgentProvider[];
+  setup?(context: CommandContext): Promise<void>;
+  teardown?(): Promise<void>;
+}
+
 // ── Work Items ────────────────────────────────────────────────────
 
 /**
@@ -175,6 +247,9 @@ export interface CliOptions {
   interactive?: InteractiveConfig;
   triggers?: Trigger[];
   routine?: RoutineConfig;
+  integrations?: Integration[];
+  /** Route bare text to an agent. Format: 'agent:<agent-id>' */
+  defaultCommand?: string;
 }
 
 /**
@@ -191,6 +266,8 @@ export interface RunOptions {
   interactiveInput?: AsyncIterable<string>;
   /** Signal to stop --wait mode. In production, connected to SIGINT/SIGTERM. */
   signal?: AbortSignal;
+  /** Resume a previous agent conversation by thread ID. */
+  resume?: string;
 }
 
 /**
@@ -211,6 +288,7 @@ export interface Cli {
   description: string;
   configSchema?: z.ZodType;
   interactive?: InteractiveConfig;
+  defaultCommand?: string;
   getCommand(id: string): Command | undefined;
   listCommands(): Command[];
   execute(

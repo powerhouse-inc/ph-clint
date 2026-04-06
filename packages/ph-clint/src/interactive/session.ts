@@ -4,6 +4,7 @@ import { parseReplInput } from './router.js';
 import { getCompletions, getGhostSuggestion, getCompletionSuffix } from './completions.js';
 import { getSchemaFields } from '../core/schema.js';
 import { renderMarkdown } from './markdown.js';
+import { formatStreamChunk } from '../core/stream.js';
 
 /**
  * Format a command result for display.
@@ -121,9 +122,10 @@ function buildPromptText(field: FieldInfo): string {
  * It is independent of Ink rendering.
  */
 export function createReplSession(opts: ReplSessionOptions): ReplSession {
-  const { cli, context } = opts;
+  const { cli, context, agentProvider, threadId } = opts;
   const commands = cli.listCommands();
   const commandIds = commands.map((c) => c.id);
+  const hasDefaultCommand = !!cli.defaultCommand;
 
   // Prompting state — null when not prompting
   let prompting: PromptingState | null = null;
@@ -211,7 +213,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       return handlePromptAnswer(input);
     }
 
-    const parsed = parseReplInput(input, commandIds);
+    const parsed = parseReplInput(input, commandIds, hasDefaultCommand);
 
     switch (parsed.type) {
       case 'empty':
@@ -222,6 +224,9 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
 
       case 'exit':
         return { text: 'Goodbye!', type: 'exit' };
+
+      case 'text':
+        return handleAgentPrompt(parsed.raw);
 
       case 'unknown':
         if (parsed.commandId) {
@@ -322,6 +327,29 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     }
 
     return result;
+  }
+
+  async function handleAgentPrompt(text: string): Promise<ReplOutput> {
+    if (!agentProvider) {
+      // defaultCommand was set but agent provider wasn't resolved
+      const agentId = cli.defaultCommand?.replace(/^agent:/, '') ?? 'unknown';
+      return {
+        text: `Agent not found: ${agentId}`,
+        type: 'error',
+      };
+    }
+
+    try {
+      const parts: string[] = [];
+      const commandMap = new Map(commands.map((c) => [c.id, c]));
+      for await (const chunk of agentProvider.stream(text, { threadId, tools: commandMap })) {
+        parts.push(formatStreamChunk(chunk));
+      }
+      return { text: renderMarkdown(parts.join('')), type: 'result' };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { text: msg, type: 'error' };
+    }
   }
 
   return {
