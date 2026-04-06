@@ -112,6 +112,10 @@ export interface Routine {
   readonly status: RoutineStatus;
   start(): void;
   stop(): Promise<void>;
+  /** Optional callback for work item output. Set before start() to capture results. */
+  onOutput?: (text: string) => void;
+  /** Update the context used for command execution within the routine. */
+  setContext(context: CommandContext): void;
 }
 
 // ── Process Management ────────────────────────────────────────────
@@ -185,6 +189,8 @@ export interface RunOptions {
   stderr?: (message: string) => void;
   /** Headless interactive mode: lines are read from this iterable instead of Ink. */
   interactiveInput?: AsyncIterable<string>;
+  /** Signal to stop --wait mode. In production, connected to SIGINT/SIGTERM. */
+  signal?: AbortSignal;
 }
 
 /**

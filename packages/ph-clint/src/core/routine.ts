@@ -34,7 +34,7 @@ export function createRoutine(options: RoutineOptions): Routine {
   const idleInterval = options.idleInterval ?? 500;
   const bus = options.eventBus ?? createEventBus();
   const pm = options.processManager ?? createProcessManager();
-  const ctx = options.context ?? {
+  let ctx: CommandContext = options.context ?? {
     workspace: createMemoryWorkspace(),
     config: {},
   };
@@ -120,6 +120,12 @@ export function createRoutine(options: RoutineOptions): Routine {
         const item = queue.shift()!;
         try {
           const result = await executeWorkItem(item);
+          if (routine.onOutput && result !== undefined && result !== null) {
+            const text = typeof result === 'object' && result !== null && 'text' in result
+              ? (result as Record<string, unknown>).text as string
+              : String(result);
+            if (text) routine.onOutput(text);
+          }
           await item.callbacks?.onSuccess?.(result);
         } catch (error) {
           await item.callbacks?.onFailure?.(
@@ -139,6 +145,7 @@ export function createRoutine(options: RoutineOptions): Routine {
   }
 
   const routine: Routine = {
+    onOutput: undefined,
     get status() {
       return status;
     },
@@ -161,6 +168,9 @@ export function createRoutine(options: RoutineOptions): Routine {
         await loopPromise;
         loopPromise = null;
       }
+    },
+    setContext(newCtx: CommandContext) {
+      ctx = newCtx;
     },
   };
 

@@ -443,4 +443,170 @@ describe('createRoutine', () => {
       expect(eventReceived).toBe(true);
     });
   });
+
+  describe('onOutput', () => {
+    it('calls onOutput with text from command result objects', async () => {
+      const outputLines: string[] = [];
+      let triggerOnce = true;
+
+      const trigger = defineTrigger({
+        id: 'once',
+        type: 'condition',
+        poll: async () => {
+          if (triggerOnce) {
+            triggerOnce = false;
+            return { type: 'command' as const, params: { commandId: 'say' } };
+          }
+          return null;
+        },
+      });
+
+      const say = defineCommand({
+        id: 'say',
+        description: 'Say something',
+        inputSchema: z.object({}),
+        execute: async () => ({ text: 'hello from routine' }),
+      });
+
+      routine = makeRoutine({
+        triggers: [trigger],
+        commands: new Map([['say', say]]),
+      });
+      routine.onOutput = (text) => outputLines.push(text);
+
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+
+      expect(outputLines).toContain('hello from routine');
+    });
+
+    it('calls onOutput with stringified non-object results', async () => {
+      const outputLines: string[] = [];
+      let triggerOnce = true;
+
+      const trigger = defineTrigger({
+        id: 'once',
+        type: 'condition',
+        poll: async () => {
+          if (triggerOnce) {
+            triggerOnce = false;
+            return {
+              type: 'function' as const,
+              params: { fn: async () => 42 },
+            };
+          }
+          return null;
+        },
+      });
+
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.onOutput = (text) => outputLines.push(text);
+
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+
+      expect(outputLines).toContain('42');
+    });
+
+    it('does not call onOutput when result is null', async () => {
+      const outputLines: string[] = [];
+      let triggerOnce = true;
+
+      const trigger = defineTrigger({
+        id: 'once',
+        type: 'condition',
+        poll: async () => {
+          if (triggerOnce) {
+            triggerOnce = false;
+            return {
+              type: 'function' as const,
+              params: { fn: async () => null },
+            };
+          }
+          return null;
+        },
+      });
+
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.onOutput = (text) => outputLines.push(text);
+
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+
+      expect(outputLines).toEqual([]);
+    });
+
+    it('does not call onOutput when no callback is set', async () => {
+      let triggerOnce = true;
+
+      const trigger = defineTrigger({
+        id: 'once',
+        type: 'condition',
+        poll: async () => {
+          if (triggerOnce) {
+            triggerOnce = false;
+            return {
+              type: 'function' as const,
+              params: { fn: async () => 'silent' },
+            };
+          }
+          return null;
+        },
+      });
+
+      // No onOutput set — should not throw
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+    });
+  });
+
+  describe('setContext', () => {
+    it('updates the context used by command execution', async () => {
+      let receivedConfig: Record<string, unknown> = {};
+      let triggerOnce = true;
+
+      const trigger = defineTrigger({
+        id: 'once',
+        type: 'condition',
+        poll: async () => {
+          if (triggerOnce) {
+            triggerOnce = false;
+            return { type: 'command' as const, params: { commandId: 'check' } };
+          }
+          return null;
+        },
+      });
+
+      const check = defineCommand({
+        id: 'check',
+        description: 'Check config',
+        inputSchema: z.object({}),
+        execute: async (_, { config }) => {
+          receivedConfig = config;
+          return null;
+        },
+      });
+
+      routine = makeRoutine({
+        triggers: [trigger],
+        commands: new Map([['check', check]]),
+      });
+
+      routine.setContext({
+        workspace: createMemoryWorkspace(),
+        config: { key: 'updated-value' },
+      });
+
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+
+      expect(receivedConfig).toEqual({ key: 'updated-value' });
+    });
+  });
 });

@@ -471,4 +471,80 @@ describe('CLI integration', () => {
       description: 'Build command to execute',
     });
   });
+
+  it('--wait keeps process alive until routine stops', async () => {
+    const cli = defineCli({
+      name: 'watcher',
+      version: '1.0.0',
+      description: 'File watcher',
+      configSchema,
+      commands: [build, watch, status],
+      triggers: [fileChangeTrigger],
+      routine: { tickInterval: 100, idleInterval: 50 },
+    });
+
+    const output: string[] = [];
+    let exitCode = -1;
+
+    const ac = new AbortController();
+
+    const runPromise = cli.run(['node', 'test', 'watch', '--wait'], {
+      stdout: (msg) => output.push(msg),
+      stderr: () => {},
+      exit: (code) => { exitCode = code; },
+      signal: ac.signal,
+    });
+
+    // Let routine tick
+    await new Promise(r => setTimeout(r, 150));
+
+    // Simulate file change
+    changeDetected = true;
+
+    // Wait for routine to tick and build to execute
+    await new Promise(r => setTimeout(r, 300));
+
+    // Signal stop (simulates SIGINT)
+    ac.abort();
+
+    await runPromise;
+
+    expect(output[0]).toBe('Watching for changes...');
+    expect(output).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Build succeeded'),
+      ]),
+    );
+    expect(exitCode).toBe(0);
+  });
+
+  it('--wait without routine exits immediately', async () => {
+    const simple = defineCommand({
+      id: 'ping',
+      description: 'Simple command',
+      inputSchema: z.object({}),
+      execute: async () => ({ text: 'pong' }),
+    });
+
+    const cliNoRoutine = defineCli({
+      name: 'watcher',
+      version: '1.0.0',
+      description: 'File watcher',
+      configSchema,
+      commands: [simple],
+    });
+
+    const output: string[] = [];
+    let exitCode = -1;
+
+    await cliNoRoutine.run(['node', 'test', 'ping', '--wait'], {
+      stdout: (msg) => output.push(msg),
+      stderr: () => {},
+      exit: (code) => { exitCode = code; },
+    });
+
+    expect(output[0]).toContain('pong');
+    // No routine → --wait is a no-op, exits normally
+    expect(exitCode).toBe(-1); // exit() never called
+  });
 });

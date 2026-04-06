@@ -252,6 +252,9 @@ export function defineCli(options: CliOptions): Cli {
     for (const cmd of commandMap.values()) {
       const sub = program.command(cmd.id).description(cmd.description);
 
+      // Add --wait to every subcommand (consumed by run() after parse)
+      sub.option('-w, --wait', 'Keep process alive with routine loop running');
+
       const fields = getSchemaFields(cmd.inputSchema);
       for (const field of fields) {
         const desc = field.description ?? '';
@@ -348,6 +351,9 @@ export function defineCli(options: CliOptions): Cli {
       return;
     }
 
+    // Update the routine's context so it uses the resolved config/workspace
+    if (routine) routine.setContext(context);
+
     const program = buildProgram(stdout, context);
 
     try {
@@ -360,7 +366,53 @@ export function defineCli(options: CliOptions): Cli {
       const msg = err instanceof Error ? err.message : String(err);
       stderr(msg);
       exit(err.exitCode ?? 1);
+      return;
     }
+
+    // --wait: keep process alive while routine runs
+    const waitFlag = userArgs.includes('--wait') || userArgs.includes('-w');
+    if (waitFlag && routine && routine.status !== 'init') {
+      routine.onOutput = (text: string) => stdout(renderMarkdown(text));
+      await waitForSignal(routine, runOptions?.signal);
+      exit(0);
+    }
+  }
+
+  /**
+   * Wait until the routine stops, either by external signal or by the routine
+   * finishing on its own. In production (no signal provided), listens for
+   * SIGINT/SIGTERM. In tests, listens on the provided AbortSignal.
+   */
+  async function waitForSignal(
+    rt: Routine,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (signal) {
+      // Test/programmatic mode: listen on the AbortSignal
+      if (signal.aborted) {
+        await rt.stop();
+        return;
+      }
+      await new Promise<void>((resolve) => {
+        signal.addEventListener('abort', async () => {
+          await rt.stop();
+          resolve();
+        }, { once: true });
+      });
+      return;
+    }
+
+    // Production mode: listen for process signals
+    await new Promise<void>((resolve) => {
+      const handler = async () => {
+        process.off('SIGINT', handler);
+        process.off('SIGTERM', handler);
+        await rt.stop();
+        resolve();
+      };
+      process.on('SIGINT', handler);
+      process.on('SIGTERM', handler);
+    });
   }
 
   async function stopRoutine(): Promise<void> {
