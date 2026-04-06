@@ -74,6 +74,31 @@ describe('formatStreamChunk', () => {
     expect(result).toContain('…');
   });
 
+  it('renders text field directly when tool-result has a text property', () => {
+    const result = formatStreamChunk({
+      type: 'tool-result',
+      toolName: 'ascii',
+      result: { text: 'ART_OUTPUT_HERE', data: { width: 40 } },
+      isError: false,
+    });
+    expect(result).toContain('✓');
+    expect(result).toContain('ascii');
+    expect(result).toContain('ART_OUTPUT_HERE');
+    // Should NOT contain JSON-escaped version
+    expect(result).not.toContain('"text"');
+  });
+
+  it('does not use text-field rendering for error results', () => {
+    const result = formatStreamChunk({
+      type: 'tool-result',
+      toolName: 'ascii',
+      result: { text: 'some error text' },
+      isError: true,
+    });
+    // Error path should show the formatted result, not the text field directly
+    expect(result).toContain('✗');
+  });
+
   it('formats null/undefined tool-result as ok', () => {
     const result = formatStreamChunk({ type: 'tool-result', toolName: 'ping', result: null, isError: false });
     expect(result).toContain('ok');

@@ -9,6 +9,7 @@ import type { Workspace } from './types.js';
  */
 export function createWorkspace(basePath: string): Workspace {
   return {
+    basePath,
     async read<T>(key: string, fallback: T): Promise<T> {
       const filePath = join(basePath, key);
       try {
@@ -40,9 +41,10 @@ export function createWorkspace(basePath: string): Workspace {
 /**
  * Create an in-memory workspace for testing or when no persistence is needed.
  */
-export function createMemoryWorkspace(): Workspace {
+export function createMemoryWorkspace(basePath = ''): Workspace {
   const store = new Map<string, unknown>();
   return {
+    basePath,
     async read<T>(key: string, fallback: T): Promise<T> {
       return store.has(key) ? (store.get(key) as T) : fallback;
     },

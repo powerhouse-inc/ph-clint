@@ -5,6 +5,8 @@ import type { z } from 'zod';
  * Backed by `.ph/cli/{cli-name}/` on disk, or in-memory for testing.
  */
 export interface Workspace {
+  /** Root directory of this workspace (e.g. `.ph/cli/{cli-name}/`). */
+  readonly basePath: string;
   read<T>(key: string, fallback: T): Promise<T>;
   write(key: string, value: unknown): Promise<void>;
 }

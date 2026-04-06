@@ -30,6 +30,9 @@
   },
   "devDependencies": {
     "@jest/globals": "^30.3.0",
+    "@mastra/core": "^1.22.0",
+    "@mastra/libsql": "^1.7.4",
+    "@mastra/memory": "^1.13.1",
     "@types/node": "^25.5.2",
     "@types/react": "^19.2.14",
     "ink-testing-library": "^4.0.0",
@@ -37,6 +40,22 @@
     "ts-jest": "^29.4.9",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
+  },
+  "peerDependencies": {
+    "@mastra/core": "^1.22.0",
+    "@mastra/libsql": "^1.7.4",
+    "@mastra/memory": "^1.13.1"
+  },
+  "peerDependenciesMeta": {
+    "@mastra/core": {
+      "optional": true
+    },
+    "@mastra/memory": {
+      "optional": true
+    },
+    "@mastra/libsql": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=22.13.0"

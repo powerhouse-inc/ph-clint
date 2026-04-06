@@ -9,13 +9,13 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import {
   defineCli,
-  createReplSession,
-  createMemoryWorkspace,
+  defineMastraIntegration,
   formatStreamChunk,
 } from 'ph-clint';
-import type { StreamChunk, CommandContext } from 'ph-clint';
+import type { StreamChunk, Integration } from 'ph-clint';
 import { ascii } from '../src/commands/ascii.js';
-import { createMastraAssistant } from '../src/agents/mastra-assistant.js';
+import { saveImage } from '../src/commands/save-image.js';
+import { listImages } from '../src/commands/list-images.js';
 
 // Load .env from the example directory (no dotenv dependency)
 try {
@@ -35,21 +35,27 @@ try {
 }
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
+const commands = [ascii, saveImage, listImages];
 
 const describeWithKey = apiKey ? describe : describe.skip;
 
 describeWithKey('Mastra agent E2E', () => {
-  let agent: ReturnType<typeof createMastraAssistant>;
+  let integration: Integration;
 
-  beforeAll(() => {
-    agent = createMastraAssistant({
-      model: 'anthropic/claude-haiku-4-5',
-      commands: [ascii],
-      dbPath: '/tmp/ph-clint-test-mastra.db',
+  beforeAll(async () => {
+    integration = await defineMastraIntegration({
+      agents: [{
+        id: 'assistant',
+        name: 'Image Assistant',
+        instructions: 'You are a helpful assistant with image tools. Keep responses concise.',
+      }],
+      commands,
+      workspacePath: '/tmp/ph-clint-test-e2e',
     });
   });
 
   it('streams a text response from the real LLM', async () => {
+    const agent = integration.agents![0]!;
     const chunks: StreamChunk[] = [];
     for await (const chunk of agent.stream('Say hello in exactly 3 words.')) {
       chunks.push(chunk);
@@ -66,6 +72,7 @@ describeWithKey('Mastra agent E2E', () => {
   }, 30_000);
 
   it('agent calls the ascii tool when asked to convert an image', async () => {
+    const agent = integration.agents![0]!;
     const chunks: StreamChunk[] = [];
     for await (const chunk of agent.stream(
       'Use the ascii tool to convert https://picsum.photos/100/100 to ASCII art. Just call the tool, nothing else.',
@@ -76,7 +83,6 @@ describeWithKey('Mastra agent E2E', () => {
     const types = chunks.map((c) => c.type);
     console.log('Chunk types:', types);
 
-    // Agent should have called the ascii tool
     expect(types).toContain('tool-call');
     expect(types).toContain('tool-result');
 
@@ -86,16 +92,10 @@ describeWithKey('Mastra agent E2E', () => {
       args: unknown;
     };
     expect(toolCall.toolName).toBe('ascii');
-
-    // Should also have text output after the tool result
-    const textChunks = chunks.filter((c) => c.type === 'text-delta');
-    const fullText = textChunks
-      .map((c) => (c as { type: 'text-delta'; text: string }).text)
-      .join('');
-    console.log('Agent response after tool:', fullText);
   }, 60_000);
 
   it('formatStreamChunk renders tool calls and results', async () => {
+    const agent = integration.agents![0]!;
     const chunks: StreamChunk[] = [];
     for await (const chunk of agent.stream(
       'Use the ascii tool to convert https://picsum.photos/50/50 to ASCII. Just call the tool.',
@@ -103,11 +103,10 @@ describeWithKey('Mastra agent E2E', () => {
       chunks.push(chunk);
     }
 
-    // Format all chunks to display strings
     const formatted = chunks.map(formatStreamChunk).join('');
     console.log('Formatted output:\n', formatted);
 
-    expect(formatted).toContain('▶'); // tool call indicator
+    expect(formatted).toContain('▶');
     expect(formatted).toContain('ascii');
   }, 60_000);
 
@@ -116,8 +115,8 @@ describeWithKey('Mastra agent E2E', () => {
       name: 'assist',
       version: '1.0.0',
       description: 'Test assistant',
-      commands: [ascii],
-      integrations: [{ id: 'mastra', agents: [agent] }],
+      commands,
+      integrations: [integration],
       defaultCommand: 'agent:assistant',
     });
 
@@ -138,8 +137,8 @@ describeWithKey('Mastra agent E2E', () => {
       name: 'assist',
       version: '1.0.0',
       description: 'Test assistant',
-      commands: [ascii],
-      integrations: [{ id: 'mastra', agents: [agent] }],
+      commands,
+      integrations: [integration],
       defaultCommand: 'agent:assistant',
       interactive: { welcome: 'Hi!' },
     });
@@ -162,30 +161,23 @@ describeWithKey('Mastra agent E2E', () => {
   }, 30_000);
 
   it('remembers conversation context across turns with thread ID', async () => {
+    const agent = integration.agents![0]!;
     const threadId = `test-memory-${Date.now()}`;
 
     // Turn 1: tell it something
-    const chunks1: StreamChunk[] = [];
-    for await (const chunk of agent.stream('My favorite color is purple. Just acknowledge.', { threadId })) {
-      chunks1.push(chunk);
-    }
-    const text1 = chunks1
-      .filter((c) => c.type === 'text-delta')
-      .map((c) => (c as { type: 'text-delta'; text: string }).text)
-      .join('');
-    console.log('Turn 1:', text1);
+    for await (const _ of agent.stream('My favorite color is purple. Just acknowledge.', { threadId })) {}
 
     // Turn 2: ask it to recall
-    const chunks2: StreamChunk[] = [];
+    const chunks: StreamChunk[] = [];
     for await (const chunk of agent.stream('What is my favorite color?', { threadId })) {
-      chunks2.push(chunk);
+      chunks.push(chunk);
     }
-    const text2 = chunks2
+    const text = chunks
       .filter((c) => c.type === 'text-delta')
       .map((c) => (c as { type: 'text-delta'; text: string }).text)
       .join('');
-    console.log('Turn 2:', text2);
+    console.log('Turn 2:', text);
 
-    expect(text2.toLowerCase()).toContain('purple');
+    expect(text.toLowerCase()).toContain('purple');
   }, 60_000);
 });

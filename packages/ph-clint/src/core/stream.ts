@@ -18,6 +18,11 @@ export function formatStreamChunk(chunk: StreamChunk): string {
       if (chunk.isError) {
         return `✗ ${chunk.toolName} error: ${formatResult(chunk.result)}\n`;
       }
+      // If the result has a text field, print it directly (e.g. ASCII art, formatted output)
+      if (hasTextField(chunk.result)) {
+        const text = (chunk.result as { text: string }).text;
+        return `✓ ${chunk.toolName}\n${text}\n`;
+      }
       return `✓ ${chunk.toolName} → ${truncateResult(chunk.result)}\n`;
 
     case 'error':
@@ -51,4 +56,13 @@ function formatResult(result: unknown): string {
   if (result === undefined || result === null) return 'ok';
   if (typeof result === 'string') return result;
   return JSON.stringify(result);
+}
+
+function hasTextField(result: unknown): boolean {
+  return (
+    typeof result === 'object' &&
+    result !== null &&
+    'text' in result &&
+    typeof (result as Record<string, unknown>).text === 'string'
+  );
 }

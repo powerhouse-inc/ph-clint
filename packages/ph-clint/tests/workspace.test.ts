@@ -15,6 +15,11 @@ describe('createWorkspace', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it('exposes basePath', () => {
+    const ws = createWorkspace(dir);
+    expect(ws.basePath).toBe(dir);
+  });
+
   describe('read', () => {
     it('returns fallback when file does not exist', async () => {
       const ws = createWorkspace(dir);
@@ -77,6 +82,16 @@ describe('createWorkspace', () => {
 });
 
 describe('createMemoryWorkspace', () => {
+  it('exposes basePath (default empty)', () => {
+    const ws = createMemoryWorkspace();
+    expect(ws.basePath).toBe('');
+  });
+
+  it('exposes custom basePath', () => {
+    const ws = createMemoryWorkspace('/tmp/test');
+    expect(ws.basePath).toBe('/tmp/test');
+  });
+
   it('returns fallback when key does not exist', async () => {
     const ws = createMemoryWorkspace();
     const result = await ws.read('key', 'default');

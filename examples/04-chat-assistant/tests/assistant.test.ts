@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, afterAll } from '@jest/globals';
 import { z } from 'zod';
 import {
   defineCli,
@@ -14,7 +14,13 @@ import type {
   CommandContext,
 } from 'ph-clint';
 import { ascii } from '../src/commands/ascii.js';
+import { saveImage } from '../src/commands/save-image.js';
+import { listImages } from '../src/commands/list-images.js';
 import { createAssistant } from '../src/agents/assistant.js';
+import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { randomBytes } from 'crypto';
 
 // ── Helper: deterministic test agent ──────────────────────────────
 
@@ -51,6 +57,80 @@ describe('ascii command', () => {
     expect(result.text.length).toBeGreaterThan(0);
     expect(result.data.width).toBe(20);
   }, 15_000);
+});
+
+// ── save-image command ────────────────────────────────────────────
+
+describe('save-image command', () => {
+  const testDir = join(tmpdir(), `ph-clint-test-${randomBytes(4).toString('hex')}`);
+
+  afterAll(() => {
+    try { rmSync(testDir, { recursive: true }); } catch {}
+  });
+
+  it('has correct schema', () => {
+    expect(saveImage.id).toBe('save-image');
+    // url is required
+    expect(() => saveImage.inputSchema.parse({})).toThrow();
+    const parsed = saveImage.inputSchema.parse({ url: 'https://example.com/img.png' });
+    expect(parsed.url).toBe('https://example.com/img.png');
+  });
+
+  it('downloads an image and saves to workspace', async () => {
+    const result = await saveImage.execute(
+      { url: 'https://picsum.photos/10/10' },
+      { workspace: createMemoryWorkspace(testDir), config: {} },
+    ) as any;
+    expect(result.text).toContain('Saved');
+    expect(result.data.size).toBeGreaterThan(0);
+    expect(result.data.path).toContain(testDir);
+  }, 15_000);
+
+  it('uses custom filename when provided', async () => {
+    const result = await saveImage.execute(
+      { url: 'https://picsum.photos/10/10', name: 'custom.jpg' },
+      { workspace: createMemoryWorkspace(testDir), config: {} },
+    ) as any;
+    expect(result.data.filename).toBe('custom.jpg');
+    expect(result.data.path).toContain('custom.jpg');
+  }, 15_000);
+});
+
+// ── list-images command ───────────────────────────────────────────
+
+describe('list-images command', () => {
+  const testDir = join(tmpdir(), `ph-clint-test-list-${randomBytes(4).toString('hex')}`);
+
+  afterAll(() => {
+    try { rmSync(testDir, { recursive: true }); } catch {}
+  });
+
+  it('returns empty when no images exist', async () => {
+    const nonExistent = join(tmpdir(), `ph-clint-test-empty-${randomBytes(4).toString('hex')}`);
+    const result = await listImages.execute(
+      {},
+      { workspace: createMemoryWorkspace(nonExistent), config: {} },
+    ) as any;
+    expect(result.data.images).toHaveLength(0);
+    expect(result.text).toContain('No images');
+  });
+
+  it('lists images in workspace images/ directory', async () => {
+    const imagesSubdir = join(testDir, 'images');
+    mkdirSync(imagesSubdir, { recursive: true });
+    writeFileSync(join(imagesSubdir, 'photo.png'), Buffer.alloc(100));
+    writeFileSync(join(imagesSubdir, 'logo.jpg'), Buffer.alloc(200));
+    writeFileSync(join(imagesSubdir, 'readme.txt'), 'not an image');
+
+    const result = await listImages.execute(
+      {},
+      { workspace: createMemoryWorkspace(testDir), config: {} },
+    ) as any;
+    expect(result.data.images).toHaveLength(2);
+    expect(result.data.images.map((i: any) => i.name).sort()).toEqual(['logo.jpg', 'photo.png']);
+    expect(result.text).toContain('photo.png');
+    expect(result.text).not.toContain('readme.txt');
+  });
 });
 
 // ── Demo agent provider ───────────────────────────────────────────
@@ -127,7 +207,7 @@ describe('CLI integration', () => {
     configSchema: z.object({
       model: z.string().default('test-model').describe('LLM model'),
     }),
-    commands: [ascii],
+    commands: [ascii, saveImage, listImages],
     integrations: [{ id: 'demo', agents: [assistant] }],
     defaultCommand: 'agent:assistant',
     interactive: {
@@ -137,7 +217,7 @@ describe('CLI integration', () => {
 
   it('has correct metadata', () => {
     expect(cli.name).toBe('assist');
-    expect(cli.listCommands()).toHaveLength(1);
+    expect(cli.listCommands()).toHaveLength(3);
     expect(cli.defaultCommand).toBe('agent:assistant');
   });
 

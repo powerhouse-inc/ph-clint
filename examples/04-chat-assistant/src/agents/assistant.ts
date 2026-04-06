@@ -1,3 +1,4 @@
+import { createMemoryWorkspace } from 'ph-clint';
 import type { AgentProvider, StreamChunk } from 'ph-clint';
 
 /**
@@ -23,20 +24,55 @@ export function createAssistant(): AgentProvider {
 
       const tools = opts?.tools;
       const lower = prompt.toLowerCase();
+      const dummyCtx = { workspace: createMemoryWorkspace(), config: {} };
 
-      // Check if the prompt mentions converting an image to ASCII
+      // Handle list-images
+      if ((lower.includes('list') || lower.includes('saved') || lower.includes('my images')) && tools?.has('list-images')) {
+        yield { type: 'tool-call', toolName: 'list-images', args: {} } satisfies StreamChunk;
+        try {
+          const result = await tools.get('list-images')!.execute({}, dummyCtx);
+          const text = typeof result === 'object' && result !== null && 'text' in result
+            ? (result as Record<string, unknown>).text as string
+            : String(result);
+          yield { type: 'tool-result', toolName: 'list-images', result: text, isError: false } satisfies StreamChunk;
+          yield { type: 'text-delta', text: `\n${text}` } satisfies StreamChunk;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          yield { type: 'tool-result', toolName: 'list-images', result: msg, isError: true } satisfies StreamChunk;
+        }
+        return;
+      }
+
+      // Handle save-image
+      if ((lower.includes('save') || lower.includes('download')) && tools?.has('save-image')) {
+        const urlMatch = prompt.match(/https?:\/\/\S+/);
+        if (urlMatch) {
+          const url = urlMatch[0];
+          yield { type: 'tool-call', toolName: 'save-image', args: { url } } satisfies StreamChunk;
+          try {
+            const result = await tools.get('save-image')!.execute({ url }, dummyCtx);
+            const text = typeof result === 'object' && result !== null && 'text' in result
+              ? (result as Record<string, unknown>).text as string
+              : String(result);
+            yield { type: 'tool-result', toolName: 'save-image', result: text, isError: false } satisfies StreamChunk;
+            yield { type: 'text-delta', text: `\n${text}` } satisfies StreamChunk;
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            yield { type: 'tool-result', toolName: 'save-image', result: msg, isError: true } satisfies StreamChunk;
+          }
+          return;
+        }
+      }
+
+      // Handle ascii conversion
       if ((lower.includes('ascii') || lower.includes('image') || lower.includes('convert')) && tools?.has('ascii')) {
         const urlMatch = prompt.match(/https?:\/\/\S+/);
         const image = urlMatch ? urlMatch[0] : 'https://picsum.photos/200/200';
 
         yield { type: 'tool-call', toolName: 'ascii', args: { image, width: 40, height: 20, fit: 'box' } } satisfies StreamChunk;
 
-        const asciiCmd = tools.get('ascii')!;
         try {
-          const result = await asciiCmd.execute({ image, width: 40, height: 20, fit: 'box' }, {
-            workspace: { async read<T>(_k: string, f: T) { return f; }, write: async () => {} },
-            config: {},
-          });
+          const result = await tools.get('ascii')!.execute({ image, width: 40, height: 20, fit: 'box' }, dummyCtx);
           const resultText = typeof result === 'object' && result !== null && 'text' in result
             ? (result as Record<string, unknown>).text as string
             : String(result);

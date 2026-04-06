@@ -12,6 +12,7 @@ export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
 export { renderMarkdown } from './interactive/markdown.js';
+export { defineMastraIntegration, getMastraWorkspacePaths, mapMastraStream } from './integrations/mastra/index.js';
 export type { FieldInfo } from './core/schema.js';
 export type {
   ReplSession,
@@ -49,3 +50,4 @@ export type {
   AgentStreamOptions,
   Integration,
 } from './core/types.js';
+export type { MastraIntegrationOptions, MastraAgentConfig } from './integrations/mastra/types.js';
