@@ -1,19 +1,33 @@
 import { Agent } from '@mastra/core/agent';
+import { Memory } from '@mastra/memory';
+import { LibSQLStore } from '@mastra/libsql';
 import { createTool } from '@mastra/core/tools';
+import { mkdirSync } from 'fs';
+import { dirname } from 'path';
 import type { AgentProvider, StreamChunk, Command } from 'ph-clint';
 import { z } from 'zod';
 
 /**
- * Create a Mastra-backed AgentProvider.
+ * Create a Mastra-backed AgentProvider with persistent conversation memory.
  *
  * This wraps a real Mastra Agent and maps its fullStream chunks
- * to ph-clint StreamChunk types.
+ * to ph-clint StreamChunk types. Memory is stored in a LibSQL database
+ * at the specified path (defaults to .ph/cli/assist/mastra/mastra.db).
  */
 export function createMastraAssistant(options: {
   model?: string;
   commands?: Command[];
+  dbPath?: string;
 }): AgentProvider {
   const model = options.model ?? 'anthropic/claude-haiku-4-5';
+  const dbPath = options.dbPath ?? '.ph/cli/assist/mastra/mastra.db';
+
+  // Ensure the database directory exists
+  mkdirSync(dirname(dbPath), { recursive: true });
+
+  // Persistent storage for conversation memory
+  const store = new LibSQLStore({ id: 'assist-storage', url: `file:${dbPath}` });
+  const memory = new Memory({ storage: store });
 
   // Convert ph-clint commands to Mastra tools
   const mastraTools: Record<string, ReturnType<typeof createTool>> = {};
@@ -34,18 +48,34 @@ export function createMastraAssistant(options: {
 
   const agent = new Agent({
     id: 'assistant',
-    name: 'Research Assistant',
-    instructions: 'You are a helpful research assistant. Use the available tools when the user asks you to search or summarize. Keep responses concise.',
+    name: 'Image Assistant',
+    instructions: `You are a helpful assistant with access to an image-to-ASCII art converter.
+
+When the user asks you to convert an image, show an image, or provides an image URL, use the ascii tool.
+You can suggest interesting images to convert if the user doesn't provide one.
+
+Keep responses concise. After showing ASCII art, briefly describe what you see.`,
     model,
     tools: mastraTools,
+    memory,
   });
 
   return {
     id: 'assistant',
     async *stream(prompt, opts) {
-      const streamResult = await agent.stream(prompt, {
+      const streamOpts: Record<string, unknown> = {
         maxSteps: 10,
-      });
+      };
+
+      // Pass memory options for thread-based conversation persistence
+      if (opts?.threadId) {
+        streamOpts.memory = {
+          thread: opts.threadId,
+          resource: 'cli-user',
+        };
+      }
+
+      const streamResult = await agent.stream(prompt, streamOpts);
 
       for await (const chunk of streamResult.fullStream) {
         switch (chunk.type) {

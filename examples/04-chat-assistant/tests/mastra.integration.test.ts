@@ -14,8 +14,7 @@ import {
   formatStreamChunk,
 } from 'ph-clint';
 import type { StreamChunk, CommandContext } from 'ph-clint';
-import { search } from '../src/commands/search.js';
-import { summarize } from '../src/commands/summarize.js';
+import { ascii } from '../src/commands/ascii.js';
 import { createMastraAssistant } from '../src/agents/mastra-assistant.js';
 
 // Load .env from the example directory (no dotenv dependency)
@@ -45,7 +44,8 @@ describeWithKey('Mastra agent E2E', () => {
   beforeAll(() => {
     agent = createMastraAssistant({
       model: 'anthropic/claude-haiku-4-5',
-      commands: [search, summarize],
+      commands: [ascii],
+      dbPath: '/tmp/ph-clint-test-mastra.db',
     });
   });
 
@@ -65,10 +65,10 @@ describeWithKey('Mastra agent E2E', () => {
     console.log('Agent response:', fullText);
   }, 30_000);
 
-  it('agent calls the search tool when asked to search', async () => {
+  it('agent calls the ascii tool when asked to convert an image', async () => {
     const chunks: StreamChunk[] = [];
     for await (const chunk of agent.stream(
-      'Use the search tool to search for "TypeScript". Just call the tool, nothing else.',
+      'Use the ascii tool to convert https://picsum.photos/100/100 to ASCII art. Just call the tool, nothing else.',
     )) {
       chunks.push(chunk);
     }
@@ -76,7 +76,7 @@ describeWithKey('Mastra agent E2E', () => {
     const types = chunks.map((c) => c.type);
     console.log('Chunk types:', types);
 
-    // Agent should have called the search tool
+    // Agent should have called the ascii tool
     expect(types).toContain('tool-call');
     expect(types).toContain('tool-result');
 
@@ -85,7 +85,7 @@ describeWithKey('Mastra agent E2E', () => {
       toolName: string;
       args: unknown;
     };
-    expect(toolCall.toolName).toBe('search');
+    expect(toolCall.toolName).toBe('ascii');
 
     // Should also have text output after the tool result
     const textChunks = chunks.filter((c) => c.type === 'text-delta');
@@ -93,12 +93,12 @@ describeWithKey('Mastra agent E2E', () => {
       .map((c) => (c as { type: 'text-delta'; text: string }).text)
       .join('');
     console.log('Agent response after tool:', fullText);
-  }, 30_000);
+  }, 60_000);
 
   it('formatStreamChunk renders tool calls and results', async () => {
     const chunks: StreamChunk[] = [];
     for await (const chunk of agent.stream(
-      'Use the summarize tool to summarize https://example.com. Just call the tool.',
+      'Use the ascii tool to convert https://picsum.photos/50/50 to ASCII. Just call the tool.',
     )) {
       chunks.push(chunk);
     }
@@ -108,15 +108,15 @@ describeWithKey('Mastra agent E2E', () => {
     console.log('Formatted output:\n', formatted);
 
     expect(formatted).toContain('▶'); // tool call indicator
-    expect(formatted).toContain('summarize');
-  }, 30_000);
+    expect(formatted).toContain('ascii');
+  }, 60_000);
 
   it('works end-to-end through defineCli + run()', async () => {
     const cli = defineCli({
       name: 'assist',
       version: '1.0.0',
       description: 'Test assistant',
-      commands: [search, summarize],
+      commands: [ascii],
       integrations: [{ id: 'mastra', agents: [agent] }],
       defaultCommand: 'agent:assistant',
     });
@@ -138,7 +138,7 @@ describeWithKey('Mastra agent E2E', () => {
       name: 'assist',
       version: '1.0.0',
       description: 'Test assistant',
-      commands: [search, summarize],
+      commands: [ascii],
       integrations: [{ id: 'mastra', agents: [agent] }],
       defaultCommand: 'agent:assistant',
       interactive: { welcome: 'Hi!' },
@@ -160,4 +160,32 @@ describeWithKey('Mastra agent E2E', () => {
     expect(combined).toContain('Hi!');
     expect(combined.toLowerCase()).toContain('pong');
   }, 30_000);
+
+  it('remembers conversation context across turns with thread ID', async () => {
+    const threadId = `test-memory-${Date.now()}`;
+
+    // Turn 1: tell it something
+    const chunks1: StreamChunk[] = [];
+    for await (const chunk of agent.stream('My favorite color is purple. Just acknowledge.', { threadId })) {
+      chunks1.push(chunk);
+    }
+    const text1 = chunks1
+      .filter((c) => c.type === 'text-delta')
+      .map((c) => (c as { type: 'text-delta'; text: string }).text)
+      .join('');
+    console.log('Turn 1:', text1);
+
+    // Turn 2: ask it to recall
+    const chunks2: StreamChunk[] = [];
+    for await (const chunk of agent.stream('What is my favorite color?', { threadId })) {
+      chunks2.push(chunk);
+    }
+    const text2 = chunks2
+      .filter((c) => c.type === 'text-delta')
+      .map((c) => (c as { type: 'text-delta'; text: string }).text)
+      .join('');
+    console.log('Turn 2:', text2);
+
+    expect(text2.toLowerCase()).toContain('purple');
+  }, 60_000);
 });

@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@mastra/core": "^1.22.0",
+    "@mastra/libsql": "^1.7.4",
     "@mastra/memory": "^1.13.1",
+    "asciify-image": "^0.1.10",
     "ph-clint": "workspace:*",
     "zod": "^4.3.6"
   },

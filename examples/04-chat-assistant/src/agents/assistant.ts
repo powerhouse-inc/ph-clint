@@ -4,7 +4,7 @@ import type { AgentProvider, StreamChunk } from 'ph-clint';
  * A test/demo agent provider that echoes prompts and simulates tool usage.
  *
  * In a real project, this would be replaced with a Mastra agent via
- * defineMastraIntegration(). This stub allows the example to work
+ * createMastraAssistant(). This stub allows the example to work
  * without an API key or LLM dependency.
  */
 export function createAssistant(): AgentProvider {
@@ -21,46 +21,33 @@ export function createAssistant(): AgentProvider {
       const history = conversations.get(threadId)!;
       history.push(prompt);
 
-      // Check if the prompt mentions searching
       const tools = opts?.tools;
-      if (prompt.toLowerCase().includes('search') && tools?.has('search')) {
-        const query = prompt.replace(/.*search\s*(for\s*)?/i, '').trim() || prompt;
+      const lower = prompt.toLowerCase();
 
-        yield { type: 'tool-call', toolName: 'search', args: { query, limit: 3 } } satisfies StreamChunk;
-
-        // Actually execute the tool if available
-        const searchCmd = tools.get('search')!;
-        const result = await searchCmd.execute({ query, limit: 3 }, {
-          workspace: { async read<T>(_k: string, f: T) { return f; }, write: async () => {} },
-          config: {},
-        });
-        const resultText = typeof result === 'object' && result !== null && 'text' in result
-          ? (result as Record<string, unknown>).text as string
-          : String(result);
-
-        yield { type: 'tool-result', toolName: 'search', result: resultText, isError: false } satisfies StreamChunk;
-        yield { type: 'text-delta', text: `\nBased on the search results:\n${resultText}` } satisfies StreamChunk;
-        return;
-      }
-
-      // Check if the prompt mentions summarizing
-      if (prompt.toLowerCase().includes('summarize') && tools?.has('summarize')) {
+      // Check if the prompt mentions converting an image to ASCII
+      if ((lower.includes('ascii') || lower.includes('image') || lower.includes('convert')) && tools?.has('ascii')) {
         const urlMatch = prompt.match(/https?:\/\/\S+/);
-        const url = urlMatch ? urlMatch[0] : 'https://example.com';
+        const image = urlMatch ? urlMatch[0] : 'https://picsum.photos/200/200';
 
-        yield { type: 'tool-call', toolName: 'summarize', args: { url } } satisfies StreamChunk;
+        yield { type: 'tool-call', toolName: 'ascii', args: { image, width: 40, height: 20, fit: 'box' } } satisfies StreamChunk;
 
-        const summarizeCmd = tools.get('summarize')!;
-        const result = await summarizeCmd.execute({ url }, {
-          workspace: { async read<T>(_k: string, f: T) { return f; }, write: async () => {} },
-          config: {},
-        });
-        const resultText = typeof result === 'object' && result !== null && 'text' in result
-          ? (result as Record<string, unknown>).text as string
-          : String(result);
+        const asciiCmd = tools.get('ascii')!;
+        try {
+          const result = await asciiCmd.execute({ image, width: 40, height: 20, fit: 'box' }, {
+            workspace: { async read<T>(_k: string, f: T) { return f; }, write: async () => {} },
+            config: {},
+          });
+          const resultText = typeof result === 'object' && result !== null && 'text' in result
+            ? (result as Record<string, unknown>).text as string
+            : String(result);
 
-        yield { type: 'tool-result', toolName: 'summarize', result: resultText, isError: false } satisfies StreamChunk;
-        yield { type: 'text-delta', text: `\n${resultText}` } satisfies StreamChunk;
+          yield { type: 'tool-result', toolName: 'ascii', result: resultText, isError: false } satisfies StreamChunk;
+          yield { type: 'text-delta', text: `\nHere's the ASCII art:\n${resultText}` } satisfies StreamChunk;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          yield { type: 'tool-result', toolName: 'ascii', result: msg, isError: true } satisfies StreamChunk;
+          yield { type: 'text-delta', text: `\nFailed to convert image: ${msg}` } satisfies StreamChunk;
+        }
         return;
       }
 
