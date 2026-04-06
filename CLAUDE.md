@@ -65,7 +65,16 @@ pnpm is the default (`packageManager` field in root `package.json`, `pnpm-worksp
 
 ## Development Approach
 
-The examples/ READMEs contain code snippets showing the target API surface and acceptance criteria. These are the implementation targets — build the library to make those examples work, starting from 01 (simplest) through 08 (full-featured).
+Development is **example-driven TDD**. The example projects (01 through 08) define the target behavior; the library is built to satisfy their tests.
+
+Every feature follows this workflow: **assess → research → identify → specify → refactor (separate commit) → write example tests (red) → implement library (green) → commit**. See AGENTS.md "Development process" for the full description of each step.
+
+Key rules:
+- Examples are implemented in order (01 → 08). Don't skip ahead.
+- Refactors that prepare for a feature get their own commit before the feature.
+- Example tests are written first and must fail for the right reasons before implementation begins.
+- Regressions are fixed before new functionality — the existing test suite always passes.
+- 95% coverage is maintained continuously, not retrofitted.
 
 The specs/ folder has the full feature list and implementation details. Read `specs/features.md` first for the "what", then `specs/implementation.md` for the "how".
 

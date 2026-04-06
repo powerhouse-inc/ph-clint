@@ -76,6 +76,70 @@ Each README has acceptance criteria that should become tests.
 - **5-layer config with Zod schemas.** Config fields auto-map to env var names. Don't hand-maintain env var lists.
 - **Escape for interrupt, not Ctrl+C.** Escape cancels the foreground operation; the REPL stays alive.
 
+### Development process
+
+The examples drive the library. Development follows a strict TDD-style workflow where example projects define the target behavior and the library is built to satisfy it. Every feature goes through these steps, in order:
+
+#### 1. Assess
+
+Familiarize yourself with the current state of the codebase. Read relevant source, tests, and specs. Understand what exists, what's tested, and what the coverage looks like before changing anything.
+
+#### 2. Research
+
+Before writing code that uses a dependency, research its intended public API and best practices. Read type definitions, documentation, and changelogs. Never rely on internal/undocumented APIs without explicit justification.
+
+#### 3. Identify
+
+Determine the next feature to implement by looking at the example projects in order (01 → 08). Each example README has acceptance criteria — the next unmet criterion is the next feature. Don't skip ahead.
+
+#### 4. Specify
+
+Carefully specify the new feature before coding. Consider:
+- What types, interfaces, and functions are needed?
+- How does this affect the existing public API surface?
+- Does this introduce new dependencies?
+- Will this create coupling that limits future features?
+- Does the design preserve testability (injectable I/O, no global state)?
+
+Raise concerns with the user if the feature would compromise long-term quality.
+
+#### 5. Refactor first
+
+If the current code needs restructuring to cleanly support the new feature, do that first. Refactoring is a separate step with its own commit:
+- Make the structural change.
+- Fix all existing tests — no regressions allowed.
+- Verify coverage is maintained.
+- Commit the refactor separately before proceeding.
+
+#### 6. Write example tests first (red)
+
+Write the example project code and its tests before implementing the library feature. This includes:
+- Unit tests for the new command/feature behavior.
+- Integration tests exercising the full CLI pipeline via `RunOptions`.
+- E2E tests spawning real subprocesses where appropriate.
+
+Run the tests and confirm they fail for the right reasons (missing library exports, unimplemented behavior — not syntax errors or broken imports).
+
+#### 7. Implement (green)
+
+Implement the feature in `packages/ph-clint/` to make the failing tests pass:
+- **Fix regressions first.** If any existing tests broke, fix those before attending to new tests. The existing test suite is the safety net — it must always pass.
+- Then make the new tests pass.
+- Maintain 95% coverage throughout.
+
+#### 8. Verify the example project works end-to-end
+
+After tests pass, verify the example project works as a real CLI — not just in test harnesses:
+- `pnpm build` completes without errors (TypeScript compiles cleanly).
+- `pnpm dev` (or equivalent) starts without errors.
+- Manual smoke test: run a representative command and confirm the output matches the README usage examples.
+
+Do not consider an example complete until it builds, starts, and runs correctly outside of the test suite.
+
+#### 9. Commit
+
+Commit the implementation. The commit history should tell a clear story: refactor (if any) → example tests → library implementation.
+
 ### Code quality standards
 
 The `ph-clint` library (`packages/ph-clint/`) is production-grade code — treat it accordingly. Maintain a minimum of 95% test coverage (statements, branches, functions, lines) across unit and integration tests combined. Prefer real execution over mocks: unit tests should exercise logic directly, integration tests should spawn real processes and verify actual stdout/stderr/exit codes. Do not mock `process.exit`, `process.stdout`, child processes, filesystem, or other runtime internals — if you believe a mock is genuinely necessary, ask the user before introducing it. Continuously review the library for code smells, duplication, and structural issues; clean these up as you encounter them rather than letting them accumulate. When you notice that implementation choices are leading to technical debt — unclear module boundaries, leaky abstractions, growing coupling between components — proactively raise the issue with the user and propose an architecture change before proceeding.
