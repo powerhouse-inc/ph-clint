@@ -1,0 +1,54 @@
+import { z } from 'zod';
+
+/**
+ * Schema introspection utilities for Zod v4.
+ *
+ * Uses the public Zod v4 API: .type, .shape, .description, .def,
+ * .isOptional(), and instanceof checks.
+ */
+
+export interface FieldInfo {
+  key: string;
+  description: string | undefined;
+  isOptional: boolean;
+  hasDefault: boolean;
+  defaultValue: unknown;
+  baseType: string;
+}
+
+const WRAPPER_TYPES = new Set(['default', 'optional', 'nullable']);
+
+/**
+ * Extract field entries from a ZodObject schema's shape.
+ * Returns an empty array for non-object schemas.
+ */
+export function getSchemaFields(schema: z.ZodType): FieldInfo[] {
+  if (!(schema instanceof z.ZodObject)) {
+    return [];
+  }
+
+  const fields: FieldInfo[] = [];
+  for (const [key, field] of Object.entries(schema.shape) as [string, z.ZodType][]) {
+    fields.push({
+      key,
+      description: field.description,
+      isOptional: field.isOptional(),
+      hasDefault: field instanceof z.ZodDefault,
+      defaultValue: field instanceof z.ZodDefault ? field.def.defaultValue : undefined,
+      baseType: resolveBaseType(field),
+    });
+  }
+  return fields;
+}
+
+/**
+ * Resolve the base type name by unwrapping Default/Optional/Nullable wrappers.
+ * Uses .type and .def.innerType (both public Zod v4 API).
+ */
+function resolveBaseType(schema: z.ZodType): string {
+  let current = schema as { type: string; def: { innerType?: { type: string; def: any } } };
+  while (WRAPPER_TYPES.has(current.type) && current.def.innerType) {
+    current = current.def.innerType as typeof current;
+  }
+  return current.type;
+}

@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
   },
   "dependencies": {
     "ph-clint": "workspace:*",
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
+    "@types/node": "^25.5.2",
     "jest": "^30.2.0",
     "ts-jest": "^29.4.6",
     "tsx": "^4.19.0",

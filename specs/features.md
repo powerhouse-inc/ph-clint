@@ -13,6 +13,20 @@ The library provides a framework for creating CLIs that operate in two modes:
 
 Both modes share the same command definitions, routing, and execution logic. The framework is structured so it can accept (sub)command inputs from different sources — not just stdio/terminal — making it pluggable into chat GUIs, messaging apps, or any other input transport.
 
+### Design Principle: Testability
+
+Testability is a first-class design principle — both for the ph-clint library itself and for the CLIs built with it.
+
+CLIs are inherently testable: they have well-defined inputs (argv, stdin) and outputs (stdout, stderr, exit codes). ph-clint preserves and amplifies this by keeping process-boundary concerns (stdout, stderr, process.exit) injectable rather than hardcoded. Every layer of the framework — commands, the CLI runner, output rendering — accepts optional callbacks for I/O, defaulting to process globals in production but replaceable in tests without mocks.
+
+This means CLIs built with ph-clint can be tested at multiple levels:
+
+- **Unit** — Call `execute()` or `parseArgs()` directly on the CLI instance. Pure functions, no process side effects.
+- **Integration** — Call `run()` with injected stdout/stderr/exit callbacks. Exercises the full Commander pipeline without spawning a subprocess.
+- **End-to-end** — Spawn the CLI as a child process and assert on real stdout/stderr/exit codes.
+
+The framework avoids patterns that make testing difficult: global mutable state, implicit singletons, hardcoded I/O. When new features are added, they must preserve these properties.
+
 ## Features
 
 ### 1. Fast Startup via Lazy Loading

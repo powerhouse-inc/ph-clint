@@ -70,6 +70,43 @@ The Powerhouse reactor is **not a hard dependency** of the library itself, but a
 
 ## Design Patterns
 
+### Testability Pattern
+
+**Maps to:** Core Design Principle (Testability)
+
+All framework components that interact with the process environment (stdout, stderr, exit, filesystem) accept injectable callbacks rather than calling process globals directly. This is not optional — it is the standard pattern for all new code.
+
+**The `RunOptions` pattern:**
+
+```typescript
+interface RunOptions {
+  exit?: (code: number) => void;    // defaults to process.exit
+  stdout?: (msg: string) => void;   // defaults to console.log
+  stderr?: (msg: string) => void;   // defaults to console.error
+}
+
+// Production: uses process defaults
+cli.run(process.argv);
+
+// Testing: captures output without mocks or subprocesses
+const output: string[] = [];
+await cli.run(['node', 'test', 'greet', '--name', 'Alice'], {
+  stdout: (msg) => output.push(msg),
+  stderr: (msg) => errors.push(msg),
+  exit: (code) => { exitCode = code; },
+});
+```
+
+This pattern applies wherever the framework touches process boundaries: the CLI runner, output renderers, process managers, service executors. As new modules are added, they must follow the same approach — injectable I/O with process defaults.
+
+**Testing levels for CLIs built with ph-clint:**
+
+| Level | How | What it exercises |
+|-------|-----|-------------------|
+| Unit | `cli.execute('cmd', args)` | Command logic, schema validation |
+| Integration | `cli.run(argv, { stdout, stderr, exit })` | Full Commander pipeline, option parsing, error handling |
+| E2E | `exec('tsx', ['cli.ts', ...args])` | Real process, real stdout/stderr/exit codes |
+
 ### Command Definition Pattern
 
 **Maps to:** Features 3 (Unified Subcommands), 5 (Zod-Based Definitions), 6 (Auto-Generated Help)

@@ -53,11 +53,37 @@ ph-clint/
 - Powerhouse Reactor ^6.0.2 (optional) for document operations and subscriptions
 - Handlebars for agent skill templates (compiled at build time)
 
+## Package Manager
+
+pnpm is the default (`packageManager` field in root `package.json`, `pnpm-workspace.yaml` present). The monorepo is compatible with npm, yarn, and bun:
+
+- **pnpm**: Uses `pnpm-workspace.yaml` for workspace config. Default for development.
+- **npm / yarn / bun**: Use the `workspaces` array in root `package.json`.
+- All four support the `workspace:*` protocol for local package references (npm since v7, yarn since v2, bun natively).
+- Test scripts use `node node_modules/.bin/jest` (portable across all managers).
+- Use `corepack enable` to auto-select the pinned pnpm version.
+
 ## Development Approach
 
 The examples/ READMEs contain code snippets showing the target API surface and acceptance criteria. These are the implementation targets — build the library to make those examples work, starting from 01 (simplest) through 08 (full-featured).
 
 The specs/ folder has the full feature list and implementation details. Read `specs/features.md` first for the "what", then `specs/implementation.md` for the "how".
+
+## Testing
+
+Testability is a core design principle. Process-boundary concerns (stdout, stderr, exit) are always injectable via `RunOptions`, never hardcoded. This enables testing at three levels without mocks:
+
+- **Unit tests** (`tests/*.test.ts`) — call `execute()`, `parseArgs()`, `generateHelp()` directly. Pure logic, no process side effects.
+- **Integration tests** (`tests/*.test.ts`, `run()` with `RunOptions`) — call `run()` with injected stdout/stderr/exit callbacks. Exercises the full Commander pipeline in-process.
+- **E2E tests** (`tests/*.integration.test.ts`) — spawn real subprocesses, assert on actual stdout/stderr/exit codes.
+
+The `ph-clint` library targets **95% code coverage** (statements, branches, functions, lines), measured across unit and integration tests combined.
+
+**Mocking policy**: avoid mocks. Use `RunOptions` injection instead of mocking `process.exit` or `console.log`. Mocks are acceptable only for true external dependencies (network services, third-party APIs) where a real call is impractical.
+
+- Run `pnpm test` in `packages/ph-clint/` — coverage is reported automatically.
+- Coverage output: `text` (terminal) + `lcov` (in `coverage/` directory for IDE/CI integration).
+- Example packages have their own test suites (unit + integration + e2e) but are not held to the same coverage threshold.
 
 ## Conventions
 

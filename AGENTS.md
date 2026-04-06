@@ -76,6 +76,12 @@ Each README has acceptance criteria that should become tests.
 - **5-layer config with Zod schemas.** Config fields auto-map to env var names. Don't hand-maintain env var lists.
 - **Escape for interrupt, not Ctrl+C.** Escape cancels the foreground operation; the REPL stays alive.
 
+### Code quality standards
+
+The `ph-clint` library (`packages/ph-clint/`) is production-grade code — treat it accordingly. Maintain a minimum of 95% test coverage (statements, branches, functions, lines) across unit and integration tests combined. Prefer real execution over mocks: unit tests should exercise logic directly, integration tests should spawn real processes and verify actual stdout/stderr/exit codes. Do not mock `process.exit`, `process.stdout`, child processes, filesystem, or other runtime internals — if you believe a mock is genuinely necessary, ask the user before introducing it. Continuously review the library for code smells, duplication, and structural issues; clean these up as you encounter them rather than letting them accumulate. When you notice that implementation choices are leading to technical debt — unclear module boundaries, leaky abstractions, growing coupling between components — proactively raise the issue with the user and propose an architecture change before proceeding.
+
+Before using any library's internal APIs, undocumented properties, or unconventional patterns, always research the library's intended public API and best practices first. Implementations must follow the documented, stable API surface of dependencies — not internal structures that may break between releases. When in doubt, consult the library's type definitions, documentation, or changelog to confirm a pattern is part of the public contract. Exceptions must be few and always documented.
+
 ### What NOT to do
 
 - Don't add Powerhouse or Mastra imports to `core/`, `routine/`, `execution/`, `output/`, `interactive/`, or `cli/`. Those must stay integration-free.
