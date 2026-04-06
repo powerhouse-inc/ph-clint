@@ -112,6 +112,19 @@ function formatFieldSignature(field: FieldInfo): string {
 }
 
 /**
+ * Apply a completion candidate to the current input by replacing the last token.
+ *
+ * For command completions (`/gr` + `/greet` → `/greet`), replaces the only token.
+ * For flag completions (`/greet --na` + `--name` → `/greet --name`), replaces the last token.
+ * For value completions (`/list --filter d` + `done` → `/list --filter done`), replaces the last token.
+ */
+export function applyCompletion(input: string, completion: string): string {
+  const lastSpaceIdx = input.lastIndexOf(' ');
+  if (lastSpaceIdx === -1) return completion;
+  return input.slice(0, lastSpaceIdx + 1) + completion;
+}
+
+/**
  * Extract enum values from a Zod schema field, if it's an enum type.
  * Unwraps Default/Optional/Nullable wrappers to find the underlying ZodEnum.
  */

@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
-import { defineCommand, getCompletions, getCommandSignature } from '../src/index.js';
+import { defineCommand, getCompletions, getCommandSignature, applyCompletion } from '../src/index.js';
 
 describe('getCompletions', () => {
   const greet = defineCommand({
@@ -107,6 +107,32 @@ describe('getCompletions', () => {
       // Two parts: command + flag prefix
       expect(getCompletions('/greet --n', commands)).toEqual(['--name']);
     });
+  });
+});
+
+describe('applyCompletion', () => {
+  it('replaces entire input for command completion', () => {
+    expect(applyCompletion('/gr', '/greet')).toBe('/greet');
+  });
+
+  it('replaces last token for flag completion', () => {
+    expect(applyCompletion('/greet --na', '--name')).toBe('/greet --name');
+  });
+
+  it('replaces last token for enum value completion', () => {
+    expect(applyCompletion('/list --filter d', 'done')).toBe('/list --filter done');
+  });
+
+  it('replaces when input has trailing partial after space', () => {
+    expect(applyCompletion('/list --filter ', 'open')).toBe('/list --filter open');
+  });
+
+  it('handles single slash', () => {
+    expect(applyCompletion('/', '/help')).toBe('/help');
+  });
+
+  it('preserves leading content for multi-token input', () => {
+    expect(applyCompletion('/greet --name Alice --lo', '--loud')).toBe('/greet --name Alice --loud');
   });
 });
 

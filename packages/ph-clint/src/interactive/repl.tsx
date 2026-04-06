@@ -4,6 +4,7 @@ import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import type { ReplSession, HistoryEntry } from './types.js';
 import { renderMarkdown } from './markdown.js';
+import { applyCompletion } from './completions.js';
 
 interface ReplProps {
   session: ReplSession;
@@ -14,9 +15,10 @@ interface ReplProps {
  *
  * Uses Ink's React component model:
  * - <Static> for immutable history entries
- * - TextInput for user input with Tab completion
+ * - TextInput for user input with Tab/Shift+Tab completion cycling
+ * - Up/Down arrow for command match cycling (when typing `/`) or history cycling
  * - Spinner during command execution
- * - useInput for keyboard shortcuts (Escape, Tab)
+ * - useInput for keyboard shortcuts (Escape, Tab, arrows)
  */
 export function Repl({ session }: ReplProps) {
   const { exit } = useApp();
@@ -27,6 +29,25 @@ export function Repl({ session }: ReplProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const nextId = useRef(0);
 
+  // Feature 1: Tab completion cycling
+  const [tabIndex, setTabIndex] = useState<number | null>(null);
+  const tabCompletionsRef = useRef<string[]>([]);
+
+  // Feature 2: Command match cycling (up/down when typing `/`)
+  const [commandCycleIndex, setCommandCycleIndex] = useState<number | null>(null);
+
+  // Feature 3: History cycling (up/down when not typing a command)
+  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
+  const [savedInput, setSavedInput] = useState('');
+
+  // Reset all cycling state
+  const resetCycleState = useCallback(() => {
+    setTabIndex(null);
+    tabCompletionsRef.current = [];
+    setCommandCycleIndex(null);
+    setHistoryIndex(null);
+  }, []);
+
   const handleSubmit = useCallback(
     async (value: string) => {
       const trimmed = value.trim();
@@ -34,6 +55,8 @@ export function Repl({ session }: ReplProps) {
 
       setInput('');
       setSuggestions([]);
+      resetCycleState();
+      setSavedInput('');
       setPhase('executing');
       setStreamingText('');
 
@@ -54,24 +77,106 @@ export function Repl({ session }: ReplProps) {
       ]);
       setPhase('idle');
     },
-    [session, exit],
+    [session, exit, resetCycleState],
   );
 
-  // Handle Tab for completion, Escape for cancel
+  // Get unique history inputs (skip consecutive duplicates), most recent first
+  const getUniqueHistory = useCallback(() => {
+    const inputs: string[] = [];
+    for (let i = history.length - 1; i >= 0; i--) {
+      const h = history[i]!.input;
+      if (inputs.length === 0 || inputs[inputs.length - 1] !== h) {
+        inputs.push(h);
+      }
+    }
+    return inputs;
+  }, [history]);
+
   useInput(
     (ch, key) => {
-      if (key.tab && phase === 'idle') {
-        const completions = session.getCompletions(input);
-        if (completions.length === 1) {
-          setInput(completions[0]! + ' ');
-          setSuggestions([]);
-        } else if (completions.length > 1) {
-          setSuggestions(completions);
+      if (phase !== 'idle') {
+        if (key.escape) {
+          // TODO: cancel current execution via AbortController
+          setPhase('idle');
         }
+        return;
       }
-      if (key.escape && phase === 'executing') {
-        // TODO: cancel current execution via AbortController
-        setPhase('idle');
+
+      // Feature 1: Tab/Shift+Tab cycles through completions inline
+      if (key.tab) {
+        const completions = tabIndex !== null
+          ? tabCompletionsRef.current
+          : session.getCompletions(input);
+
+        if (completions.length === 0) return;
+
+        tabCompletionsRef.current = completions;
+        const nextIndex = tabIndex === null
+          ? 0
+          : key.shift
+            ? (tabIndex - 1 + completions.length) % completions.length
+            : (tabIndex + 1) % completions.length;
+
+        setTabIndex(nextIndex);
+        setInput(applyCompletion(input, completions[nextIndex]!));
+        setSuggestions(completions.length > 1 ? completions : []);
+        return;
+      }
+
+      // Feature 2: Up/Down cycles command matches when typing `/` prefix (no space)
+      const isCommandPrefix = input.startsWith('/') && !input.includes(' ');
+
+      if ((key.upArrow || key.downArrow) && isCommandPrefix) {
+        const completions = session.getCompletions(input);
+        if (completions.length === 0) return;
+
+        const nextIndex = commandCycleIndex === null
+          ? (key.upArrow ? completions.length - 1 : 0)
+          : key.upArrow
+            ? (commandCycleIndex - 1 + completions.length) % completions.length
+            : (commandCycleIndex + 1) % completions.length;
+
+        setCommandCycleIndex(nextIndex);
+        setInput(completions[nextIndex]!);
+        setSuggestions(completions);
+        setTabIndex(null);
+        tabCompletionsRef.current = [];
+        setHistoryIndex(null);
+        return;
+      }
+
+      // Feature 3: Up/Down cycles through history when not typing a command prefix
+      if (key.upArrow || key.downArrow) {
+        const uniqueHistory = getUniqueHistory();
+        if (uniqueHistory.length === 0) return;
+
+        if (key.upArrow) {
+          if (historyIndex === null) {
+            setSavedInput(input);
+            setHistoryIndex(0);
+            setInput(uniqueHistory[0]!);
+          } else if (historyIndex < uniqueHistory.length - 1) {
+            const next = historyIndex + 1;
+            setHistoryIndex(next);
+            setInput(uniqueHistory[next]!);
+          }
+        } else {
+          // downArrow
+          if (historyIndex === null) return;
+          if (historyIndex > 0) {
+            const next = historyIndex - 1;
+            setHistoryIndex(next);
+            setInput(uniqueHistory[next]!);
+          } else {
+            setHistoryIndex(null);
+            setInput(savedInput);
+          }
+        }
+        setTabIndex(null);
+        tabCompletionsRef.current = [];
+        setCommandCycleIndex(null);
+        setSuggestions([]);
+        return;
       }
     },
     { isActive: true },
@@ -80,10 +185,12 @@ export function Repl({ session }: ReplProps) {
   // Compute placeholder signature for the current input
   const signature = phase === 'idle' ? session.getCommandSignature(input) : null;
 
-  // Update suggestions as user types
+  // Update suggestions as user types (resets cycling state)
   const handleChange = useCallback(
     (value: string) => {
       setInput(value);
+      resetCycleState();
+      setSavedInput('');
       if (value.startsWith('/') && !value.includes(' ')) {
         const completions = session.getCompletions(value);
         setSuggestions(completions.length > 1 ? completions : []);
@@ -91,7 +198,7 @@ export function Repl({ session }: ReplProps) {
         setSuggestions([]);
       }
     },
-    [session],
+    [session, resetCycleState],
   );
 
   return (
