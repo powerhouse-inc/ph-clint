@@ -663,7 +663,7 @@ describe('defineCli', () => {
       const cap = capture();
       const ac = new AbortController();
 
-      const runPromise = cli.run(['node', 'test', 'start', '--wait'], {
+      const runPromise = cli.run(['node', 'test', '--wait', 'start'], {
         ...cap.options,
         signal: ac.signal,
       });
@@ -701,7 +701,7 @@ describe('defineCli', () => {
       const ac = new AbortController();
       ac.abort(); // Already aborted
 
-      const runPromise = cli.run(['node', 'test', 'start', '--wait'], {
+      const runPromise = cli.run(['node', 'test', '--wait', 'start'], {
         ...cap.options,
         signal: ac.signal,
       });
@@ -717,7 +717,7 @@ describe('defineCli', () => {
       const cap = capture();
       const ac = new AbortController();
 
-      const runPromise = cli.run(['node', 'test', 'start', '-w'], {
+      const runPromise = cli.run(['node', 'test', '-w', 'start'], {
         ...cap.options,
         signal: ac.signal,
       });
@@ -735,7 +735,7 @@ describe('defineCli', () => {
       const cap = capture();
 
       // No signal provided — uses process signal handlers
-      const runPromise = cli.run(['node', 'test', 'start', '--wait'], cap.options);
+      const runPromise = cli.run(['node', 'test', '--wait', 'start'], cap.options);
 
       // Let routine tick
       await new Promise(r => setTimeout(r, 100));

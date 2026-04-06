@@ -488,7 +488,7 @@ describe('CLI integration', () => {
 
     const ac = new AbortController();
 
-    const runPromise = cli.run(['node', 'test', 'watch', '--wait'], {
+    const runPromise = cli.run(['node', 'test', '--wait', 'watch'], {
       stdout: (msg) => output.push(msg),
       stderr: () => {},
       exit: (code) => { exitCode = code; },
@@ -537,7 +537,7 @@ describe('CLI integration', () => {
     const output: string[] = [];
     let exitCode = -1;
 
-    await cliNoRoutine.run(['node', 'test', 'ping', '--wait'], {
+    await cliNoRoutine.run(['node', 'test', '--wait', 'ping'], {
       stdout: (msg) => output.push(msg),
       stderr: () => {},
       exit: (code) => { exitCode = code; },

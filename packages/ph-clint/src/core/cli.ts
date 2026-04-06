@@ -249,11 +249,12 @@ export function defineCli(options: CliOptions): Cli {
       program.option('-i, --interactive', 'Start interactive REPL mode');
     }
 
+    if (hasTriggers) {
+      program.option('-w, --wait', 'Keep process alive with routine loop running');
+    }
+
     for (const cmd of commandMap.values()) {
       const sub = program.command(cmd.id).description(cmd.description);
-
-      // Add --wait to every subcommand (consumed by run() after parse)
-      sub.option('-w, --wait', 'Keep process alive with routine loop running');
 
       const fields = getSchemaFields(cmd.inputSchema);
       for (const field of fields) {
@@ -354,10 +355,16 @@ export function defineCli(options: CliOptions): Cli {
     // Update the routine's context so it uses the resolved config/workspace
     if (routine) routine.setContext(context);
 
+    // Detect --wait before Commander sees it (it's a framework flag, not a command flag)
+    const waitFlag = userArgs.includes('--wait') || userArgs.includes('-w');
+    const commandArgv = waitFlag
+      ? argv.filter((a) => a !== '--wait' && a !== '-w')
+      : argv;
+
     const program = buildProgram(stdout, context);
 
     try {
-      await program.parseAsync(argv);
+      await program.parseAsync(commandArgv);
     } catch (err: any) {
       if (err.exitCode === 0) {
         exit(0);
@@ -370,11 +377,13 @@ export function defineCli(options: CliOptions): Cli {
     }
 
     // --wait: keep process alive while routine runs
-    const waitFlag = userArgs.includes('--wait') || userArgs.includes('-w');
     if (waitFlag && routine && routine.status !== 'init') {
       routine.onOutput = (text: string) => stdout(renderMarkdown(text));
       await waitForSignal(routine, runOptions?.signal);
       exit(0);
+    } else if (routine && routine.status === 'running') {
+      // Command started the routine but --wait not specified — stop it
+      await routine.stop();
     }
   }
 
