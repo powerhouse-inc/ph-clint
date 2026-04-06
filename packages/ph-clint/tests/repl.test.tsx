@@ -608,22 +608,21 @@ describe('Repl component', () => {
     });
   });
 
-  describe('command signature placeholder', () => {
-    it('shows signature after typing a known command', async () => {
+  describe('ghost suggestion', () => {
+    it('shows ghost text for partial command', async () => {
       const { stdin, lastFrame } = renderRepl();
-      stdin.write('/greet');
+      stdin.write('/gr');
       await delay();
       const frame = stripAnsi(lastFrame()!);
-      expect(frame).toContain('--name');
+      expect(frame).toContain('eet'); // ghost rest of "/greet"
     });
 
-    it('hides signature once args are typed', async () => {
+    it('shows ghost text for partial flag', async () => {
       const { stdin, lastFrame } = renderRepl();
-      stdin.write('/greet --name');
+      stdin.write('/greet --na');
       await delay();
-      // getCommandSignature returns null when args present
-      const sig = session.getCommandSignature('/greet --name');
-      expect(sig).toBeNull();
+      const frame = stripAnsi(lastFrame()!);
+      expect(frame).toContain('me'); // ghost rest of "--name"
     });
   });
 

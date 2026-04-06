@@ -23,8 +23,8 @@ export interface ReplSessionOptions {
 export interface ReplSession {
   processInput(input: string): Promise<ReplOutput>;
   getCompletions(partial: string): string[];
-  /** Get the argument signature for placeholder text, or null if not applicable. */
-  getCommandSignature(input: string): string | null;
+  /** Get inline ghost suggestion (full input with first completion applied), or null. */
+  getGhostSuggestion(input: string): string | null;
   welcome: string | undefined;
 }
 

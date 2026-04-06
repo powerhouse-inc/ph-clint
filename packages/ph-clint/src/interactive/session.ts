@@ -1,6 +1,6 @@
 import type { ReplOutput, ReplSession, ReplSessionOptions } from './types.js';
 import { parseReplInput } from './router.js';
-import { getCompletions, getCommandSignature } from './completions.js';
+import { getCompletions, getGhostSuggestion } from './completions.js';
 import { renderMarkdown } from './markdown.js';
 
 /**
@@ -86,7 +86,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   return {
     processInput,
     getCompletions: (partial: string) => getCompletions(partial, commands),
-    getCommandSignature: (input: string) => getCommandSignature(input, commands),
+    getGhostSuggestion: (input: string) => getGhostSuggestion(input, commands),
     welcome: cli.interactive?.welcome,
   };
 }

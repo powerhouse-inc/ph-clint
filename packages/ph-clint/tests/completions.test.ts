@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
-import { defineCommand, getCompletions, getCommandSignature, applyCompletion } from '../src/index.js';
+import { defineCommand, getCompletions, getGhostSuggestion, applyCompletion } from '../src/index.js';
 
 describe('getCompletions', () => {
   const greet = defineCommand({
@@ -61,6 +61,24 @@ describe('getCompletions', () => {
       expect(result).toContain('--name');
       expect(result).toContain('--loud');
     });
+
+    it('suggests flags after trailing space', () => {
+      const result = getCompletions('/greet ', commands);
+      expect(result).toContain('--name');
+      expect(result).toContain('--loud');
+    });
+
+    it('excludes already-used flags', () => {
+      const result = getCompletions('/greet --name Alice --', commands);
+      expect(result).not.toContain('--name');
+      expect(result).toContain('--loud');
+    });
+
+    it('suggests remaining flags after trailing space with used flags', () => {
+      const result = getCompletions('/greet --name Alice ', commands);
+      expect(result).not.toContain('--name');
+      expect(result).toContain('--loud');
+    });
   });
 
   describe('enum value completion', () => {
@@ -68,7 +86,7 @@ describe('getCompletions', () => {
       expect(getCompletions('/list --filter d', commands)).toEqual(['done']);
     });
 
-    it('completes all enum values for empty prefix', () => {
+    it('completes all enum values for trailing space after flag', () => {
       const result = getCompletions('/list --filter ', commands);
       expect(result).toContain('all');
       expect(result).toContain('open');
@@ -77,6 +95,17 @@ describe('getCompletions', () => {
 
     it('returns empty for non-enum field', () => {
       expect(getCompletions('/greet --name A', commands)).toEqual([]);
+    });
+  });
+
+  describe('quote handling', () => {
+    it('returns empty inside quoted string', () => {
+      expect(getCompletions('/greet --name "Alice', commands)).toEqual([]);
+    });
+
+    it('returns completions after closed quote', () => {
+      const result = getCompletions('/greet --name "Alice" --', commands);
+      expect(result).toContain('--loud');
     });
   });
 
@@ -97,14 +126,7 @@ describe('getCompletions', () => {
       expect(getCompletions('', commands)).toEqual([]);
     });
 
-    it('returns empty when completing value after non-flag arg', () => {
-      // e.g. "/greet Alice --" — prevPart is "Alice" (not --flag), lastPart is "--"
-      // This exercises the prevPart branch when it doesn't start with --
-      expect(getCompletions('/greet Alice', commands)).toEqual([]);
-    });
-
     it('handles completion with only two parts (command + partial flag)', () => {
-      // Two parts: command + flag prefix
       expect(getCompletions('/greet --n', commands)).toEqual(['--name']);
     });
   });
@@ -123,7 +145,7 @@ describe('applyCompletion', () => {
     expect(applyCompletion('/list --filter d', 'done')).toBe('/list --filter done');
   });
 
-  it('replaces when input has trailing partial after space', () => {
+  it('appends when input has trailing space', () => {
     expect(applyCompletion('/list --filter ', 'open')).toBe('/list --filter open');
   });
 
@@ -134,9 +156,13 @@ describe('applyCompletion', () => {
   it('preserves leading content for multi-token input', () => {
     expect(applyCompletion('/greet --name Alice --lo', '--loud')).toBe('/greet --name Alice --loud');
   });
+
+  it('appends flag after trailing space', () => {
+    expect(applyCompletion('/greet ', '--name')).toBe('/greet --name');
+  });
 });
 
-describe('getCommandSignature', () => {
+describe('getGhostSuggestion', () => {
   const greet = defineCommand({
     id: 'greet',
     description: 'Greet someone',
@@ -163,60 +189,44 @@ describe('getCommandSignature', () => {
     execute: async () => null,
   });
 
-  const multi = defineCommand({
-    id: 'multi',
-    description: 'Multi',
-    inputSchema: z.object({
-      required: z.string().describe('Required field'),
-      optional: z.string().optional().describe('Optional field'),
-      withDefault: z.string().default('x').describe('Defaulted field'),
-    }),
-    execute: async () => null,
+  const commands = [greet, list, noop];
+
+  it('suggests completed command name', () => {
+    const ghost = getGhostSuggestion('/gr', commands);
+    expect(ghost).toBe('/greet');
   });
 
-  const commands = [greet, list, noop, multi];
-
-  it('shows required string args without brackets', () => {
-    const sig = getCommandSignature('/greet', commands);
-    expect(sig).toContain('--name <name>');
+  it('suggests flag with placeholder for non-boolean field', () => {
+    const ghost = getGhostSuggestion('/greet --na', commands);
+    expect(ghost).toBe('/greet --name <name>');
   });
 
-  it('shows optional/defaulted boolean args in brackets', () => {
-    const sig = getCommandSignature('/greet', commands);
-    expect(sig).toContain('[--loud]');
+  it('suggests flag after trailing space with placeholder', () => {
+    const ghost = getGhostSuggestion('/greet ', commands);
+    // First unused flag is --name (non-boolean), should include placeholder
+    expect(ghost).toContain('--name');
+    expect(ghost).toContain('<name>');
   });
 
-  it('shows defaulted value args in brackets', () => {
-    const sig = getCommandSignature('/list', commands);
-    expect(sig).toBe('[--filter <filter>]');
+  it('suggests boolean flag without placeholder', () => {
+    const ghost = getGhostSuggestion('/greet --lo', commands);
+    expect(ghost).toBe('/greet --loud');
   });
 
-  it('shows mixed required and optional args', () => {
-    const sig = getCommandSignature('/multi', commands);
-    expect(sig).toBe('--required <required> [--optional <optional>] [--withDefault <withDefault>]');
-  });
-
-  it('returns null when args are already present', () => {
-    expect(getCommandSignature('/greet --name', commands)).toBeNull();
-  });
-
-  it('returns null for unknown command', () => {
-    expect(getCommandSignature('/unknown', commands)).toBeNull();
+  it('returns null for no match', () => {
+    expect(getGhostSuggestion('/xyz', commands)).toBeNull();
   });
 
   it('returns null for non-command input', () => {
-    expect(getCommandSignature('hello', commands)).toBeNull();
+    expect(getGhostSuggestion('hello', commands)).toBeNull();
   });
 
-  it('returns null for command with no args', () => {
-    expect(getCommandSignature('/noop', commands)).toBeNull();
+  it('returns null for empty input', () => {
+    expect(getGhostSuggestion('', commands)).toBeNull();
   });
 
-  it('handles trailing space after command name', () => {
-    // Trailing space should not count as having args
-    // (the split would produce ['', ''] but trimEnd removes it)
-    const sig = getCommandSignature('/greet ', commands);
-    // After trimEnd, input is '/greet' — should show signature
-    expect(sig).toContain('--name <name>');
+  it('suggests enum value', () => {
+    const ghost = getGhostSuggestion('/list --filter d', commands);
+    expect(ghost).toBe('/list --filter done');
   });
 });

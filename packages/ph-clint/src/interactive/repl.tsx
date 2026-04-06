@@ -86,6 +86,10 @@ export function Repl({ session }: ReplProps) {
           ...h,
           { id: nextId.current++, input: trimmed, output: result.text, type: result.type },
         ]);
+        // Print goodbye directly — Ink tears down before React can render the state update
+        if (result.text) {
+          stdout.write(result.text + '\n');
+        }
         exit();
         return;
       }
@@ -200,23 +204,20 @@ export function Repl({ session }: ReplProps) {
           return;
         }
 
-        // Entering cycling mode from typing
-        const isCommandPrefix = input.startsWith('/') && !input.includes(' ');
-
-        if (isCommandPrefix) {
-          // Enter tab-cycling mode (same as Tab)
+        // Entering cycling mode from typing — try completions first
+        if (input.startsWith('/')) {
           const completions = session.getCompletions(input);
-          if (completions.length === 0) return;
+          if (completions.length > 0) {
+            tabCompletionsRef.current = completions;
+            setMode('tab-cycling');
 
-          tabCompletionsRef.current = completions;
-          setMode('tab-cycling');
-
-          const nextIndex = key.upArrow ? completions.length - 1 : 0;
-          setTabIndex(nextIndex);
-          const completed = applyCompletion(input, completions[nextIndex]!);
-          setInputWithCursor(completed);
-          setSuggestions(completions);
-          return;
+            const nextIndex = key.upArrow ? completions.length - 1 : 0;
+            setTabIndex(nextIndex);
+            const completed = applyCompletion(input, completions[nextIndex]!);
+            setInputWithCursor(completed);
+            setSuggestions(completions);
+            return;
+          }
         }
 
         // Enter history cycling mode
@@ -252,9 +253,10 @@ export function Repl({ session }: ReplProps) {
     { isActive: true },
   );
 
-  // Compute placeholder signature and inline suggestion for the current input
-  const signature = phase === 'idle' ? session.getCommandSignature(input) : null;
-  const inlineSuggestion = mode === 'typing' && suggestions.length > 0 ? suggestions[0]! : '';
+  // Compute inline ghost suggestion for the current input
+  const inlineSuggestion = mode === 'typing' && phase === 'idle'
+    ? (session.getGhostSuggestion(input) ?? '')
+    : '';
 
   // Update suggestions as user types (resets to typing mode)
   const handleChange = useCallback(
@@ -262,7 +264,7 @@ export function Repl({ session }: ReplProps) {
       setInput(value);
       setCursorOffset(undefined);
       resetToTyping();
-      if (value.startsWith('/') && !value.includes(' ')) {
+      if (value.startsWith('/')) {
         const completions = session.getCompletions(value);
         setSuggestions(completions);
       } else {
@@ -317,9 +319,6 @@ export function Repl({ session }: ReplProps) {
               focus={terminalFocused}
               suggestion={inlineSuggestion}
             />
-            {signature && (
-              <Text dimColor>{' '}{signature}</Text>
-            )}
           </Box>
           {suggestions.length > 1 && (
             <Box marginLeft={2}>

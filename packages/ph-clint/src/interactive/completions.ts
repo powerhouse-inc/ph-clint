@@ -4,27 +4,77 @@ import { getSchemaFields } from '../core/schema.js';
 import type { FieldInfo } from '../core/schema.js';
 
 /**
+ * Tokenize input respecting quotes, and report whether the cursor is inside
+ * an open quote (meaning we should not offer completions).
+ */
+function tokenizeInput(input: string): { tokens: string[]; inQuote: boolean; trailingSpace: boolean } {
+  const tokens: string[] = [];
+  let current = '';
+  let inQuote = false;
+  let quoteChar = '';
+
+  for (const ch of input) {
+    if (inQuote) {
+      if (ch === quoteChar) {
+        inQuote = false;
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"' || ch === "'") {
+      inQuote = true;
+      quoteChar = ch;
+    } else if (ch === ' ' || ch === '\t') {
+      if (current) {
+        tokens.push(current);
+        current = '';
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) tokens.push(current);
+
+  const trailingSpace = !inQuote && input.length > 0 && (input[input.length - 1] === ' ' || input[input.length - 1] === '\t');
+  return { tokens, inQuote, trailingSpace };
+}
+
+/**
+ * Collect flag names already present in the tokens.
+ */
+function usedFlags(tokens: string[]): Set<string> {
+  const used = new Set<string>();
+  for (const t of tokens) {
+    if (t.startsWith('--')) used.add(t);
+  }
+  return used;
+}
+
+/**
  * Get auto-completion suggestions for partial REPL input.
  *
  * Supports:
  * - Command name completion: `/gr` → ['/greet']
- * - Flag name completion: `/greet --na` → ['--name']
+ * - Flag name completion: `/add --` → ['--title', '--priority', '--due']
+ * - Flag name after trailing space: `/add ` → ['--title', '--priority', '--due']
  * - Enum value completion: `/list --filter d` → ['done']
+ * - No completions inside quoted strings
  */
 export function getCompletions(
   input: string,
   commands: Command[],
 ): string[] {
   const trimmed = input.trimStart();
-
-  // Not a command prefix → no completions
   if (!trimmed.startsWith('/')) return [];
 
-  const parts = trimmed.split(/\s+/);
+  const { tokens, inQuote, trailingSpace } = tokenizeInput(trimmed);
+  if (tokens.length === 0) return [];
+
+  // Don't complete inside quoted strings
+  if (inQuote) return [];
 
   // Completing the command name: `/gr` → ['/greet']
-  if (parts.length === 1) {
-    const prefix = parts[0]!.slice(1).toLowerCase();
+  if (tokens.length === 1 && !trailingSpace) {
+    const prefix = tokens[0]!.slice(1).toLowerCase();
     const builtins = ['help', 'exit'];
     const allNames = [...commands.map((c) => c.id), ...builtins];
     return allNames
@@ -32,26 +82,48 @@ export function getCompletions(
       .map((name) => `/${name}`);
   }
 
-  // Completing argument values
-  const cmdName = parts[0]!.slice(1).toLowerCase();
+  // Find the command
+  const cmdName = tokens[0]!.slice(1).toLowerCase();
   const cmd = commands.find((c) => c.id === cmdName);
   if (!cmd) return [];
 
-  const lastPart = parts[parts.length - 1]!;
-  const prevPart = parts.length >= 2 ? parts[parts.length - 2]! : '';
+  const fields = getSchemaFields(cmd.inputSchema);
+  const used = usedFlags(tokens);
 
-  // If previous part is a flag like `--filter`, complete the value
-  if (prevPart.startsWith('--')) {
-    const fieldName = prevPart.slice(2);
-    return getFieldValueCompletions(cmd, fieldName, lastPart);
+  // Trailing space after input — suggest next possible flags or values
+  if (trailingSpace) {
+    const lastToken = tokens[tokens.length - 1]!;
+    // If the last token is a non-boolean flag, suggest its values
+    if (lastToken.startsWith('--')) {
+      const fieldName = lastToken.slice(2);
+      const field = fields.find((f) => f.key === fieldName);
+      if (field && field.baseType !== 'boolean') {
+        return getFieldValueCompletions(cmd, fieldName, '');
+      }
+    }
+    // Suggest unused flags
+    return fields
+      .filter((f) => !used.has(`--${f.key}`))
+      .map((f) => `--${f.key}`);
   }
 
-  // If the current part starts with --, complete the flag name
-  if (lastPart.startsWith('--')) {
-    const prefix = lastPart.slice(2).toLowerCase();
-    const fields = getSchemaFields(cmd.inputSchema);
+  const lastToken = tokens[tokens.length - 1]!;
+  const prevToken = tokens.length >= 2 ? tokens[tokens.length - 2]! : '';
+
+  // If previous token is a non-boolean flag, complete the value
+  if (prevToken.startsWith('--')) {
+    const fieldName = prevToken.slice(2);
+    const field = fields.find((f) => f.key === fieldName);
+    if (field && field.baseType !== 'boolean') {
+      return getFieldValueCompletions(cmd, fieldName, lastToken);
+    }
+  }
+
+  // If the current token starts with --, complete the flag name
+  if (lastToken.startsWith('--')) {
+    const prefix = lastToken.slice(2).toLowerCase();
     return fields
-      .filter((f) => f.key.toLowerCase().startsWith(prefix))
+      .filter((f) => f.key.toLowerCase().startsWith(prefix) && !used.has(`--${f.key}`))
       .map((f) => `--${f.key}`);
   }
 
@@ -74,51 +146,52 @@ function getFieldValueCompletions(
 }
 
 /**
- * Get the argument signature for a command, suitable for placeholder text.
+ * Get the ghost suggestion for the current input — the full input string
+ * with the first completion applied, suitable for inline preview.
  *
- * Returns a string like `--name <value> [--loud] [--filter <value>]`
- * where required args are bare and optional/defaulted args are in brackets.
- *
- * Returns null if the input doesn't match a known command or already has args.
+ * Returns null if no suggestion is available.
  */
-export function getCommandSignature(
+export function getGhostSuggestion(
   input: string,
   commands: Command[],
 ): string | null {
-  const trimmed = input.trimEnd();
-  if (!trimmed.startsWith('/')) return null;
+  const completions = getCompletions(input, commands);
+  if (completions.length === 0) return null;
 
-  const parts = trimmed.split(/\s+/);
-  // Only show signature when command is typed but no args yet
-  if (parts.length !== 1) return null;
+  const applied = applyCompletion(input, completions[0]!);
 
-  const cmdName = parts[0]!.slice(1).toLowerCase();
-  const cmd = commands.find((c) => c.id === cmdName);
-  if (!cmd) return null;
-
-  const fields = getSchemaFields(cmd.inputSchema);
-  if (fields.length === 0) return null;
-
-  return fields.map((f) => formatFieldSignature(f)).join(' ');
-}
-
-function formatFieldSignature(field: FieldInfo): string {
-  const isRequired = !field.isOptional && !field.hasDefault;
-  if (field.baseType === 'boolean') {
-    return isRequired ? `--${field.key}` : `[--${field.key}]`;
+  // For non-boolean flag completions, append the placeholder
+  const completion = completions[0]!;
+  if (completion.startsWith('--')) {
+    const trimmed = input.trimStart();
+    const { tokens } = tokenizeInput(trimmed);
+    const cmdName = tokens[0]?.slice(1).toLowerCase();
+    const cmd = commands.find((c) => c.id === cmdName);
+    if (cmd) {
+      const fieldName = completion.slice(2);
+      const fields = getSchemaFields(cmd.inputSchema);
+      const field = fields.find((f) => f.key === fieldName);
+      if (field && field.baseType !== 'boolean') {
+        return applied + ` <${field.key}>`;
+      }
+    }
   }
-  const inner = `--${field.key} <${field.key}>`;
-  return isRequired ? inner : `[${inner}]`;
+
+  return applied;
 }
 
 /**
  * Apply a completion candidate to the current input by replacing the last token.
+ * If the input ends with a trailing space, the completion is appended.
  *
  * For command completions (`/gr` + `/greet` → `/greet`), replaces the only token.
  * For flag completions (`/greet --na` + `--name` → `/greet --name`), replaces the last token.
  * For value completions (`/list --filter d` + `done` → `/list --filter done`), replaces the last token.
+ * For trailing space (`/add ` + `--title` → `/add --title`), appends.
  */
 export function applyCompletion(input: string, completion: string): string {
+  const trailingSpace = input.length > 0 && (input[input.length - 1] === ' ' || input[input.length - 1] === '\t');
+  if (trailingSpace) return input + completion;
   const lastSpaceIdx = input.lastIndexOf(' ');
   if (lastSpaceIdx === -1) return completion;
   return input.slice(0, lastSpaceIdx + 1) + completion;

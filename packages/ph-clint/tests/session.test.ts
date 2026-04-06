@@ -173,19 +173,19 @@ describe('createReplSession', () => {
     });
   });
 
-  describe('getCommandSignature', () => {
-    it('returns signature for known command', () => {
-      const sig = session.getCommandSignature('/greet');
-      expect(sig).toContain('--name <name>');
-      expect(sig).toContain('[--loud]');
+  describe('getGhostSuggestion', () => {
+    it('returns ghost suggestion for partial command', () => {
+      const ghost = session.getGhostSuggestion('/gr');
+      expect(ghost).toBe('/greet');
     });
 
-    it('returns null when args present', () => {
-      expect(session.getCommandSignature('/greet --name')).toBeNull();
+    it('returns ghost suggestion for flag', () => {
+      const ghost = session.getGhostSuggestion('/greet --na');
+      expect(ghost).toContain('--name');
     });
 
     it('returns null for unknown command', () => {
-      expect(session.getCommandSignature('/unknown')).toBeNull();
+      expect(session.getGhostSuggestion('/unknown')).toBeNull();
     });
   });
 });
