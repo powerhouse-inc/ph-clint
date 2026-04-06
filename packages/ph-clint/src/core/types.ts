@@ -175,11 +175,16 @@ export interface CliOptions {
 
 /**
  * Output handlers for run(). Defaults to process.exit/console.log/process.stderr.
+ *
+ * For interactive mode testing, `interactiveInput` provides a headless REPL
+ * that reads from the iterable instead of rendering Ink.
  */
 export interface RunOptions {
   exit?: (code: number) => void;
   stdout?: (message: string) => void;
   stderr?: (message: string) => void;
+  /** Headless interactive mode: lines are read from this iterable instead of Ink. */
+  interactiveInput?: AsyncIterable<string>;
 }
 
 /**

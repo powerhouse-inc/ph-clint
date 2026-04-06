@@ -269,7 +269,47 @@ interface Trigger {
 }
 ```
 
-The **event trigger** bridges the event bus into the loop — it listens for specific event types and converts them into work items. This is how Powerhouse document changes, process completions, and external signals enter the loop. But triggers can also be purely polling-based (check a condition, query an API) without going through the event bus.
+**Polling vs push-activation:**
+
+Triggers currently support only polling (`type: 'condition'`): the routine calls `poll()` every tick. Push-activated triggers are planned in two stages:
+
+1. **Near-term — expose `on()` in `TriggerContext`.** Adding `on(event, handler)` alongside the existing `emit()` lets a condition trigger subscribe to events during `setup()` and buffer incoming items for `poll()` to drain:
+
+```typescript
+defineTrigger({
+  id: 'doc-change',
+  type: 'condition',
+  setup: async (ctx) => {
+    ctx.on('document:changed', (data) => {
+      ctx.state.pending = data;               // push fills the buffer
+    });
+  },
+  poll: async (ctx) => {
+    if (ctx.state.pending) {                   // poll drains it
+      const data = ctx.state.pending;
+      ctx.state.pending = null;
+      return { type: 'command', params: { commandId: 'sync', args: data } };
+    }
+    return null;
+  },
+});
+```
+
+2. **Later — `type: 'event'` with declarative shorthand.** A dedicated event trigger type with `events` and `map` fields auto-generates the setup/poll plumbing:
+
+```typescript
+defineTrigger({
+  id: 'doc-change',
+  type: 'event',
+  events: ['document:changed'],
+  map: (event, data) => ({
+    type: 'command',
+    params: { commandId: 'sync', args: { docId: data.id } },
+  }),
+});
+```
+
+The **event trigger** bridges the event bus into the loop — it listens for specific event types and converts them into work items. This is how Powerhouse document changes, process completions, and external signals enter the loop. Condition triggers can also be purely polling-based (check a condition, query an API) without going through the event bus.
 
 **Work item execution** dispatches based on type:
 

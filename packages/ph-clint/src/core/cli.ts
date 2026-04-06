@@ -14,6 +14,7 @@ import { getConfigEnvVars, resolveConfig } from './config.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
+import { createReplSession } from '../interactive/session.js';
 
 /**
  * Format a command result for output.
@@ -151,6 +152,11 @@ export function defineCli(options: CliOptions): Cli {
     lines.push('');
     lines.push(options.description);
     lines.push('');
+    if (options.interactive) {
+      lines.push('Options:');
+      lines.push('  -i, --interactive    Start interactive REPL mode');
+      lines.push('');
+    }
     lines.push('Commands:');
     for (const cmd of commandMap.values()) {
       lines.push(`  ${cmd.id.padEnd(20)} ${cmd.description}`);
@@ -238,6 +244,10 @@ export function defineCli(options: CliOptions): Cli {
       .description(options.description)
       .exitOverride();
 
+    if (options.interactive) {
+      program.option('-i, --interactive', 'Start interactive REPL mode');
+    }
+
     for (const cmd of commandMap.values()) {
       const sub = program.command(cmd.id).description(cmd.description);
 
@@ -287,6 +297,55 @@ export function defineCli(options: CliOptions): Cli {
       ? resolveConfig(options.configSchema, options.name, cwd)
       : {};
     const context = buildContext({ workspace, config });
+
+    // Check for interactive mode (-i or --interactive)
+    const userArgs = argv.slice(2);
+    if (userArgs.includes('-i') || userArgs.includes('--interactive')) {
+      if (!options.interactive) {
+        stderr('Interactive mode is not configured for this CLI');
+        exit(1);
+        return;
+      }
+
+      const cli = {
+        name: options.name,
+        version: options.version,
+        description: options.description,
+        configSchema: options.configSchema,
+        interactive: options.interactive,
+        getCommand,
+        listCommands,
+        execute,
+        parseArgs,
+        generateHelp,
+        generateCommandHelp,
+        generateCompletion,
+        configEnvVars,
+        run,
+        stopRoutine,
+      };
+      const session = createReplSession({ cli, context });
+
+      if (runOptions?.interactiveInput) {
+        // Headless mode for testing
+        if (session.welcome) stdout(session.welcome);
+        for await (const line of runOptions.interactiveInput) {
+          const result = await session.processInput(line);
+          if (result.type === 'exit') {
+            if (result.text) stdout(result.text);
+            break;
+          }
+          if (result.text) stdout(result.text);
+        }
+        exit(0);
+      } else {
+        // Ink REPL mode — lazy load to keep non-interactive startup fast
+        const { startInkRepl } = await import('../interactive/start.js');
+        await startInkRepl(session);
+        exit(0);
+      }
+      return;
+    }
 
     const program = buildProgram(stdout, context);
 

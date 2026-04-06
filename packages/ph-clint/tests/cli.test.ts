@@ -173,6 +173,18 @@ describe('defineCli', () => {
       expect(help).toContain('add');
     });
 
+    it('includes -i option in help when interactive is configured', () => {
+      const interactiveCli = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Interactive test',
+        commands: [echo],
+        interactive: { welcome: 'Hello' },
+      });
+      const help = interactiveCli.generateHelp();
+      expect(help).toContain('-i, --interactive');
+    });
+
     it('generates command-level help', () => {
       const help = cli.generateCommandHelp('echo');
       expect(help).toContain('--message');

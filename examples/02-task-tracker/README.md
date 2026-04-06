@@ -109,11 +109,24 @@ tasks done --title "tests"
 
 # Interactive mode
 tasks -i
+# → Task Tracker — type /help for commands
 > /add --title "Write tests"
-# → framework prompts: "Priority? (low/medium/high) [medium]:"
+# → Added: Write tests [medium]
+> /add --title "Urgent" --priority high
+# → Added: Urgent [high]
 > /list
+# → [ ] Write tests (medium)
+# → [ ] Urgent (high)
 > /done --title tests
+# → Completed: Write tests
 > /help
+# → Available commands:
+# →   /add              Add a new task
+# →   /list             List all tasks
+# →   /done             Mark a task as completed
+# →   /remove           Remove a task
+# →   /help             Show this help
+# →   /exit             Exit the REPL
 ```
 
 ### Workspace
@@ -122,6 +135,54 @@ tasks -i
 .ph/cli/tasks/
 ├── settings.json    # { "defaultPriority": "medium" }
 └── tasks.json       # Persisted task list
+```
+
+## How to Test
+
+```bash
+# Run the test suite
+pnpm test
+
+# Build
+pnpm build
+
+# Add a task with explicit priority
+node dist/cli.js add --title "Write tests" --priority high
+# → Added: Write tests [high]
+
+# Add a task using the default priority (medium)
+node dist/cli.js add --title "Update docs"
+# → Added: Update docs [medium]
+
+# List open tasks
+node dist/cli.js list
+# → [ ] Write tests (high)
+# → [ ] Update docs (medium)
+
+# Mark a task as done (partial title match)
+node dist/cli.js done --title tests
+# → Completed: Write tests
+
+# List with filter — show all (open + done)
+node dist/cli.js list --filter all
+# → [x] Write tests (high)
+# → [ ] Update docs (medium)
+
+# List only completed tasks
+node dist/cli.js list --filter done
+# → [x] Write tests (high)
+
+# Remove a task
+node dist/cli.js remove --title docs
+# → Removed: Update docs
+
+# Config override via env var — sets default priority to high
+TASKS_DEFAULT_PRIORITY=high node dist/cli.js add --title "Urgent item"
+# → Added: Urgent item [high]
+
+# Help
+node dist/cli.js --help
+node dist/cli.js add --help
 ```
 
 ## Acceptance Criteria

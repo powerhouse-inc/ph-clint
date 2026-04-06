@@ -121,14 +121,58 @@ watcher watch --wait
 
 # Interactive mode
 watcher -i
+# → File Watcher — /watch to start, /status to check
+> /status
+# → Routine: init
+# → Running processes: 0
 > /watch
-# Watching for changes...
+# → Watching for changes...
 # (edit a file in ./src)
 # → Build succeeded
 > /status
-# Routine: running
-# Running processes: 0
+# → Routine: running
+# → Running processes: 0
 > /build        # manual trigger
+# → Build succeeded
+> /help
+# → Available commands:
+# →   /build            Run the build command
+# →   /watch            Start watching for file changes
+# →   /status           Show watcher and build status
+# →   /help             Show this help
+# →   /exit             Exit the REPL
+```
+
+## How to Test
+
+```bash
+# Run the test suite
+pnpm test
+
+# Build
+pnpm build
+
+# Run a one-shot build (uses config.buildCommand, default: "npm run build")
+node dist/cli.js build
+# → Build succeeded
+
+# Override the build command via env var
+WATCHER_BUILD_COMMAND="echo custom-build" node dist/cli.js build
+# → Build succeeded
+
+# Check routine and process status
+node dist/cli.js status
+# → Routine: ready
+# → Running processes: 0
+
+# Override the watch directory via env var
+WATCHER_WATCH_DIR=./lib node dist/cli.js status
+# → Routine: ready
+# → Running processes: 0
+
+# Help
+node dist/cli.js --help
+node dist/cli.js build --help
 ```
 
 ## Acceptance Criteria
