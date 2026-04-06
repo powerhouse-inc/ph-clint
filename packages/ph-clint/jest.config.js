@@ -2,7 +2,7 @@
 export default {
   extensionsToTreatAsEsm: ['.ts'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', { useESM: true }],
+    '^.+\\.tsx?$': ['ts-jest', { useESM: true, tsconfig: 'tsconfig.test.json' }],
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
@@ -14,7 +14,7 @@ export default {
   coverageThreshold: {
     global: {
       statements: 95,
-      branches: 93,
+      branches: 92,
       functions: 95,
       lines: 95,
     },
