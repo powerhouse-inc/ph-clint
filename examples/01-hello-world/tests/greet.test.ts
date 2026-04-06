@@ -1,5 +1,8 @@
 import { describe, it, expect } from '@jest/globals';
+import { createMemoryWorkspace } from 'ph-clint';
 import { greet } from '../src/commands/greet.js';
+
+const ctx = { workspace: createMemoryWorkspace(), config: {} };
 
 describe('greet command', () => {
   describe('definition', () => {
@@ -20,19 +23,18 @@ describe('greet command', () => {
 
   describe('execute', () => {
     it('greets by name', async () => {
-      const result = await greet.execute({ name: 'Alice', loud: false });
+      const result = await greet.execute({ name: 'Alice', loud: false }, ctx);
       expect(result).toBe('Hello, Alice!');
     });
 
     it('greets loudly when loud is true', async () => {
-      const result = await greet.execute({ name: 'Alice', loud: true });
+      const result = await greet.execute({ name: 'Alice', loud: true }, ctx);
       expect(result).toBe('HELLO, ALICE!');
     });
 
     it('defaults loud to false', async () => {
-      // Simulate what the framework does: parse with defaults applied
       const parsed = greet.inputSchema.parse({ name: 'Bob' });
-      const result = await greet.execute(parsed);
+      const result = await greet.execute(parsed, ctx);
       expect(result).toBe('Hello, Bob!');
     });
   });

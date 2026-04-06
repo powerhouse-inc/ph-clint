@@ -53,14 +53,14 @@ describe('tasks CLI', () => {
 
   describe('command execution', () => {
     it('executes add and returns structured result', async () => {
-      const result = await cli.execute('add', { title: 'Test task', priority: 'high' });
+      const result = await cli.execute('add', { title: 'Test task', priority: 'high' }) as any;
       expect(result.text).toContain('Test task');
       expect(result.data.title).toBe('Test task');
       expect(result.data.priority).toBe('high');
     });
 
     it('executes list and returns structured result', async () => {
-      const result = await cli.execute('list', { filter: 'all' });
+      const result = await cli.execute('list', { filter: 'all' }) as any;
       expect(result).toHaveProperty('text');
       expect(result).toHaveProperty('data');
     });
@@ -80,12 +80,12 @@ describe('tasks CLI', () => {
     });
 
     it('parses config with defaults', () => {
-      const config = cli.configSchema!.parse({});
+      const config = cli.configSchema!.parse({}) as any;
       expect(config.defaultPriority).toBe('medium');
     });
 
     it('accepts valid overrides', () => {
-      const config = cli.configSchema!.parse({ defaultPriority: 'high' });
+      const config = cli.configSchema!.parse({ defaultPriority: 'high' }) as any;
       expect(config.defaultPriority).toBe('high');
     });
 
@@ -127,7 +127,7 @@ describe('tasks CLI', () => {
     it('generates command-level help for list', () => {
       const help = cli.generateCommandHelp('list');
       expect(help).toContain('--filter');
-      expect(help).toContain('default: open');
+      expect(help).toContain('default: "open"');
     });
   });
 

@@ -47,7 +47,7 @@ export interface Command<
   inputSchema: TInput;
   outputSchema?: z.ZodType<TOutput>;
   prompt?: PromptConfig;
-  execute: (input: z.output<TInput>, context?: CommandContext) => Promise<TOutput>;
+  execute: (input: z.output<TInput>, context: CommandContext) => Promise<TOutput>;
 }
 
 /**

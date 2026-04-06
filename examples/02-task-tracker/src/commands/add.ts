@@ -19,7 +19,7 @@ export const add = defineCommand({
     const task: Task = {
       id: crypto.randomUUID(),
       title,
-      priority: priority ?? config.defaultPriority,
+      priority: priority ?? (config.defaultPriority as Task['priority']),
       due: due ?? null,
       done: false,
     };

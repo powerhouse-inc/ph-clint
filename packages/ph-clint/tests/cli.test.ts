@@ -80,7 +80,7 @@ describe('defineCli', () => {
             id: 'show',
             description: 'Show config',
             inputSchema: z.object({}),
-            execute: async (_input, ctx) => ctx?.config,
+            execute: async (_input, ctx) => ctx.config,
           }),
         ],
       });
