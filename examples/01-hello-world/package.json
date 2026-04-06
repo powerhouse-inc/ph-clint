@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "start": "node dist/cli.js",
     "dev": "tsx src/cli.ts",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
   },

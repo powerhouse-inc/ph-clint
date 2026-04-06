@@ -131,6 +131,7 @@ Implement the feature in `packages/ph-clint/` to make the failing tests pass:
 
 After tests pass, verify the example project works as a real CLI — not just in test harnesses:
 - `pnpm build` completes without errors (TypeScript compiles cleanly).
+- `pnpm start` runs the built CLI (e.g., `node dist/cli.js`). Every example must have a `start` script.
 - `pnpm dev` (or equivalent) starts without errors.
 - Manual smoke test: run a representative command and confirm the output matches the README usage examples.
 
