@@ -67,6 +67,27 @@ describe('defineCli', () => {
       await expect(cli.execute('nope', {})).rejects.toThrow('Unknown command');
     });
 
+    it('creates default context with config defaults when configSchema is set', async () => {
+      const configCli = defineCli({
+        name: 'cfg',
+        version: '0.0.1',
+        description: 'Config CLI',
+        configSchema: z.object({
+          mode: z.string().default('dev'),
+        }),
+        commands: [
+          defineCommand({
+            id: 'show',
+            description: 'Show config',
+            inputSchema: z.object({}),
+            execute: async (_input, ctx) => ctx?.config,
+          }),
+        ],
+      });
+      const result = await configCli.execute('show', {});
+      expect(result).toEqual({ mode: 'dev' });
+    });
+
     it('throws on invalid input', async () => {
       await expect(cli.execute('echo', {})).rejects.toThrow();
     });
@@ -210,6 +231,60 @@ describe('defineCli', () => {
       expect(() => cli.generateCompletion('powershell')).toThrow(
         'Unsupported shell',
       );
+    });
+  });
+
+  describe('config', () => {
+    it('exposes configSchema when provided', () => {
+      const configCli = defineCli({
+        name: 'cfg',
+        version: '0.0.1',
+        description: 'Config CLI',
+        configSchema: z.object({
+          port: z.number().default(3000).describe('Port number'),
+        }),
+        commands: [echo],
+      });
+      expect(configCli.configSchema).toBeDefined();
+    });
+
+    it('returns undefined configSchema when not provided', () => {
+      expect(cli.configSchema).toBeUndefined();
+    });
+
+    it('returns env var mappings for config fields', () => {
+      const configCli = defineCli({
+        name: 'myApp',
+        version: '0.0.1',
+        description: 'Config CLI',
+        configSchema: z.object({
+          connectPort: z.number().default(3000).describe('Port'),
+        }),
+        commands: [echo],
+      });
+      const vars = configCli.configEnvVars();
+      expect(vars).toEqual([
+        { name: 'MY_APP_CONNECT_PORT', field: 'connectPort', description: 'Port' },
+      ]);
+    });
+
+    it('returns empty env vars when no configSchema', () => {
+      expect(cli.configEnvVars()).toEqual([]);
+    });
+
+    it('exposes interactive config when provided', () => {
+      const interactiveCli = defineCli({
+        name: 'int',
+        version: '0.0.1',
+        description: 'Interactive CLI',
+        commands: [echo],
+        interactive: { welcome: 'Hello!' },
+      });
+      expect(interactiveCli.interactive).toEqual({ welcome: 'Hello!' });
+    });
+
+    it('returns undefined interactive when not provided', () => {
+      expect(cli.interactive).toBeUndefined();
     });
   });
 
@@ -413,6 +488,25 @@ describe('defineCli', () => {
       const cap = capture();
       await noDescCli.run(['node', 'test', 'cmd', '--value', 'x'], cap.options);
       expect(cap.output).toEqual(['x']);
+    });
+
+    it('prints .text for structured result objects', async () => {
+      const structCli = defineCli({
+        name: 'struct',
+        version: '0.0.1',
+        description: 'Struct CLI',
+        commands: [
+          defineCommand({
+            id: 'cmd',
+            description: 'Returns structured result',
+            inputSchema: z.object({}),
+            execute: async () => ({ text: 'display text', data: { id: 1 } }),
+          }),
+        ],
+      });
+      const cap = capture();
+      await structCli.run(['node', 'test', 'cmd'], cap.options);
+      expect(cap.output).toEqual(['display text']);
     });
 
     it('handles non-Error throws from commands', async () => {

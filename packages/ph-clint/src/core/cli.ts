@@ -1,6 +1,33 @@
 import { Command as Commander } from 'commander';
-import type { Cli, CliOptions, Command, RunOptions } from './types.js';
+import type {
+  Cli,
+  CliOptions,
+  Command,
+  CommandContext,
+  ConfigEnvVar,
+  RunOptions,
+} from './types.js';
 import { getSchemaFields } from './schema.js';
+import { createMemoryWorkspace, createWorkspace } from './workspace.js';
+import { getConfigEnvVars, resolveConfig } from './config.js';
+
+/**
+ * Format a command result for output.
+ * If the result has a `.text` string property, use that.
+ * Otherwise, convert to string.
+ */
+function formatResult(result: unknown): string | undefined {
+  if (result === undefined || result === null) return undefined;
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    'text' in result &&
+    typeof (result as Record<string, unknown>).text === 'string'
+  ) {
+    return (result as Record<string, unknown>).text as string;
+  }
+  return String(result);
+}
 
 /**
  * Define a CLI — the top-level entry point.
@@ -22,13 +49,20 @@ export function defineCli(options: CliOptions): Cli {
   async function execute(
     commandId: string,
     args: Record<string, unknown>,
+    context?: CommandContext,
   ): Promise<unknown> {
     const cmd = commandMap.get(commandId);
     if (!cmd) {
       throw new Error(`Unknown command: ${commandId}`);
     }
     const parsed = cmd.inputSchema.parse(args);
-    return cmd.execute(parsed);
+    const ctx = context ?? {
+      workspace: createMemoryWorkspace(),
+      config: options.configSchema
+        ? (options.configSchema.parse({}) as Record<string, unknown>)
+        : {},
+    };
+    return cmd.execute(parsed, ctx);
   }
 
   function parseArgs(
@@ -131,7 +165,7 @@ export function defineCli(options: CliOptions): Cli {
         `# bash completion for ${options.name}`,
         `_${options.name}_completions() {`,
         `  local commands="${commandNames}"`,
-        `  COMPREPLY=($(compgen -W "$commands" -- "\${COMP_WORDS[COMP_CWORD]}"))`,
+        `  COMPREPLY=($(compgen -W "$commands" -- "\${COMP_WORDS[COMP_CWORD]}")`,
         `}`,
         `complete -F _${options.name}_completions ${options.name}`,
       ].join('\n');
@@ -158,7 +192,15 @@ export function defineCli(options: CliOptions): Cli {
     throw new Error(`Unsupported shell: ${shell}`);
   }
 
-  function buildProgram(stdout: (msg: string) => void): Commander {
+  function configEnvVars(): ConfigEnvVar[] {
+    if (!options.configSchema) return [];
+    return getConfigEnvVars(options.name, options.configSchema);
+  }
+
+  function buildProgram(
+    stdout: (msg: string) => void,
+    context: CommandContext,
+  ): Commander {
     const program = new Commander();
     program
       .name(options.name)
@@ -173,9 +215,17 @@ export function defineCli(options: CliOptions): Cli {
       for (const field of fields) {
         const desc = field.description ?? '';
         if (field.baseType === 'boolean') {
-          sub.option(`--${field.key}`, desc, field.hasDefault ? (field.defaultValue as boolean) : false);
+          sub.option(
+            `--${field.key}`,
+            desc,
+            field.hasDefault ? (field.defaultValue as boolean) : false,
+          );
         } else if (field.isOptional) {
-          sub.option(`--${field.key} <value>`, desc, field.hasDefault ? String(field.defaultValue) : undefined);
+          sub.option(
+            `--${field.key} <value>`,
+            desc,
+            field.hasDefault ? String(field.defaultValue) : undefined,
+          );
         } else {
           sub.requiredOption(`--${field.key} <value>`, desc);
         }
@@ -183,9 +233,10 @@ export function defineCli(options: CliOptions): Cli {
 
       sub.action(async (opts) => {
         const parsed = cmd.inputSchema.parse(opts);
-        const result = await cmd.execute(parsed);
-        if (result !== undefined && result !== null) {
-          stdout(String(result));
+        const result = await cmd.execute(parsed, context);
+        const output = formatResult(result);
+        if (output !== undefined) {
+          stdout(output);
         }
       });
     }
@@ -198,7 +249,16 @@ export function defineCli(options: CliOptions): Cli {
     const stdout = runOptions?.stdout ?? console.log;
     const stderr = runOptions?.stderr ?? console.error;
 
-    const program = buildProgram(stdout);
+    // Create workspace and resolve config for this run
+    const cwd = process.cwd();
+    const workspacePath = `.ph/cli/${options.name}`;
+    const workspace = createWorkspace(workspacePath);
+    const config = options.configSchema
+      ? resolveConfig(options.configSchema, options.name, cwd)
+      : {};
+    const context: CommandContext = { workspace, config };
+
+    const program = buildProgram(stdout, context);
 
     try {
       await program.parseAsync(argv);
@@ -217,6 +277,8 @@ export function defineCli(options: CliOptions): Cli {
     name: options.name,
     version: options.version,
     description: options.description,
+    configSchema: options.configSchema,
+    interactive: options.interactive,
     getCommand,
     listCommands,
     execute,
@@ -224,6 +286,7 @@ export function defineCli(options: CliOptions): Cli {
     generateHelp,
     generateCommandHelp,
     generateCompletion,
+    configEnvVars,
     run,
   };
 }
