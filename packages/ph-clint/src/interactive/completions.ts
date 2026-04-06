@@ -119,9 +119,9 @@ export function getCompletions(
     }
   }
 
-  // If the current token starts with --, complete the flag name
-  if (lastToken.startsWith('--')) {
-    const prefix = lastToken.slice(2).toLowerCase();
+  // If the current token starts with - or --, complete the flag name
+  if (lastToken.startsWith('-')) {
+    const prefix = lastToken.startsWith('--') ? lastToken.slice(2).toLowerCase() : '';
     return fields
       .filter((f) => f.key.toLowerCase().startsWith(prefix) && !used.has(`--${f.key}`))
       .map((f) => `--${f.key}`);
@@ -146,6 +146,36 @@ function getFieldValueCompletions(
 }
 
 /**
+ * Get the suffix to append after a flag completion.
+ * Returns ` "` for non-boolean, non-enum fields (opening a value quote),
+ * empty string otherwise.
+ */
+export function getCompletionSuffix(
+  completion: string,
+  input: string,
+  commands: Command[],
+): string {
+  if (!completion.startsWith('--')) return '';
+
+  const trimmed = input.trimStart();
+  const { tokens } = tokenizeInput(trimmed);
+  const cmdName = tokens[0]?.slice(1).toLowerCase();
+  const cmd = commands.find((c) => c.id === cmdName);
+  if (!cmd) return '';
+
+  const fieldName = completion.slice(2);
+  const fields = getSchemaFields(cmd.inputSchema);
+  const field = fields.find((f) => f.key === fieldName);
+  if (!field || field.baseType === 'boolean') return '';
+
+  // Enum fields don't need quotes
+  const enumValues = getEnumValues(cmd.inputSchema, fieldName);
+  if (enumValues) return ' ';
+
+  return ' "';
+}
+
+/**
  * Get the ghost suggestion for the current input — the full input string
  * with the first completion applied, suitable for inline preview.
  *
@@ -159,25 +189,9 @@ export function getGhostSuggestion(
   if (completions.length === 0) return null;
 
   const applied = applyCompletion(input, completions[0]!);
+  const suffix = getCompletionSuffix(completions[0]!, input, commands);
 
-  // For non-boolean flag completions, append the placeholder
-  const completion = completions[0]!;
-  if (completion.startsWith('--')) {
-    const trimmed = input.trimStart();
-    const { tokens } = tokenizeInput(trimmed);
-    const cmdName = tokens[0]?.slice(1).toLowerCase();
-    const cmd = commands.find((c) => c.id === cmdName);
-    if (cmd) {
-      const fieldName = completion.slice(2);
-      const fields = getSchemaFields(cmd.inputSchema);
-      const field = fields.find((f) => f.key === fieldName);
-      if (field && field.baseType !== 'boolean') {
-        return applied + ` <${field.key}>`;
-      }
-    }
-  }
-
-  return applied;
+  return applied + suffix;
 }
 
 /**

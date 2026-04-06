@@ -25,6 +25,8 @@ export interface ReplSession {
   getCompletions(partial: string): string[];
   /** Get inline ghost suggestion (full input with first completion applied), or null. */
   getGhostSuggestion(input: string): string | null;
+  /** Get suffix to append after applying a completion (e.g. ` "` for string flags). */
+  getCompletionSuffix(completion: string, input: string): string;
   welcome: string | undefined;
 }
 

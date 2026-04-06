@@ -154,7 +154,7 @@ export function Repl({ session }: ReplProps) {
             : (tabIndex + 1) % completions.length;
 
         setTabIndex(nextIndex);
-        const completed = applyCompletion(input, completions[nextIndex]!);
+        const completed = applyCompletion(input, completions[nextIndex]!) + session.getCompletionSuffix(completions[nextIndex]!, input);
         setInputWithCursor(completed);
         setSuggestions(completions);
         return;

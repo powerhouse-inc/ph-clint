@@ -196,16 +196,15 @@ describe('getGhostSuggestion', () => {
     expect(ghost).toBe('/greet');
   });
 
-  it('suggests flag with placeholder for non-boolean field', () => {
+  it('suggests flag with opening quote for non-boolean field', () => {
     const ghost = getGhostSuggestion('/greet --na', commands);
-    expect(ghost).toBe('/greet --name <name>');
+    expect(ghost).toBe('/greet --name "');
   });
 
-  it('suggests flag after trailing space with placeholder', () => {
+  it('suggests flag after trailing space with opening quote', () => {
     const ghost = getGhostSuggestion('/greet ', commands);
-    // First unused flag is --name (non-boolean), should include placeholder
     expect(ghost).toContain('--name');
-    expect(ghost).toContain('<name>');
+    expect(ghost).toContain('"');
   });
 
   it('suggests boolean flag without placeholder', () => {

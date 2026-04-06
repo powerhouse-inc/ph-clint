@@ -186,10 +186,11 @@ describe('Repl component', () => {
       await delay();
       stdin.write(KEYS.TAB);
       await delay();
-      stdin.write(' Alice');
+      stdin.write('Alice');
       await delay();
       const frame = stripAnsi(lastFrame()!);
-      expect(frame).toContain('/greet --name Alice');
+      // Tab-completing --name adds ` "` suffix, then typing Alice continues inside the quote
+      expect(frame).toContain('/greet --name "Alice');
     });
 
     it('shows suggestions for multiple matches', async () => {

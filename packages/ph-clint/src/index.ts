@@ -9,7 +9,7 @@ export { createProcessManager } from './core/processes.js';
 export { createRoutine } from './core/routine.js';
 export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
-export { getCompletions, getGhostSuggestion, applyCompletion } from './interactive/completions.js';
+export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
 export { renderMarkdown } from './interactive/markdown.js';
 export type { FieldInfo } from './core/schema.js';
 export type {
