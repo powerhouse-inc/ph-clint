@@ -1,0 +1,117 @@
+import { describe, it, expect } from '@jest/globals';
+import { createProcessManager } from '../src/core/processes.js';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import {
+  PROCESS_START_WAIT,
+  PROCESS_CLEANUP_WAIT,
+  SHORT_TIMEOUT,
+  PROCESS_TEST_TIMEOUT,
+} from './fixtures/timing.js'; // plain JS — avoids rootDir issues
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const fixture = (mode: string) =>
+  `node ${join(__dirname, 'fixtures', 'test-process.js')} ${mode}`;
+
+describe('createProcessManager', () => {
+  it('runs a command and returns success', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run(fixture('echo'));
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('hello');
+  });
+
+  it('returns failure for non-zero exit code', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run(fixture('fail'));
+    expect(result.success).toBe(false);
+    expect(result.output).toContain('hello');
+  });
+
+  it('captures stderr output', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run(fixture('fail'));
+    expect(result.output).toContain('hello');
+  });
+
+  it('captures streaming output', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run(fixture('stream'));
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('line-1');
+    expect(result.output).toContain('line-3');
+  });
+
+  it('uses label for process handle', async () => {
+    const pm = createProcessManager();
+    await pm.run(fixture('echo'), { label: 'my-label' });
+    expect(pm.list().some(h => h.label === 'my-label')).toBe(true);
+  });
+
+  it('defaults label to the command string', async () => {
+    const pm = createProcessManager();
+    const cmd = fixture('echo');
+    await pm.run(cmd);
+    expect(pm.list()[0]!.label).toBe(cmd);
+  });
+
+  it('tracks succeeded status after completion', async () => {
+    const pm = createProcessManager();
+    await pm.run(fixture('echo'), { label: 'done-test' });
+    expect(pm.list().find(h => h.label === 'done-test')?.status).toBe('succeeded');
+  });
+
+  it('tracks failed status after non-zero exit', async () => {
+    const pm = createProcessManager();
+    await pm.run(fixture('fail'), { label: 'fail-test' });
+    expect(pm.list().find(h => h.label === 'fail-test')?.status).toBe('failed');
+  });
+
+  it('times out long-running commands', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run(fixture('long-run'), {
+      label: 'timeout-test',
+      timeout: SHORT_TIMEOUT,
+    });
+    expect(result.success).toBe(false);
+    // Wait for the child process group to fully exit
+    await new Promise(r => setTimeout(r, PROCESS_CLEANUP_WAIT));
+  }, PROCESS_TEST_TIMEOUT);
+
+  it('kill() terminates a running process', async () => {
+    const pm = createProcessManager();
+    const promise = pm.run(fixture('long-run'), { label: 'kill-test' });
+
+    // Wait for the process to start
+    await new Promise(r => setTimeout(r, PROCESS_START_WAIT));
+    const handle = pm.list().find(h => h.label === 'kill-test')!;
+    expect(handle.status).toBe('running');
+
+    handle.kill();
+    const result = await promise;
+    expect(result.success).toBe(false);
+    expect(handle.status).toBe('failed');
+  }, PROCESS_TEST_TIMEOUT);
+
+  it('kill() is no-op after process completes', async () => {
+    const pm = createProcessManager();
+    await pm.run(fixture('echo'), { label: 'kill-noop' });
+    const handle = pm.list().find(h => h.label === 'kill-noop')!;
+    expect(handle.status).toBe('succeeded');
+    handle.kill(); // should not throw or change status
+    expect(handle.status).toBe('succeeded');
+  });
+
+  it('handles spawn errors gracefully', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run('/nonexistent/command/xyz');
+    expect(result.success).toBe(false);
+  });
+
+  it('lists all processes', async () => {
+    const pm = createProcessManager();
+    await pm.run(fixture('echo'), { label: 'a' });
+    await pm.run(fixture('echo'), { label: 'b' });
+    expect(pm.list()).toHaveLength(2);
+  });
+});

@@ -5,11 +5,15 @@ import type {
   Command,
   CommandContext,
   ConfigEnvVar,
+  Routine,
   RunOptions,
 } from './types.js';
 import { getSchemaFields } from './schema.js';
 import { createMemoryWorkspace, createWorkspace } from './workspace.js';
 import { getConfigEnvVars, resolveConfig } from './config.js';
+import { createRoutine } from './routine.js';
+import { createEventBus } from './events.js';
+import { createProcessManager } from './processes.js';
 
 /**
  * Format a command result for output.
@@ -38,12 +42,43 @@ export function defineCli(options: CliOptions): Cli {
     commandMap.set(cmd.id, cmd);
   }
 
+  // If triggers/routine config provided, create shared runtime services
+  const hasTriggers = options.triggers && options.triggers.length > 0;
+  const eventBus = hasTriggers ? createEventBus() : undefined;
+  const processManager = hasTriggers ? createProcessManager() : undefined;
+  let routine: Routine | undefined;
+
+  if (hasTriggers) {
+    routine = createRoutine({
+      triggers: options.triggers!,
+      commands: commandMap,
+      tickInterval: options.routine?.tickInterval,
+      idleInterval: options.routine?.idleInterval,
+      eventBus,
+      processManager,
+    });
+  }
+
   function getCommand(id: string): Command | undefined {
     return commandMap.get(id);
   }
 
   function listCommands(): Command[] {
     return [...commandMap.values()];
+  }
+
+  function buildContext(base?: CommandContext): CommandContext {
+    const ctx = base ?? {
+      workspace: createMemoryWorkspace(),
+      config: options.configSchema
+        ? (options.configSchema.parse({}) as Record<string, unknown>)
+        : {},
+    };
+    // Extend with runtime services if available
+    if (routine) ctx.routine = routine;
+    if (processManager) ctx.processes = processManager;
+    if (eventBus) ctx.emit = (event: string, data?: unknown) => eventBus.emit(event, data);
+    return ctx;
   }
 
   async function execute(
@@ -56,12 +91,7 @@ export function defineCli(options: CliOptions): Cli {
       throw new Error(`Unknown command: ${commandId}`);
     }
     const parsed = cmd.inputSchema.parse(args);
-    const ctx = context ?? {
-      workspace: createMemoryWorkspace(),
-      config: options.configSchema
-        ? (options.configSchema.parse({}) as Record<string, unknown>)
-        : {},
-    };
+    const ctx = buildContext(context);
     return cmd.execute(parsed, ctx);
   }
 
@@ -256,7 +286,7 @@ export function defineCli(options: CliOptions): Cli {
     const config = options.configSchema
       ? resolveConfig(options.configSchema, options.name, cwd)
       : {};
-    const context: CommandContext = { workspace, config };
+    const context = buildContext({ workspace, config });
 
     const program = buildProgram(stdout, context);
 
@@ -270,6 +300,12 @@ export function defineCli(options: CliOptions): Cli {
       const msg = err instanceof Error ? err.message : String(err);
       stderr(msg);
       exit(err.exitCode ?? 1);
+    }
+  }
+
+  async function stopRoutine(): Promise<void> {
+    if (routine) {
+      await routine.stop();
     }
   }
 
@@ -288,5 +324,6 @@ export function defineCli(options: CliOptions): Cli {
     generateCompletion,
     configEnvVars,
     run,
+    stopRoutine,
   };
 }

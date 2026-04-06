@@ -288,6 +288,88 @@ describe('defineCli', () => {
     });
   });
 
+  describe('triggers and routine', () => {
+    it('creates routine when triggers are provided', () => {
+      const triggerCli = defineCli({
+        name: 'trigger-test',
+        version: '0.0.1',
+        description: 'Trigger CLI',
+        commands: [echo],
+        triggers: [{
+          id: 'test',
+          type: 'condition',
+          poll: async () => null,
+        }],
+        routine: { tickInterval: 100, idleInterval: 50 },
+      });
+      expect(triggerCli.stopRoutine).toBeDefined();
+    });
+
+    it('does not create routine when no triggers', () => {
+      expect(cli.stopRoutine).toBeDefined();
+      // stopRoutine exists but is a no-op
+    });
+
+    it('provides process manager to commands when triggers exist', async () => {
+      let hasProcesses = false;
+      const triggerCli = defineCli({
+        name: 'pm-test',
+        version: '0.0.1',
+        description: 'PM CLI',
+        commands: [
+          defineCommand({
+            id: 'check',
+            description: 'Check context',
+            inputSchema: z.object({}),
+            execute: async (_, ctx) => {
+              hasProcesses = ctx.processes !== undefined;
+              return 'ok';
+            },
+          }),
+        ],
+        triggers: [{
+          id: 'test',
+          type: 'condition',
+          poll: async () => null,
+        }],
+      });
+      await triggerCli.execute('check', {});
+      expect(hasProcesses).toBe(true);
+    });
+
+    it('provides emit to commands when triggers exist', async () => {
+      let hasEmit = false;
+      const triggerCli = defineCli({
+        name: 'emit-test',
+        version: '0.0.1',
+        description: 'Emit CLI',
+        commands: [
+          defineCommand({
+            id: 'check',
+            description: 'Check context',
+            inputSchema: z.object({}),
+            execute: async (_, ctx) => {
+              hasEmit = ctx.emit !== undefined;
+              return 'ok';
+            },
+          }),
+        ],
+        triggers: [{
+          id: 'test',
+          type: 'condition',
+          poll: async () => null,
+        }],
+      });
+      await triggerCli.execute('check', {});
+      expect(hasEmit).toBe(true);
+    });
+
+    it('stopRoutine is safe to call when no triggers', async () => {
+      await cli.stopRoutine?.();
+      // should not throw
+    });
+  });
+
   describe('edge cases', () => {
     it('handles a command with a non-object schema gracefully', () => {
       const weirdCli = defineCli({

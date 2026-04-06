@@ -1,0 +1,27 @@
+{
+  "name": "@ph-clint/example-file-watcher",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "watcher": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles"
+  },
+  "dependencies": {
+    "ph-clint": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@types/node": "^25.5.2",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.2"
+  }
+}

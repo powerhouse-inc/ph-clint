@@ -1,8 +1,12 @@
 export { defineCommand } from './core/command.js';
 export { defineCli } from './core/cli.js';
+export { defineTrigger } from './core/trigger.js';
 export { getSchemaFields } from './core/schema.js';
 export { createWorkspace, createMemoryWorkspace } from './core/workspace.js';
 export { toUpperSnake, configKeyToEnvVar, resolveConfig } from './core/config.js';
+export { createEventBus } from './core/events.js';
+export { createProcessManager } from './core/processes.js';
+export { createRoutine } from './core/routine.js';
 export type { FieldInfo } from './core/schema.js';
 export type {
   Command,
@@ -14,4 +18,14 @@ export type {
   PromptConfig,
   InteractiveConfig,
   ConfigEnvVar,
+  WorkItem,
+  TriggerContext,
+  TriggerOptions,
+  Trigger,
+  RoutineStatus,
+  Routine,
+  ProcessHandle,
+  ProcessManager,
+  EventBus,
+  RoutineConfig,
 } from './core/types.js';
