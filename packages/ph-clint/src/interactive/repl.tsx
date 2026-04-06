@@ -26,12 +26,14 @@ export function Repl({ session }: ReplProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
 
-  // Terminal focus tracking (DECSET 1004)
+  // Terminal focus tracking (DECSET 1004) — only on real TTYs
+  const isTTY = 'isTTY' in stdout && stdout.isTTY;
   const [terminalFocused, setTerminalFocused] = useState(true);
   useEffect(() => {
+    if (!isTTY) return;
     stdout.write('\x1b[?1004h');
     return () => { stdout.write('\x1b[?1004l'); };
-  }, [stdout]);
+  }, [stdout, isTTY]);
 
   const [phase, setPhase] = useState<'idle' | 'executing'>('idle');
   const [history, setHistory] = useState<HistoryEntry[]>([]);

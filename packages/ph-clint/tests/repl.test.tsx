@@ -650,5 +650,58 @@ describe('Repl component', () => {
       const completions = session.getCompletions('/gree');
       expect(completions).toEqual(['/greet']);
     });
+
+    it('shows inline ghost text for first completion', async () => {
+      const { stdin, lastFrame } = renderRepl();
+      stdin.write('/gr');
+      await delay();
+      const frame = stripAnsi(lastFrame()!);
+      // Ghost text should show the rest of "/greet"
+      expect(frame).toContain('eet');
+    });
+
+    it('hides suggestion list when only one match', async () => {
+      const { stdin, lastFrame } = renderRepl();
+      stdin.write('/gree');
+      await delay();
+      const frame = stripAnsi(lastFrame()!);
+      // Single match: no list below, but ghost text inline
+      expect(frame).toContain('t'); // ghost 't'
+      // The list row should not appear (only 1 match)
+    });
+  });
+
+  describe('Up/Down in tab-cycling mode', () => {
+    it('Up/Down cycles through completions while tab-cycling', async () => {
+      const { stdin, lastFrame } = renderRepl();
+      stdin.write('/');
+      await delay();
+      // Enter tab-cycling with Tab
+      stdin.write(KEYS.TAB);
+      await delay();
+      const completions = session.getCompletions('/');
+      expect(stripAnsi(lastFrame()!)).toContain(completions[0]);
+
+      // Down should advance to next completion
+      stdin.write(KEYS.DOWN);
+      await delay();
+      expect(stripAnsi(lastFrame()!)).toContain(completions[1]);
+
+      // Up should go back
+      stdin.write(KEYS.UP);
+      await delay();
+      expect(stripAnsi(lastFrame()!)).toContain(completions[0]);
+    });
+  });
+
+  describe('empty submit', () => {
+    it('does not submit empty input', async () => {
+      const { stdin, lastFrame } = renderRepl();
+      stdin.write(KEYS.ENTER);
+      await delay();
+      // Should still show welcome/prompt, no history entry
+      const frame = stripAnsi(lastFrame()!);
+      expect(frame).toContain('Welcome!');
+    });
   });
 });

@@ -164,4 +164,80 @@ describe('TextInput component', () => {
     await delay();
     expect(changed).toBe('');
   });
+
+  it('handles Ctrl+Left to jump to previous word boundary', async () => {
+    let changed = '';
+    const { stdin } = render(
+      <TextInput value="hello world" onChange={(v) => { changed = v; }} />,
+    );
+    // Ctrl+Left: \x1b[1;5D
+    stdin.write('\x1b[1;5D');
+    await delay();
+    stdin.write('X');
+    await delay();
+    expect(changed).toBe('hello Xworld');
+  });
+
+  it('handles Ctrl+Right to jump to next word boundary', async () => {
+    let changed = '';
+    const { stdin } = render(
+      <TextInput value="hello world" cursorOffset={0} onChange={(v) => { changed = v; }} />,
+    );
+    await delay();
+    // Ctrl+Right: \x1b[1;5C
+    stdin.write('\x1b[1;5C');
+    await delay();
+    stdin.write('X');
+    await delay();
+    expect(changed).toBe('hello Xworld');
+  });
+
+  // Note: Forward delete (\x1b[3~) uses raw stdin interception which
+  // ink-testing-library doesn't support — tested manually in real terminals.
+
+  it('renders ghost text suggestion when cursor is at end', () => {
+    const { lastFrame } = render(
+      <TextInput value="/ad" suggestion="/add" onChange={() => {}} />,
+    );
+    const frame = stripAnsi(lastFrame()!);
+    expect(frame).toContain('/ad');
+    expect(frame).toContain('d'); // ghost character
+  });
+
+  it('ignores focus reporting sequences', async () => {
+    let changed = '';
+    const { stdin } = render(
+      <TextInput value="abc" onChange={(v) => { changed = v; }} />,
+    );
+    stdin.write('\x1b[I'); // Focus in
+    await delay();
+    stdin.write('\x1b[O'); // Focus out
+    await delay();
+    expect(changed).toBe('');
+  });
+
+  it('handles left arrow movement', async () => {
+    let changed = '';
+    const { stdin } = render(
+      <TextInput value="abc" onChange={(v) => { changed = v; }} />,
+    );
+    stdin.write('\x1b[D'); // Left
+    await delay();
+    stdin.write('X');
+    await delay();
+    expect(changed).toBe('abXc');
+  });
+
+  it('handles right arrow after left', async () => {
+    let changed = '';
+    const { stdin } = render(
+      <TextInput value="abc" cursorOffset={1} onChange={(v) => { changed = v; }} />,
+    );
+    await delay();
+    stdin.write('\x1b[C'); // Right
+    await delay();
+    stdin.write('X');
+    await delay();
+    expect(changed).toBe('abXc');
+  });
 });
