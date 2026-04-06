@@ -1,0 +1,8 @@
+{
+  "workspacePath": "./tmp/projects",
+  "reactorPackagesPath": "reactor-packages",
+  "vetraConnectPort": 5000,
+  "vetraSwitchboardPort": 6100,
+  "vetraStartupTimeout": 90000,
+  "cliTimeout": 300000
+}

@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.development
+mastra-db/
+certs/
+.mastra
+.agents
+.claude
+src/mastra/public/

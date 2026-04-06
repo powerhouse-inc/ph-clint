@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.ph/
+.env
+*.log
+.DS_Store
+/.claude/settings.local.json
+tmp/
+coverage/
+claude-docs/
+build/

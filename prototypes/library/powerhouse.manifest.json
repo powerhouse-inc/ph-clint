@@ -1,0 +1,71 @@
+{
+    "name": "Powerhouse Agent",
+    "description": "This package contains document models and editors for collaborative workflows with Claude AI.",
+    "category": "Productivity",
+    "publisher": {
+        "name": "",
+        "url": ""
+    },
+    "documentModels": [
+        {
+            "id": "powerhouse/claude-chat",
+            "name": "ClaudeChat"
+        },
+        {
+            "id": "powerhouse/agent-projects",
+            "name": "AgentProjects"
+        },
+        {
+            "id": "powerhouse/work-breakdown-structure",
+            "name": "Work Breakdown Structure"
+        },
+        {
+            "id": "powerhouse/agent-inbox",
+            "name": "Agent Inbox"
+        },
+        {
+            "id": "achra/presentation",
+            "name": "AchraPresentation"
+        }
+    ],
+    "editors": [
+        {
+            "id": "claude-chat-editor",
+            "name": "Claude Chat Editor",
+            "documentTypes": [
+                "powerhouse/claude-chat"
+            ]
+        },
+        {
+            "id": "agent-projects-editor",
+            "name": "AgentProjectsEditor",
+            "documentTypes": [
+                "powerhouse/agent-projects"
+            ]
+        },
+        {
+            "id": "wbs-editor",
+            "name": "WBS Editor",
+            "documentTypes": [
+                "powerhouse/work-breakdown-structure"
+            ]
+        },
+        {
+            "id": "agent-inbox-editor",
+            "name": "Agent Inbox Editor",
+            "documentTypes": [
+                "powerhouse/agent-inbox"
+            ]
+        },
+        {
+            "id": "achra-presentation-editor",
+            "name": "Achra Presentation Editor",
+            "documentTypes": [
+                "achra/presentation"
+            ]
+        }
+    ],
+    "apps": [],
+    "subgraphs": [],
+    "importScripts": []
+}

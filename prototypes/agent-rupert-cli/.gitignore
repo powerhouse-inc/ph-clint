@@ -1,0 +1,15 @@
+output.txt
+node_modules
+dist
+.mastra
+.env.development
+.env
+mastra-db/
+certs/
+src/mastra/public/
+.netlify
+.vercel
+
+# Build output: generated skills and agent instructions
+skills/
+src/mastra/generated/

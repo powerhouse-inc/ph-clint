@@ -1,0 +1,126 @@
+{
+  "name": "@powerhousedao/agent-manager",
+  "description": "Document models and editors for Powerhouse AI agents inbox and WBS.",
+  "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "files": [
+    "/dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./document-models": {
+      "types": "./dist/document-models/index.d.ts",
+      "import": "./dist/document-models/index.js"
+    },
+    "./editors": {
+      "types": "./dist/editors/index.d.ts",
+      "import": "./dist/editors/index.js"
+    },
+    "./document-models/*": {
+      "types": "./dist/document-models/*/index.d.ts",
+      "import": "./dist/document-models/*/index.js"
+    },
+    "./editors/*": {
+      "types": "./dist/editors/*/index.d.ts",
+      "import": "./dist/editors/*/index.js"
+    },
+    "./subgraphs": {
+      "types": "./dist/subgraphs/index.d.ts",
+      "import": "./dist/subgraphs/index.js"
+    },
+    "./processors": {
+      "types": "./dist/processors/index.d.ts",
+      "import": "./dist/processors/index.js"
+    },
+    "./manifest": "./dist/powerhouse.manifest.json",
+    "./style.css": "./dist/style.css"
+  },
+  "scripts": {
+    "postinstall": "node scripts/patch-svar-grid.cjs",
+    "build": "npm run patch-svar-grid && npm run tsc && npm run tailwind",
+    "build:patched": "npm run patch-imports && pnpm build",
+    "patch-svar-grid": "node scripts/patch-svar-grid.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint --config eslint.config.js --cache --cache-strategy content",
+    "lint:fix": "npm run lint -- --fix",
+    "tsc": "tsc",
+    "tsc:watch": "tsc --watch",
+    "tailwind": "npx @tailwindcss/cli -i ./style.css -o ./dist/style.css",
+    "prepublishOnly": "npm run build",
+    "check-circular-imports": "npx dpdm -T ./index.ts",
+    "generate": "ph-cli generate",
+    "connect": "ph-cli connect",
+    "reactor": "ph-cli reactor",
+    "service": "ph-cli service",
+    "switchboard": "ph-cli switchboard",
+    "switchboard:migrate": "ph-cli switchboard --migrate",
+    "vetra": "ph-cli vetra",
+    "service-startup": "bash ./node_modules/@powerhousedao/ph-cli/dist/scripts/service-startup.sh",
+    "service-unstartup": "bash ./node_modules/@powerhousedao/ph-cli/dist/scripts/service-unstartup.sh",
+    "patch-imports": "node scripts/patch-imports.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@powerhousedao/builder-tools": "6.0.2-staging.2",
+    "@powerhousedao/common": "6.0.2-staging.2",
+    "@powerhousedao/design-system": "6.0.2-staging.2",
+    "@powerhousedao/document-engineering": "1.40.1",
+    "@powerhousedao/vetra": "6.0.2-staging.2",
+    "@svar-ui/react-grid": "^2.4.0",
+    "document-model": "6.0.2-staging.2",
+    "graphql": "^16.10.0",
+    "graphql-tag": "^2.12.6",
+    "markdown-it": "^14.1.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.15",
+    "@eslint/js": "^9.38.0",
+    "@powerhousedao/analytics-engine-core": "6.0.2-staging.2",
+    "@powerhousedao/codegen": "6.0.2-staging.2",
+    "@powerhousedao/config": "6.0.2-staging.2",
+    "@powerhousedao/connect": "6.0.2-staging.2",
+    "@powerhousedao/ph-cli": "6.0.2-staging.2",
+    "@powerhousedao/reactor-api": "6.0.2-staging.2",
+    "@powerhousedao/reactor-browser": "6.0.2-staging.2",
+    "@powerhousedao/reactor-local": "6.0.2-staging.2",
+    "@powerhousedao/switchboard": "6.0.2-staging.2",
+    "@tailwindcss/cli": "^4.1.18",
+    "@tailwindcss/vite": "4.1.18",
+    "@testing-library/react": "^16.3.0",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^24.9.2",
+    "@types/react": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.0",
+    "document-drive": "6.0.2-staging.2",
+    "eslint": "^9.38.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.4.0",
+    "package-manager-detector": "^0.2.8",
+    "pm2": "^5.4.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.16",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vite": "^6.2.3",
+    "vite-plugin-html": "3.2.2",
+    "vite-plugin-node-polyfills": "^0.24.0",
+    "vite-plugin-svgr": "4.5.0",
+    "vitest": "^3.0.9"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "readme": "ERROR: No README data found!",
+  "_id": "@powerhousedao/agent-manager@1.0.0"
+}

@@ -1,0 +1,438 @@
+scalar Amount_Tokens
+scalar EthereumAddress
+scalar Amount_Percentage
+scalar EmailAddress
+scalar Date
+scalar DateTime
+scalar URL
+scalar Amount_Money
+scalar OLabel
+scalar Currency
+scalar PHID
+scalar OID
+scalar Amount_Fiat
+scalar Amount_Currency
+scalar Amount_Crypto
+scalar Amount
+scalar Upload
+enum SlideTemplate {
+  TITLE
+  TITLE_PRIMARY
+  SECTION_DIVIDER_CENTERED
+  SECTION_DIVIDER_LEFT
+  BULLETS_IMAGE
+  IMAGE_BULLETS
+  STATS_METRICS
+  TWO_COLUMN_TEXT
+  QUOTE
+  PROCESS_TIMELINE
+  FEATURE_GRID
+  BIG_IMAGE_CAPTION
+  BEFORE_AFTER
+  CHART_PLACEHOLDER
+  AGENDA
+  TEAM_GRID
+  THREE_COLUMN_BULLETS
+  BIG_NUMBER
+  IMAGE_GRID
+  ROADMAP
+  PRICING_TIERS
+  TESTIMONIAL
+  NUMBERED_STEPS
+  CODE_BLOCK
+  DATA_TABLE
+  CHECKLIST
+  TWO_IMAGES
+  ICON_LIST
+  SPLIT_HIGHLIGHT
+  TAGS_ECOSYSTEM
+  CONTACT_CARD
+  THANK_YOU
+  LOGO_ONLY
+  ICON_SLOGAN
+}
+
+enum TextListField {
+  BULLET_ITEMS
+  STEPS
+}
+
+type TextItem {
+  id: OID!
+  text: String!
+}
+
+type Link {
+  id: OID!
+  text: String!
+}
+
+type ProcessStep {
+  id: OID!
+  title: String!
+  description: String
+}
+
+type AgendaItem {
+  id: OID!
+  title: String!
+}
+
+type MilestoneItem {
+  id: OID!
+  period: String!
+  title: String!
+  description: String
+}
+
+type BulletColumn {
+  title: String
+  bulletItems: [TextItem!]!
+}
+
+type ChecklistItem {
+  id: OID!
+  text: String!
+  checked: Boolean!
+}
+
+type IconListItem {
+  id: OID!
+  title: String!
+  description: String
+}
+
+type HighlightItem {
+  id: OID!
+  value: String!
+  label: String!
+  sublabel: String
+}
+
+type Slide {
+  id: OID!
+  template: SlideTemplate!
+  title: String
+  subtitle: String
+  supertitle: String
+  description: String
+  footerLeft: String
+  footerRight: String
+  slogan: String
+  quoteText: String
+  speakerName: String
+  speakerRole: String
+  bigNumber: String
+  codeContent: String
+  imageUrl: String
+  leftTitle: String
+  leftText: String
+  rightTitle: String
+  rightText: String
+  links: [Link!]!
+  bulletItems: [TextItem!]!
+  steps: [TextItem!]!
+  processSteps: [ProcessStep!]!
+  agendaItems: [AgendaItem!]!
+  milestones: [MilestoneItem!]!
+  columns: [BulletColumn!]!
+  checklistItems: [ChecklistItem!]!
+  iconListItems: [IconListItem!]!
+  highlights: [HighlightItem!]!
+}
+
+type AchraPresentationState {
+  title: String
+  author: String
+  date: String
+  slides: [Slide!]!
+}
+
+
+
+# core
+
+input SetPresentationInfoInput {
+  title: String
+  author: String
+  date: String
+}
+
+input AddSlideInput {
+  id: OID!
+  template: SlideTemplate!
+  position: Int
+}
+
+input DeleteSlideInput {
+  slideId: OID!
+}
+
+input DuplicateSlideInput {
+  id: OID!
+  slideId: OID!
+}
+
+input ReorderSlidesInput {
+  slideIds: [OID!]!
+}
+
+input SetSlideTemplateInput {
+  slideId: OID!
+  template: SlideTemplate!
+}
+
+input UpdateSlideContentInput {
+  slideId: OID!
+  title: String
+  subtitle: String
+  supertitle: String
+  description: String
+  footerLeft: String
+  footerRight: String
+  slogan: String
+  quoteText: String
+  speakerName: String
+  speakerRole: String
+  bigNumber: String
+  codeContent: String
+  imageUrl: String
+  leftTitle: String
+  leftText: String
+  rightTitle: String
+  rightText: String
+}
+
+# title-branding
+
+input AddLinkInput {
+  slideId: OID!
+  id: OID!
+  text: String!
+}
+
+input UpdateLinkInput {
+  slideId: OID!
+  id: OID!
+  text: String!
+}
+
+input DeleteLinkInput {
+  slideId: OID!
+  id: OID!
+}
+
+input ReorderLinksInput {
+  slideId: OID!
+  linkIds: [OID!]!
+}
+
+# structure-flow
+
+input AddProcessStepInput {
+  slideId: OID!
+  id: OID!
+  title: String!
+  description: String
+}
+
+input UpdateProcessStepInput {
+  slideId: OID!
+  id: OID!
+  title: String
+  description: String
+}
+
+input DeleteProcessStepInput {
+  slideId: OID!
+  id: OID!
+}
+
+input ReorderProcessStepsInput {
+  slideId: OID!
+  stepIds: [OID!]!
+}
+
+input AddAgendaItemInput {
+  slideId: OID!
+  id: OID!
+  title: String!
+}
+
+input UpdateAgendaItemInput {
+  slideId: OID!
+  id: OID!
+  title: String!
+}
+
+input DeleteAgendaItemInput {
+  slideId: OID!
+  id: OID!
+}
+
+input ReorderAgendaItemsInput {
+  slideId: OID!
+  itemIds: [OID!]!
+}
+
+input AddMilestoneInput {
+  slideId: OID!
+  id: OID!
+  period: String!
+  title: String!
+  description: String
+}
+
+input UpdateMilestoneInput {
+  slideId: OID!
+  id: OID!
+  period: String
+  title: String
+  description: String
+}
+
+input DeleteMilestoneInput {
+  slideId: OID!
+  id: OID!
+}
+
+input ReorderMilestonesInput {
+  slideId: OID!
+  milestoneIds: [OID!]!
+}
+
+# text-lists
+
+input AddTextItemInput {
+  slideId: OID!
+  id: OID!
+  listField: TextListField!
+  text: String!
+  position: Int
+}
+
+input UpdateTextItemInput {
+  slideId: OID!
+  id: OID!
+  listField: TextListField!
+  text: String!
+}
+
+input DeleteTextItemInput {
+  slideId: OID!
+  id: OID!
+  listField: TextListField!
+}
+
+input ReorderTextItemsInput {
+  slideId: OID!
+  listField: TextListField!
+  itemIds: [OID!]!
+}
+
+input SetColumnTitleInput {
+  slideId: OID!
+  columnIndex: Int!
+  title: String!
+}
+
+input AddColumnBulletInput {
+  slideId: OID!
+  columnIndex: Int!
+  id: OID!
+  text: String!
+  position: Int
+}
+
+input UpdateColumnBulletInput {
+  slideId: OID!
+  columnIndex: Int!
+  id: OID!
+  text: String!
+}
+
+input DeleteColumnBulletInput {
+  slideId: OID!
+  columnIndex: Int!
+  id: OID!
+}
+
+input ReorderColumnBulletsInput {
+  slideId: OID!
+  columnIndex: Int!
+  bulletIds: [OID!]!
+}
+
+input AddChecklistItemInput {
+  slideId: OID!
+  id: OID!
+  text: String!
+  checked: Boolean
+}
+
+input UpdateChecklistItemInput {
+  slideId: OID!
+  id: OID!
+  text: String
+  checked: Boolean
+}
+
+input DeleteChecklistItemInput {
+  slideId: OID!
+  id: OID!
+}
+
+input ReorderChecklistItemsInput {
+  slideId: OID!
+  itemIds: [OID!]!
+}
+
+input AddIconListItemInput {
+  slideId: OID!
+  id: OID!
+  title: String!
+  description: String
+}
+
+input UpdateIconListItemInput {
+  slideId: OID!
+  id: OID!
+  title: String
+  description: String
+}
+
+input DeleteIconListItemInput {
+  slideId: OID!
+  id: OID!
+}
+
+input ReorderIconListItemsInput {
+  slideId: OID!
+  itemIds: [OID!]!
+}
+
+input AddHighlightInput {
+  slideId: OID!
+  id: OID!
+  value: String!
+  label: String!
+  sublabel: String
+}
+
+input UpdateHighlightInput {
+  slideId: OID!
+  id: OID!
+  value: String
+  label: String
+  sublabel: String
+}
+
+input DeleteHighlightInput {
+  slideId: OID!
+  id: OID!
+}
+
+input ReorderHighlightsInput {
+  slideId: OID!
+  highlightIds: [OID!]!
+}

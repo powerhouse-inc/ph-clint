@@ -1,0 +1,600 @@
+@import "tailwindcss";
+@import "@powerhousedao/design-system/theme.css";
+@import "@svar-ui/react-grid/all.css";
+
+@theme {
+  /* You can customize the theme by overriding the theme variables here */
+  /* See https://tailwindcss.com/docs/theme#using-a-custom-theme for details */
+
+  /* If you would prefer to use plain css, add your styles below this @theme tag as you normally would */
+
+  /* A sensible CSS reset is applied by default. If you would prefer to use a different reset or none at all, uncomment the following line */
+
+  /* --*: initial; */
+}
+
+/* Markdown chat message styling - Agent messages (blue background) */
+.markdown-chat-message {
+  color: white !important;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.markdown-chat-message p {
+  margin-bottom: 0.75rem;
+  color: white !important;
+}
+
+.markdown-chat-message p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-chat-message strong {
+  color: white !important;
+  font-weight: 600;
+}
+
+.markdown-chat-message em {
+  color: white !important;
+  font-style: italic;
+}
+
+.markdown-chat-message a {
+  color: #93c5fd; /* blue-200 */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-chat-message a:hover {
+  color: #dbeafe; /* blue-100 */
+}
+
+.markdown-chat-message code {
+  background-color: rgba(30, 58, 138, 0.5); /* blue-800/50 */
+  color: #dbeafe; /* blue-100 */
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.markdown-chat-message pre {
+  background-color: rgba(30, 58, 138, 0.3);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.markdown-chat-message pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-chat-message ul,
+.markdown-chat-message ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+  list-style: revert;
+}
+
+.markdown-chat-message ul {
+  list-style-type: disc;
+}
+
+.markdown-chat-message ol {
+  list-style-type: decimal;
+}
+
+.markdown-chat-message li {
+  margin-bottom: 0.25rem;
+  display: list-item;
+}
+
+.markdown-chat-message ul ul {
+  list-style-type: circle;
+}
+
+.markdown-chat-message ul ul ul {
+  list-style-type: square;
+}
+
+.markdown-chat-message blockquote {
+  border-left: 3px solid rgba(147, 197, 253, 0.5);
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.markdown-chat-message h1,
+.markdown-chat-message h2,
+.markdown-chat-message h3,
+.markdown-chat-message h4 {
+  color: white !important;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-chat-message h1 { font-size: 1.5rem; }
+.markdown-chat-message h2 { font-size: 1.25rem; }
+.markdown-chat-message h3 { font-size: 1.125rem; }
+.markdown-chat-message h4 { font-size: 1rem; }
+
+/* Stakeholder message markdown styling */
+.markdown-chat-message.stakeholder {
+  color: #111827 !important; /* gray-900 */
+}
+
+.markdown-chat-message.stakeholder p {
+  color: #111827 !important;
+}
+
+.markdown-chat-message.stakeholder strong {
+  color: #111827 !important;
+}
+
+.markdown-chat-message.stakeholder em {
+  color: #111827 !important;
+}
+
+.markdown-chat-message.stakeholder a {
+  color: #2563eb; /* blue-600 */
+}
+
+.markdown-chat-message.stakeholder a:hover {
+  color: #1d4ed8; /* blue-700 */
+}
+
+.markdown-chat-message.stakeholder code {
+  background-color: #f3f4f6; /* gray-100 */
+  color: #1f2937; /* gray-800 */
+}
+
+.markdown-chat-message.stakeholder pre {
+  background-color: #f9fafb; /* gray-50 */
+  border: 1px solid #e5e7eb; /* gray-300 */
+}
+
+.markdown-chat-message.stakeholder blockquote {
+  border-left-color: #9ca3af; /* gray-400 */
+  color: #4b5563; /* gray-600 */
+}
+
+.markdown-chat-message.stakeholder h1,
+.markdown-chat-message.stakeholder h2,
+.markdown-chat-message.stakeholder h3,
+.markdown-chat-message.stakeholder h4 {
+  color: #111827 !important; /* gray-900 */
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* WBS Notes markdown styling */
+.markdown-note {
+  color: #374151; /* gray-700 */
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.markdown-note p {
+  margin-bottom: 0.75rem;
+  color: #374151;
+}
+
+.markdown-note p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-note strong {
+  color: #1f2937; /* gray-800 */
+  font-weight: 600;
+}
+
+.markdown-note em {
+  color: #374151;
+  font-style: italic;
+}
+
+.markdown-note a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.markdown-note a:hover {
+  color: #1d4ed8; /* blue-700 */
+}
+
+.markdown-note code {
+  background-color: #f3f4f6; /* gray-100 */
+  color: #1f2937; /* gray-800 */
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-family: monospace;
+}
+
+.markdown-note pre {
+  background-color: #f9fafb; /* gray-50 */
+  border: 1px solid #e5e7eb; /* gray-300 */
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.markdown-note pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-note ul,
+.markdown-note ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+  list-style: revert;
+}
+
+.markdown-note ul {
+  list-style-type: disc;
+}
+
+.markdown-note ol {
+  list-style-type: decimal;
+}
+
+.markdown-note li {
+  margin-bottom: 0.25rem;
+  display: list-item;
+}
+
+.markdown-note ul ul {
+  list-style-type: circle;
+}
+
+.markdown-note ul ul ul {
+  list-style-type: square;
+}
+
+.markdown-note blockquote {
+  border-left: 3px solid #d1d5db; /* gray-300 */
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: #6b7280; /* gray-500 */
+  font-style: italic;
+}
+
+.markdown-note h1,
+.markdown-note h2,
+.markdown-note h3,
+.markdown-note h4 {
+  color: #111827; /* gray-900 */
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-note h1 { font-size: 1.5rem; }
+.markdown-note h2 { font-size: 1.25rem; }
+.markdown-note h3 { font-size: 1.125rem; }
+.markdown-note h4 { font-size: 1rem; }
+
+/* ===== Achra Presentation Editor ===== */
+
+.achra-editor {
+  position: absolute;
+  inset: 0;
+
+  --primary: #7A3AFF;
+  --primary-foreground: #F3F5F7;
+  --primary-30: rgba(122, 58, 255, 0.3);
+  --secondary: #F4F4F4;
+  --secondary-foreground: #343839;
+  --accent: #F3F5F7;
+  --accent-foreground: #000000;
+  --background: #FCFCFC;
+  --foreground: #343839;
+  --foreground-70: rgba(52, 56, 57, 0.5);
+  --foreground-50: rgba(52, 56, 57, 0.3);
+  --card: #FCFCFC;
+  --card-foreground: #343839;
+  --card-foreground-50: rgba(52, 56, 57, 0.5);
+  --muted: #EFEFEF;
+  --muted-foreground: #9EA0A1;
+  --destructive: #EA4335;
+  --destructive-foreground: #FCFCFC;
+  --destructive-30: rgba(234, 67, 53, 0.3);
+  --border: #D7D8D9;
+  --input: #FFFFFF;
+  --ring: #343839;
+  --progress: #329DFF;
+  --progress-30: rgba(50, 157, 255, 0.3);
+  --success: #4FC86F;
+  --success-30: rgba(79, 200, 111, 0.3);
+  --todo: #FFA132;
+  --todo-30: rgba(255, 161, 50, 0.3);
+  --yellow: #FAC400;
+  --yellow-30: rgba(250, 196, 0, 0.3);
+  --purple: #8E55EA;
+  --purple-30: rgba(142, 85, 234, 0.3);
+
+  font-family: 'Inter', sans-serif;
+}
+
+.achra-slide {
+  width: 960px;
+  height: 540px;
+  position: relative;
+  background: var(--background);
+  color: var(--foreground);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.achra-slide * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.achra-slide .slide-pad {
+  display: flex;
+  flex-direction: column;
+  padding: 36px 40px;
+  height: 100%;
+  gap: 12px;
+}
+
+.achra-slide .slide-split {
+  display: flex;
+  height: 100%;
+}
+
+.achra-slide .slide-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 32px;
+  gap: 8px;
+}
+
+.achra-slide .slide-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+.achra-slide .primary-bg {
+  background: var(--primary);
+  color: #FCFCFC;
+}
+
+.achra-slide .accent-surface {
+  background: var(--accent);
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+.achra-slide .card-surface {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.achra-slide .divider-bar {
+  width: 40px;
+  height: 4px;
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+.achra-slide .icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.achra-slide .bullet-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.achra-slide .bullet-list li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--foreground-70);
+}
+
+.achra-slide .bullet-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.achra-slide .img-placeholder {
+  background: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  flex: 1;
+}
+
+.achra-slide .num-list {
+  list-style: none;
+  counter-reset: steps;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.achra-slide .num-list li {
+  counter-increment: steps;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--foreground-70);
+}
+
+.achra-slide .num-list li::before {
+  content: counter(steps);
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-30);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.achra-slide .code-block {
+  background: #1E222B;
+  color: #E4E7EB;
+  border-radius: 10px;
+  padding: 20px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.achra-slide .slide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.achra-slide .slide-table th {
+  text-align: left;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted-foreground);
+}
+
+.achra-slide .slide-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 500;
+}
+
+.achra-slide .avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.achra-slide .tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Editable text styling */
+.achra-slide [contenteditable] {
+  outline: none;
+  border-radius: 2px;
+  transition: box-shadow 0.15s;
+  cursor: text;
+  min-width: 20px;
+}
+
+.achra-slide [contenteditable]:hover {
+  box-shadow: 0 0 0 1px rgba(122, 58, 255, 0.3);
+}
+
+.achra-slide [contenteditable]:focus {
+  box-shadow: 0 0 0 2px rgba(122, 58, 255, 0.5);
+}
+
+.achra-slide [contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+  font-style: italic;
+  opacity: 0.6;
+}
+
+/* List item controls */
+.achra-slide .list-item-wrapper {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.achra-slide .list-item-wrapper .item-delete {
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+  color: var(--destructive);
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 2px;
+}
+
+.achra-slide .list-item-wrapper:hover .item-delete {
+  opacity: 0.6;
+}
+
+.achra-slide .list-item-wrapper .item-delete:hover {
+  opacity: 1;
+}
+
+.achra-slide .add-item-btn {
+  border: 1px dashed var(--border);
+  background: none;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.achra-slide .add-item-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}

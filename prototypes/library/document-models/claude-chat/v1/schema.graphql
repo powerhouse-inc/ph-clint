@@ -1,0 +1,75 @@
+scalar Unknown
+scalar DateTime
+scalar Attachment
+scalar Address
+scalar Amount_Tokens
+scalar EthereumAddress
+scalar EmailAddress
+scalar Amount_Percentage
+scalar Date
+scalar URL
+scalar Amount_Money
+scalar OLabel
+scalar Currency
+scalar PHID
+scalar OID
+scalar Amount_Fiat
+scalar Amount_Currency
+scalar Amount_Crypto
+scalar Amount
+scalar Upload
+
+type ClaudeChatState {
+  username: String!
+  agents: [Agent!]!
+  messages: [Message!]!
+  selectedAgent: OID
+}
+
+type Message {
+  id: OID!
+  "Agent ID or null in case of the user"
+  agent: OID
+  content: String!
+}
+
+type Agent {
+  id: OID!
+  name: String!
+  apiKey: String!
+  model: String!
+  initialPrompt: String
+}
+
+# agents
+
+input AddAgentInput {
+  id: OID!
+  name: String!
+  apiKey: String!
+  model: String!
+  initialPrompt: String
+}
+
+# messages
+
+input AddUserMessageInput {
+  id: OID!
+  content: String!
+}
+
+input AddAgentMessageInput {
+  id: OID!
+  agent: OID!
+  content: String!
+}
+
+# user
+
+input SetUsernameInput {
+  username: String!
+}
+
+input SetSelectedAgentInput {
+  agentId: OID
+}

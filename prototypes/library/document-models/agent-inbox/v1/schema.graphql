@@ -1,0 +1,323 @@
+scalar Unknown
+scalar DateTime
+scalar Attachment
+scalar Address
+scalar Amount_Tokens
+scalar EthereumAddress
+scalar EmailAddress
+scalar Amount_Percentage
+scalar Date
+scalar URL
+scalar Amount_Money
+scalar OLabel
+scalar Currency
+scalar PHID
+scalar OID
+scalar Amount_Fiat
+scalar Amount_Currency
+scalar Amount_Crypto
+scalar Amount
+scalar Upload
+
+"""Root state for the Agent Inbox document model.
+Manages communication between a single agent and multiple stakeholders through threaded conversations."""
+type AgentInboxState {
+  """The agent who owns and manages this inbox.
+  Contains profile information and contact details for the agent."""
+  agent: AgentInfo!
+  
+  """List of authorized stakeholders who can communicate with the agent.
+  Stakeholders must be added before they can create threads."""
+  stakeholders: [Stakeholder!]!
+  
+  """Active and archived conversation threads between the agent and stakeholders.
+  Each thread represents a distinct conversation topic with one stakeholder."""
+  threads: [MessageThread!]!
+}
+
+"""Profile information for the agent who owns this inbox.
+Contains identity, role, and contact information."""
+type AgentInfo {
+  """Display name of the agent for identification in conversations"""
+  name: String
+  
+  """Ethereum wallet address for on-chain identity verification and transactions"""
+  ethAddress: String
+  
+  """Professional role or title describing the agent's responsibilities"""
+  role: String
+  
+  """Detailed description of the agent's expertise, services, or background"""
+  description: String
+  
+  """URL to the agent's profile picture or avatar image"""
+  avatar: URL
+}
+
+"""Represents a conversation thread between the agent and a specific stakeholder.
+Threads organize messages by topic and track resolution status."""
+type MessageThread {
+  """Unique identifier for this conversation thread"""
+  id: OID!
+  
+  """Optional topic or subject line describing the thread's purpose"""
+  topic: String
+  
+  """ID reference to the stakeholder participating in this conversation"""
+  stakeholder: OID!
+  
+  """Current workflow status of the thread (open, resolved, archived)"""
+  status: ThreadStatus!
+  
+  """Chronological list of messages exchanged in this thread"""
+  messages: [ChatMessage!]!
+}
+
+"""Individual message within a conversation thread.
+Tracks content, timing, direction, and read status."""
+type ChatMessage {
+  """Unique identifier for this message"""
+  id: OID!
+  
+  """Direction of message flow (Incoming from stakeholder, Outgoing from agent)"""
+  flow: Flow!
+  
+  """Timestamp when the message was sent"""
+  when: DateTime!
+  
+  """The actual text content of the message"""
+  content: String!
+  
+  """Whether the recipient has marked this message as read"""
+  read: Boolean!
+}
+
+"""Workflow states for conversation threads.
+Tracks progression from open discussion to resolution and archival."""
+enum ThreadStatus {
+  """Thread is active and accepting new messages"""
+  Open
+  
+  """Agent has proposed marking the thread as resolved, awaiting stakeholder confirmation"""
+  ProposedResolvedByAgent
+  
+  """Stakeholder has proposed marking the thread as resolved, awaiting agent confirmation"""
+  ProposedResolvedByStakeholder
+  
+  """Both parties have agreed the thread is resolved"""
+  ConfirmedResolved
+  
+  """Thread has been archived and removed from active view"""
+  Archived
+}
+
+"""Direction of message flow within a thread.
+Determines sender and recipient roles."""
+enum Flow {
+  """Message sent from stakeholder to agent"""
+  Incoming
+  
+  """Message sent from agent to stakeholder"""
+  Outgoing
+}
+
+"""Authorized participant who can communicate with the agent.
+Contains identity information and removal status."""
+type Stakeholder {
+  """Unique identifier for this stakeholder"""
+  id: OID!
+  
+  """Display name of the stakeholder for identification"""
+  name: String!
+  
+  """Optional Ethereum wallet address for identity verification"""
+  ethAddress: String
+  
+  """URL to the stakeholder's profile picture or avatar"""
+  avatar: URL
+  
+  """Soft deletion flag - true if stakeholder access has been revoked"""
+  removed: Boolean!
+}
+
+"""Identifies which party is performing an action in the workflow.
+Used for tracking who initiated status changes."""
+enum ParticipantRole {
+  """Action performed by the agent"""
+  Agent
+  
+  """Action performed by a stakeholder"""
+  Stakeholder
+}
+
+# agent
+
+input SetAgentNameInput {
+  """The display name to identify the agent in conversations"""
+  name: String!
+}
+
+input SetAgentAddressInput {
+  """Ethereum wallet address for on-chain identity. Null value clears the address"""
+  ethAddress: String
+}
+
+input SetAgentRoleInput {
+  """Professional role or title. Null value clears the role"""
+  role: String
+}
+
+input SetAgentDescriptionInput {
+  """Detailed description of services and expertise. Null value clears the description"""
+  description: String
+}
+
+input SetAgentAvatarInput {
+  """URL to profile picture or avatar. Null value clears the avatar"""
+  avatar: URL
+}
+
+# stakeholders
+
+input AddStakeholderInput {
+  """Unique identifier for the stakeholder"""
+  id: OID!
+  """Display name for the stakeholder"""
+  name: String!
+  """Optional Ethereum wallet address for identity verification"""
+  ethAddress: String
+  """Optional URL to profile picture or avatar"""
+  avatar: URL
+}
+
+input RemoveStakeholderInput {
+  """ID of the stakeholder to remove"""
+  id: OID!
+}
+
+input SetStakeholderNameInput {
+  """ID of the stakeholder to update"""
+  id: OID!
+  """New display name for the stakeholder"""
+  name: String!
+}
+
+input SetStakeholderAddressInput {
+  """ID of the stakeholder to update"""
+  id: OID!
+  """New Ethereum address. Null value clears the address"""
+  ethAddress: String
+}
+
+input SetStakeholderAvatarInput {
+  id: OID!
+  "Null value clears the avatar"
+  avatar: URL
+}
+
+input MoveStakeholderInput {
+  """ID of the stakeholder to move"""
+  id: OID!
+  """ID of stakeholder to insert before. Omit to move to end of list"""
+  insertBefore: OID
+}
+
+# threads
+
+input CreateThreadInput {
+  """Unique identifier for the new thread"""
+  id: OID!
+  """ID of the stakeholder initiating the conversation"""
+  stakeholder: OID!
+  """Optional subject line or topic for the thread"""
+  topic: String
+  """The first message to start the conversation"""
+  initialMessage: InitialMessageInput!
+}
+
+input InitialMessageInput {
+  """Unique identifier for the message"""
+  id: OID!
+  """Direction of message (Incoming from stakeholder, Outgoing from agent)"""
+  flow: Flow!
+  """Timestamp when the message was sent"""
+  when: DateTime!
+  """The message text content"""
+  content: String!
+}
+
+input SendAgentMessageInput {
+  """ID of the thread to send the message to"""
+  threadId: OID!
+  """Unique identifier for the new message"""
+  messageId: OID!
+  """Timestamp when the message is being sent"""
+  when: DateTime!
+  """The message text content"""
+  content: String!
+}
+
+input SetThreadTopicInput {
+  """ID of the thread to update"""
+  id: OID!
+  """New topic or subject line. Null value clears the topic"""
+  topic: String
+}
+
+input EditMessageContentInput {
+  """ID of the message to edit"""
+  id: OID!
+  """Updated message text content"""
+  newContent: String!
+}
+
+input MarkMessageReadInput {
+  """ID of the message to mark as read"""
+  id: OID!
+}
+
+input MarkMessageUnreadInput {
+  """ID of the message to mark as unread"""
+  id: OID!
+}
+
+input SendStakeholderMessageInput {
+  """ID of the thread to send the message to"""
+  threadId: OID!
+  """Unique identifier for the new message"""
+  messageId: OID!
+  """Timestamp when the message is being sent"""
+  when: DateTime!
+  """The message text content"""
+  content: String!
+}
+
+# workflow
+
+input ProposeThreadResolvedInput {
+  """ID of the thread to propose for resolution"""
+  threadId: OID!
+  """Which party is proposing the resolution (Agent or Stakeholder)"""
+  proposedBy: ParticipantRole!
+}
+
+input ConfirmThreadResolvedInput {
+  """ID of the thread to confirm as resolved"""
+  threadId: OID!
+  """Which party is confirming the resolution (Agent or Stakeholder)"""
+  confirmedBy: ParticipantRole!
+}
+
+input ArchiveThreadInput {
+  """ID of the thread to archive"""
+  threadId: OID!
+  """Which party is archiving the thread (Agent or Stakeholder)"""
+  archivedBy: ParticipantRole!
+}
+
+input ReopenThreadInput {
+  """ID of the thread to reopen"""
+  threadId: OID!
+  """Which party is reopening the thread (Agent or Stakeholder)"""
+  reopenedBy: ParticipantRole!
+}

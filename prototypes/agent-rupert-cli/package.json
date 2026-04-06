@@ -1,0 +1,62 @@
+{
+  "name": "@powerhousedao/agent-rupert",
+  "version": "1.0.0",
+  "description": "CLI for agent-rupert",
+  "type": "module",
+  "main": "index.js",
+  "packageManager": "pnpm@10.26.0",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "bin": {
+    "rupert": "./dist/cli.js",
+    "rupert-mcp": "./dist/mcp/stdio.js"
+  },
+  "scripts": {
+    "build:skills": "tsx scripts/build-skills.ts",
+    "build": "pnpm build:skills && tsc",
+    "build:mcp": "tsup src/mastra/stdio.ts --format esm --no-splitting --outDir dist/mcp && printf '#!/usr/bin/env node\\n' | cat - dist/mcp/stdio.js > dist/mcp/stdio.tmp && mv dist/mcp/stdio.tmp dist/mcp/stdio.js && chmod +x dist/mcp/stdio.js",
+    "dev": "tsx --env-file=.env src/cli.ts",
+    "dev:mcp": "tsx --env-file=.env src/mastra/server.ts",
+    "dev:mcp:https": "tsx --env-file=.env src/mastra/server.ts --https",
+    "dev:mcp:stdio": "tsx --env-file=.env src/mastra/stdio.ts",
+    "start": "node --env-file=.env dist/cli.js",
+    "start:mcp": "node --env-file=.env dist/mastra/server.js",
+    "start:mcp:https": "node --env-file=.env dist/mastra/server.js --https",
+    "start:mcp:stdio": "node --env-file=.env dist/mcp/stdio.js",
+    "mastra:dev": "mastra dev --env .env",
+    "mastra:build": "mastra build",
+    "mastra:start": "mastra start --env .env"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.22.0",
+    "@mastra/duckdb": "^1.1.1",
+    "@mastra/evals": "^1.2.0",
+    "@mastra/libsql": "^1.7.4",
+    "@mastra/loggers": "^1.1.0",
+    "@mastra/mcp": "^1.4.1",
+    "@mastra/memory": "^1.13.1",
+    "@mastra/observability": "^1.7.2",
+    "commander": "^12.1.0",
+    "ink": "^6.8.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "marked": "^12.0.2",
+    "marked-terminal": "^7.3.0",
+    "react": "^19.2.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "@types/react": "^19.2.14",
+    "handlebars": "^4.7.9",
+    "mastra": "^1.3.20",
+    "tsup": "^8.5.1",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.2"
+  }
+}

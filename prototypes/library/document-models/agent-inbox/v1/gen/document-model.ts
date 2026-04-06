@@ -1,0 +1,520 @@
+import type { DocumentModelGlobalState } from "document-model";
+
+export const documentModel: DocumentModelGlobalState = {
+  author: {
+    name: "Prometheus",
+    website: "https://www.powerhouse.inc",
+  },
+  description:
+    "The Agent Inbox document model captures the communication between Powerhouse Agents and their stakeholders. Stakeholders talk to the Agents by creating a conversation in the inbox which the agent then evaluates and applies to their work breakdown structure. The agent can also use the inbox to request feedback on a goal or provide status updates to the stakeholders.",
+  extension: ".aib",
+  id: "powerhouse/agent-inbox",
+  name: "Agent Inbox",
+  specifications: [
+    {
+      changeLog: [],
+      modules: [
+        {
+          description: "",
+          id: "f741ae3f-e4e1-4e2b-841c-c3295e1bae60",
+          name: "agent",
+          operations: [
+            {
+              description:
+                "Sets or updates the agent's display name used to identify them in all conversations and interactions",
+              errors: [],
+              examples: [],
+              id: "8ef00a97-8a33-4699-b877-8a29bd975597",
+              name: "SET_AGENT_NAME",
+              reducer: "state.agent.name = action.input.name;",
+              schema:
+                'input SetAgentNameInput {\n  """The display name to identify the agent in conversations"""\n  name: String!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sets or clears the agent's Ethereum wallet address for on-chain identity verification and potential smart contract interactions",
+              errors: [],
+              examples: [],
+              id: "1e695234-91c4-4fb0-9c33-7336a0638be9",
+              name: "SET_AGENT_ADDRESS",
+              reducer:
+                "state.agent.ethAddress = action.input.ethAddress || null;",
+              schema:
+                'input SetAgentAddressInput {\n  """Ethereum wallet address for on-chain identity. Null value clears the address"""\n  ethAddress: String\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sets or clears the agent's professional role or title to help stakeholders understand their responsibilities and expertise",
+              errors: [],
+              examples: [],
+              id: "c47eafcc-78b1-4190-bf12-50a9c4fa0bc9",
+              name: "SET_AGENT_ROLE",
+              reducer: "state.agent.role = action.input.role || null;",
+              schema:
+                'input SetAgentRoleInput {\n  """Professional role or title. Null value clears the role"""\n  role: String\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sets or clears a detailed description of the agent's services, expertise, background, or any relevant information for stakeholders",
+              errors: [],
+              examples: [],
+              id: "7e912ee7-5266-4acf-b83c-5a9e4aa211c5",
+              name: "SET_AGENT_DESCRIPTION",
+              reducer:
+                "state.agent.description = action.input.description || null;",
+              schema:
+                'input SetAgentDescriptionInput {\n  """Detailed description of services and expertise. Null value clears the description"""\n  description: String\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sets or clears the URL to the agent's profile picture or avatar image for visual identification in the interface",
+              errors: [],
+              examples: [],
+              id: "1bb2d4c5-a943-4733-9d7c-6b854f615762",
+              name: "SET_AGENT_AVATAR",
+              reducer: "state.agent.avatar = action.input.avatar || null;",
+              schema:
+                'input SetAgentAvatarInput {\n  """URL to profile picture or avatar. Null value clears the avatar"""\n  avatar: URL\n}',
+              scope: "global",
+              template: "",
+            },
+          ],
+        },
+        {
+          description: "",
+          id: "6f22695c-9703-4aab-8c8e-ebd259ac29f3",
+          name: "stakeholders",
+          operations: [
+            {
+              description:
+                "Adds a new stakeholder to the inbox, granting them permission to create threads and communicate with the agent",
+              errors: [
+                {
+                  code: "DUPLICATE_STAKEHOLDER",
+                  description: "A stakeholder with the same ID already exists",
+                  id: "duplicate-stakeholder",
+                  name: "DuplicateStakeholderError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "2889c626-aaa3-4433-9378-535f9b28e1de",
+              name: "ADD_STAKEHOLDER",
+              reducer:
+                "// Check if stakeholder with same ID already exists\nconst existing = state.stakeholders.find(s => s.id === action.input.id);\nif (existing) {\n    throw new DuplicateStakeholderError(`Stakeholder with ID ${action.input.id} already exists`);\n}\n\nconst newStakeholder = {\n    id: action.input.id,\n    name: action.input.name,\n    ethAddress: action.input.ethAddress || null,\n    avatar: action.input.avatar || null,\n    removed: false\n};\n\nstate.stakeholders.push(newStakeholder);",
+              schema:
+                'input AddStakeholderInput {\n  """Unique identifier for the stakeholder"""\n  id: OID!\n  """Display name for the stakeholder"""\n  name: String!\n  """Optional Ethereum wallet address for identity verification"""\n  ethAddress: String\n  """Optional URL to profile picture or avatar"""\n  avatar: URL\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Soft deletes a stakeholder by setting the removed flag to true, preserving their message history while revoking access",
+              errors: [
+                {
+                  code: "STAKEHOLDER_NOT_FOUND",
+                  description: "The specified stakeholder does not exist",
+                  id: "stakeholder-not-found-1",
+                  name: "StakeholderNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "7dee272a-f19e-4bfb-90e6-9efe5edf1414",
+              name: "REMOVE_STAKEHOLDER",
+              reducer:
+                'const stakeholder = state.stakeholders.find(s => s.id === action.input.id);\nif (!stakeholder) {\n    throw new StakeholderNotFoundError(`Stakeholder with ID ${action.input.id} not found`);\n}\n\n// Soft delete - set removed flag to true\nstakeholder.removed = true;\n\n// Archive all threads associated with this stakeholder\nconst stakeholderThreads = state.threads.filter(t => t.stakeholder === action.input.id);\n\nstakeholderThreads.forEach(thread => {\n    thread.status = "Archived";\n});',
+              schema:
+                'input RemoveStakeholderInput {\n  """ID of the stakeholder to remove"""\n  id: OID!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Updates the display name of an existing stakeholder for better identification in conversations",
+              errors: [
+                {
+                  code: "STAKEHOLDER_NOT_FOUND",
+                  description: "The specified stakeholder does not exist",
+                  id: "stakeholder-not-found-2",
+                  name: "StakeholderNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "5e77d73d-9541-446c-9e52-45088765ccc8",
+              name: "SET_STAKEHOLDER_NAME",
+              reducer:
+                "const stakeholder = state.stakeholders.find(s => s.id === action.input.id);\nif (!stakeholder) {\n    throw new StakeholderNotFoundError(`Stakeholder with ID ${action.input.id} not found`);\n}\n\nstakeholder.name = action.input.name;",
+              schema:
+                'input SetStakeholderNameInput {\n  """ID of the stakeholder to update"""\n  id: OID!\n  """New display name for the stakeholder"""\n  name: String!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sets or clears the Ethereum wallet address of a stakeholder for identity verification and potential on-chain interactions",
+              errors: [
+                {
+                  code: "STAKEHOLDER_NOT_FOUND",
+                  description: "The specified stakeholder does not exist",
+                  id: "stakeholder-not-found-3",
+                  name: "StakeholderNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "5ccb7bb6-7abd-4837-b7d8-2ad37d93d97f",
+              name: "SET_STAKEHOLDER_ADDRESS",
+              reducer:
+                "const stakeholder = state.stakeholders.find(s => s.id === action.input.id);\nif (!stakeholder) {\n    throw new StakeholderNotFoundError(`Stakeholder with ID ${action.input.id} not found`);\n}\n\nstakeholder.ethAddress = action.input.ethAddress || null;",
+              schema:
+                'input SetStakeholderAddressInput {\n  """ID of the stakeholder to update"""\n  id: OID!\n  """New Ethereum address. Null value clears the address"""\n  ethAddress: String\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sets or clears the URL to a stakeholder's profile picture or avatar for visual identification in the interface",
+              errors: [
+                {
+                  code: "STAKEHOLDER_NOT_FOUND",
+                  description: "The specified stakeholder does not exist",
+                  id: "stakeholder-not-found-4",
+                  name: "StakeholderNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "95f4afa6-ce98-471b-a23a-9034f44438a2",
+              name: "SET_STAKEHOLDER_AVATAR",
+              reducer:
+                "const stakeholder = state.stakeholders.find(s => s.id === action.input.id);\nif (!stakeholder) {\n    throw new StakeholderNotFoundError(`Stakeholder with ID ${action.input.id} not found`);\n}\n\nstakeholder.avatar = action.input.avatar || null;",
+              schema:
+                'input SetStakeholderAvatarInput {\n  id: OID!\n  "Null value clears the avatar"\n  avatar: URL\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Reorders the stakeholder list by moving a stakeholder to a new position, useful for priority or organizational display",
+              errors: [
+                {
+                  code: "STAKEHOLDER_NOT_FOUND",
+                  description: "The specified stakeholder does not exist",
+                  id: "stakeholder-not-found-5",
+                  name: "StakeholderNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "62653ed4-b374-4041-9d1b-c5b7aeebb18a",
+              name: "MOVE_STAKEHOLDER",
+              reducer:
+                "const stakeholderIndex = state.stakeholders.findIndex(s => s.id === action.input.id);\nif (stakeholderIndex === -1) {\n    throw new StakeholderNotFoundError(`Stakeholder with ID ${action.input.id} not found`);\n}\n\n// Remove stakeholder from current position\nconst [stakeholder] = state.stakeholders.splice(stakeholderIndex, 1);\n\nif (!action.input.insertBefore) {\n    // Move to end if no insertBefore specified\n    state.stakeholders.push(stakeholder);\n} else {\n    // Find position of stakeholder to insert before\n    const insertIndex = state.stakeholders.findIndex(s => s.id === action.input.insertBefore);\n    if (insertIndex === -1) {\n        // If insertBefore stakeholder not found, add to end\n        state.stakeholders.push(stakeholder);\n    } else {\n        // Insert at the specified position\n        state.stakeholders.splice(insertIndex, 0, stakeholder);\n    }\n}",
+              schema:
+                'input MoveStakeholderInput {\n  """ID of the stakeholder to move"""\n  id: OID!\n  """ID of stakeholder to insert before. Omit to move to end of list"""\n  insertBefore: OID\n}',
+              scope: "global",
+              template: "",
+            },
+          ],
+        },
+        {
+          description: "",
+          id: "9dbbeb93-e8df-4f81-abbb-bb68e769faf7",
+          name: "threads",
+          operations: [
+            {
+              description:
+                "Creates a new conversation thread between the agent and a stakeholder with an initial message and optional topic",
+              errors: [
+                {
+                  code: "STAKEHOLDER_NOT_FOUND",
+                  description: "The specified stakeholder does not exist",
+                  id: "stakeholder-not-found-6",
+                  name: "StakeholderNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "0e6f91fe-c125-4194-a94c-5bca1efc893e",
+              name: "CREATE_THREAD",
+              reducer:
+                '// Check if stakeholder exists\nconst stakeholder = state.stakeholders.find(s => s.id === action.input.stakeholder);\nif (!stakeholder) {\n    throw new StakeholderNotFoundError(`Stakeholder with ID ${action.input.stakeholder} not found`);\n}\n\nconst newThread = {\n    id: action.input.id,\n    topic: action.input.topic || null,\n    stakeholder: action.input.stakeholder,\n    status: "Open" as const,\n    messages: [{\n        id: action.input.initialMessage.id,\n        flow: action.input.initialMessage.flow,\n        when: action.input.initialMessage.when,\n        content: action.input.initialMessage.content,\n        read: false\n    }]\n};\n\nstate.threads.push(newThread);',
+              schema:
+                'input CreateThreadInput {\n  """Unique identifier for the new thread"""\n  id: OID!\n  """ID of the stakeholder initiating the conversation"""\n  stakeholder: OID!\n  """Optional subject line or topic for the thread"""\n  topic: String\n  """The first message to start the conversation"""\n  initialMessage: InitialMessageInput!\n}\n\ninput InitialMessageInput {\n  """Unique identifier for the message"""\n  id: OID!\n  """Direction of message (Incoming from stakeholder, Outgoing from agent)"""\n  flow: Flow!\n  """Timestamp when the message was sent"""\n  when: DateTime!\n  """The message text content"""\n  content: String!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sends an outgoing message from the agent to a stakeholder within an existing conversation thread",
+              errors: [
+                {
+                  code: "THREAD_NOT_FOUND",
+                  description: "The specified thread does not exist",
+                  id: "thread-not-found-1",
+                  name: "ThreadNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "573ddad1-bb1b-4fd1-afd6-a794c8b3eb62",
+              name: "SEND_AGENT_MESSAGE",
+              reducer:
+                'const thread = state.threads.find(t => t.id === action.input.threadId);\nif (!thread) {\n    throw new ThreadNotFoundError(`Thread with ID ${action.input.threadId} not found`);\n}\n\nconst newMessage = {\n    id: action.input.messageId,\n    flow: "Outgoing" as const,\n    when: action.input.when,\n    content: action.input.content,\n    read: false\n};\n\nthread.messages.push(newMessage);',
+              schema:
+                'input SendAgentMessageInput {\n  """ID of the thread to send the message to"""\n  threadId: OID!\n  """Unique identifier for the new message"""\n  messageId: OID!\n  """Timestamp when the message is being sent"""\n  when: DateTime!\n  """The message text content"""\n  content: String!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sets or clears the topic/subject line of a conversation thread to better organize and identify discussions",
+              errors: [
+                {
+                  code: "THREAD_NOT_FOUND",
+                  description: "The specified thread does not exist",
+                  id: "thread-not-found-2",
+                  name: "ThreadNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "6c1aaa85-b1f8-47f5-ab47-523e5c8f6a18",
+              name: "SET_THREAD_TOPIC",
+              reducer:
+                "const thread = state.threads.find(t => t.id === action.input.id);\nif (!thread) {\n    throw new ThreadNotFoundError(`Thread with ID ${action.input.id} not found`);\n}\n\nthread.topic = action.input.topic || null;",
+              schema:
+                'input SetThreadTopicInput {\n  """ID of the thread to update"""\n  id: OID!\n  """New topic or subject line. Null value clears the topic"""\n  topic: String\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Allows editing the content of an existing message while preserving its metadata and position in the conversation",
+              errors: [
+                {
+                  code: "MESSAGE_NOT_FOUND",
+                  description: "The specified message does not exist",
+                  id: "message-not-found-1",
+                  name: "MessageNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "46159b29-c5e3-45ba-a92c-dd66bc313e07",
+              name: "EDIT_MESSAGE_CONTENT",
+              reducer:
+                "// Find the message across all threads\nlet messageFound = false;\nfor (const thread of state.threads) {\n    const message = thread.messages.find(m => m.id === action.input.id);\n    if (message) {\n        message.content = action.input.newContent;\n        messageFound = true;\n        break;\n    }\n}\n\nif (!messageFound) {\n    throw new MessageNotFoundError(`Message with ID ${action.input.id} not found`);\n}",
+              schema:
+                'input EditMessageContentInput {\n  """ID of the message to edit"""\n  id: OID!\n  """Updated message text content"""\n  newContent: String!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Marks a message as read by its recipient, updating the read status to track which messages have been viewed",
+              errors: [
+                {
+                  code: "MESSAGE_NOT_FOUND",
+                  description: "The specified message does not exist",
+                  id: "message-not-found-2",
+                  name: "MessageNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "797f4369-219d-4147-808b-19ade3ae6691",
+              name: "MARK_MESSAGE_READ",
+              reducer:
+                "// Find the message across all threads\nlet messageFound = false;\nfor (const thread of state.threads) {\n    const message = thread.messages.find(m => m.id === action.input.id);\n    if (message) {\n        message.read = true;\n        messageFound = true;\n        break;\n    }\n}\n\nif (!messageFound) {\n    throw new MessageNotFoundError(`Message with ID ${action.input.id} not found`);\n}",
+              schema:
+                'input MarkMessageReadInput {\n  """ID of the message to mark as read"""\n  id: OID!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Marks a message as unread by its recipient, resetting the read status to indicate the message needs attention",
+              errors: [
+                {
+                  code: "MESSAGE_NOT_FOUND",
+                  description: "The specified message does not exist",
+                  id: "message-not-found-3",
+                  name: "MessageNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "4f98404c-0c55-4cef-b073-1020c215999e",
+              name: "MARK_MESSAGE_UNREAD",
+              reducer:
+                "// Find the message across all threads\nlet messageFound = false;\nfor (const thread of state.threads) {\n    const message = thread.messages.find(m => m.id === action.input.id);\n    if (message) {\n        message.read = false;\n        messageFound = true;\n        break;\n    }\n}\n\nif (!messageFound) {\n    throw new MessageNotFoundError(`Message with ID ${action.input.id} not found`);\n}",
+              schema:
+                'input MarkMessageUnreadInput {\n  """ID of the message to mark as unread"""\n  id: OID!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Sends an incoming message from a stakeholder to the agent within an existing conversation thread",
+              errors: [
+                {
+                  code: "THREAD_NOT_FOUND",
+                  description: "The specified thread does not exist",
+                  id: "thread-not-found-3",
+                  name: "ThreadNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "STAKEHOLDER_REMOVED",
+                  description:
+                    "The stakeholder has been removed and cannot send messages",
+                  id: "removed-stakeholder-error",
+                  name: "StakeholderRemovedError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "37b96297-dfaa-4904-a11c-f0b09671bef1",
+              name: "SEND_STAKEHOLDER_MESSAGE",
+              reducer:
+                'const thread = state.threads.find(t => t.id === action.input.threadId);\nif (!thread) {\n    throw new ThreadNotFoundError(`Thread with ID ${action.input.threadId} not found`);\n}\n\n// Check if the stakeholder associated with this thread is removed\nconst stakeholder = state.stakeholders.find(s => s.id === thread.stakeholder);\nif (!stakeholder) {\n    throw new StakeholderNotFoundError(`Stakeholder for thread ${action.input.threadId} not found`);\n}\n\nif (stakeholder.removed) {\n    throw new StakeholderRemovedError(`Stakeholder ${stakeholder.name} has been removed and cannot send messages`);\n}\n\nconst newMessage = {\n    id: action.input.messageId,\n    flow: "Incoming" as const,\n    when: action.input.when,\n    content: action.input.content,\n    read: false\n};\n\nthread.messages.push(newMessage);',
+              schema:
+                'input SendStakeholderMessageInput {\n  """ID of the thread to send the message to"""\n  threadId: OID!\n  """Unique identifier for the new message"""\n  messageId: OID!\n  """Timestamp when the message is being sent"""\n  when: DateTime!\n  """The message text content"""\n  content: String!\n}',
+              scope: "global",
+              template: "",
+            },
+          ],
+        },
+        {
+          description: "",
+          id: "09944d0a-9496-48b2-a802-9c10998b9edb",
+          name: "workflow",
+          operations: [
+            {
+              description:
+                "Initiates the resolution process by marking a thread as proposed resolved, requiring confirmation from the other party",
+              errors: [
+                {
+                  code: "THREAD_NOT_FOUND",
+                  description: "The specified thread does not exist",
+                  id: "thread-not-found-4",
+                  name: "ThreadNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "08508d4b-55cc-4743-a9ca-f0be422075ab",
+              name: "PROPOSE_THREAD_RESOLVED",
+              reducer:
+                'const thread = state.threads.find(t => t.id === action.input.threadId);\nif (!thread) {\n    throw new ThreadNotFoundError(`Thread with ID ${action.input.threadId} not found`);\n}\n\n// Set status based on who proposed\nif (action.input.proposedBy === "Agent") {\n    thread.status = "ProposedResolvedByAgent";\n} else {\n    thread.status = "ProposedResolvedByStakeholder";\n}',
+              schema:
+                'input ProposeThreadResolvedInput {\n  """ID of the thread to propose for resolution"""\n  threadId: OID!\n  """Which party is proposing the resolution (Agent or Stakeholder)"""\n  proposedBy: ParticipantRole!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Confirms a resolution proposal from the other party, marking the thread as fully resolved by mutual agreement",
+              errors: [
+                {
+                  code: "THREAD_NOT_FOUND",
+                  description: "The specified thread does not exist",
+                  id: "thread-not-found-5",
+                  name: "ThreadNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "INVALID_STATUS",
+                  description:
+                    "Thread must be in ProposedResolved status to confirm",
+                  id: "invalid-status-1",
+                  name: "InvalidStatusError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "f8f4fa05-c20c-4cb7-b5ba-639b14d90e13",
+              name: "CONFIRM_THREAD_RESOLVED",
+              reducer:
+                'const thread = state.threads.find(t => t.id === action.input.threadId);\nif (!thread) {\n    throw new ThreadNotFoundError(`Thread with ID ${action.input.threadId} not found`);\n}\n\n// Check if thread is in proposed resolved status\nconst validStatuses = ["ProposedResolvedByAgent", "ProposedResolvedByStakeholder"];\nif (!validStatuses.includes(thread.status)) {\n    throw new InvalidStatusError(`Thread must be in ProposedResolved status to confirm, current status: ${thread.status}`);\n}\n\n// Verify the confirmer is different from proposer\nconst isAgentConfirming = action.input.confirmedBy === "Agent";\nconst wasProposedByAgent = thread.status === "ProposedResolvedByAgent";\n\nif ((isAgentConfirming && wasProposedByAgent) || (!isAgentConfirming && !wasProposedByAgent)) {\n    // Same party confirming their own proposal - just accept it for simplicity\n}\n\nthread.status = "ConfirmedResolved";',
+              schema:
+                'input ConfirmThreadResolvedInput {\n  """ID of the thread to confirm as resolved"""\n  threadId: OID!\n  """Which party is confirming the resolution (Agent or Stakeholder)"""\n  confirmedBy: ParticipantRole!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Archives a resolved thread to remove it from active view while preserving the complete conversation history",
+              errors: [
+                {
+                  code: "THREAD_NOT_FOUND",
+                  description: "The specified thread does not exist",
+                  id: "thread-not-found-6",
+                  name: "ThreadNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "2bfdc343-1944-4778-a367-5fbf3b86e9c1",
+              name: "ARCHIVE_THREAD",
+              reducer:
+                'const thread = state.threads.find(t => t.id === action.input.threadId);\nif (!thread) {\n    throw new ThreadNotFoundError(`Thread with ID ${action.input.threadId} not found`);\n}\n\nthread.status = "Archived";',
+              schema:
+                'input ArchiveThreadInput {\n  """ID of the thread to archive"""\n  threadId: OID!\n  """Which party is archiving the thread (Agent or Stakeholder)"""\n  archivedBy: ParticipantRole!\n}',
+              scope: "global",
+              template: "",
+            },
+            {
+              description:
+                "Reopens an archived or resolved thread to resume the conversation, changing its status back to Open",
+              errors: [
+                {
+                  code: "THREAD_NOT_FOUND",
+                  description: "The specified thread does not exist",
+                  id: "thread-not-found-7",
+                  name: "ThreadNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "70b88eee-d13e-42d1-82d9-e72619e445c6",
+              name: "REOPEN_THREAD",
+              reducer:
+                'const thread = state.threads.find(t => t.id === action.input.threadId);\nif (!thread) {\n    throw new ThreadNotFoundError(`Thread with ID ${action.input.threadId} not found`);\n}\n\nthread.status = "Open";',
+              schema:
+                'input ReopenThreadInput {\n  """ID of the thread to reopen"""\n  threadId: OID!\n  """Which party is reopening the thread (Agent or Stakeholder)"""\n  reopenedBy: ParticipantRole!\n}',
+              scope: "global",
+              template: "",
+            },
+          ],
+        },
+      ],
+      state: {
+        global: {
+          examples: [],
+          initialValue:
+            '{\n  "agent": {\n    "name": null,\n    "ethAddress": null,\n    "role": null,\n    "description": null,\n    "avatar": null\n  },\n  "stakeholders": [],\n  "threads": []\n}',
+          schema:
+            '"""Root state for the Agent Inbox document model.\nManages communication between a single agent and multiple stakeholders through threaded conversations."""\ntype AgentInboxState {\n  """The agent who owns and manages this inbox.\n  Contains profile information and contact details for the agent."""\n  agent: AgentInfo!\n  \n  """List of authorized stakeholders who can communicate with the agent.\n  Stakeholders must be added before they can create threads."""\n  stakeholders: [Stakeholder!]!\n  \n  """Active and archived conversation threads between the agent and stakeholders.\n  Each thread represents a distinct conversation topic with one stakeholder."""\n  threads: [MessageThread!]!\n}\n\n"""Profile information for the agent who owns this inbox.\nContains identity, role, and contact information."""\ntype AgentInfo {\n  """Display name of the agent for identification in conversations"""\n  name: String\n  \n  """Ethereum wallet address for on-chain identity verification and transactions"""\n  ethAddress: String\n  \n  """Professional role or title describing the agent\'s responsibilities"""\n  role: String\n  \n  """Detailed description of the agent\'s expertise, services, or background"""\n  description: String\n  \n  """URL to the agent\'s profile picture or avatar image"""\n  avatar: URL\n}\n\n"""Represents a conversation thread between the agent and a specific stakeholder.\nThreads organize messages by topic and track resolution status."""\ntype MessageThread {\n  """Unique identifier for this conversation thread"""\n  id: OID!\n  \n  """Optional topic or subject line describing the thread\'s purpose"""\n  topic: String\n  \n  """ID reference to the stakeholder participating in this conversation"""\n  stakeholder: OID!\n  \n  """Current workflow status of the thread (open, resolved, archived)"""\n  status: ThreadStatus!\n  \n  """Chronological list of messages exchanged in this thread"""\n  messages: [ChatMessage!]!\n}\n\n"""Individual message within a conversation thread.\nTracks content, timing, direction, and read status."""\ntype ChatMessage {\n  """Unique identifier for this message"""\n  id: OID!\n  \n  """Direction of message flow (Incoming from stakeholder, Outgoing from agent)"""\n  flow: Flow!\n  \n  """Timestamp when the message was sent"""\n  when: DateTime!\n  \n  """The actual text content of the message"""\n  content: String!\n  \n  """Whether the recipient has marked this message as read"""\n  read: Boolean!\n}\n\n"""Workflow states for conversation threads.\nTracks progression from open discussion to resolution and archival."""\nenum ThreadStatus {\n  """Thread is active and accepting new messages"""\n  Open\n  \n  """Agent has proposed marking the thread as resolved, awaiting stakeholder confirmation"""\n  ProposedResolvedByAgent\n  \n  """Stakeholder has proposed marking the thread as resolved, awaiting agent confirmation"""\n  ProposedResolvedByStakeholder\n  \n  """Both parties have agreed the thread is resolved"""\n  ConfirmedResolved\n  \n  """Thread has been archived and removed from active view"""\n  Archived\n}\n\n"""Direction of message flow within a thread.\nDetermines sender and recipient roles."""\nenum Flow {\n  """Message sent from stakeholder to agent"""\n  Incoming\n  \n  """Message sent from agent to stakeholder"""\n  Outgoing\n}\n\n"""Authorized participant who can communicate with the agent.\nContains identity information and removal status."""\ntype Stakeholder {\n  """Unique identifier for this stakeholder"""\n  id: OID!\n  \n  """Display name of the stakeholder for identification"""\n  name: String!\n  \n  """Optional Ethereum wallet address for identity verification"""\n  ethAddress: String\n  \n  """URL to the stakeholder\'s profile picture or avatar"""\n  avatar: URL\n  \n  """Soft deletion flag - true if stakeholder access has been revoked"""\n  removed: Boolean!\n}\n\n"""Identifies which party is performing an action in the workflow.\nUsed for tracking who initiated status changes."""\nenum ParticipantRole {\n  """Action performed by the agent"""\n  Agent\n  \n  """Action performed by a stakeholder"""\n  Stakeholder\n}',
+        },
+        local: {
+          examples: [],
+          initialValue: "",
+          schema: "",
+        },
+      },
+      version: 1,
+    },
+  ],
+};

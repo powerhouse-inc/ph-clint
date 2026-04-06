@@ -1,0 +1,291 @@
+scalar Unknown
+scalar DateTime
+scalar Attachment
+scalar Address
+scalar Amount_Tokens
+scalar EthereumAddress
+scalar EmailAddress
+scalar Amount_Percentage
+scalar Date
+scalar URL
+scalar Amount_Money
+scalar OLabel
+scalar Currency
+scalar PHID
+scalar OID
+scalar Amount_Fiat
+scalar Amount_Currency
+scalar Amount_Crypto
+scalar Amount
+scalar Upload
+
+type WorkBreakdownStructureState {
+  owner: String
+  isBlocked: Boolean!
+  goals: [Goal!]!
+  references: [URL!]!
+  metaData: MetaData  
+}
+
+type Goal {
+  id: OID!
+  status: GoalStatus!
+  block: GoalBlockReason
+  parentId: OID
+  dependencies: [OID!]!
+  description: String!
+  isDraft: Boolean!
+  instructions: GoalInstructions
+  notes: [Note!]!
+  assignee: String
+  outcome: MetaData
+}
+
+type GoalBlockReason {
+  type: GoalBlockType!
+  comment: String
+}
+
+enum GoalBlockType {
+  AWAITING_APPROVAL
+  MISSING_INFORMATION
+  UNFINISHED_DEPENDENCIES
+  OTHER
+}
+
+type GoalInstructions {
+  comments: String!
+  workType: WorkType
+  workId: String
+  context: MetaData
+}
+
+enum WorkType {
+  SKILL
+  SCENARIO
+  TASK
+}
+
+type MetaData {
+  format: MetaDataFormat!
+  data: String!
+}
+
+enum MetaDataFormat {
+  TEXT
+  JSON
+  OTHER
+}
+
+type Note {
+  id: OID!
+  note: String!
+  author: String
+}
+
+enum GoalStatus {
+  "Waiting statuses"
+  TODO
+  BLOCKED
+
+  "Active statuses"
+  IN_PROGRESS
+  DELEGATED
+  IN_REVIEW
+
+  "Finished statuses"
+  COMPLETED
+  WONT_DO
+}
+
+# documentation
+
+input UpdateDescriptionInput {
+  goalId: OID!
+  description: String!
+}
+
+input UpdateInstructionsInput {
+  goalId: OID!
+  instructions: InstructionsUpdate!
+}
+
+input InstructionsUpdate {
+  comments: String!
+  workType: WorkType
+  workId: String
+  contextJSON: String
+}
+
+input AddNoteInput {
+  goalId: OID!
+  noteId: OID!
+  note: String!
+  author: String
+}
+
+input ClearInstructionsInput {
+  goalId: OID!
+}
+
+input ClearNotesInput {
+  goalId: OID!
+}
+
+input RemoveNoteInput {
+  goalId: OID!
+  noteId: OID!
+}
+
+input MarkAsDraftInput {
+  goalId: OID!
+}
+
+input MarkAsReadyInput {
+  goalId: OID!
+}
+
+input SetOwnerInput {
+  owner: String!
+}
+
+# hierarchy
+
+input ReorderInput {
+  goalId: OID!
+  "Omit for root goals"
+  parentId: OID
+  "Omit for appending at the end"
+  insertBefore: OID
+}
+
+input AddDependenciesInput {
+  goalId: OID!
+  dependsOn: [OID!]!
+}
+
+input RemoveDependenciesInput {
+  goalId: OID!
+  dependencies: [OID!]!
+}
+
+# workflow
+
+input CreateGoalInput {
+  id: OID!
+  description: String!
+  instructions: InitialInstructionsInput
+  draft: Boolean
+  parentId: OID
+  insertBefore: OID
+  assignee: String
+  dependsOn: [OID!]
+  initialNote: InitialNoteInput
+  metaData: MetaDataInput
+}
+
+input InitialInstructionsInput {
+  comments: String!
+  workType: WorkType
+  workId: String
+  contextJSON: String
+}
+
+input InitialNoteInput {
+  id: OID!
+  note: String!
+  author: String
+}
+
+input MetaDataInput {
+  format: MetaDataFormat!
+  data: String!
+}
+
+input DelegateGoalInput {
+  id: OID!
+  assignee: String!
+}
+
+input ReportOnGoalInput {
+  id: OID!
+  note: ReportNoteInput!
+  moveInReview: Boolean!
+}
+
+input ReportNoteInput {
+  id: OID!
+  note: String!
+  author: String
+}
+
+input MarkInProgressInput {
+  id: OID!
+  note: InProgressNoteInput
+}
+
+input InProgressNoteInput {
+  id: OID!
+  note: String!
+  author: String
+}
+
+input MarkCompletedInput {
+  id: OID!
+  note: CompletedNoteInput
+  outcome: OutcomeInput
+}
+
+input CompletedNoteInput {
+  id: OID!
+  note: String!
+  author: String
+}
+
+input OutcomeInput {
+  format: MetaDataFormat!
+  data: String!
+}
+
+input MarkTodoInput {
+  id: OID!
+  note: TodoNoteInput
+}
+
+input TodoNoteInput {
+  id: OID!
+  note: String!
+  author: String
+}
+
+input ReportBlockedInput {
+  id: OID!
+  type: GoalBlockType!
+  comment: String
+}
+
+input UnblockGoalInput {
+  id: OID!
+  response: UnblockNoteInput!
+}
+
+input UnblockNoteInput {
+  id: OID!
+  note: String!
+  author: String
+}
+
+input MarkWontDoInput {
+  id: OID!
+}
+
+# metadata
+
+input SetReferencesInput {
+  references: [URL!]!
+}
+
+input SetMetaDataInput {
+  format: MetaDataFormat!
+  data: String!
+}
