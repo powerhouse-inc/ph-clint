@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { Box, Text, Static, useInput, useApp } from 'ink';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Box, Text, Static, useInput, useApp, useStdout } from 'ink';
 import Spinner from 'ink-spinner';
 import type { ReplSession, HistoryEntry } from './types.js';
 import { renderMarkdown } from './markdown.js';
@@ -17,13 +17,22 @@ interface ReplProps {
  * - 'command-cycling': Up/Down cycling through command matches
  * - 'history-cycling': Up/Down cycling through history
  */
-type InteractionMode = 'typing' | 'tab-cycling' | 'command-cycling' | 'history-cycling';
+type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
 
 /**
  * Main REPL component for interactive mode.
  */
 export function Repl({ session }: ReplProps) {
   const { exit } = useApp();
+  const { stdout } = useStdout();
+
+  // Terminal focus tracking (DECSET 1004)
+  const [terminalFocused, setTerminalFocused] = useState(true);
+  useEffect(() => {
+    stdout.write('\x1b[?1004h');
+    return () => { stdout.write('\x1b[?1004l'); };
+  }, [stdout]);
+
   const [phase, setPhase] = useState<'idle' | 'executing'>('idle');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [input, setInput] = useState('');
@@ -38,10 +47,6 @@ export function Repl({ session }: ReplProps) {
   const [tabIndex, setTabIndex] = useState<number | null>(null);
   const tabCompletionsRef = useRef<string[]>([]);
 
-  // Command cycling state
-  const [commandCycleIndex, setCommandCycleIndex] = useState<number | null>(null);
-  const commandCompletionsRef = useRef<string[]>([]);
-
   // History cycling state
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [savedInput, setSavedInput] = useState('');
@@ -51,8 +56,6 @@ export function Repl({ session }: ReplProps) {
     setMode('typing');
     setTabIndex(null);
     tabCompletionsRef.current = [];
-    setCommandCycleIndex(null);
-    commandCompletionsRef.current = [];
     setHistoryIndex(null);
     setSavedInput('');
   }, []);
@@ -108,6 +111,12 @@ export function Repl({ session }: ReplProps) {
 
   useInput(
     (ch, key) => {
+      // Terminal focus reporting (DECSET 1004): \x1b[I = focus, \x1b[O = blur
+      if (key.escape || ch === '[I' || ch === '[O') {
+        if (ch === 'I' || ch === '[I') { setTerminalFocused(true); return; }
+        if (ch === 'O' || ch === '[O') { setTerminalFocused(false); return; }
+      }
+
       if (phase !== 'idle') {
         if (key.escape) {
           setPhase('idle');
@@ -141,7 +150,7 @@ export function Repl({ session }: ReplProps) {
         setTabIndex(nextIndex);
         const completed = applyCompletion(input, completions[nextIndex]!);
         setInputWithCursor(completed);
-        setSuggestions(completions.length > 1 ? completions : []);
+        setSuggestions(completions);
         return;
       }
 
@@ -166,24 +175,25 @@ export function Repl({ session }: ReplProps) {
             } else if (historyIndex === 0) {
               setHistoryIndex(null);
               setInputWithCursor(savedInput);
-              setMode(savedInput.startsWith('/') && !savedInput.includes(' ') ? 'typing' : 'typing');
+              setMode('typing');
             }
           }
           return;
         }
 
-        // If already cycling commands, continue
-        if (mode === 'command-cycling') {
-          const completions = commandCompletionsRef.current;
+        // If already tab-cycling, Up/Down cycles through the same list
+        if (mode === 'tab-cycling') {
+          const completions = tabCompletionsRef.current;
           if (completions.length === 0) return;
 
-          const idx = commandCycleIndex ?? 0;
+          const idx = tabIndex ?? 0;
           const nextIndex = key.upArrow
             ? (idx - 1 + completions.length) % completions.length
             : (idx + 1) % completions.length;
 
-          setCommandCycleIndex(nextIndex);
-          setInputWithCursor(completions[nextIndex]!);
+          setTabIndex(nextIndex);
+          const completed = applyCompletion(input, completions[nextIndex]!);
+          setInputWithCursor(completed);
           setSuggestions(completions);
           return;
         }
@@ -192,19 +202,18 @@ export function Repl({ session }: ReplProps) {
         const isCommandPrefix = input.startsWith('/') && !input.includes(' ');
 
         if (isCommandPrefix) {
-          // Enter command cycling mode
+          // Enter tab-cycling mode (same as Tab)
           const completions = session.getCompletions(input);
           if (completions.length === 0) return;
 
-          commandCompletionsRef.current = completions;
-          setMode('command-cycling');
+          tabCompletionsRef.current = completions;
+          setMode('tab-cycling');
 
           const nextIndex = key.upArrow ? completions.length - 1 : 0;
-          setCommandCycleIndex(nextIndex);
-          setInputWithCursor(completions[nextIndex]!);
+          setTabIndex(nextIndex);
+          const completed = applyCompletion(input, completions[nextIndex]!);
+          setInputWithCursor(completed);
           setSuggestions(completions);
-          setTabIndex(null);
-          tabCompletionsRef.current = [];
           return;
         }
 
@@ -220,8 +229,6 @@ export function Repl({ session }: ReplProps) {
           setSuggestions([]);
           setTabIndex(null);
           tabCompletionsRef.current = [];
-          setCommandCycleIndex(null);
-          commandCompletionsRef.current = [];
         }
         return;
       }
@@ -233,7 +240,7 @@ export function Repl({ session }: ReplProps) {
           resetToTyping();
           return;
         }
-        if (mode === 'command-cycling' || mode === 'tab-cycling') {
+        if (mode === 'tab-cycling') {
           resetToTyping();
           return;
         }
@@ -243,8 +250,9 @@ export function Repl({ session }: ReplProps) {
     { isActive: true },
   );
 
-  // Compute placeholder signature for the current input
+  // Compute placeholder signature and inline suggestion for the current input
   const signature = phase === 'idle' ? session.getCommandSignature(input) : null;
+  const inlineSuggestion = mode === 'typing' && suggestions.length > 0 ? suggestions[0]! : '';
 
   // Update suggestions as user types (resets to typing mode)
   const handleChange = useCallback(
@@ -254,7 +262,7 @@ export function Repl({ session }: ReplProps) {
       resetToTyping();
       if (value.startsWith('/') && !value.includes(' ')) {
         const completions = session.getCompletions(value);
-        setSuggestions(completions.length > 1 ? completions : []);
+        setSuggestions(completions);
       } else {
         setSuggestions([]);
       }
@@ -304,12 +312,14 @@ export function Repl({ session }: ReplProps) {
               onChange={handleChange}
               onSubmit={handleSubmit}
               cursorOffset={cursorOffset}
+              focus={terminalFocused}
+              suggestion={inlineSuggestion}
             />
             {signature && (
               <Text dimColor>{' '}{signature}</Text>
             )}
           </Box>
-          {suggestions.length > 0 && (
+          {suggestions.length > 1 && (
             <Box marginLeft={2}>
               <Text dimColor>{suggestions.join('  ')}</Text>
             </Box>

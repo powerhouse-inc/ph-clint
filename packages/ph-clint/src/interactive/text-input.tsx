@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Text, useInput } from 'ink';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, useInput, useStdin } from 'ink';
 
 export interface TextInputProps {
   value: string;
@@ -10,6 +10,8 @@ export interface TextInputProps {
   showCursor?: boolean;
   /** When set, moves cursor to this offset. */
   cursorOffset?: number;
+  /** Inline ghost text shown after the cursor (e.g. completion preview). */
+  suggestion?: string;
 }
 
 /**
@@ -28,6 +30,7 @@ export function TextInput({
   focus = true,
   showCursor = true,
   cursorOffset: externalCursorOffset,
+  suggestion = '',
   onChange,
   onSubmit,
 }: TextInputProps) {
@@ -50,8 +53,26 @@ export function TextInput({
 
   const cursorOffset = internalOffset;
 
+  // Track physical Delete key (\x1b[3~) via raw stdin since Ink maps both
+  // Backspace (\x7f) and Delete (\x1b[3~) to key.delete
+  const { stdin } = useStdin();
+  const isForwardDelete = useRef(false);
+  useEffect(() => {
+    const onData = (data: Buffer) => {
+      const s = data.toString();
+      isForwardDelete.current = s === '\x1b[3~';
+    };
+    stdin.on('data', onData);
+    return () => { stdin.off('data', onData); };
+  }, [stdin]);
+
   useInput(
     (input, key) => {
+      // Ignore terminal focus reporting sequences
+      if (input === '[I' || input === '[O' || ((key.escape) && (input === 'I' || input === 'O'))) {
+        return;
+      }
+
       // Pass through keys handled by parent
       if (
         key.upArrow ||
@@ -76,10 +97,38 @@ export function TextInput({
       } else if (key.end) {
         nextOffset = originalValue.length;
       } else if (key.leftArrow) {
-        if (showCursor) nextOffset--;
+        if (showCursor) {
+          if (key.ctrl) {
+            // Jump to previous word boundary
+            let i = cursorOffset - 1;
+            while (i > 0 && originalValue[i - 1] === ' ') i--;
+            while (i > 0 && originalValue[i - 1] !== ' ') i--;
+            nextOffset = i;
+          } else {
+            nextOffset--;
+          }
+        }
       } else if (key.rightArrow) {
-        if (showCursor) nextOffset++;
-      } else if (key.backspace || key.delete) {
+        if (showCursor) {
+          if (key.ctrl) {
+            // Jump to next word boundary
+            let i = cursorOffset;
+            while (i < originalValue.length && originalValue[i] !== ' ') i++;
+            while (i < originalValue.length && originalValue[i] === ' ') i++;
+            nextOffset = i;
+          } else {
+            nextOffset++;
+          }
+        }
+      } else if ((key.delete || key.backspace) && isForwardDelete.current) {
+        // Physical Delete key (\x1b[3~): forward delete
+        if (cursorOffset < originalValue.length) {
+          nextValue =
+            originalValue.slice(0, cursorOffset) +
+            originalValue.slice(cursorOffset + 1);
+        }
+      } else if (key.delete || key.backspace) {
+        // Physical Backspace (\x7f) or Ctrl+H (\b): backward delete
         if (cursorOffset > 0) {
           nextValue =
             originalValue.slice(0, cursorOffset - 1) +
@@ -129,12 +178,24 @@ export function TextInput({
 
   // Value with cursor
   const before = originalValue.slice(0, cursorOffset);
-  const cursorChar = cursorOffset < originalValue.length
-    ? originalValue[cursorOffset]
-    : ' ';
-  const after = cursorOffset < originalValue.length
-    ? originalValue.slice(cursorOffset + 1)
-    : '';
+  const atEnd = cursorOffset >= originalValue.length;
+
+  // Ghost text: show suggestion suffix when cursor is at end
+  if (atEnd && suggestion) {
+    const ghost = suggestion.slice(originalValue.length);
+    if (ghost.length > 0) {
+      return (
+        <Text>
+          {before}
+          <Text dimColor inverse>{ghost[0]}</Text>
+          <Text dimColor>{ghost.slice(1)}</Text>
+        </Text>
+      );
+    }
+  }
+
+  const cursorChar = !atEnd ? originalValue[cursorOffset] : ' ';
+  const after = !atEnd ? originalValue.slice(cursorOffset + 1) : '';
 
   return (
     <Text>
