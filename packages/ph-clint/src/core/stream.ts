@@ -1,10 +1,19 @@
 import type { StreamChunk } from './types.js';
 
+// ANSI escape codes for semantic coloring of tool activity
+const DIM = '\x1b[2m';
+const RESET = '\x1b[0m';
+const RED = '\x1b[31m';
+const GREEN_DIM = '\x1b[32;2m';
+
 /**
  * Format a single StreamChunk into a display string.
  *
  * This is the framework-level formatter. The Mastra integration maps
  * Mastra's fullStream chunks to StreamChunk first, then this renders them.
+ *
+ * Tool activity is styled with dim green (calls/results) and red (errors)
+ * so it's visually distinct from the agent's text output.
  */
 export function formatStreamChunk(chunk: StreamChunk): string {
   switch (chunk.type) {
@@ -12,32 +21,45 @@ export function formatStreamChunk(chunk: StreamChunk): string {
       return chunk.text;
 
     case 'tool-call':
-      return `\n▶ ${chunk.toolName}(${truncateArgs(chunk.args)})\n`;
+      return `\n${DIM}${GREEN_DIM}▶ ${chunk.toolName}${RESET}${DIM}(${truncateArgs(chunk.args)})${RESET}\n`;
 
     case 'tool-result':
       if (chunk.isError) {
-        return `✗ ${chunk.toolName} error: ${formatResult(chunk.result)}\n`;
+        return `${RED}✗ ${chunk.toolName} error: ${formatResult(chunk.result)}${RESET}\n`;
       }
       // If the result has a text field, print it directly (e.g. ASCII art, formatted output)
       if (hasTextField(chunk.result)) {
         const text = (chunk.result as { text: string }).text;
-        return `✓ ${chunk.toolName}\n${text}\n`;
+        return `${DIM}${GREEN_DIM}✓ ${chunk.toolName}${RESET}\n${text}\n`;
       }
-      return `✓ ${chunk.toolName} → ${truncateResult(chunk.result)}\n`;
+      return `${DIM}${GREEN_DIM}✓ ${chunk.toolName}${RESET}${DIM} → ${truncateResult(chunk.result)}${RESET}\n`;
 
     case 'error':
-      return `Error: ${chunk.error}\n`;
+      return `${RED}Error: ${chunk.error}${RESET}\n`;
   }
 }
 
 /**
  * Consume a stream of StreamChunks and yield formatted display strings.
  * This is the main entry point for rendering agent/streaming output.
+ *
+ * Inserts an extra newline before the first text-delta after tool activity,
+ * so the agent's prose is visually separated from tool call/result lines.
  */
 export async function* renderStream(
   stream: AsyncGenerator<StreamChunk>,
 ): AsyncGenerator<string, void, unknown> {
+  let lastChunkWasText = false;
+
   for await (const chunk of stream) {
+    if (chunk.type === 'text-delta') {
+      if (!lastChunkWasText) {
+        yield '\n';
+        lastChunkWasText = true;
+      }
+    } else {
+      lastChunkWasText = false;
+    }
     yield formatStreamChunk(chunk);
   }
 }

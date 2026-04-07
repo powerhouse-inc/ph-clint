@@ -50,7 +50,8 @@ describeWithKey('Mastra agent E2E', () => {
         instructions: 'You are a helpful assistant with image tools. Keep responses concise.',
       }],
       commands,
-      workspacePath: '/tmp/ph-clint-test-e2e',
+      workdir: '/tmp/ph-clint-test-e2e',
+      cliName: 'assist',
     });
   });
 

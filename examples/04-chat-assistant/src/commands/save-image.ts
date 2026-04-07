@@ -15,7 +15,7 @@ export const saveImage = defineCommand({
       .describe('Filename to save as (defaults to URL basename)'),
   }),
   execute: async (input, context) => {
-    const imagesDir = join(context.workspace.basePath, 'images');
+    const imagesDir = join(context.workdir, 'images');
     await mkdir(imagesDir, { recursive: true });
 
     // Derive filename from the provided name or the URL basename

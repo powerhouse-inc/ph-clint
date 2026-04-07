@@ -7,6 +7,9 @@ import {
   toUpperSnake,
   configKeyToEnvVar,
   resolveConfig,
+  localConfigPath,
+  userConfigPath,
+  getMissingRequiredFields,
 } from '../src/core/config.js';
 import { getConfigEnvVars } from '../src/core/config.js';
 
@@ -116,75 +119,164 @@ describe('resolveConfig', () => {
   });
 
   it('applies Zod defaults when no overrides exist', () => {
-    const config = resolveConfig(schema, 'tasks', workDir);
+    const config = resolveConfig({ configSchema: schema, cliName: 'tasks', workdir: workDir });
     expect(config).toEqual({ defaultPriority: 'medium', maxItems: 100 });
   });
 
   it('reads local workspace settings', async () => {
-    const settingsDir = join(workDir, '.ph', 'cli', 'tasks');
+    const settingsDir = join(workDir, '.ph');
     await mkdir(settingsDir, { recursive: true });
     await writeFile(
-      join(settingsDir, 'settings.json'),
+      join(settingsDir, 'tasks.config.local.json'),
       JSON.stringify({ defaultPriority: 'high' }),
     );
 
-    const config = resolveConfig(schema, 'tasks', workDir);
+    const config = resolveConfig({ configSchema: schema, cliName: 'tasks', workdir: workDir });
     expect(config.defaultPriority).toBe('high');
     expect(config.maxItems).toBe(100); // default preserved
   });
 
-  it('reads .env file', async () => {
-    await writeFile(
-      join(workDir, '.env'),
-      'TASKS_DEFAULT_PRIORITY=low\n',
-    );
+  it('env vars override defaults', () => {
+    process.env.TASKS_DEFAULT_PRIORITY = 'low';
 
-    const config = resolveConfig(schema, 'tasks', workDir);
+    const config = resolveConfig({ configSchema: schema, cliName: 'tasks', workdir: workDir });
     expect(config.defaultPriority).toBe('low');
   });
 
-  it('env vars override .env file', async () => {
-    await writeFile(
-      join(workDir, '.env'),
-      'TASKS_DEFAULT_PRIORITY=low\n',
-    );
-    process.env.TASKS_DEFAULT_PRIORITY = 'high';
-
-    const config = resolveConfig(schema, 'tasks', workDir);
-    expect(config.defaultPriority).toBe('high');
-  });
-
   it('env vars override local settings', async () => {
-    const settingsDir = join(workDir, '.ph', 'cli', 'tasks');
+    const settingsDir = join(workDir, '.ph');
     await mkdir(settingsDir, { recursive: true });
     await writeFile(
-      join(settingsDir, 'settings.json'),
+      join(settingsDir, 'tasks.config.local.json'),
       JSON.stringify({ defaultPriority: 'low' }),
     );
     process.env.TASKS_DEFAULT_PRIORITY = 'high';
 
-    const config = resolveConfig(schema, 'tasks', workDir);
+    const config = resolveConfig({ configSchema: schema, cliName: 'tasks', workdir: workDir });
     expect(config.defaultPriority).toBe('high');
   });
 
-  it('.env overrides local settings', async () => {
-    const settingsDir = join(workDir, '.ph', 'cli', 'tasks');
+  it('env vars take precedence over local config file', async () => {
+    const settingsDir = join(workDir, '.ph');
     await mkdir(settingsDir, { recursive: true });
     await writeFile(
-      join(settingsDir, 'settings.json'),
+      join(settingsDir, 'tasks.config.local.json'),
       JSON.stringify({ defaultPriority: 'low' }),
     );
-    await writeFile(
-      join(workDir, '.env'),
-      'TASKS_DEFAULT_PRIORITY=high\n',
-    );
+    process.env.TASKS_DEFAULT_PRIORITY = 'high';
 
-    const config = resolveConfig(schema, 'tasks', workDir);
+    const config = resolveConfig({ configSchema: schema, cliName: 'tasks', workdir: workDir });
     expect(config.defaultPriority).toBe('high');
   });
 
-  it('ignores missing .env and settings files', () => {
-    const config = resolveConfig(schema, 'tasks', '/nonexistent/path');
+  it('ignores missing settings files', () => {
+    const config = resolveConfig({ configSchema: schema, cliName: 'tasks', workdir: '/nonexistent/path' });
     expect(config).toEqual({ defaultPriority: 'medium', maxItems: 100 });
+  });
+
+  it('reads --config file (highest priority)', async () => {
+    const configFile = join(workDir, 'custom-config.json');
+    await writeFile(configFile, JSON.stringify({ defaultPriority: 'high' }));
+    process.env.TASKS_DEFAULT_PRIORITY = 'low';
+
+    const config = resolveConfig({
+      configSchema: schema,
+      cliName: 'tasks',
+      workdir: workDir,
+      configFile: configFile,
+    });
+    // --config flag overrides env vars
+    expect(config.defaultPriority).toBe('high');
+  });
+
+  it('resolves --config path relative to cwd', async () => {
+    const configFile = join(workDir, 'my-config.json');
+    await writeFile(configFile, JSON.stringify({ defaultPriority: 'high' }));
+
+    const config = resolveConfig({
+      configSchema: schema,
+      cliName: 'tasks',
+      workdir: '/some/other/path',
+      configFile: 'my-config.json',
+      cwd: workDir,
+    });
+    expect(config.defaultPriority).toBe('high');
+  });
+
+  it('applies implementation defaults (layer 5)', () => {
+    const config = resolveConfig({
+      configSchema: schema,
+      cliName: 'tasks',
+      workdir: workDir,
+      implementationDefaults: { defaultPriority: 'high' },
+    });
+    expect(config.defaultPriority).toBe('high');
+  });
+
+  it('local config overrides implementation defaults', async () => {
+    const settingsDir = join(workDir, '.ph');
+    await mkdir(settingsDir, { recursive: true });
+    await writeFile(
+      join(settingsDir, 'tasks.config.local.json'),
+      JSON.stringify({ defaultPriority: 'low' }),
+    );
+
+    const config = resolveConfig({
+      configSchema: schema,
+      cliName: 'tasks',
+      workdir: workDir,
+      implementationDefaults: { defaultPriority: 'high' },
+    });
+    expect(config.defaultPriority).toBe('low');
+  });
+});
+
+describe('localConfigPath', () => {
+  it('returns correct path', () => {
+    expect(localConfigPath('/home/user/project', 'mycli')).toBe(
+      join('/home/user/project', '.ph', 'mycli.config.local.json'),
+    );
+  });
+});
+
+describe('userConfigPath', () => {
+  it('returns path in home directory', () => {
+    const path = userConfigPath('mycli');
+    expect(path).toBe(join(homedir(), '.ph', 'mycli.config.user.json'));
+  });
+});
+
+describe('getMissingRequiredFields', () => {
+  it('returns empty for schema with all defaults', () => {
+    const schema = z.object({
+      port: z.number().default(3000),
+    });
+    const missing = getMissingRequiredFields(schema, {});
+    expect(missing).toEqual([]);
+  });
+
+  it('returns missing mandatory fields', () => {
+    const schema = z.object({
+      apiKey: z.string().describe('API key'),
+      port: z.number().default(3000),
+    });
+    const missing = getMissingRequiredFields(schema, {});
+    expect(missing).toEqual([{ key: 'apiKey', description: 'API key' }]);
+  });
+
+  it('returns empty when mandatory field has a value', () => {
+    const schema = z.object({
+      apiKey: z.string().describe('API key'),
+    });
+    const missing = getMissingRequiredFields(schema, { apiKey: 'abc123' });
+    expect(missing).toEqual([]);
+  });
+
+  it('returns empty for optional fields without values', () => {
+    const schema = z.object({
+      name: z.string().optional(),
+    });
+    const missing = getMissingRequiredFields(schema, {});
+    expect(missing).toEqual([]);
   });
 });

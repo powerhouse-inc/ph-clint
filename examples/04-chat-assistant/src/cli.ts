@@ -31,7 +31,6 @@ const configSchema = z.object({
 });
 
 const commands = [ascii, saveImage, listImages];
-const WORKSPACE_PATH = '.ph/cli/assist';
 const apiKey = process.env.ANTHROPIC_API_KEY;
 const useMastra = Boolean(apiKey);
 
@@ -72,7 +71,7 @@ const invertedLogo = logo
   .map((line) => `\x1b[7m${line}\x1b[0m`)
   .join('\n');
 
-const welcome = `${invertedLogo}\n\nImage Assistant (${mode})\nWorkspace: ${WORKSPACE_PATH}/\nAsk me to convert images to ASCII art, save images, or use /ascii directly`;
+const welcome = `${invertedLogo}\n\nImage Assistant (${mode})\nAsk me to convert images to ASCII art, save images, or use /ascii directly`;
 
 // Generate or reuse thread ID for session resumption
 const args = process.argv.slice(2);
@@ -85,7 +84,8 @@ async function createIntegration(): Promise<Integration> {
     return defineMastraIntegration({
       agents: [{ id: 'assistant', name: 'Image Assistant', instructions: agentInstructions }],
       commands,
-      workspacePath: WORKSPACE_PATH,
+      workdir: process.cwd(),
+      cliName: 'assist',
     });
   }
   // Demo mode — no Mastra, no API key

@@ -26,7 +26,7 @@ describe('defineCommand', () => {
   });
 
   it('executes with parsed input', async () => {
-    const ctx = { workspace: createMemoryWorkspace(), config: {} };
+    const ctx = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     const result = await cmd.execute({ name: 'Alice', count: 3 }, ctx);
     expect(result).toBe('Alice x3');
   });

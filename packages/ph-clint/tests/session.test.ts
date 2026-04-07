@@ -52,7 +52,7 @@ describe('createReplSession', () => {
   let context: CommandContext;
 
   beforeEach(() => {
-    context = { workspace: createMemoryWorkspace(), config: {} };
+    context = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     session = createReplSession({ cli, context });
   });
 
@@ -149,7 +149,7 @@ describe('createReplSession', () => {
       });
       const s = createReplSession({
         cli: nullCli,
-        context: { workspace: createMemoryWorkspace(), config: {} },
+        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '' },
       });
       const result = await s.processInput('/null');
       expect(result.type).toBe('result');
@@ -246,7 +246,7 @@ describe('parameter prompting', () => {
     });
     return createReplSession({
       cli,
-      context: { workspace: createMemoryWorkspace(), config: {} },
+      context: { workspace: createMemoryWorkspace(), config: {}, workdir: '' },
     });
   }
 
@@ -654,7 +654,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: 'Hi!' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('What is TypeScript?');
@@ -675,7 +675,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: 'Hi!' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('/search --query "hello"');
@@ -702,7 +702,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('search for cats');
@@ -730,7 +730,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('break');
@@ -747,7 +747,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     const session = createReplSession({ cli, context });
 
     const result = await session.processInput('just some text');
@@ -765,7 +765,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {} };
+    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
     const session = createReplSession({ cli, context });
 
     const result = await session.processInput('hello');

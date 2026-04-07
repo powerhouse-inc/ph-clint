@@ -37,7 +37,7 @@ describe('Interactive mode', () => {
     workspace = createMemoryWorkspace();
     session = createReplSession({
       cli,
-      context: { workspace, config: { defaultPriority: 'medium' } },
+      context: { workdir: '', workspace, config: { defaultPriority: 'medium' } },
     });
   });
 

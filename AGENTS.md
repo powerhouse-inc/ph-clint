@@ -73,7 +73,7 @@ Each README has acceptance criteria that should become tests.
 - **Integrations are optional and independent.** Powerhouse and Mastra can each be enabled/disabled independently. The core must not import from either. Use the integration registry pattern.
 - **The routine loop is agent-optional.** It must work for pure automation (example 03) as well as agentic autonomy (examples 07-08). Don't couple the loop to Mastra.
 - **Streaming via AsyncGenerator.** Commands yield typed chunks. Don't switch to callbacks or observables — AsyncGenerator composes well and is what both prototypes converged on.
-- **5-layer config with Zod schemas.** Config fields auto-map to env var names. Don't hand-maintain env var lists.
+- **6-layer config with Zod schemas.** Config fields auto-map to env var names. Don't hand-maintain env var lists. Workspace (workdir) is resolved first as a prerequisite, then config files are located relative to it.
 - **Escape for interrupt, not Ctrl+C.** Escape cancels the foreground operation; the REPL stays alive.
 
 ### Development process

@@ -13,6 +13,8 @@ import { formatStreamChunk } from './stream.js';
 import { getSchemaFields } from './schema.js';
 import { createMemoryWorkspace, createWorkspace } from './workspace.js';
 import { getConfigEnvVars, resolveConfig } from './config.js';
+import { resolveWorkdir } from './workdir.js';
+import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
@@ -44,6 +46,22 @@ export function defineCli(options: CliOptions): Cli {
   const commandMap = new Map<string, Command>();
   for (const cmd of options.commands) {
     commandMap.set(cmd.id, cmd);
+  }
+
+  // Track config file path for the config command (set during run())
+  let activeConfigFile: string | undefined;
+  let activeWorkdir: string = process.cwd();
+
+  // Auto-inject built-in config command when configSchema is present
+  if (options.configSchema && !commandMap.has('config')) {
+    const configCmd = createConfigCommand({
+      cliName: options.name,
+      configSchema: options.configSchema,
+      implementationDefaults: options.configDefaults,
+      // configFile is set lazily during run() via activeConfigFile
+      get configFile() { return activeConfigFile; },
+    });
+    commandMap.set('config', configCmd);
   }
 
   // If triggers/routine config provided, create shared runtime services
@@ -83,6 +101,7 @@ export function defineCli(options: CliOptions): Cli {
 
   function buildContext(base?: CommandContext): CommandContext {
     const ctx = base ?? {
+      workdir: process.cwd(),
       workspace: createMemoryWorkspace(),
       config: options.configSchema
         ? (options.configSchema.parse({}) as Record<string, unknown>)
@@ -175,6 +194,31 @@ export function defineCli(options: CliOptions): Cli {
       lines.push(`  ${cmd.id.padEnd(20)} ${cmd.description}`);
     }
     lines.push('');
+    const configHelp = generateConfigHelp();
+    if (configHelp) {
+      lines.push(configHelp);
+    }
+    return lines.join('\n');
+  }
+
+  function generateConfigHelp(): string | undefined {
+    if (!options.configSchema) return undefined;
+    const envVars = configEnvVars();
+    if (envVars.length === 0) return undefined;
+    const fields = getSchemaFields(options.configSchema);
+
+    const lines: string[] = [];
+    lines.push('Configuration:');
+    for (let i = 0; i < envVars.length; i++) {
+      const ev = envVars[i]!;
+      const field = fields[i];
+      const parts: string[] = [`  ${ev.name}`];
+      if (ev.description) parts.push(`  ${ev.description}`);
+      if (field?.hasDefault) parts.push(`(default: ${JSON.stringify(field.defaultValue)})`);
+      if (field && !field.isOptional && !field.hasDefault) parts.push('(required)');
+      lines.push(parts.join('  '));
+    }
+    lines.push('');
     return lines.join('\n');
   }
 
@@ -182,6 +226,11 @@ export function defineCli(options: CliOptions): Cli {
     const cmd = commandMap.get(commandId);
     if (!cmd) {
       throw new Error(`Unknown command: ${commandId}`);
+    }
+
+    // Rich help page for the built-in config command
+    if (commandId === 'config' && options.configSchema) {
+      return generateConfigCommandHelp(options.name, options.configSchema, activeWorkdir);
     }
 
     const lines: string[] = [];
@@ -269,6 +318,20 @@ export function defineCli(options: CliOptions): Cli {
       program.option('--resume <thread-id>', 'Resume a previous conversation');
     }
 
+    // --workdir is available unless the implementation overrides it
+    if (!options.workdir) {
+      if (hasTriggers) {
+        // -w is taken by --wait when triggers exist, so only offer long form
+        program.option('--workdir <path>', 'Set the workspace directory');
+      } else {
+        program.option('-w, --workdir <path>', 'Set the workspace directory');
+      }
+    }
+
+    if (options.configSchema) {
+      program.option('-c, --config <path>', 'Load config from a JSON file (relative to cwd)');
+    }
+
     for (const cmd of commandMap.values()) {
       const sub = program.command(cmd.id).description(cmd.description);
 
@@ -292,6 +355,11 @@ export function defineCli(options: CliOptions): Cli {
         }
       }
 
+      // Override help for the built-in config command with a rich help page
+      if (cmd.id === 'config' && options.configSchema) {
+        sub.helpInformation = () => generateConfigCommandHelp(options.name, options.configSchema!, activeWorkdir) + '\n';
+      }
+
       sub.action(async (opts) => {
         const parsed = cmd.inputSchema.parse(opts);
         const result = await cmd.execute(parsed, context);
@@ -302,6 +370,11 @@ export function defineCli(options: CliOptions): Cli {
       });
     }
 
+    const configHelp = generateConfigHelp();
+    if (configHelp) {
+      program.addHelpText('after', '\n' + configHelp);
+    }
+
     return program;
   }
 
@@ -310,17 +383,56 @@ export function defineCli(options: CliOptions): Cli {
     const stdout = runOptions?.stdout ?? console.log;
     const stderr = runOptions?.stderr ?? console.error;
 
-    // Create workspace and resolve config for this run
-    const cwd = process.cwd();
-    const workspacePath = `.ph/cli/${options.name}`;
+    // Extract --workdir and --config before Commander sees them
+    const userArgs = argv.slice(2);
+    let workdirFlag: string | undefined;
+    let configFileFlag: string | undefined = runOptions?.configFile;
+    {
+      const wIdx = userArgs.indexOf('--workdir');
+      const wShort = userArgs.indexOf('-w');
+      // Only use -w for workdir if triggers are NOT present (since -w means --wait with triggers)
+      const wdIdx = wIdx !== -1 ? wIdx : (!hasTriggers && wShort !== -1 ? wShort : -1);
+      if (wdIdx !== -1 && wdIdx + 1 < userArgs.length) {
+        workdirFlag = userArgs[wdIdx + 1];
+      }
+      const cIdx = userArgs.indexOf('--config');
+      const cShort = userArgs.indexOf('-c');
+      const cfIdx = cIdx !== -1 ? cIdx : (cShort !== -1 ? cShort : -1);
+      if (cfIdx !== -1 && cfIdx + 1 < userArgs.length) {
+        configFileFlag = userArgs[cfIdx + 1];
+      }
+    }
+
+    // Resolve workdir: implementation override > --workdir flag > cwd
+    const cwd = runOptions?.workdir ?? process.cwd();
+    const workdir = resolveWorkdir({
+      implementationOverride: options.workdir,
+      cliFlag: workdirFlag,
+      fallback: cwd,
+    });
+
+    // Update active state for the config command
+    activeWorkdir = workdir;
+    activeConfigFile = configFileFlag;
+
+    // Context store lives at {workdir}/.ph/{cli-name}/
+    const workspacePath = `${workdir}/.ph/${options.name}`;
     const workspace = createWorkspace(workspacePath);
+
+    // Resolve config through 6 layers
     const config = options.configSchema
-      ? resolveConfig(options.configSchema, options.name, cwd)
+      ? resolveConfig({
+          configSchema: options.configSchema,
+          cliName: options.name,
+          workdir,
+          configFile: configFileFlag,
+          cwd,
+          implementationDefaults: options.configDefaults,
+        })
       : {};
-    const context = buildContext({ workspace, config });
+    const context = buildContext({ workdir, workspace, config });
 
     // Extract --resume <id> before Commander sees it
-    const userArgs = argv.slice(2);
     let resumeId = runOptions?.resume;
     {
       const resumeIdx = userArgs.indexOf('--resume');
@@ -387,17 +499,20 @@ export function defineCli(options: CliOptions): Cli {
     if (routine) routine.setContext(context);
 
     // Detect --wait and --resume before Commander sees them (framework flags)
-    const waitFlag = userArgs.includes('--wait') || userArgs.includes('-w');
+    const waitFlag = userArgs.includes('--wait') || (hasTriggers && userArgs.includes('-w'));
     let commandArgv = waitFlag
-      ? argv.filter((a) => a !== '--wait' && a !== '-w')
+      ? argv.filter((a) => a !== '--wait' && (a !== '-w' || !hasTriggers))
       : [...argv];
 
-    // Strip --resume and its value from argv
+    // Strip framework flags and their values from argv before Commander sees them
     {
+      const frameworkFlags = ['--resume', '--workdir', '--config', '-c'];
+      // Only strip -w for workdir when triggers aren't present (otherwise -w means --wait)
+      if (!hasTriggers) frameworkFlags.push('-w');
       const filtered: string[] = [];
       for (let i = 0; i < commandArgv.length; i++) {
-        if (commandArgv[i] === '--resume' && i + 1 < commandArgv.length) {
-          i++; // skip the value
+        if (frameworkFlags.includes(commandArgv[i]!) && i + 1 < commandArgv.length) {
+          i++; // skip the flag and its value
         } else {
           filtered.push(commandArgv[i]!);
         }

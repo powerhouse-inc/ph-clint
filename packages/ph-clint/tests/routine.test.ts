@@ -175,7 +175,7 @@ describe('createRoutine', () => {
       routine = makeRoutine({
         triggers: [trigger],
         commands: new Map([['build', buildCmd]]),
-        context: { workspace: createMemoryWorkspace(), config: {} },
+        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '' },
       });
       routine.start();
       await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT));
@@ -360,6 +360,7 @@ describe('createRoutine', () => {
         context: {
           workspace: createMemoryWorkspace(),
           config: { watchDir: './src' },
+          workdir: '',
         },
       });
       routine.start();
@@ -403,7 +404,7 @@ describe('createRoutine', () => {
       routine = makeRoutine({
         triggers: [trigger],
         commands: new Map([['check', checkCmd]]),
-        context: { workspace: createMemoryWorkspace(), config: {} },
+        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '' },
         eventBus: bus,
       });
       routine.start();
@@ -600,6 +601,7 @@ describe('createRoutine', () => {
       routine.setContext({
         workspace: createMemoryWorkspace(),
         config: { key: 'updated-value' },
+        workdir: '',
       });
 
       routine.start();

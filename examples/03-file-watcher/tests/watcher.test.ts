@@ -264,6 +264,7 @@ describe('Routine', () => {
       tickInterval: 100,
       idleInterval: 50,
       context: {
+        workdir: '',
         workspace: createMemoryWorkspace(),
         config: {},
       },
@@ -392,7 +393,7 @@ describe('CLI integration', () => {
     });
 
     expect(cli.name).toBe('watcher');
-    expect(cli.listCommands()).toHaveLength(3);
+    expect(cli.listCommands()).toHaveLength(4); // 3 commands + built-in config
   });
 
   it('executes build command with process manager', async () => {

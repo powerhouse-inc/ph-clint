@@ -16,7 +16,7 @@ describe('Interactive mode', () => {
   function makeSession() {
     return createReplSession({
       cli,
-      context: { workspace: createMemoryWorkspace(), config: {} },
+      context: { workdir: '', workspace: createMemoryWorkspace(), config: {} },
     });
   }
 

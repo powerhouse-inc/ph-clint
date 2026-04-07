@@ -37,6 +37,7 @@ export function createRoutine(options: RoutineOptions): Routine {
   let ctx: CommandContext = options.context ?? {
     workspace: createMemoryWorkspace(),
     config: {},
+    workdir: '',
   };
 
   let status: RoutineStatus = 'init';

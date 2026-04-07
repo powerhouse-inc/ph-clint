@@ -4,7 +4,7 @@ import { parseReplInput } from './router.js';
 import { getCompletions, getGhostSuggestion, getCompletionSuffix } from './completions.js';
 import { getSchemaFields } from '../core/schema.js';
 import { renderMarkdown } from './markdown.js';
-import { formatStreamChunk } from '../core/stream.js';
+import { renderStream } from '../core/stream.js';
 
 /**
  * Format a command result for display.
@@ -130,6 +130,13 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   // Prompting state — null when not prompting
   let prompting: PromptingState | null = null;
 
+  // Forward reference — set after session is created, used by handleAgentPrompt
+  let sessionRef: ReplSession | null = null;
+
+  const exitMessage = threadId
+    ? `Goodbye! \x1b[2mTo resume, run: ${cli.name} -i --resume ${threadId}\x1b[0m`
+    : 'Goodbye!';
+
   function generateHelp(): string {
     const lines = ['Available commands:'];
     for (const cmd of commands) {
@@ -223,7 +230,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         return { text: generateHelp(), type: 'help' };
 
       case 'exit':
-        return { text: 'Goodbye!', type: 'exit' };
+        return { text: exitMessage, type: 'exit' };
 
       case 'text':
         return handleAgentPrompt(parsed.raw);
@@ -342,8 +349,10 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     try {
       const parts: string[] = [];
       const commandMap = new Map(commands.map((c) => [c.id, c]));
-      for await (const chunk of agentProvider.stream(text, { threadId, tools: commandMap })) {
-        parts.push(formatStreamChunk(chunk));
+      const stream = agentProvider.stream(text, { threadId, tools: commandMap });
+      for await (const formatted of renderStream(stream)) {
+        parts.push(formatted);
+        sessionRef?.onStreamChunk?.(parts.join(''));
       }
       return { text: renderMarkdown(parts.join('')), type: 'result' };
     } catch (err: unknown) {
@@ -352,12 +361,16 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     }
   }
 
-  return {
+  const session: ReplSession = {
     processInput,
     getCompletions: (partial: string) => prompting ? [] : getCompletions(partial, commands),
     getGhostSuggestion: (input: string) => prompting ? null : getGhostSuggestion(input, commands),
     getCompletionSuffix: (completion: string, input: string) => getCompletionSuffix(completion, input, commands),
     get isPrompting() { return prompting !== null; },
     welcome: cli.interactive?.welcome,
+    exitMessage,
   };
+  sessionRef = session;
+
+  return session;
 }

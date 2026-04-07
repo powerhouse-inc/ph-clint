@@ -25,6 +25,7 @@ type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
 export function Repl({ session }: ReplProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  const columns = stdout?.columns || 80;
 
   // Terminal focus tracking (DECSET 1004) — only on real TTYs
   const isTTY = 'isTTY' in stdout && stdout.isTTY;
@@ -41,6 +42,8 @@ export function Repl({ session }: ReplProps) {
   const [cursorOffset, setCursorOffset] = useState<number | undefined>(undefined);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [promptLabel, setPromptLabel] = useState<string | null>(null);
+  const [streamingText, setStreamingText] = useState('');
+  const [currentInput, setCurrentInput] = useState('');
   const nextId = useRef(0);
 
   // Interaction mode tracking
@@ -82,8 +85,17 @@ export function Repl({ session }: ReplProps) {
       setSuggestions([]);
       resetToTyping();
       setPhase('executing');
+      setStreamingText('');
+      setCurrentInput(trimmed);
+
+      // Wire up streaming callback so chunks appear incrementally
+      session.onStreamChunk = (text) => setStreamingText(text);
 
       const result = await session.processInput(trimmed);
+
+      // Clear streaming callback
+      session.onStreamChunk = undefined;
+      setStreamingText('');
 
       if (result.type === 'exit') {
         setHistory((h) => [
@@ -92,7 +104,7 @@ export function Repl({ session }: ReplProps) {
         ]);
         // Print goodbye directly — Ink tears down before React can render the state update
         if (result.text) {
-          stdout.write(result.text + '\n');
+          stdout.write(result.text + '\n\n');
         }
         exit();
         return;
@@ -141,6 +153,13 @@ export function Repl({ session }: ReplProps) {
       if (key.escape || ch === '[I' || ch === '[O') {
         if (ch === 'I' || ch === '[I') { setTerminalFocused(true); return; }
         if (ch === 'O' || ch === '[O') { setTerminalFocused(false); return; }
+      }
+
+      // Ctrl+C: print exit/resume message and quit
+      if (key.ctrl && ch === 'c') {
+        stdout.write('\n' + session.exitMessage + '\n\n');
+        exit();
+        return;
       }
 
       if (phase !== 'idle') {
@@ -311,7 +330,7 @@ export function Repl({ session }: ReplProps) {
     <Box flexDirection="column">
       {/* Welcome message — shown only if there's no history yet */}
       {history.length === 0 && session.welcome && (
-        <Box marginBottom={1}>
+        <Box marginTop={1} marginBottom={1}>
           <Text bold>{session.welcome}</Text>
         </Box>
       )}
@@ -319,8 +338,10 @@ export function Repl({ session }: ReplProps) {
       {/* Immutable history */}
       <Static items={history}>
         {(entry) => (
-          <Box key={entry.id} flexDirection="column" marginBottom={0}>
-            <Text dimColor>{'> '}{entry.input}</Text>
+          <Box key={entry.id} flexDirection="column" marginBottom={1}>
+            <Text>{' '}</Text>
+            <Text backgroundColor="#333333" color="#eeeeee">{' > '}{entry.input}{' '}</Text>
+            <Text>{' '}</Text>
             {entry.output ? (
               <Text
                 color={entry.type === 'error' ? 'red' : undefined}
@@ -334,14 +355,24 @@ export function Repl({ session }: ReplProps) {
 
       {/* Current execution or input */}
       {phase === 'executing' ? (
-        <Box>
-          <Text color="yellow">
-            <Spinner type="dots" />
-          </Text>
-          <Text> Working...</Text>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text>{' '}</Text>
+          <Text backgroundColor="#333333" color="#eeeeee">{' > '}{currentInput}{' '}</Text>
+          <Text>{' '}</Text>
+          {streamingText ? (
+            <Text>{renderMarkdown(streamingText)}</Text>
+          ) : (
+            <Box>
+              <Text color="yellow">
+                <Spinner type="dots" />
+              </Text>
+              <Text> Working…</Text>
+            </Box>
+          )}
         </Box>
       ) : (
         <Box flexDirection="column">
+          <Text color="green">{'─'.repeat(columns)}</Text>
           <Box>
             <Text color={promptLabel ? "cyan" : "green"}>
               {promptLabel ? `${promptLabel}: ` : '> '}
@@ -355,6 +386,7 @@ export function Repl({ session }: ReplProps) {
               suggestion={inlineSuggestion}
             />
           </Box>
+          <Text color="green">{'─'.repeat(columns)}</Text>
           {suggestions.length > 1 && (
             <Box marginLeft={2}>
               <Text dimColor>{suggestions.join('  ')}</Text>

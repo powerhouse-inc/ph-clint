@@ -13,7 +13,7 @@ export const listImages = defineCommand({
     'List images saved in the workspace images/ directory. Returns filenames and paths that can be passed to the ascii command.',
   inputSchema: z.object({}),
   execute: async (_input, context) => {
-    const imagesDir = join(context.workspace.basePath, 'images');
+    const imagesDir = join(context.workdir, 'images');
 
     let entries: string[];
     try {

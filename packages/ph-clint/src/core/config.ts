@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { parseEnv } from 'node:util';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { z } from 'zod';
 import { getSchemaFields } from './schema.js';
@@ -40,22 +39,10 @@ export function getConfigEnvVars(
 }
 
 /**
- * Load a .env file and return its contents as a Record.
- * Returns empty object if the file doesn't exist.
+ * Load a JSON config/settings file.
+ * Returns empty object if the file doesn't exist or is invalid.
  */
-function loadEnvFile(path: string): Record<string, string | undefined> {
-  try {
-    return parseEnv(readFileSync(path, 'utf-8'));
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Load a JSON settings file.
- * Returns empty object if the file doesn't exist.
- */
-function loadSettingsFile(path: string): Record<string, unknown> {
+function loadJsonFile(path: string): Record<string, unknown> {
   try {
     return JSON.parse(readFileSync(path, 'utf-8')) as Record<string, unknown>;
   } catch {
@@ -84,48 +71,107 @@ function pickEnvValues(
 }
 
 /**
- * Resolve config through 5 layers:
- * 1. Hardcoded defaults (from Zod schema)
- * 2. Global workspace settings (~/.ph/cli/{name}/settings.json)
- * 3. Local workspace settings ({cwd}/.ph/cli/{name}/settings.json)
- * 4. .env file ({cwd}/.env)
- * 5. Environment variables (process.env) — highest priority
+ * Return the path to the local config file for a CLI.
+ * Located at {workdir}/.ph/{cli-name}.config.local.json.
+ */
+export function localConfigPath(workdir: string, cliName: string): string {
+  return join(workdir, '.ph', `${cliName}.config.local.json`);
+}
+
+/**
+ * Return the path to the user-wide config file for a CLI.
+ * Located at ~/.ph/{cli-name}.config.user.json.
+ */
+export function userConfigPath(cliName: string): string {
+  return join(homedir(), '.ph', `${cliName}.config.user.json`);
+}
+
+/**
+ * Options for resolveConfig.
+ */
+export interface ResolveConfigOptions {
+  configSchema: z.ZodType;
+  cliName: string;
+  /** Resolved workspace directory (absolute path). */
+  workdir: string;
+  /** Path to a config file from --config flag (relative to cwd). */
+  configFile?: string;
+  /** Current working directory for resolving --config path. */
+  cwd?: string;
+  /** Implementation-level defaults (layer 5). */
+  implementationDefaults?: Record<string, unknown>;
+}
+
+/**
+ * Resolve config through 6 layers (highest priority first):
+ *
+ * 1. Config file (--config flag, path relative to cwd)
+ * 2. Environment variables ({CLINAME}_{FIELD_NAME})
+ * 3. Local config ({workdir}/.ph/{cli-name}.config.local.json)
+ * 4. User config (~/.ph/{cli-name}.config.user.json)
+ * 5. Implementation defaults (passed from project code)
+ * 6. Hardcoded defaults (from Zod schema .default() calls)
  *
  * Returns the validated, merged config object.
  */
-export function resolveConfig(
-  configSchema: z.ZodType,
-  cliName: string,
-  cwd: string,
-): Record<string, unknown> {
-  // Layer 1: defaults (handled by Zod parse at the end)
-  // Layer 2: global settings
-  const globalPath = join(homedir(), '.ph', 'cli', cliName, 'settings.json');
-  const globalSettings = loadSettingsFile(globalPath);
+export function resolveConfig(opts: ResolveConfigOptions): Record<string, unknown> {
+  const { configSchema, cliName, workdir, configFile, cwd, implementationDefaults } = opts;
 
-  // Layer 3: local settings
-  const localPath = join(cwd, '.ph', 'cli', cliName, 'settings.json');
-  const localSettings = loadSettingsFile(localPath);
+  // Layer 6: hardcoded defaults (handled by Zod parse at the end)
 
-  // Layer 4: .env file
-  const envFilePath = join(cwd, '.env');
-  const envFileValues = pickEnvValues(loadEnvFile(envFilePath), cliName, configSchema);
+  // Layer 5: implementation defaults
+  const implDefaults = implementationDefaults ?? {};
 
-  // Layer 5: process.env
-  const processEnvValues = pickEnvValues(
+  // Layer 4: user config
+  const userPath = userConfigPath(cliName);
+  const userConfig = loadJsonFile(userPath);
+
+  // Layer 3: local config
+  const localPath = localConfigPath(workdir, cliName);
+  const localConfig = loadJsonFile(localPath);
+
+  // Layer 2: environment variables
+  const envValues = pickEnvValues(
     process.env as Record<string, string | undefined>,
     cliName,
     configSchema,
   );
 
+  // Layer 1: config file (--config flag)
+  let configFileValues: Record<string, unknown> = {};
+  if (configFile) {
+    const baseCwd = cwd ?? process.cwd();
+    const absPath = resolve(baseCwd, configFile);
+    configFileValues = loadJsonFile(absPath);
+  }
+
   // Merge (lower priority first, higher priority overwrites)
   const merged = {
-    ...globalSettings,
-    ...localSettings,
-    ...envFileValues,
-    ...processEnvValues,
+    ...implDefaults,
+    ...userConfig,
+    ...localConfig,
+    ...envValues,
+    ...configFileValues,
   };
 
   // Validate through Zod (applies defaults for missing fields)
   return configSchema.parse(merged) as Record<string, unknown>;
+}
+
+/**
+ * Identify config fields that are mandatory (no default, not optional)
+ * and have no value in the merged config.
+ */
+export function getMissingRequiredFields(
+  configSchema: z.ZodType,
+  resolvedConfig: Record<string, unknown>,
+): Array<{ key: string; description: string }> {
+  const fields = getSchemaFields(configSchema);
+  const missing: Array<{ key: string; description: string }> = [];
+  for (const field of fields) {
+    if (!field.isOptional && !field.hasDefault && resolvedConfig[field.key] === undefined) {
+      missing.push({ key: field.key, description: field.description ?? '' });
+    }
+  }
+  return missing;
 }

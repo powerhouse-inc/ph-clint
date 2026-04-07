@@ -41,7 +41,7 @@ ph-clint/
 - **Powerhouse** — Document reactor for loading/subscribing/editing Powerhouse documents. Provides event triggers for document changes and standard agent skills for document work.
 - **Mastra** — AI agent framework. Provides agent definitions, conversation memory (thread-based, LibSQL), workspace/sandbox isolation, and MCP client for dynamic tool discovery.
 
-**Workspace**: `.ph/cli/{cli-name}/` (local) and `~/.ph/cli/{cli-name}/` (global). When Mastra is enabled, its workspace nests inside at `mastra/`. 5-layer config resolution: ENV vars > .env > local settings > global settings > defaults. Config schemas are Zod with auto-derived env var names.
+**Workspace vs Context**: The workspace is the user/agent working directory (defaults to `cwd`, configurable via `--workdir` or implementation override). The context folder (`{workspace}/.ph/`) is ph-clint's managed state area. Config lives at `{workspace}/.ph/{cli-name}.config.local.json` and `~/.ph/{cli-name}.config.user.json`. Mastra operates directly on the workspace; its database lives at `{workspace}/.ph/{cli-name}/mastra/mastra.db`. 6-layer config resolution: --config flag > env vars > local config > user config > implementation defaults > hardcoded defaults. Config schemas are Zod with auto-derived env var names and typed `CommandContext.config`.
 
 ## Tech Stack
 

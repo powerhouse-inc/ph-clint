@@ -23,10 +23,18 @@ export interface MastraIntegrationOptions {
   /** ph-clint commands to expose as Mastra tools (agent can call them). */
   commands?: Command[];
   /**
-   * CLI workspace root path (e.g. '.ph/cli/assist').
-   * The Mastra workspace nests inside at `{workspacePath}/mastra/workspace/`
-   * and the database at `{workspacePath}/mastra/db/mastra.db`.
+   * Resolved workspace directory (absolute path).
+   * Passed to Mastra as the LocalFilesystem root — agents operate on the
+   * same files as the user.
+   * The Mastra database lives at {workdir}/.ph/{cliName}/mastra/mastra.db.
    * When omitted, the agent runs without a workspace or persistent memory.
+   */
+  workdir?: string;
+  /** CLI name, used to namespace the Mastra database under .ph/{cliName}/. */
+  cliName?: string;
+  /**
+   * @deprecated Use workdir + cliName instead.
+   * Legacy workspace path (e.g. '.ph/cli/assist').
    */
   workspacePath?: string;
 }

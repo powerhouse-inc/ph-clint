@@ -1,4 +1,7 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
 import { defineCli } from '../src/core/cli.js';
@@ -771,6 +774,158 @@ describe('defineCli', () => {
       // No routine → --wait is a no-op, run() returns normally without calling exit()
       expect(cap.exitCode).toBeUndefined();
     });
+    });
+
+    describe('workdir and config flags', () => {
+      let tmpDir: string;
+
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'ph-clint-wdir-'));
+      });
+
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true });
+      });
+
+      it('passes workdir to command context', async () => {
+        let receivedWorkdir: string | undefined;
+        const wdCli = defineCli({
+          name: 'wd-test',
+          version: '0.0.1',
+          description: 'Workdir test',
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check workdir',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                receivedWorkdir = ctx.workdir;
+                return 'ok';
+              },
+            }),
+          ],
+        });
+
+        const cap = capture();
+        await wdCli.run(['node', 'test', 'check'], {
+          ...cap.options,
+          workdir: tmpDir,
+        });
+        expect(receivedWorkdir).toBe(tmpDir);
+      });
+
+      it('implementation workdir override takes precedence', async () => {
+        let receivedWorkdir: string | undefined;
+        const wdCli = defineCli({
+          name: 'wd-test',
+          version: '0.0.1',
+          description: 'Workdir test',
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check workdir',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                receivedWorkdir = ctx.workdir;
+                return 'ok';
+              },
+            }),
+          ],
+          workdir: tmpDir,
+        });
+
+        const cap = capture();
+        await wdCli.run(['node', 'test', 'check'], cap.options);
+        expect(receivedWorkdir).toBe(tmpDir);
+      });
+
+      it('--config flag reads config from file (highest priority)', async () => {
+        const configFile = join(tmpDir, 'custom.json');
+        await writeFile(configFile, JSON.stringify({ priority: 'high' }));
+
+        let receivedConfig: Record<string, unknown> = {};
+        const cfgCli = defineCli({
+          name: 'cfg-test',
+          version: '0.0.1',
+          description: 'Config test',
+          configSchema: z.object({
+            priority: z.enum(['low', 'medium', 'high']).default('low'),
+          }),
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check config',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                receivedConfig = ctx.config;
+                return 'ok';
+              },
+            }),
+          ],
+        });
+
+        const cap = capture();
+        await cfgCli.run(
+          ['node', 'test', '--config', configFile, 'check'],
+          cap.options,
+        );
+        expect(receivedConfig.priority).toBe('high');
+      });
+
+      it('configDefaults are applied as layer 5', async () => {
+        let receivedConfig: Record<string, unknown> = {};
+        const cfgCli = defineCli({
+          name: 'cfg-test',
+          version: '0.0.1',
+          description: 'Config test',
+          configSchema: z.object({
+            priority: z.enum(['low', 'medium', 'high']).default('low'),
+          }),
+          configDefaults: { priority: 'medium' },
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check config',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                receivedConfig = ctx.config;
+                return 'ok';
+              },
+            }),
+          ],
+        });
+
+        const cap = capture();
+        await cfgCli.run(['node', 'test', 'check'], cap.options);
+        expect(receivedConfig.priority).toBe('medium');
+      });
+
+      it('creates workspace store at {workdir}/.ph/{cli-name}/', async () => {
+        let basePath: string | undefined;
+        const wdCli = defineCli({
+          name: 'store-test',
+          version: '0.0.1',
+          description: 'Store test',
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check workspace path',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                basePath = ctx.workspace.basePath;
+                return 'ok';
+              },
+            }),
+          ],
+        });
+
+        const cap = capture();
+        await wdCli.run(['node', 'test', 'check'], {
+          ...cap.options,
+          workdir: tmpDir,
+        });
+        expect(basePath).toBe(`${tmpDir}/.ph/store-test`);
+      });
     });
 
     describe('default command — agent in command mode', () => {

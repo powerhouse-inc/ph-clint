@@ -33,33 +33,88 @@ The framework avoids patterns that make testing difficult: global mutable state,
 
 Dependencies are lazy-loaded so that CLI tools start instantly. Heavy modules (AI SDKs, document model libraries, etc.) are only imported when the subcommand that needs them is actually invoked.
 
-### 2. Workspace and Configuration
+### 2. Workspace, Context, and Configuration
 
-CLIs optionally maintain a **workspace** for persisting state and settings. Workspaces exist at two levels:
+The framework separates two concepts:
 
-- **Local (project):** `{cwd}/.ph/cli/{cli-name}/`
-- **Global (user):** `~/.ph/cli/{cli-name}/`
+- **Workspace** — The directory where the user and AI agent collaborate on data. This is the user's working area — files, assets, project data. It defaults to `process.cwd()` and is fully under the user's control.
+- **Context folder** — A `.ph/` directory inside the workspace where ph-clint stores its own managed state: configuration, databases, session data. The user doesn't edit these directly.
 
-The local path sits alongside other `.ph/{folders}`, ensuring compatibility with the existing `ph` CLI toolchain. Multiple CLIs can coexist under `.ph/cli/` and share the same project root.
+#### Workspace Resolution
 
-Configuration is resolved through **five layers**, where each layer overrides the one below it:
+The workspace directory is a **prerequisite** — it must be resolved before any configuration is loaded, because config file paths depend on it. Resolution order (later overrides earlier):
 
-1. **Environment variables** (`ENV=` on the command line) — highest priority, for one-off overrides.
-2. **`.env` file** — in the project root or working directory, for project-level environment config.
-3. **Local workspace settings** (`{cwd}/.ph/cli/{cli-name}/settings.json`) — per-project persistent config.
-4. **Global workspace settings** (`~/.ph/cli/{cli-name}/settings.json`) — user-wide defaults.
-5. **Hardcoded defaults** — sensible values baked into the CLI definition.
+1. **Fallback:** `process.cwd()` — always available.
+2. **CLI flag:** `--workdir <path>` / `-w <path>` — a global flag on every CLI, lets the user point to any directory.
+3. **Implementation override:** The project using ph-clint can set the workspace path programmatically (e.g., via its own flag parsing, environment variable, or hardcoded value). When an implementation override is set, the `--workdir` flag is **hidden** from the CLI — the implementation owns the decision.
 
-Configuration schemas are **defined in Zod**, just like command inputs. Each config field automatically maps to an environment variable name by convention (e.g., a field `connectPort` in a CLI named `reactor` maps to `REACTOR_CONNECT_PORT`). This means:
+The workspace directory is always passed to the Mastra integration as the Mastra Workspace root, so agents operate on the same files the user sees.
+
+#### Context Folder Layout
+
+Inside the workspace, ph-clint maintains a `.ph/` directory:
+
+```
+{workspace}/
+├── .ph/
+│   ├── {cli-name}.config.local.json    # Per-workspace config (layer 3)
+│   └── {cli-name}/                     # CLI-managed state
+│       └── mastra/                     # Mastra database (when enabled)
+│           └── mastra.db
+├── ...                                 # User/agent files
+```
+
+A global config file lives in the user's home directory:
+
+```
+~/.ph/{cli-name}.config.user.json       # User-wide config (layer 4)
+```
+
+#### Configuration Schema
+
+Every implementation project defines its config shape as a **Zod schema**, the same way commands are defined. The framework provides a generic type that derives the TypeScript type from the schema, giving implementations type-strict access to resolved config values:
+
+```typescript
+const configSchema = z.object({
+  apiKey: z.string().describe('API key for the service'),
+  maxRetries: z.number().default(3).describe('Maximum retry attempts'),
+});
+
+const cli = defineCli({
+  name: 'mycli',
+  configSchema,
+  // ...
+});
+
+// In commands: context.config is typed as z.infer<typeof configSchema>
+```
+
+Each config field automatically maps to an environment variable name by convention (e.g., a field `connectPort` in a CLI named `reactor` maps to `REACTOR_CONNECT_PORT`). This means:
 
 - Config validation and type safety come for free from the schema.
 - The set of supported environment variables is derived, not hand-maintained.
 - Help/docs can list all available env vars automatically.
-- `.env` file parsing and workspace settings use the same schema for validation.
 
-This layering lets users set global preferences, override them per project, and temporarily override anything via environment variables — without touching code.
+#### Configuration Resolution
 
-When the Mastra integration is enabled, the **Mastra workspace** is nested inside the CLI workspace by default (at `.ph/cli/{cli-name}/mastra/`), so agents have natural access to CLI state and settings. When the Powerhouse integration is also enabled, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive or reactor, enabling agents to work with documents through the same workspace abstraction.
+Configuration is resolved through **six layers**, where each layer overrides the one below it:
+
+1. **Config file flag** (`--config <path>` / `-c <path>`) — highest priority. Path is relative to `cwd` (not the workspace). For one-off overrides or CI/CD use.
+2. **Environment variables** (`{CLINAME}_{FIELD_NAME}`) — per-field overrides via env vars.
+3. **Local config** (`{workspace}/.ph/{cli-name}.config.local.json`) — per-workspace persistent config.
+4. **User config** (`~/.ph/{cli-name}.config.user.json`) — user-wide defaults across workspaces.
+5. **Implementation defaults** — values passed from the project code to `defineCli()` (e.g., in the config schema's `.default()` calls or as explicit overrides).
+6. **Hardcoded defaults** — sensible values baked into the Zod schema via `.default()`.
+
+#### First-Run Config Prompting
+
+If the config schema has **mandatory fields without defaults** (i.e., `z.string()` with no `.default()` and no `.optional()`), and no layer provides a value, the framework **automatically prompts the user** on first run. The prompted values are written to the local config file (`{workspace}/.ph/{cli-name}.config.local.json`) so the user is only asked once per workspace.
+
+This ensures CLIs with required configuration (API keys, endpoints, etc.) provide a smooth onboarding experience without requiring the user to manually create config files.
+
+#### Mastra Integration
+
+When the Mastra integration is enabled, the **Mastra database** lives at `{workspace}/.ph/{cli-name}/mastra/mastra.db`. The workspace directory itself is passed to Mastra as the agent's working directory, so agents read and write files in the same space as the user. When the Powerhouse integration is also enabled, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive or reactor, enabling agents to work with documents through the same workspace abstraction.
 
 ### 3. Unified Subcommands
 

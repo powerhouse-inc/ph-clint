@@ -1,11 +1,23 @@
 import type { z } from 'zod';
 
 /**
- * A workspace provides file-based persistence for CLI state.
- * Backed by `.ph/cli/{cli-name}/` on disk, or in-memory for testing.
+ * Utility type: infer the TypeScript type from a Zod config schema.
+ * Use in implementation projects for type-strict config access:
+ *
+ * ```ts
+ * const configSchema = z.object({ port: z.number().default(3000) });
+ * type MyConfig = InferConfig<typeof configSchema>;
+ * // MyConfig = { port: number }
+ * ```
+ */
+export type InferConfig<T extends z.ZodType> = z.infer<T>;
+
+/**
+ * A key-value store for CLI-managed state.
+ * Backed by `{workdir}/.ph/{cli-name}/` on disk, or in-memory for testing.
  */
 export interface Workspace {
-  /** Root directory of this workspace (e.g. `.ph/cli/{cli-name}/`). */
+  /** Root directory of this workspace (e.g. `{workdir}/.ph/{cli-name}/`). */
   readonly basePath: string;
   read<T>(key: string, fallback: T): Promise<T>;
   write(key: string, value: unknown): Promise<void>;
@@ -13,9 +25,12 @@ export interface Workspace {
 
 /**
  * Context passed to command execute functions.
- * Provides access to workspace, resolved config, and optional runtime services.
+ * Provides access to workdir, workspace, resolved config, and optional runtime services.
  */
 export interface CommandContext {
+  /** The resolved working directory — where the user/agent collaborate on data. */
+  workdir: string;
+  /** Key-value store for CLI-managed state at {workdir}/.ph/{cli-name}/. */
   workspace: Workspace;
   config: Record<string, unknown>;
   routine?: Routine;
@@ -252,6 +267,17 @@ export interface CliOptions {
   integrations?: Integration[];
   /** Route bare text to an agent. Format: 'agent:<agent-id>' */
   defaultCommand?: string;
+  /**
+   * Implementation-level workdir override. When set, the --workdir/-w CLI flag
+   * is hidden — the implementation owns the decision of where the workspace is.
+   * When omitted, the user can set it via --workdir or it defaults to cwd.
+   */
+  workdir?: string;
+  /**
+   * Implementation-level config defaults. These form layer 5 of the 6-layer
+   * config resolution (above hardcoded schema defaults, below user/local config).
+   */
+  configDefaults?: Record<string, unknown>;
 }
 
 /**
@@ -270,6 +296,10 @@ export interface RunOptions {
   signal?: AbortSignal;
   /** Resume a previous agent conversation by thread ID. */
   resume?: string;
+  /** Override workdir for testing (replaces cwd fallback). */
+  workdir?: string;
+  /** Path to a config file (--config flag value), relative to cwd. */
+  configFile?: string;
 }
 
 /**

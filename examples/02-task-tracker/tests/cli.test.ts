@@ -32,11 +32,11 @@ describe('tasks CLI', () => {
       expect(cli.version).toBe('1.0.0');
     });
 
-    it('registers all four commands', () => {
+    it('registers all commands including built-in config', () => {
       const commands = cli.listCommands();
-      expect(commands).toHaveLength(4);
+      expect(commands).toHaveLength(5);
       const ids = commands.map(c => c.id).sort();
-      expect(ids).toEqual(['add', 'done', 'list', 'remove']);
+      expect(ids).toEqual(['add', 'config', 'done', 'list', 'remove']);
     });
 
     it('looks up commands by id', () => {

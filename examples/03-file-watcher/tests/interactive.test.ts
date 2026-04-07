@@ -61,6 +61,7 @@ describe('Interactive mode', () => {
   beforeEach(() => {
     processManager = createProcessManager();
     context = {
+      workdir: '',
       workspace: createMemoryWorkspace(),
       config: { watchDir: './src', buildCommand: 'echo test-build' },
       processes: processManager,

@@ -1,7 +1,22 @@
 import { describe, it, expect } from '@jest/globals';
-import { getMastraWorkspacePaths } from '../src/integrations/mastra/paths.js';
+import { join } from 'node:path';
+import { getMastraPaths, getMastraWorkspacePaths } from '../src/integrations/mastra/paths.js';
 
-describe('getMastraWorkspacePaths', () => {
+describe('getMastraPaths', () => {
+  it('computes paths from workdir and cliName', () => {
+    const paths = getMastraPaths('/home/user/project', 'assist');
+    expect(paths.filesystemPath).toBe('/home/user/project');
+    expect(paths.dbPath).toBe(join('/home/user/project', '.ph', 'assist', 'mastra', 'mastra.db'));
+  });
+
+  it('works with relative workdir', () => {
+    const paths = getMastraPaths('./workspace', 'mycli');
+    expect(paths.filesystemPath).toBe('./workspace');
+    expect(paths.dbPath).toBe(join('./workspace', '.ph', 'mycli', 'mastra', 'mastra.db'));
+  });
+});
+
+describe('getMastraWorkspacePaths (legacy)', () => {
   it('computes nested paths from CLI workspace root', () => {
     const paths = getMastraWorkspacePaths('.ph/cli/assist');
     expect(paths.mastraRoot).toBe('.ph/cli/assist/mastra');

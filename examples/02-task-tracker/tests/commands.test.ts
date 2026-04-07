@@ -9,6 +9,7 @@ import type { Task } from '../src/types.js';
 function createMockWorkspace() {
   const store: Record<string, any> = {};
   return {
+    basePath: '',
     read: async <T>(key: string, fallback: T): Promise<T> => {
       return (store[key] as T) ?? fallback;
     },
@@ -21,6 +22,7 @@ function createMockWorkspace() {
 
 function createContext(workspace: ReturnType<typeof createMockWorkspace>, configOverrides?: Partial<{ defaultPriority: string }>) {
   return {
+    workdir: '',
     workspace,
     config: {
       defaultPriority: 'medium' as const,

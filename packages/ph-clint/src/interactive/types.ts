@@ -36,6 +36,10 @@ export interface ReplSession {
   /** True when the session is waiting for a prompt answer. */
   readonly isPrompting: boolean;
   welcome: string | undefined;
+  /** The exit message (includes resume hint when a threadId is set). */
+  readonly exitMessage: string;
+  /** Callback invoked for each formatted chunk during agent streaming. */
+  onStreamChunk?: (text: string) => void;
 }
 
 /**

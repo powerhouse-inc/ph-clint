@@ -24,7 +24,7 @@ export function createAssistant(): AgentProvider {
 
       const tools = opts?.tools;
       const lower = prompt.toLowerCase();
-      const dummyCtx = { workspace: createMemoryWorkspace(), config: {} };
+      const dummyCtx = { workdir: '', workspace: createMemoryWorkspace(), config: {} };
 
       // Handle list-images
       if ((lower.includes('list') || lower.includes('saved') || lower.includes('my images')) && tools?.has('list-images')) {

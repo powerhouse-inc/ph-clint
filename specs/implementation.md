@@ -167,17 +167,43 @@ The library provides these as composable components that generated CLIs assemble
 
 ### Workspace and Configuration Pattern
 
-**Maps to:** Features 2 (Workspace and Configuration), 18 (Configuration and Theming)
+**Maps to:** Features 2 (Workspace, Context, and Configuration), 18 (Configuration and Theming)
 
-agent-rupert-cli uses a 3-layer configuration resolution. The library extends this to a **5-layer** model (see features spec):
+#### Workspace vs Context
 
-1. **Environment variables** (`ENV=`) — highest priority, one-off overrides.
-2. **`.env` file** — project-level environment config.
-3. **Local workspace settings** (`{cwd}/.ph/cli/{cli-name}/settings.json`) — per-project config.
-4. **Global workspace settings** (`~/.ph/cli/{cli-name}/settings.json`) — user-wide defaults.
-5. **Hardcoded defaults** — sensible values baked into the CLI definition.
+The **workspace** is the user/agent working directory — where data lives. It defaults to `cwd` and is configurable via `--workdir` or an implementation override.
 
-The local workspace directory also stores session data (thread history via LibSQL), logs, and any CLI-specific state. The global workspace stores user preferences that apply across projects.
+The **context folder** (`{workspace}/.ph/`) is ph-clint's managed state directory. It contains per-workspace config and Mastra databases. The user doesn't edit it directly.
+
+Workspace resolution is a **prerequisite**, not a config value — it must be known before any config files can be located. Resolution order: (1) `cwd` fallback, (2) `--workdir` flag, (3) implementation override. When (3) is set, `--workdir` is hidden from the CLI.
+
+#### Config Resolution (6 layers)
+
+1. **`--config <path>` flag** — path relative to `cwd` (not workspace). Highest priority.
+2. **Environment variables** (`{CLINAME}_{FIELD_NAME}`) — per-field overrides.
+3. **Local config** (`{workspace}/.ph/{cli-name}.config.local.json`) — per-workspace persistent config.
+4. **User config** (`~/.ph/{cli-name}.config.user.json`) — user-wide defaults.
+5. **Implementation defaults** — values passed from the project to `defineCli()`.
+6. **Hardcoded defaults** — from Zod schema `.default()` calls.
+
+#### Typed Config Schema
+
+Config schemas are Zod objects, same as command inputs. The framework provides a generic type so implementations get full type safety:
+
+```typescript
+// Implementation defines the schema
+const configSchema = z.object({
+  apiKey: z.string().describe('API key'),
+  port: z.number().default(3000),
+});
+
+// CommandContext.config is typed as z.infer<typeof configSchema>
+// Not Record<string, unknown>
+```
+
+#### First-Run Prompting
+
+If the schema has mandatory fields without defaults and no layer provides a value, the framework prompts the user interactively and writes the answers to the local config file. This replaces the need for manual config file creation on first run.
 
 ### Process Management Pattern
 
@@ -497,35 +523,36 @@ At runtime, when enabled:
 5. **Streaming** — Agent responses stream through `fullStream`, yielding typed chunks that the output system renders.
 6. **Skills** — Compiled SKILL.md files are loaded via the `Workspace.skills` array. The standard Powerhouse skills (when that integration is also enabled) are included automatically alongside implementation-specific skills.
 
-#### Workspace Relationship: CLI vs. Mastra
+#### Workspace Relationship: User Space vs. Context vs. Mastra
 
-The CLI workspace (`.ph/cli/{cli-name}/`) is the **primary workspace** — it always exists when the CLI has state. The Mastra workspace is a layer on top, configured to include the CLI workspace by default.
+The **workspace** is the user's working directory. The **context folder** (`{workspace}/.ph/`) is ph-clint's managed area. Mastra operates on the workspace directly.
 
 ```
-.ph/cli/{cli-name}/                  # CLI workspace (always present when stateful)
-├── settings.json                    # CLI configuration
-├── sessions/                        # Thread/session storage (LibSQL)
-├── logs/                            # CLI and process logs
-└── mastra/                          # Mastra workspace root (when enabled)
-    ├── workspace/                   # Mastra Workspace (LocalFilesystem)
-    │   └── ...                      # Agent-accessible files
-    └── db/                          # Mastra storage (LibSQL, DuckDB)
+{workspace}/                              # User/agent working directory
+├── .ph/                                  # Context folder (ph-clint managed)
+│   ├── {cli-name}.config.local.json      # Per-workspace config
+│   └── {cli-name}/                       # CLI state
+│       └── mastra/                       # Mastra state (when enabled)
+│           └── mastra.db                 # LibSQL database for memory
+├── ...                                   # User/agent data files
+```
+
+Global config:
+```
+~/.ph/{cli-name}.config.user.json         # User-wide defaults
 ```
 
 When Mastra is enabled:
 
-- The **Mastra `Workspace`** (`LocalFilesystem` + `LocalSandbox`) is rooted inside the CLI workspace at `.ph/cli/{cli-name}/mastra/workspace/`. Its `allowedPaths` include the CLI workspace root by default, so agents can access CLI state, settings, and logs.
-- **Mastra storage** (LibSQL for memory, DuckDB for observability) lives at `.ph/cli/{cli-name}/mastra/db/`, co-located with but separate from CLI session storage.
-- The **session store** for conversation memory can be shared — the CLI's thread IDs map directly to Mastra's `memory.thread` parameter, using the same LibSQL instance when possible.
+- The **Mastra `Workspace`** (`LocalFilesystem`) is rooted at the workspace directory itself — agents operate on the same files the user sees. This is the key difference from the previous design where Mastra was nested in a subdirectory.
+- **Mastra storage** (LibSQL for memory) lives at `{workspace}/.ph/{cli-name}/mastra/mastra.db`, inside the context folder.
+- The **session store** for conversation memory uses the same LibSQL instance — the CLI's thread IDs map directly to Mastra's `memory.thread` parameter.
 
 When Mastra is disabled:
 
-- The CLI workspace functions standalone. Session storage (if needed for non-agent features) uses its own lightweight store.
-- No Mastra directories are created.
+- The workspace and context folder function standalone. No Mastra directories are created.
 
-This nesting ensures that enabling Mastra never conflicts with the CLI workspace, and that agents have natural access to the CLI's working context without special configuration.
-
-**Future: Workspace ↔ Powerhouse Drive mapping.** When both integrations are enabled, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive. This would let agents read and write documents through the standard `Workspace` filesystem abstraction, with the reactor handling sync, operations, and subscriptions transparently underneath. The CLI workspace remains the anchor — the drive mapping is an additional layer, not a replacement.
+**Future: Workspace ↔ Powerhouse Drive mapping.** When both integrations are enabled, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive. This would let agents read and write documents through the standard `Workspace` filesystem abstraction, with the reactor handling sync, operations, and subscriptions transparently underneath.
 
 ---
 
@@ -536,8 +563,8 @@ ph-clint/
 ├── src/
 │   ├── core/
 │   │   ├── command.ts          # Command definition, registry, routing
-│   │   ├── config.ts           # 5-layer config resolution, Zod schema → ENV mapping
-│   │   ├── workspace.ts        # .ph/cli/{name}/ management (local + global)
+│   │   ├── config.ts           # 6-layer config resolution, Zod schema → ENV mapping
+│   │   ├── workspace.ts        # Workspace resolution (cwd / --workdir / override)
 │   │   ├── events.ts           # EventBus, event types
 │   │   └── types.ts            # Shared types
 │   ├── routine/

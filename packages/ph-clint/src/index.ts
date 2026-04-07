@@ -3,7 +3,9 @@ export { defineCli } from './core/cli.js';
 export { defineTrigger } from './core/trigger.js';
 export { getSchemaFields } from './core/schema.js';
 export { createWorkspace, createMemoryWorkspace } from './core/workspace.js';
-export { toUpperSnake, configKeyToEnvVar, resolveConfig } from './core/config.js';
+export { toUpperSnake, configKeyToEnvVar, resolveConfig, localConfigPath, userConfigPath, getMissingRequiredFields } from './core/config.js';
+export { createConfigCommand, generateConfigCommandHelp } from './core/config-command.js';
+export { resolveWorkdir } from './core/workdir.js';
 export { createEventBus } from './core/events.js';
 export { createProcessManager } from './core/processes.js';
 export { createRoutine } from './core/routine.js';
@@ -12,7 +14,7 @@ export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
 export { renderMarkdown } from './interactive/markdown.js';
-export { defineMastraIntegration, getMastraWorkspacePaths, mapMastraStream } from './integrations/mastra/index.js';
+export { defineMastraIntegration, getMastraPaths, getMastraWorkspacePaths, mapMastraStream } from './integrations/mastra/index.js';
 export type { FieldInfo } from './core/schema.js';
 export type {
   ReplSession,
@@ -31,6 +33,7 @@ export type {
   PromptConfig,
   InteractiveConfig,
   ConfigEnvVar,
+  InferConfig,
   WorkItem,
   TriggerContext,
   TriggerOptions,
