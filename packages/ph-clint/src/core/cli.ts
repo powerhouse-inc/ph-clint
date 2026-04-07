@@ -520,11 +520,11 @@ export function defineCli(options: CliOptions): Cli {
       commandArgv = filtered;
     }
 
-    // Check if the first non-flag arg is a registered subcommand
+    // Check if the first non-flag arg is a registered subcommand or Commander built-in
     // If not, and we have a defaultCommand, treat remaining args as an agent prompt
     const nonFlagArgs = commandArgv.slice(2).filter((a) => !a.startsWith('-'));
     const firstArg = nonFlagArgs[0];
-    const isSubcommand = firstArg && commandMap.has(firstArg);
+    const isSubcommand = firstArg && (commandMap.has(firstArg) || firstArg === 'help');
 
     if (!isSubcommand && agentProvider && nonFlagArgs.length > 0) {
       // Agent prompt in command mode

@@ -1014,6 +1014,26 @@ describe('defineCli', () => {
         expect(cap.output).toContain('hi');
       });
 
+      it('routes "help" to Commander, not to agent', async () => {
+        const agent = createTestAgent({});
+        const agentCli = defineCli({
+          name: 'assist',
+          version: '1.0.0',
+          description: 'Assistant',
+          commands: [echo],
+          integrations: [{ id: 'test', agents: [agent] }],
+          defaultCommand: 'agent:test-assistant',
+        });
+
+        const cap = capture();
+        await agentCli.run(
+          ['node', 'assist', 'help', 'echo'],
+          cap.options,
+        );
+        // Should show help for echo, not send "help echo" to the agent
+        expect(cap.exitCode).toBe(0);
+      });
+
       it('headless interactive routes bare text to agent', async () => {
         const agent = createTestAgent({
           'tell me a joke': [
