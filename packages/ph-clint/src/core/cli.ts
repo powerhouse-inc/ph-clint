@@ -332,31 +332,45 @@ export function defineCli(options: CliOptions): Cli {
       program.option('-c, --config <path>', 'Load config from a JSON file (relative to cwd)');
     }
 
+    // Shorthand aliases for the built-in config command
+    const configShorthands: Record<string, string> = {
+      name: '-n',
+      write: '-w',
+      remove: '-r',
+      list: '-l',
+      scope: '-s',
+    };
+
     for (const cmd of commandMap.values()) {
       const sub = program.command(cmd.id).description(cmd.description);
+      const isBuiltinConfig = cmd.id === 'config' && options.configSchema;
 
       const fields = getSchemaFields(cmd.inputSchema);
       for (const field of fields) {
         const desc = field.description ?? '';
+        const shorthand = isBuiltinConfig ? configShorthands[field.key] : undefined;
+        const longFlag = `--${field.key}`;
+        const flag = shorthand ? `${shorthand}, ${longFlag}` : longFlag;
+
         if (field.baseType === 'boolean') {
           sub.option(
-            `--${field.key}`,
+            flag,
             desc,
             field.hasDefault ? (field.defaultValue as boolean) : false,
           );
         } else if (field.isOptional) {
           sub.option(
-            `--${field.key} <value>`,
+            `${flag} <value>`,
             desc,
             field.hasDefault ? String(field.defaultValue) : undefined,
           );
         } else {
-          sub.requiredOption(`--${field.key} <value>`, desc);
+          sub.requiredOption(`${flag} <value>`, desc);
         }
       }
 
       // Override help for the built-in config command with a rich help page
-      if (cmd.id === 'config' && options.configSchema) {
+      if (isBuiltinConfig) {
         sub.helpInformation = () => generateConfigCommandHelp(options.name, options.configSchema!, activeWorkdir) + '\n';
       }
 

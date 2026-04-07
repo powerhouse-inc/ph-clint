@@ -346,11 +346,146 @@ describe('createConfigCommand', () => {
     });
   });
 
+  describe('remove mode', () => {
+    it('removes a setting from local config', async () => {
+      const settingsDir = join(workDir, '.ph');
+      await mkdir(settingsDir, { recursive: true });
+      await writeFile(
+        join(settingsDir, 'tasks.config.local.json'),
+        JSON.stringify({ defaultPriority: 'high', maxItems: 50 }),
+      );
+
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'defaultPriority', remove: true },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('Removed');
+      expect(result.text).toContain('defaultPriority');
+      expect(result.text).toContain('local');
+
+      const filePath = join(workDir, '.ph', 'tasks.config.local.json');
+      const data = JSON.parse(await readFile(filePath, 'utf-8'));
+      expect(data.defaultPriority).toBeUndefined();
+      expect(data.maxItems).toBe(50); // preserved
+    });
+
+    it('reports not set when removing absent key', async () => {
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'defaultPriority', remove: true },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('not set');
+    });
+
+    it('removes from user scope', async () => {
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'defaultPriority', remove: true, scope: 'user' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('user');
+    });
+
+    it('rejects remove from non-writable scope', async () => {
+      const cmd = makeCommand();
+      await expect(
+        cmd.execute(
+          { name: 'defaultPriority', remove: true, scope: 'env' },
+          makeContext(),
+        ),
+      ).rejects.toThrow('Cannot remove from scope "env"');
+    });
+  });
+
+  describe('list mode', () => {
+    it('lists all settings with resolved values', async () => {
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { list: true },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('defaultPriority');
+      expect(result.text).toContain('maxItems');
+      expect(result.text).toContain('apiKey');
+    });
+
+    it('lists settings from a specific scope', async () => {
+      process.env.TASKS_DEFAULT_PRIORITY = 'high';
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { list: true, scope: 'env' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('defaultPriority');
+      expect(result.text).toContain('"high"');
+      // Fields not set in env show as (not set)
+      expect(result.text).toContain('(not set)');
+    });
+
+    it('rejects --list with --name', async () => {
+      const cmd = makeCommand();
+      await expect(
+        cmd.execute(
+          { list: true, name: 'defaultPriority' },
+          makeContext(),
+        ),
+      ).rejects.toThrow('--list does not accept --name');
+    });
+  });
+
+  describe('validation', () => {
+    it('rejects --list with --write', async () => {
+      const cmd = makeCommand();
+      await expect(
+        cmd.execute(
+          { list: true, write: 'high' },
+          makeContext(),
+        ),
+      ).rejects.toThrow('mutually exclusive');
+    });
+
+    it('rejects --list with --remove', async () => {
+      const cmd = makeCommand();
+      await expect(
+        cmd.execute(
+          { list: true, remove: true },
+          makeContext(),
+        ),
+      ).rejects.toThrow('mutually exclusive');
+    });
+
+    it('rejects --write with --remove', async () => {
+      const cmd = makeCommand();
+      await expect(
+        cmd.execute(
+          { name: 'defaultPriority', write: 'high', remove: true },
+          makeContext(),
+        ),
+      ).rejects.toThrow('mutually exclusive');
+    });
+
+    it('requires --name when not using --list', async () => {
+      const cmd = makeCommand();
+      await expect(
+        cmd.execute({}, makeContext()),
+      ).rejects.toThrow('--name is required');
+    });
+  });
+
   describe('input schema', () => {
-    it('has name as enum of config field keys', () => {
+    it('has name as optional enum of config field keys', () => {
       const cmd = makeCommand();
       const parsed = cmd.inputSchema.parse({ name: 'defaultPriority' }) as Record<string, unknown>;
       expect(parsed.name).toBe('defaultPriority');
+    });
+
+    it('accepts input without name (for list mode)', () => {
+      const cmd = makeCommand();
+      const parsed = cmd.inputSchema.parse({ list: true }) as Record<string, unknown>;
+      expect(parsed.list).toBe(true);
+      expect(parsed.name).toBeUndefined();
     });
 
     it('rejects invalid setting names', () => {
@@ -380,13 +515,23 @@ describe('generateConfigCommandHelp', () => {
     const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
     expect(help).toContain('-n, --name <setting>');
     expect(help).toContain('-w, --write <value>');
+    expect(help).toContain('-r, --remove');
+    expect(help).toContain('-l, --list');
     expect(help).toContain('-s, --scope <scope>');
   });
 
-  it('shows scope values for read and write', () => {
+  it('shows scope values for read and write/remove', () => {
     const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
     expect(help).toContain('args | env | local | user | sys');
-    expect(help).toContain('local | user');
+    expect(help).toContain('Write/Remove: local | user');
+  });
+
+  it('includes usage examples', () => {
+    const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
+    expect(help).toContain('Examples:');
+    expect(help).toContain('tasks config --list');
+    expect(help).toContain('tasks config --name watchDir --write');
+    expect(help).toContain('tasks config --name watchDir --remove');
   });
 
   it('lists all config fields', () => {
@@ -426,9 +571,15 @@ describe('generateConfigCommandHelp', () => {
     expect(help).toContain('System defaults');
   });
 
-  it('uses --write in resolution text', () => {
+  it('uses --write and --remove in resolution text', () => {
     const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
-    expect(help).toContain('--write flag');
+    expect(help).toContain('--write and --remove');
+  });
+
+  it('uses em dash notation for settings', () => {
+    const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
+    expect(help).toContain('defaultPriority — Default priority for new tasks');
+    expect(help).toContain('maxItems — Maximum number of tasks');
   });
 
   it('uses actual local config path with workdir', () => {
@@ -625,5 +776,48 @@ describe('config command integration via defineCli', () => {
     const filePath = join(workDir, '.ph', 'tasks.config.local.json');
     const data = JSON.parse(await readFile(filePath, 'utf-8'));
     expect(data.defaultPriority).toBe('high');
+  });
+
+  it('runs config list via CLI run()', async () => {
+    const cli = defineCli({
+      name: 'tasks',
+      version: '1.0.0',
+      description: 'Task tracker',
+      configSchema: schema,
+      commands: [],
+    });
+    const cap = capture();
+    await cli.run(
+      ['node', 'tasks', 'config', '--list'],
+      { ...cap.options, workdir: workDir },
+    );
+    expect(cap.output.join('')).toContain('defaultPriority');
+  });
+
+  it('runs config remove via CLI run()', async () => {
+    const cli = defineCli({
+      name: 'tasks',
+      version: '1.0.0',
+      description: 'Task tracker',
+      configSchema: schema,
+      commands: [],
+    });
+    // First write a value
+    const cap1 = capture();
+    await cli.run(
+      ['node', 'tasks', 'config', '--name', 'defaultPriority', '--write', 'high'],
+      { ...cap1.options, workdir: workDir },
+    );
+    // Then remove it
+    const cap2 = capture();
+    await cli.run(
+      ['node', 'tasks', 'config', '--name', 'defaultPriority', '--remove'],
+      { ...cap2.options, workdir: workDir },
+    );
+    expect(cap2.output.join('')).toContain('Removed');
+
+    const filePath = join(workDir, '.ph', 'tasks.config.local.json');
+    const data = JSON.parse(await readFile(filePath, 'utf-8'));
+    expect(data.defaultPriority).toBeUndefined();
   });
 });
