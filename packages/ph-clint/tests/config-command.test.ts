@@ -37,6 +37,7 @@ describe('createConfigCommand', () => {
       workdir: workdir ?? workDir,
       workspace: createMemoryWorkspace(),
       config: {},
+      stdout: () => {},
     };
   }
 

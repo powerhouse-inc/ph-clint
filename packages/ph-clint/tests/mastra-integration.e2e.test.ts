@@ -64,7 +64,7 @@ describeWithKey('Mastra integration E2E', () => {
       config: {},
       cliName: 'test-e2e',
       cliVersion: '1.0.0',
-      context: { workdir: testWorkspace, workspace: createMemoryWorkspace(), config: {} },
+      context: { workdir: testWorkspace, workspace: createMemoryWorkspace(), config: {}, stdout: () => {} },
       commands: [echoCommand],
     };
     const m = createMastraHelpers(ctx);

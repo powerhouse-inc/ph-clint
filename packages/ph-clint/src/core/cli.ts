@@ -108,12 +108,13 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   }
 
   function buildContext(base?: CommandContext): CommandContext {
-    const ctx = base ?? {
+    const ctx: CommandContext = base ?? {
       workdir: process.cwd(),
       workspace: createMemoryWorkspace(),
       config: options.configSchema
         ? (options.configSchema.parse({}) as Record<string, unknown>)
         : {},
+      stdout: (text: string) => process.stdout.write(text),
     };
     // Extend with runtime services if available
     if (routine) ctx.routine = routine;
@@ -314,6 +315,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       .name(options.name)
       .version(options.version)
       .description(resolvedDescription)
+      .enablePositionalOptions()
       .exitOverride();
 
     if (options.interactive) {
@@ -444,7 +446,11 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
           implementationDefaults: options.configDefaults,
         })
       : {};
-    const context = buildContext({ workdir, workspace, config });
+    // context.stdout is a raw writer (no trailing newline) for progressive output
+    const writeRaw = runOptions?.stdout
+      ? (text: string) => { runOptions.stdout!(text); }
+      : (text: string) => { process.stdout.write(text); };
+    const context = buildContext({ workdir, workspace, config, stdout: writeRaw });
 
     // Create ServiceManager when services are defined
     if (hasServices && options.services && eventBus) {

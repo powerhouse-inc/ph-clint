@@ -33,6 +33,8 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   /** Key-value store for CLI-managed state at {workdir}/.ph/{cli-name}/. */
   workspace: Workspace;
   config: TConfig;
+  /** Write progressive output during command execution (raw — no trailing newline added). */
+  stdout: (text: string) => void;
   routine?: Routine;
   processes?: ProcessManager;
   services?: ServiceManager;

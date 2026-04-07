@@ -1,7 +1,7 @@
 import { defineCli, defineCommand, defineService } from 'ph-clint';
 import type { InferConfig } from 'ph-clint';
 import { z } from 'zod';
-import { execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -82,7 +82,7 @@ const init = defineCommand<typeof initInput, { text: string }, Config>({
   id: 'init',
   description: 'Initialize a new Reactor project',
   inputSchema: initInput,
-  execute: async ({ name, version }, { workdir, config }) => {
+  execute: async ({ name, version }, { workdir, config, stdout }) => {
     const projectPath = path.join(workdir, name);
     const phVersion = version ?? config.phVersion ?? 'staging';
 
@@ -98,17 +98,37 @@ const init = defineCommand<typeof initInput, { text: string }, Config>({
       }
     }
 
-    // Run ph init
-    try {
-      execFileSync('ph', ['init', name, `--${phVersion}`, '--pnpm'], {
+    // Run ph init with streaming output
+    const exitCode = await new Promise<number>((resolve, reject) => {
+      // Use `script` to allocate a PTY so the entire process tree (ph, git, npm, etc.)
+      // detects a terminal and emits ANSI color codes.
+      const phCmd = ['ph', 'init', name, `--${phVersion}` /*, '--pnpm' (temporarily disable due to ph > ph-cli fwd bug)*/].join(' ');
+      const child = spawn('script', ['-qec', phCmd, '/dev/null'], {
         cwd: workdir,
-        stdio: 'pipe',
-        env: { ...process.env, CI: 'true' },
-        timeout: 300_000,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, TERM: process.env.TERM ?? 'xterm-256color' },
       });
-    } catch (err: any) {
-      const stderr = err.stderr?.toString() || err.message;
-      return { text: `Failed to initialize project: ${stderr}` };
+
+      child.stdout.on('data', (chunk: Buffer) => stdout(chunk.toString()));
+      child.stderr.on('data', (chunk: Buffer) => stdout(chunk.toString()));
+
+      const timer = setTimeout(() => {
+        child.kill('SIGTERM');
+        reject(new Error('ph init timed out after 5 minutes'));
+      }, 300_000);
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolve(code ?? 1);
+      });
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+
+    if (exitCode !== 0) {
+      return { text: `Failed to initialize project (exit code ${exitCode})` };
     }
 
     // Verify

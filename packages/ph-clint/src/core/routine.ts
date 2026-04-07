@@ -38,6 +38,7 @@ export function createRoutine(options: RoutineOptions): Routine {
     workspace: createMemoryWorkspace(),
     config: {},
     workdir: '',
+    stdout: console.log,
   };
 
   let status: RoutineStatus = 'init';
