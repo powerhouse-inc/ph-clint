@@ -51,7 +51,7 @@ describe('createConfigCommand', () => {
     it('shows resolved value with source (default)', async () => {
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority' },
+        { name: 'defaultPriority' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('defaultPriority');
@@ -63,7 +63,7 @@ describe('createConfigCommand', () => {
       process.env.TASKS_DEFAULT_PRIORITY = 'high';
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority' },
+        { name: 'defaultPriority' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('"high"');
@@ -79,14 +79,14 @@ describe('createConfigCommand', () => {
       );
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority' },
+        { name: 'defaultPriority' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('"low"');
       expect(result.text).toContain('local');
     });
 
-    it('reads from specific scope (local)', async () => {
+    it('reads from scope local', async () => {
       const settingsDir = join(workDir, '.ph');
       await mkdir(settingsDir, { recursive: true });
       await writeFile(
@@ -95,7 +95,7 @@ describe('createConfigCommand', () => {
       );
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority', scope: 'local' },
+        { name: 'defaultPriority', scope: 'local' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('"high"');
@@ -105,23 +105,83 @@ describe('createConfigCommand', () => {
     it('reports not set when scope file has no value', async () => {
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority', scope: 'local' },
+        { name: 'defaultPriority', scope: 'local' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('not set');
       expect(result.text).toContain('local');
     });
 
-    it('reads from user scope', async () => {
-      // User config is at ~/.ph/ — we can't easily write there in tests,
-      // so just verify "not set" works for user scope
+    it('reads from scope user', async () => {
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority', scope: 'user' },
+        { name: 'defaultPriority', scope: 'user' },
         makeContext(),
       ) as { text: string };
-      // Either shows a value (if user has one) or "not set"
       expect(result.text).toContain('defaultPriority');
+    });
+
+    it('reads from scope env', async () => {
+      process.env.TASKS_DEFAULT_PRIORITY = 'low';
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'defaultPriority', scope: 'env' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('"low"');
+      expect(result.text).toContain('env: TASKS_DEFAULT_PRIORITY');
+    });
+
+    it('reports not set for scope env when unset', async () => {
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'defaultPriority', scope: 'env' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('not set');
+      expect(result.text).toContain('TASKS_DEFAULT_PRIORITY');
+    });
+
+    it('reads from scope sys (schema default)', async () => {
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'defaultPriority', scope: 'sys' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('"medium"');
+      expect(result.text).toContain('system default');
+    });
+
+    it('reads from scope sys (implementation default)', async () => {
+      const cmd = createConfigCommand({
+        cliName: 'tasks',
+        configSchema,
+        implementationDefaults: { defaultPriority: 'low' },
+      });
+      const result = await cmd.execute(
+        { name: 'defaultPriority', scope: 'sys' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('"low"');
+      expect(result.text).toContain('system default');
+    });
+
+    it('reports no system default for field without one', async () => {
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'apiKey', scope: 'sys' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('no system default');
+    });
+
+    it('reads from scope args', async () => {
+      const cmd = makeCommand();
+      const result = await cmd.execute(
+        { name: 'defaultPriority', scope: 'args' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('args scope');
     });
   });
 
@@ -129,14 +189,13 @@ describe('createConfigCommand', () => {
     it('writes to local config by default', async () => {
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority', set: 'high' },
+        { name: 'defaultPriority', write: 'high' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('defaultPriority');
       expect(result.text).toContain('"high"');
       expect(result.text).toContain('local');
 
-      // Verify file was written
       const filePath = join(workDir, '.ph', 'tasks.config.local.json');
       const data = JSON.parse(await readFile(filePath, 'utf-8'));
       expect(data.defaultPriority).toBe('high');
@@ -145,7 +204,7 @@ describe('createConfigCommand', () => {
     it('writes number values correctly', async () => {
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'maxItems', set: '50' },
+        { name: 'maxItems', write: '50' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('50');
@@ -165,7 +224,7 @@ describe('createConfigCommand', () => {
 
       const cmd = makeCommand();
       await cmd.execute(
-        { parameter: 'maxItems', set: '25' },
+        { name: 'maxItems', write: '25' },
         makeContext(),
       );
 
@@ -179,25 +238,29 @@ describe('createConfigCommand', () => {
       const cmd = makeCommand();
       await expect(
         cmd.execute(
-          { parameter: 'defaultPriority', set: 'invalid' },
+          { name: 'defaultPriority', write: 'invalid' },
           makeContext(),
         ),
       ).rejects.toThrow('Invalid value');
     });
 
-    it('writes to user scope with --scope user', async () => {
-      // We can't write to ~/.ph in tests safely, so create a command with
-      // a schema that has a string field and test the file write path
-      const tmpUserDir = await mkdtemp(join(tmpdir(), 'ph-clint-user-'));
-      // For this test we just verify local scope works with explicit scope
+    it('rejects write to non-writable scope', async () => {
+      const cmd = makeCommand();
+      await expect(
+        cmd.execute(
+          { name: 'defaultPriority', write: 'high', scope: 'env' },
+          makeContext(),
+        ),
+      ).rejects.toThrow('Cannot write to scope "env"');
+    });
+
+    it('writes to local scope explicitly', async () => {
       const cmd = makeCommand();
       const result = await cmd.execute(
-        { parameter: 'defaultPriority', set: 'low', scope: 'local' },
+        { name: 'defaultPriority', write: 'low', scope: 'local' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('local');
-
-      await rm(tmpUserDir, { recursive: true, force: true });
     });
 
     it('writes boolean values correctly (true)', async () => {
@@ -206,7 +269,7 @@ describe('createConfigCommand', () => {
       });
       const cmd = createConfigCommand({ cliName: 'test', configSchema: boolSchema });
       const result = await cmd.execute(
-        { parameter: 'verbose', set: 'true' },
+        { name: 'verbose', write: 'true' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('true');
@@ -221,17 +284,17 @@ describe('createConfigCommand', () => {
         verbose: z.boolean().default(false).describe('Enable verbose output'),
       });
       const cmd1 = createConfigCommand({ cliName: 'test1', configSchema: boolSchema });
-      await cmd1.execute({ parameter: 'verbose', set: '1' }, makeContext());
+      await cmd1.execute({ name: 'verbose', write: '1' }, makeContext());
       const file1 = join(workDir, '.ph', 'test1.config.local.json');
       expect(JSON.parse(await readFile(file1, 'utf-8')).verbose).toBe(true);
 
       const cmd2 = createConfigCommand({ cliName: 'test2', configSchema: boolSchema });
-      await cmd2.execute({ parameter: 'verbose', set: 'yes' }, makeContext());
+      await cmd2.execute({ name: 'verbose', write: 'yes' }, makeContext());
       const file2 = join(workDir, '.ph', 'test2.config.local.json');
       expect(JSON.parse(await readFile(file2, 'utf-8')).verbose).toBe(true);
 
       const cmd3 = createConfigCommand({ cliName: 'test3', configSchema: boolSchema });
-      await cmd3.execute({ parameter: 'verbose', set: 'no' }, makeContext());
+      await cmd3.execute({ name: 'verbose', write: 'no' }, makeContext());
       const file3 = join(workDir, '.ph', 'test3.config.local.json');
       expect(JSON.parse(await readFile(file3, 'utf-8')).verbose).toBe(false);
     });
@@ -246,7 +309,7 @@ describe('createConfigCommand', () => {
         configFile,
       });
       const result = await cmd.execute(
-        { parameter: 'defaultPriority' },
+        { name: 'defaultPriority' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('"high"');
@@ -262,9 +325,8 @@ describe('createConfigCommand', () => {
         configSchema,
         configFile,
       });
-      // defaultPriority is NOT in the config file, so source should be "default"
       const result = await cmd.execute(
-        { parameter: 'defaultPriority' },
+        { name: 'defaultPriority' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('default');
@@ -277,28 +339,31 @@ describe('createConfigCommand', () => {
         implementationDefaults: { defaultPriority: 'low' },
       });
       const result = await cmd.execute(
-        { parameter: 'defaultPriority' },
+        { name: 'defaultPriority' },
         makeContext(),
       ) as { text: string };
       expect(result.text).toContain('"low"');
-      // When impl defaults are set but no local/env/config override, source = default
-      // (implementation defaults get merged before schema parse, so source detection
-      // won't find them in files — they appear as "default")
     });
   });
 
   describe('input schema', () => {
-    it('has parameter as enum of config field keys', () => {
+    it('has name as enum of config field keys', () => {
       const cmd = makeCommand();
-      const fields = cmd.inputSchema;
-      // Should accept valid parameter names
-      const parsed = fields.parse({ parameter: 'defaultPriority' }) as Record<string, unknown>;
-      expect(parsed.parameter).toBe('defaultPriority');
+      const parsed = cmd.inputSchema.parse({ name: 'defaultPriority' }) as Record<string, unknown>;
+      expect(parsed.name).toBe('defaultPriority');
     });
 
-    it('rejects invalid parameter names', () => {
+    it('rejects invalid setting names', () => {
       const cmd = makeCommand();
-      expect(() => cmd.inputSchema.parse({ parameter: 'nonexistent' })).toThrow();
+      expect(() => cmd.inputSchema.parse({ name: 'nonexistent' })).toThrow();
+    });
+
+    it('accepts all scope values', () => {
+      const cmd = makeCommand();
+      for (const scope of ['args', 'env', 'local', 'user', 'sys']) {
+        const parsed = cmd.inputSchema.parse({ name: 'defaultPriority', scope }) as Record<string, unknown>;
+        expect(parsed.scope).toBe(scope);
+      }
     });
   });
 });
@@ -311,11 +376,17 @@ describe('generateConfigCommandHelp', () => {
     expect(help).toContain('Workdir');
   });
 
-  it('includes usage examples', () => {
+  it('lists options in Commander format', () => {
     const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
-    expect(help).toContain('tasks config <setting>');
-    expect(help).toContain('--set');
-    expect(help).toContain('--scope');
+    expect(help).toContain('-n, --name <setting>');
+    expect(help).toContain('-w, --write <value>');
+    expect(help).toContain('-s, --scope <scope>');
+  });
+
+  it('shows scope values for read and write', () => {
+    const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
+    expect(help).toContain('args | env | local | user | sys');
+    expect(help).toContain('local | user');
   });
 
   it('lists all config fields', () => {
@@ -353,6 +424,11 @@ describe('generateConfigCommandHelp', () => {
     expect(help).toContain('Local config');
     expect(help).toContain('User config');
     expect(help).toContain('System defaults');
+  });
+
+  it('uses --write in resolution text', () => {
+    const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
+    expect(help).toContain('--write flag');
   });
 
   it('uses actual local config path with workdir', () => {
@@ -524,14 +600,14 @@ describe('config command integration via defineCli', () => {
     });
     const cap = capture();
     await cli.run(
-      ['node', 'tasks', 'config', '--parameter', 'defaultPriority'],
+      ['node', 'tasks', 'config', '--name', 'defaultPriority'],
       { ...cap.options, workdir: workDir },
     );
     expect(cap.output.join('')).toContain('defaultPriority');
     expect(cap.output.join('')).toContain('medium');
   });
 
-  it('runs config set via CLI run()', async () => {
+  it('runs config write via CLI run()', async () => {
     const cli = defineCli({
       name: 'tasks',
       version: '1.0.0',
@@ -541,12 +617,11 @@ describe('config command integration via defineCli', () => {
     });
     const cap = capture();
     await cli.run(
-      ['node', 'tasks', 'config', '--parameter', 'defaultPriority', '--set', 'high'],
+      ['node', 'tasks', 'config', '--name', 'defaultPriority', '--write', 'high'],
       { ...cap.options, workdir: workDir },
     );
     expect(cap.output.join('')).toContain('high');
 
-    // Verify the file was written
     const filePath = join(workDir, '.ph', 'tasks.config.local.json');
     const data = JSON.parse(await readFile(filePath, 'utf-8'));
     expect(data.defaultPriority).toBe('high');

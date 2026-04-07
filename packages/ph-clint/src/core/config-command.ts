@@ -83,24 +83,25 @@ export interface ConfigCommandOptions {
 }
 
 /**
+ * All scope values accepted by the config command.
+ * Write mode only accepts 'local' and 'user'.
+ */
+const ALL_SCOPES = ['args', 'env', 'local', 'user', 'sys'] as const;
+type ConfigScope = (typeof ALL_SCOPES)[number];
+const WRITABLE_SCOPES = new Set<ConfigScope>(['local', 'user']);
+
+/**
  * Create the built-in `config` command for a CLI.
- *
- * Usage:
- *   {cli} config <setting>                     — show current value and source
- *   {cli} config <setting> --set <value>        — write to local config
- *   {cli} config <setting> --set <value> --scope user — write to user config
- *   {cli} config <setting> --scope local|user   — read from specific scope
  */
 export function createConfigCommand(opts: ConfigCommandOptions): Command {
   const { cliName, configSchema, implementationDefaults } = opts;
   const fields = getSchemaFields(configSchema);
   const fieldKeys = fields.map((f) => f.key);
 
-  // Build the input schema with an enum for parameter names
   const inputSchema = z.object({
-    parameter: z.enum(fieldKeys as [string, ...string[]]).describe('Configuration parameter name'),
-    set: z.string().optional().describe('New value to set'),
-    scope: z.enum(['local', 'user']).optional().describe('Config scope to read from or write to (default: local)'),
+    name: z.enum(fieldKeys as [string, ...string[]]).describe('Setting name'),
+    write: z.string().optional().describe('Value to write'),
+    scope: z.enum(ALL_SCOPES).optional().describe('Scope to read from or write to'),
   });
 
   return {
@@ -108,15 +109,15 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
     description: 'View or modify configuration settings',
     inputSchema,
     execute: async (input, context: CommandContext) => {
-      const { parameter, set: newValue, scope } = input as {
-        parameter: string;
-        set?: string;
-        scope?: 'local' | 'user';
+      const { name: settingName, write: newValue, scope } = input as {
+        name: string;
+        write?: string;
+        scope?: ConfigScope;
       };
 
-      const field = fields.find((f) => f.key === parameter);
+      const field = fields.find((f) => f.key === settingName);
       if (!field) {
-        throw new Error(`Unknown config parameter: ${parameter}`);
+        throw new Error(`Unknown setting: ${settingName}`);
       }
 
       const workdir = context.workdir;
@@ -124,6 +125,9 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
       // ── Write mode ──
       if (newValue !== undefined) {
         const writeScope = scope ?? 'local';
+        if (!WRITABLE_SCOPES.has(writeScope)) {
+          throw new Error(`Cannot write to scope "${writeScope}". Only local and user are writable.`);
+        }
         const filePath =
           writeScope === 'user'
             ? userConfigPath(cliName)
@@ -133,35 +137,26 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
         const coerced = coerceValue(newValue, field);
         try {
           const testObj: Record<string, unknown> = {};
-          testObj[parameter] = coerced;
+          testObj[settingName] = coerced;
           configSchema.parse(testObj);
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
-          throw new Error(`Invalid value for ${parameter}: ${msg}`);
+          throw new Error(`Invalid value for ${settingName}: ${msg}`);
         }
 
         // Read existing file, merge, write back
         const existing = loadJsonFile(filePath);
-        existing[parameter] = coerced;
+        existing[settingName] = coerced;
         writeJsonFile(filePath, existing);
 
-        return { text: `Set ${parameter} = ${JSON.stringify(coerced)} in ${writeScope} config (${filePath})` };
+        return { text: `Set ${settingName} = ${JSON.stringify(coerced)} in ${writeScope} config (${filePath})` };
       }
 
       // ── Read mode ──
 
-      // If --scope is specified, read from that specific file
+      // If --scope is specified, read from that specific layer
       if (scope) {
-        const filePath =
-          scope === 'user'
-            ? userConfigPath(cliName)
-            : localConfigPath(workdir, cliName);
-        const data = loadJsonFile(filePath);
-        const value = data[parameter];
-        if (value === undefined) {
-          return { text: `${parameter} is not set in ${scope} config (${filePath})` };
-        }
-        return { text: `${parameter} = ${JSON.stringify(value)}  (${scope}: ${filePath})` };
+        return readFromScope(settingName, scope, cliName, workdir, field, configSchema, implementationDefaults);
       }
 
       // No scope — show resolved value with source
@@ -173,12 +168,70 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
         implementationDefaults,
       });
 
-      const value = resolved[parameter];
-      const source = resolveSource(parameter, cliName, workdir, opts.configFile);
+      const value = resolved[settingName];
+      const source = resolveSource(settingName, cliName, workdir, opts.configFile);
 
-      return { text: `${parameter} = ${JSON.stringify(value)}  (source: ${source})` };
+      return { text: `${settingName} = ${JSON.stringify(value)}  (source: ${source})` };
     },
   };
+}
+
+/**
+ * Read a setting from a specific scope layer.
+ */
+function readFromScope(
+  key: string,
+  scope: ConfigScope,
+  cliName: string,
+  workdir: string,
+  field: FieldInfo,
+  configSchema: z.ZodType,
+  implementationDefaults?: Record<string, unknown>,
+): { text: string } {
+  switch (scope) {
+    case 'args': {
+      // --config file layer — we can't access the config file path here,
+      // so report that this scope requires --config to be set
+      return { text: `${key}: the args scope reflects the --config file, which is not accessible from this context` };
+    }
+    case 'env': {
+      const envName = configKeyToEnvVar(cliName, key);
+      const value = process.env[envName];
+      if (value === undefined) {
+        return { text: `${key} is not set in environment (${envName})` };
+      }
+      return { text: `${key} = ${JSON.stringify(value)}  (env: ${envName})` };
+    }
+    case 'local': {
+      const filePath = localConfigPath(workdir, cliName);
+      const data = loadJsonFile(filePath);
+      const value = data[key];
+      if (value === undefined) {
+        return { text: `${key} is not set in local config (${filePath})` };
+      }
+      return { text: `${key} = ${JSON.stringify(value)}  (local: ${filePath})` };
+    }
+    case 'user': {
+      const filePath = userConfigPath(cliName);
+      const data = loadJsonFile(filePath);
+      const value = data[key];
+      if (value === undefined) {
+        return { text: `${key} is not set in user config (${filePath})` };
+      }
+      return { text: `${key} = ${JSON.stringify(value)}  (user: ${filePath})` };
+    }
+    case 'sys': {
+      // System defaults: implementation defaults merged with schema defaults
+      const defaults = implementationDefaults ?? {};
+      if (key in defaults) {
+        return { text: `${key} = ${JSON.stringify(defaults[key])}  (system default)` };
+      }
+      if (field.hasDefault) {
+        return { text: `${key} = ${JSON.stringify(field.defaultValue)}  (system default)` };
+      }
+      return { text: `${key} has no system default` };
+    }
+  }
 }
 
 /**
@@ -193,11 +246,14 @@ export function generateConfigCommandHelp(cliName: string, configSchema: z.ZodTy
   // ── Header ──
   lines.push(`${cliName} config — View and modify configuration`);
   lines.push('');
-  lines.push('Usage:');
-  lines.push(`  ${cliName} config <setting>                        Show current value and source`);
-  lines.push(`  ${cliName} config <setting> --set <value>           Set value in local config`);
-  lines.push(`  ${cliName} config <setting> --set <value> --scope user  Set value in user config`);
-  lines.push(`  ${cliName} config <setting> --scope local|user      Read from a specific scope`);
+  lines.push(`Usage: ${cliName} config [options]`);
+  lines.push('');
+  lines.push('Options:');
+  lines.push('  -n, --name <setting>   Setting name (required)');
+  lines.push('  -w, --write <value>    Write a new value');
+  lines.push('  -s, --scope <scope>    Scope to read from or write to');
+  lines.push('                         Read:  args | env | local | user | sys');
+  lines.push('                         Write: local | user (default: local)');
   lines.push('');
 
   // ── Section 1: Settings ──
@@ -268,7 +324,7 @@ export function generateConfigCommandHelp(cliName: string, configSchema: z.ZodTy
   lines.push(`  4. User config        ${userConfigPath(cliName)}`);
   lines.push('  5. System defaults    Built-in defaults for this application');
   lines.push('');
-  lines.push('  The --set flag writes to layer 3 (local) by default, or layer 4');
+  lines.push('  The --write flag writes to layer 3 (local) by default, or layer 4');
   lines.push('  (user) with --scope user. Layers 1, 2, and 5 are read-only.');
   lines.push('');
 
