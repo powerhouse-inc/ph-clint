@@ -208,8 +208,9 @@ describe('CLI integration', () => {
       model: z.string().default('test-model').describe('LLM model'),
     }),
     commands: [ascii, saveImage, listImages],
-    integrations: [{ id: 'demo', agents: [assistant] }],
-    defaultCommand: 'agent:assistant',
+    agent: {
+      default: async () => assistant,
+    },
     interactive: {
       welcome: 'Image Assistant — ask me anything',
     },
@@ -218,7 +219,7 @@ describe('CLI integration', () => {
   it('has correct metadata', () => {
     expect(cli.name).toBe('assist');
     expect(cli.listCommands()).toHaveLength(4); // 3 commands + built-in config
-    expect(cli.defaultCommand).toBe('agent:assistant');
+    expect(cli.hasAgent).toBe(true);
   });
 
   it('executes ascii command directly', async () => {
@@ -392,8 +393,7 @@ describe('REPL session with agent', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [ascii],
-      integrations: [{ id: 'test', agents: [agent] }],
-      defaultCommand: 'agent:test-assistant',
+      agent: { default: async () => agent },
       interactive: { welcome: '' },
     });
 

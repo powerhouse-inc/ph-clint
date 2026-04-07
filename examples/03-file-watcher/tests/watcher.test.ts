@@ -473,7 +473,7 @@ describe('CLI integration', () => {
     });
   });
 
-  it('--wait keeps process alive until routine stops', async () => {
+  it('routine is stopped after command completes in command mode', async () => {
     const cli = defineCli({
       name: 'watcher',
       version: '1.0.0',
@@ -487,65 +487,13 @@ describe('CLI integration', () => {
     const output: string[] = [];
     let exitCode = -1;
 
-    const ac = new AbortController();
-
-    const runPromise = cli.run(['node', 'test', '--wait', 'watch'], {
+    await cli.run(['node', 'test', 'watch'], {
       stdout: (msg) => output.push(msg),
       stderr: () => {},
       exit: (code) => { exitCode = code; },
-      signal: ac.signal,
     });
-
-    // Let routine tick
-    await new Promise(r => setTimeout(r, 150));
-
-    // Simulate file change
-    changeDetected = true;
-
-    // Wait for routine to tick and build to execute
-    await new Promise(r => setTimeout(r, 300));
-
-    // Signal stop (simulates SIGINT)
-    ac.abort();
-
-    await runPromise;
 
     expect(output[0]).toBe('Watching for changes...');
-    expect(output).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('Build succeeded'),
-      ]),
-    );
-    expect(exitCode).toBe(0);
-  });
-
-  it('--wait without routine exits immediately', async () => {
-    const simple = defineCommand({
-      id: 'ping',
-      description: 'Simple command',
-      inputSchema: z.object({}),
-      execute: async () => ({ text: 'pong' }),
-    });
-
-    const cliNoRoutine = defineCli({
-      name: 'watcher',
-      version: '1.0.0',
-      description: 'File watcher',
-      configSchema,
-      commands: [simple],
-    });
-
-    const output: string[] = [];
-    let exitCode = -1;
-
-    await cliNoRoutine.run(['node', 'test', '--wait', 'ping'], {
-      stdout: (msg) => output.push(msg),
-      stderr: () => {},
-      exit: (code) => { exitCode = code; },
-    });
-
-    expect(output[0]).toContain('pong');
-    // No routine → --wait is a no-op, exits normally
-    expect(exitCode).toBe(-1); // exit() never called
+    // Command mode is one-shot — routine stopped automatically
   });
 });

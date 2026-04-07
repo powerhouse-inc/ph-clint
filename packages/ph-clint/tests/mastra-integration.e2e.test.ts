@@ -13,8 +13,9 @@ import { randomBytes } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
-import { defineMastraIntegration } from '../src/integrations/mastra/index.js';
-import type { StreamChunk } from '../src/core/types.js';
+import { createMastraHelpers } from '../src/integrations/mastra/index.js';
+import { createMemoryWorkspace } from '../src/core/workspace.js';
+import type { AgentContext, AgentProvider, StreamChunk } from '../src/core/types.js';
 
 // Load .env from example 04 (no dotenv dependency)
 try {
@@ -55,16 +56,33 @@ const echoCommand = defineCommand({
 });
 
 describeWithKey('Mastra integration E2E', () => {
-  it('streams a text response from the real LLM', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'e2e-agent', instructions: 'Reply in exactly 3 words.' }],
-      commands: [echoCommand],
-      workspacePath: testWorkspace,
-    });
+  let agentProvider: AgentProvider;
 
-    const agent = integration.agents![0]!;
+  async function createTestAgent() {
+    const ctx: AgentContext = {
+      workdir: testWorkspace,
+      config: {},
+      cliName: 'test-e2e',
+      cliVersion: '1.0.0',
+      context: { workdir: testWorkspace, workspace: createMemoryWorkspace(), config: {} },
+      commands: [echoCommand],
+    };
+    const m = createMastraHelpers(ctx);
+    const { Agent } = await import('@mastra/core/agent');
+    return m.wrapAgent(new Agent({
+      id: 'e2e-agent',
+      name: 'E2E Test Agent',
+      instructions: 'Reply in exactly 3 words.',
+      model: 'anthropic/claude-haiku-4-5',
+      tools: await m.getTools(),
+      memory: await m.createMemory(),
+    }));
+  }
+
+  it('streams a text response from the real LLM', async () => {
+    agentProvider = await createTestAgent();
     const chunks: StreamChunk[] = [];
-    for await (const chunk of agent.stream('Say hello.')) {
+    for await (const chunk of agentProvider.stream('Say hello.')) {
       chunks.push(chunk);
     }
 
@@ -76,20 +94,15 @@ describeWithKey('Mastra integration E2E', () => {
   }, 30_000);
 
   it('streams with threadId for memory persistence', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'memory-agent', instructions: 'Be concise.' }],
-      workspacePath: testWorkspace,
-    });
-
-    const agent = integration.agents![0]!;
+    agentProvider = await createTestAgent();
     const threadId = `e2e-${Date.now()}`;
 
     // Drain first turn
-    for await (const _ of agent.stream('Hello.', { threadId })) {}
+    for await (const _ of agentProvider.stream('Hello.', { threadId })) {}
 
     // Second turn on same thread
     const chunks: StreamChunk[] = [];
-    for await (const chunk of agent.stream('What did I just say?', { threadId })) {
+    for await (const chunk of agentProvider.stream('What did I just say?', { threadId })) {
       chunks.push(chunk);
     }
 

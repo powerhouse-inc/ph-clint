@@ -4,7 +4,8 @@ A CLI that combines a Mastra agent with Powerhouse documents. The agent can read
 
 ## What It Shows
 
-- Mastra + Powerhouse integration together
+- Mastra agent + Powerhouse integration together
+- Agent factory with `createMastraHelpers()` for workspace, memory, and tools
 - Agent uses document operations as tools
 - Routine loop with document change triggers
 - Event trigger bridges reactor subscriptions into the loop
@@ -19,7 +20,7 @@ A CLI that combines a Mastra agent with Powerhouse documents. The agent can read
 ```typescript
 import {
   defineCli, defineCommand, defineTrigger,
-  defineMastraIntegration, definePowerhouseIntegration,
+  definePowerhouseIntegration,
 } from 'ph-clint';
 import { z } from 'zod';
 
@@ -27,6 +28,7 @@ const configSchema = z.object({
   driveUrl: z.string().describe('Agent manager drive URL'),
   inboxId: z.string().describe('Inbox document ID'),
   wbsId: z.string().describe('WBS document ID'),
+  model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model'),
 });
 
 const powerhouse = definePowerhouseIntegration({
@@ -43,20 +45,6 @@ const powerhouse = definePowerhouseIntegration({
     { id: config.wbsId, event: 'wbs:updated' },
   ],
   storage: 'memory',
-});
-
-const mastra = defineMastraIntegration({
-  agents: {
-    assistant: {
-      model: 'anthropic/claude-haiku-4-5',
-      instructions: 'You are a document assistant. Help users manage their Powerhouse documents. Use the available tools to read, edit, and organize documents.',
-      tools: ['ls', 'read', 'dispatch', 'inbox', 'reply'],
-    },
-  },
-  memory: { backend: 'libsql' },
-  skills: {
-    standard: ['powerhouse/document-access', 'powerhouse/document-modeling'],
-  },
 });
 ```
 
@@ -140,7 +128,7 @@ const wbsTrigger = defineTrigger({
 });
 ```
 
-### CLI entry point
+### CLI with agent factory
 
 ```typescript
 const cli = defineCli({
@@ -149,9 +137,26 @@ const cli = defineCli({
   description: 'AI-powered document assistant',
   configSchema,
   commands: [inbox, reply, /* ...ls, read, dispatch from 06 */],
-  integrations: [powerhouse, mastra],
+  integrations: [powerhouse],
   triggers: [inboxTrigger, wbsTrigger],
-  defaultCommand: 'agent:assistant',
+
+  agent: {
+    default: async (ctx) => {
+      const { createMastraHelpers } = await import('ph-clint/mastra');
+      const { Agent } = await import('@mastra/core/agent');
+      const m = createMastraHelpers(ctx);
+
+      return m.wrapAgent(new Agent({
+        id: 'assistant',
+        instructions: 'You are a document assistant. Help users manage their Powerhouse documents.',
+        model: ctx.config.model as string,
+        tools: await m.getTools(),
+        workspace: await m.createWorkspace(),
+        memory: await m.createMemory(),
+      }));
+    },
+  },
+
   routine: {
     tickInterval: 2_000,
   },

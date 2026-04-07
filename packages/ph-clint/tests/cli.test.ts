@@ -628,151 +628,42 @@ describe('defineCli', () => {
       expect(cap.errors.some((e) => e.includes('string error'))).toBe(true);
     });
 
-    describe('--wait flag', () => {
-    let tickCount: number;
+    describe('routine cleanup in command mode', () => {
+    it('stops routine after command completes', async () => {
+      let tickCount = 0;
+      const counter = defineCommand({
+        id: 'start',
+        description: 'Start routine',
+        inputSchema: z.object({}),
+        execute: async (_, { routine }) => {
+          routine!.start();
+          return 'Started';
+        },
+      });
 
-    const counter = defineCommand({
-      id: 'start',
-      description: 'Start routine',
-      inputSchema: z.object({}),
-      execute: async (_, { routine }) => {
-        routine!.start();
-        return 'Started';
-      },
-    });
+      const ticker = defineTrigger({
+        id: 'tick-trigger',
+        type: 'condition',
+        poll: async () => {
+          tickCount++;
+          return null;
+        },
+      });
 
-    const ticker = defineTrigger({
-      id: 'tick-trigger',
-      type: 'condition',
-      poll: async () => {
-        tickCount++;
-        return null; // no work items, just counts ticks
-      },
-    });
-
-    function makeWaitCli() {
-      tickCount = 0;
-      return defineCli({
-        name: 'wait-test',
+      const cli = defineCli({
+        name: 'routine-test',
         version: '1.0.0',
-        description: 'Wait test CLI',
+        description: 'Routine test CLI',
         commands: [counter],
         triggers: [ticker],
         routine: { tickInterval: 50, idleInterval: 20 },
       });
-    }
 
-    it('keeps process alive after command with --wait and routine', async () => {
-      const cli = makeWaitCli();
       const cap = capture();
-      const ac = new AbortController();
-
-      const runPromise = cli.run(['node', 'test', '--wait', 'start'], {
-        ...cap.options,
-        signal: ac.signal,
-      });
-
-      // Let routine tick a few times
-      await new Promise(r => setTimeout(r, 200));
-
-      // Should have ticked
-      expect(tickCount).toBeGreaterThan(0);
-
-      // Abort to stop
-      ac.abort();
-      await runPromise;
-
-      expect(cap.output).toContain('Started');
-      expect(cap.exitCode).toBe(0);
-    });
-
-    it('exits normally without --wait even with routine', async () => {
-      const cli = makeWaitCli();
-      const cap = capture();
-
       await cli.run(['node', 'test', 'start'], cap.options);
 
-      // Should exit without waiting — routine may have started but run() doesn't wait
+      // Command mode is one-shot — routine should be stopped after run() returns
       expect(cap.output).toContain('Started');
-
-      // Clean up
-      await cli.stopRoutine?.();
-    });
-
-    it('--wait with already-aborted signal stops immediately', async () => {
-      const cli = makeWaitCli();
-      const cap = capture();
-      const ac = new AbortController();
-      ac.abort(); // Already aborted
-
-      const runPromise = cli.run(['node', 'test', '--wait', 'start'], {
-        ...cap.options,
-        signal: ac.signal,
-      });
-
-      await runPromise;
-
-      expect(cap.output).toContain('Started');
-      expect(cap.exitCode).toBe(0);
-    });
-
-    it('--wait with -w short flag', async () => {
-      const cli = makeWaitCli();
-      const cap = capture();
-      const ac = new AbortController();
-
-      const runPromise = cli.run(['node', 'test', '-w', 'start'], {
-        ...cap.options,
-        signal: ac.signal,
-      });
-
-      await new Promise(r => setTimeout(r, 100));
-      ac.abort();
-      await runPromise;
-
-      expect(cap.output).toContain('Started');
-      expect(cap.exitCode).toBe(0);
-    });
-
-    it('--wait with process signal stops routine', async () => {
-      const cli = makeWaitCli();
-      const cap = capture();
-
-      // No signal provided — uses process signal handlers
-      const runPromise = cli.run(['node', 'test', '--wait', 'start'], cap.options);
-
-      // Let routine tick
-      await new Promise(r => setTimeout(r, 100));
-
-      // Send SIGINT to ourselves
-      process.emit('SIGINT' as any);
-
-      await runPromise;
-
-      expect(cap.output).toContain('Started');
-      expect(cap.exitCode).toBe(0);
-    });
-
-    it('--wait without routine exits immediately after command', async () => {
-      const noRoutineCli = defineCli({
-        name: 'no-routine',
-        version: '1.0.0',
-        description: 'No routine',
-        commands: [
-          defineCommand({
-            id: 'cmd',
-            description: 'Simple',
-            inputSchema: z.object({}),
-            execute: async () => 'done',
-          }),
-        ],
-      });
-
-      const cap = capture();
-      await noRoutineCli.run(['node', 'test', 'cmd', '--wait'], cap.options);
-      expect(cap.output).toContain('done');
-      // No routine → --wait is a no-op, run() returns normally without calling exit()
-      expect(cap.exitCode).toBeUndefined();
     });
     });
 
@@ -943,7 +834,11 @@ describe('defineCli', () => {
         };
       }
 
-      it('routes positional text to agent when defaultCommand is set', async () => {
+      function agentFactory(agent: AgentProvider) {
+        return { default: async () => agent };
+      }
+
+      it('routes positional text to agent when agent factory is set', async () => {
         const agent = createTestAgent({
           'What is TypeScript?': [
             { type: 'text-delta', text: 'TypeScript is great.' },
@@ -955,8 +850,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Assistant',
           commands: [echo],
-          integrations: [{ id: 'test', agents: [agent] }],
-          defaultCommand: 'agent:test-assistant',
+          agent: agentFactory(agent),
         });
 
         const cap = capture();
@@ -983,8 +877,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Assistant',
           commands: [echo],
-          integrations: [{ id: 'test', agents: [agent] }],
-          defaultCommand: 'agent:test-assistant',
+          agent: agentFactory(agent),
         });
 
         const cap = capture();
@@ -1002,8 +895,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Assistant',
           commands: [echo],
-          integrations: [{ id: 'test', agents: [agent] }],
-          defaultCommand: 'agent:test-assistant',
+          agent: agentFactory(agent),
         });
 
         const cap = capture();
@@ -1021,8 +913,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Assistant',
           commands: [echo],
-          integrations: [{ id: 'test', agents: [agent] }],
-          defaultCommand: 'agent:test-assistant',
+          agent: agentFactory(agent),
         });
 
         const cap = capture();
@@ -1046,8 +937,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Assistant',
           commands: [echo],
-          integrations: [{ id: 'test', agents: [agent] }],
-          defaultCommand: 'agent:test-assistant',
+          agent: agentFactory(agent),
           interactive: { welcome: 'Hi!' },
         });
 

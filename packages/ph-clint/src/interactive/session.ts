@@ -125,7 +125,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   const { cli, context, agentProvider, threadId } = opts;
   const commands = cli.listCommands();
   const commandIds = commands.map((c) => c.id);
-  const hasDefaultCommand = !!cli.defaultCommand;
+  const hasDefaultCommand = cli.hasAgent;
 
   // Prompting state — null when not prompting
   let prompting: PromptingState | null = null;
@@ -338,10 +338,8 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
 
   async function handleAgentPrompt(text: string): Promise<ReplOutput> {
     if (!agentProvider) {
-      // defaultCommand was set but agent provider wasn't resolved
-      const agentId = cli.defaultCommand?.replace(/^agent:/, '') ?? 'unknown';
       return {
-        text: `Agent not found: ${agentId}`,
+        text: 'Agent not available',
         type: 'error',
       };
     }
@@ -367,7 +365,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     getGhostSuggestion: (input: string) => prompting ? null : getGhostSuggestion(input, commands),
     getCompletionSuffix: (completion: string, input: string) => getCompletionSuffix(completion, input, commands),
     get isPrompting() { return prompting !== null; },
-    welcome: cli.interactive?.welcome,
+    welcome: typeof cli.interactive?.welcome === 'function' ? undefined : cli.interactive?.welcome,
     exitMessage,
   };
   sessionRef = session;

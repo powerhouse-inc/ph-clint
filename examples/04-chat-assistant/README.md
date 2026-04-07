@@ -1,14 +1,16 @@
 # 04 — Chat Assistant
 
-A conversational CLI powered by a Mastra agent. Bare text input goes to the agent as a prompt; slash commands provide direct actions. Demonstrates the default subcommand pattern, streaming output, conversation memory, and session resumption.
+A conversational CLI powered by a Mastra agent. Bare text input goes to the agent as a prompt; slash commands provide direct actions. Demonstrates the agent factory pattern, streaming output, conversation memory, and session resumption.
 
 ## What It Shows
 
-- Mastra integration: agent as default subcommand
+- Agent factory on `CliOptions.agent.default` — lazy, user-controlled agent creation
+- `createMastraHelpers()` from `ph-clint/mastra` for workspace, memory, and tool helpers
 - Streaming agent responses (AsyncGenerator with typed chunks)
 - Conversation memory with thread IDs
 - Session resumption across invocations (`--resume`)
 - Agent uses CLI commands as tools
+- `Resolvable<string>` for dynamic welcome message based on config
 - Markdown rendering in terminal
 
 ## Code
@@ -16,7 +18,7 @@ A conversational CLI powered by a Mastra agent. Bare text input goes to the agen
 ### Agent and tool definitions
 
 ```typescript
-import { defineCli, defineCommand, defineMastraIntegration } from 'ph-clint';
+import { defineCli, defineCommand } from 'ph-clint';
 import { z } from 'zod';
 
 const search = defineCommand({
@@ -45,35 +47,49 @@ const summarize = defineCommand({
 });
 ```
 
-### Mastra integration
+### Config schema with API key
 
 ```typescript
-const mastra = defineMastraIntegration({
-  agents: {
-    assistant: {
-      model: 'anthropic/claude-haiku-4-5',
-      instructions: 'You are a helpful research assistant. Use the search and summarize tools to help users find and understand information.',
-      tools: ['search', 'summarize'],  // references CLI commands by id
-    },
-  },
-  memory: {
-    backend: 'libsql',  // stored in workspace
-  },
+const configSchema = z.object({
+  apiKey: z.string().optional().describe('Anthropic API key'),
+  model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model'),
 });
 ```
 
-### CLI entry point
+### CLI with agent factory
 
 ```typescript
 const cli = defineCli({
   name: 'assist',
   version: '1.0.0',
   description: 'AI research assistant',
+  configSchema,
   commands: [search, summarize],
-  integrations: [mastra],
-  defaultCommand: 'agent:assistant',  // bare text → agent
+
+  agent: {
+    default: async (ctx) => {
+      if (!ctx.config.apiKey) {
+        return createDemoAssistant(); // no API key → demo mode
+      }
+      const { createMastraHelpers } = await import('ph-clint/mastra');
+      const { Agent } = await import('@mastra/core/agent');
+      const m = createMastraHelpers(ctx);
+
+      return m.wrapAgent(new Agent({
+        id: 'assistant',
+        instructions: 'You are a helpful research assistant.',
+        model: ctx.config.model as string,
+        tools: await m.getTools(),
+        workspace: await m.createWorkspace(),
+        memory: await m.createMemory(),
+      }));
+    },
+  },
+
   interactive: {
-    welcome: 'Research Assistant — ask me anything, or use /search and /summarize directly',
+    welcome: ({ config }) =>
+      `Research Assistant (${config.apiKey ? config.model : 'demo mode — set apiKey for real LLM'})\n` +
+      'Ask me anything, or use /search and /summarize directly',
   },
 });
 ```
@@ -120,8 +136,8 @@ Based on the search results, here are the top developments:
 ## Acceptance Criteria
 
 - [ ] `assist "question"` sends prompt to agent, streams response to stdout, exits
-- [ ] `assist -i` launches REPL with welcome message
-- [ ] Bare text in REPL routes to the agent (default subcommand)
+- [ ] `assist -i` launches REPL with welcome message (dynamic based on config)
+- [ ] Bare text in REPL routes to the agent (`agent.default` factory)
 - [ ] `/search --query X` invokes the search command directly (not through agent)
 - [ ] Agent can invoke `search` and `summarize` as tools during a response
 - [ ] Tool calls and results are rendered inline during streaming
@@ -130,3 +146,4 @@ Based on the search results, here are the top developments:
 - [ ] Escape interrupts an in-progress agent response, partial output preserved
 - [ ] Markdown in agent responses renders correctly in terminal
 - [ ] Session thread ID is displayed on exit for later resumption
+- [ ] Without API key, demo mode works without importing Mastra (lazy loading)

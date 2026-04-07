@@ -22,7 +22,7 @@ ph-clint/
 │   ├── 02-task-tracker/ # REPL, workspace, parameter prompting
 │   ├── 03-file-watcher/ # Routine loop, triggers, background processes (no agent)
 │   ├── 04-chat-assistant/ # Mastra agent, streaming, memory, session resumption
-│   ├── 05-service-manager/ # ServiceExecutor, readiness detection, lifecycle events
+│   ├── 05-vetra/          # ServiceManager, multi-pattern readiness, Vetra dev server
 │   ├── 06-doc-browser/  # Powerhouse reactor, drives, document operations (no agent)
 │   ├── 07-doc-agent/    # Mastra + Powerhouse, routine loop, document triggers
 │   └── 08-reactor-dev/  # Full reference: multi-agent, services, skills, MCP transport

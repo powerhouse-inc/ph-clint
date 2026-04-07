@@ -1,40 +1,16 @@
-import type { Command } from '../../core/types.js';
+import type { AgentProvider } from '../../core/types.js';
 
 /**
- * Configuration for a single Mastra-backed agent.
+ * Helpers returned by createMastraHelpers().
+ * All Mastra imports happen inside these functions (lazy loading).
  */
-export interface MastraAgentConfig {
-  /** Unique agent identifier. Used in `agent:{id}` default command routing. */
-  id: string;
-  /** Display name for the agent. */
-  name?: string;
-  /** System instructions for the agent. */
-  instructions: string;
-  /** Model identifier (e.g. 'anthropic/claude-haiku-4-5'). */
-  model?: string;
-}
-
-/**
- * Options for defineMastraIntegration().
- */
-export interface MastraIntegrationOptions {
-  /** Agent configurations to create. */
-  agents: MastraAgentConfig[];
-  /** ph-clint commands to expose as Mastra tools (agent can call them). */
-  commands?: Command[];
-  /**
-   * Resolved workspace directory (absolute path).
-   * Passed to Mastra as the LocalFilesystem root — agents operate on the
-   * same files as the user.
-   * The Mastra database lives at {workdir}/.ph/{cliName}/mastra/mastra.db.
-   * When omitted, the agent runs without a workspace or persistent memory.
-   */
-  workdir?: string;
-  /** CLI name, used to namespace the Mastra database under .ph/{cliName}/. */
-  cliName?: string;
-  /**
-   * @deprecated Use workdir + cliName instead.
-   * Legacy workspace path (e.g. '.ph/cli/assist').
-   */
-  workspacePath?: string;
+export interface MastraHelpers {
+  /** Convert CLI commands to Mastra createTool() format. */
+  getTools(): Promise<Record<string, any>>;
+  /** Create a Mastra Workspace rooted at ctx.workdir. */
+  createWorkspace(): Promise<any>;
+  /** Create Memory with LibSQL at .ph/{cliName}/mastra/mastra.db. */
+  createMemory(): Promise<any>;
+  /** Wrap a Mastra Agent as an AgentProvider (handles stream mapping). */
+  wrapAgent(agent: any): AgentProvider;
 }

@@ -6,9 +6,10 @@ import { rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
-import { defineMastraIntegration } from '../src/integrations/mastra/index.js';
+import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
 import { createMemoryWorkspace } from '../src/core/workspace.js';
+import type { AgentContext } from '../src/core/types.js';
 
 const testWorkspace = join(tmpdir(), `ph-clint-mastra-test-${randomBytes(4).toString('hex')}`);
 
@@ -23,79 +24,67 @@ const echoCommand = defineCommand({
   execute: async (input) => ({ text: input.text }),
 });
 
-describe('defineMastraIntegration', () => {
-  it('returns an Integration with id "mastra"', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'test-agent', instructions: 'You are a test agent.' }],
-    });
-    expect(integration.id).toBe('mastra');
-    expect(integration.agents).toHaveLength(1);
-    expect(integration.agents![0]!.id).toBe('test-agent');
+function makeAgentContext(overrides?: Partial<AgentContext>): AgentContext {
+  const workdir = overrides?.workdir ?? testWorkspace;
+  return {
+    workdir,
+    config: {},
+    cliName: 'test-cli',
+    cliVersion: '1.0.0',
+    context: { workdir, workspace: createMemoryWorkspace(), config: {} },
+    commands: [echoCommand],
+    ...overrides,
+  };
+}
+
+describe('createMastraHelpers', () => {
+  it('returns an object with getTools, createWorkspace, createMemory, wrapAgent', () => {
+    const helpers = createMastraHelpers(makeAgentContext());
+    expect(typeof helpers.getTools).toBe('function');
+    expect(typeof helpers.createWorkspace).toBe('function');
+    expect(typeof helpers.createMemory).toBe('function');
+    expect(typeof helpers.wrapAgent).toBe('function');
   });
 
-  it('creates agents with correct IDs', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [
-        { id: 'agent-a', instructions: 'Agent A' },
-        { id: 'agent-b', instructions: 'Agent B' },
-      ],
-    });
-    const ids = integration.agents!.map((a) => a.id);
-    expect(ids).toEqual(['agent-a', 'agent-b']);
+  it('getTools converts commands to Mastra tools', async () => {
+    const helpers = createMastraHelpers(makeAgentContext());
+    const tools = await helpers.getTools();
+    expect(Object.keys(tools)).toEqual(['echo']);
+    expect(tools.echo).toBeDefined();
   });
 
-  it('works without commands', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'no-tools', instructions: 'No tools' }],
-    });
-    expect(integration.agents).toHaveLength(1);
+  it('getTools returns empty object when no commands', async () => {
+    const helpers = createMastraHelpers(makeAgentContext({ commands: [] }));
+    const tools = await helpers.getTools();
+    expect(tools).toEqual({});
   });
 
-  it('accepts commands to expose as tools', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'with-tools', instructions: 'Has tools' }],
-      commands: [echoCommand],
-    });
-    expect(integration.agents).toHaveLength(1);
+  it('createWorkspace returns a Mastra Workspace', async () => {
+    const helpers = createMastraHelpers(makeAgentContext());
+    const workspace = await helpers.createWorkspace();
+    expect(workspace).toBeDefined();
   });
 
-  it('creates workspace directories when workspacePath is provided', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'ws-agent', instructions: 'Workspace agent' }],
-      workspacePath: testWorkspace,
-    });
-    expect(integration.agents).toHaveLength(1);
-    // Verify the Mastra db directory was created
-    expect(existsSync(join(testWorkspace, 'mastra', 'db'))).toBe(true);
+  it('createMemory creates LibSQL-backed memory and db directory', async () => {
+    const helpers = createMastraHelpers(makeAgentContext());
+    const memory = await helpers.createMemory();
+    expect(memory).toBeDefined();
+    // Verify the database directory was created
+    expect(existsSync(join(testWorkspace, '.ph', 'test-cli', 'mastra'))).toBe(true);
   });
 
-  it('works without workspacePath (no persistence)', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'ephemeral', instructions: 'No workspace' }],
-    });
-    expect(integration.agents).toHaveLength(1);
-  });
-});
-
-describe('agent stream method', () => {
-  it('agent provider has a stream generator', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'stream-test', instructions: 'Test' }],
-      workspacePath: testWorkspace,
-    });
-    const agent = integration.agents![0]!;
-    expect(typeof agent.stream).toBe('function');
-    // The stream method is an async generator — verify it returns an iterable
-    // (Actually calling it would require an API key, so we just test the shape)
+  it('wrapAgent wraps a mock agent as AgentProvider', () => {
+    const helpers = createMastraHelpers(makeAgentContext());
+    const mockAgent = { id: 'mock-agent' };
+    const provider = helpers.wrapAgent(mockAgent);
+    expect(provider.id).toBe('mock-agent');
+    expect(typeof provider.stream).toBe('function');
   });
 
-  it('creates cli workspace with basePath when workspacePath provided', async () => {
-    const integration = await defineMastraIntegration({
-      agents: [{ id: 'bp-test', instructions: 'Test' }],
-      commands: [echoCommand],
-      workspacePath: testWorkspace,
-    });
-    expect(integration.agents).toHaveLength(1);
+  it('wrapAgent defaults id to "default" when agent has no id', () => {
+    const helpers = createMastraHelpers(makeAgentContext());
+    const provider = helpers.wrapAgent({});
+    expect(provider.id).toBe('default');
   });
 });
 

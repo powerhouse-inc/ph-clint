@@ -27,14 +27,15 @@ export interface Workspace {
  * Context passed to command execute functions.
  * Provides access to workdir, workspace, resolved config, and optional runtime services.
  */
-export interface CommandContext {
+export interface CommandContext<TConfig = Record<string, unknown>> {
   /** The resolved working directory — where the user/agent collaborate on data. */
   workdir: string;
   /** Key-value store for CLI-managed state at {workdir}/.ph/{cli-name}/. */
   workspace: Workspace;
-  config: Record<string, unknown>;
+  config: TConfig;
   routine?: Routine;
   processes?: ProcessManager;
+  services?: ServiceManager;
   emit?: (event: string, data?: unknown) => void;
 }
 
@@ -49,8 +50,18 @@ export interface PromptConfig {
 
 /**
  * Interactive mode (REPL) configuration.
+ * When used in CliOptions, `welcome` may be a Resolvable<string>.
+ * After resolution (in `Cli.interactive`), it is always a plain string.
+ * TConfig is inferred from the CLI's configSchema.
  */
-export interface InteractiveConfig {
+export interface InteractiveConfig<TConfig = Record<string, unknown>> {
+  welcome: Resolvable<string, TConfig>;
+}
+
+/**
+ * Resolved interactive config — all Resolvable values have been resolved.
+ */
+export interface ResolvedInteractiveConfig {
   welcome: string;
 }
 
@@ -61,13 +72,14 @@ export interface InteractiveConfig {
 export interface Command<
   TInput extends z.ZodType = z.ZodType,
   TOutput = unknown,
+  TConfig = Record<string, unknown>,
 > {
   id: string;
   description: string;
   inputSchema: TInput;
   outputSchema?: z.ZodType<TOutput>;
   prompt?: PromptConfig;
-  execute: (input: z.output<TInput>, context: CommandContext) => Promise<TOutput>;
+  execute: (input: z.output<TInput>, context: CommandContext<TConfig>) => Promise<TOutput>;
 }
 
 // ── Streaming ────────────────────────────────────────────────────
@@ -229,6 +241,77 @@ export interface ProcessManager {
   list(): ProcessHandle[];
 }
 
+// ── Services ──────────────────────────────────────────────────────
+
+/**
+ * A named readiness pattern for multi-pattern readiness detection.
+ * The service becomes ready when ALL patterns have matched.
+ */
+export interface ReadinessPattern {
+  name: string;
+  pattern: RegExp;
+  captures?: Record<string, number>;
+}
+
+/**
+ * Readiness configuration for a service.
+ *
+ * Supports two forms:
+ * - Single pattern: `{ pattern, captures?, timeout, wait? }`
+ * - Multiple patterns: `{ patterns, timeout, wait? }` — ready when ALL match
+ */
+export interface ReadinessConfig {
+  /** Single readiness pattern (mutually exclusive with `patterns`). */
+  pattern?: RegExp;
+  /** Captures for the single pattern. Maps endpoint name → capture group index. */
+  captures?: Record<string, number>;
+  /** Multiple named readiness patterns — service is ready when ALL have matched. */
+  patterns?: ReadinessPattern[];
+  /** Max time (ms) to wait for all patterns to match before marking failed. */
+  timeout: number;
+  /** Block until ready (default true). When false, mark ready immediately after spawn. */
+  wait?: boolean;
+}
+
+/**
+ * Definition for a long-running background service.
+ * Services are spawned as detached processes that survive CLI exit.
+ */
+export interface ServiceDefinition<TConfig = Record<string, unknown>> {
+  id: string;
+  label: string;
+  command: string;
+  env?: (config: TConfig) => Record<string, string>;
+  readiness?: ReadinessConfig;
+  shutdown?: { signal: NodeJS.Signals; timeout: number };
+  restart?: { enabled: boolean; maxRetries: number; delay: number };
+}
+
+/**
+ * Runtime status of a service.
+ */
+export interface ServiceStatus {
+  id: string;
+  label: string;
+  status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping';
+  pid?: number;
+  endpoints?: Record<string, string>;
+  error?: string;
+  restartAttempt?: number;
+}
+
+/**
+ * Manager for long-running background services.
+ */
+export interface ServiceManager {
+  start(id: string): Promise<void>;
+  stop(id: string): Promise<void>;
+  list(): ServiceStatus[];
+  logs(id: string, lines?: number): string;
+  /** Watch a service's log file for new lines. Returns cleanup function. */
+  watchLogs(id: string, onLine: (line: string) => void): () => void;
+}
+
 // ── Event Bus ─────────────────────────────────────────────────────
 
 /**
@@ -250,23 +333,58 @@ export interface RoutineConfig {
   idleInterval?: number;
 }
 
+// ── Resolvable ────────────────────────────────────────────────────
+
+/**
+ * A value that can be provided directly or resolved lazily from context.
+ * Used for settings that may depend on runtime state (workdir, config).
+ * TConfig is inferred from the CLI's configSchema when used inside defineCli().
+ */
+export type Resolvable<T, TConfig = Record<string, unknown>> = T | ((ctx: { workdir: string; config: TConfig }) => T);
+
+// ── Agent Context ─────────────────────────────────────────────────
+
+/**
+ * Context passed to agent factory callbacks.
+ * Provides everything the factory needs to construct an agent.
+ * TConfig is inferred from the CLI's configSchema.
+ */
+export interface AgentContext<TConfig = Record<string, unknown>> {
+  workdir: string;
+  config: TConfig;
+  cliName: string;
+  cliVersion: string;
+  context: CommandContext;
+  commands: Command<any, any, any>[];
+}
+
 // ── CLI ───────────────────────────────────────────────────────────
 
 /**
  * Options for defineCli().
+ *
+ * Generic over TSchema — inferred from `configSchema`. This propagates the
+ * resolved config type into `Resolvable` callbacks, `AgentContext`, and
+ * `InteractiveConfig`, so `ctx.config` is fully typed without casts.
  */
-export interface CliOptions {
+export interface CliOptions<TSchema extends z.ZodType = z.ZodType<Record<string, unknown>>> {
   name: string;
   version: string;
-  description: string;
-  commands: Command[];
-  configSchema?: z.ZodType;
-  interactive?: InteractiveConfig;
+  description: Resolvable<string, z.infer<TSchema>>;
+  commands: Command<any, any, any>[];
+  configSchema?: TSchema;
+  interactive?: InteractiveConfig<z.infer<TSchema>>;
   triggers?: Trigger[];
   routine?: RoutineConfig;
   integrations?: Integration[];
-  /** Route bare text to an agent. Format: 'agent:<agent-id>' */
-  defaultCommand?: string;
+  /** Agent configuration — lazy factory, only called when agent is needed. */
+  agent?: {
+    default: (ctx: AgentContext<z.infer<TSchema>>) => Promise<AgentProvider>;
+  };
+  /** Service definitions for the ServiceManager. */
+  services?: ServiceDefinition<z.infer<TSchema>>[];
+  /** Event handlers registered on the event bus. */
+  events?: Record<string, (data: any) => void>;
   /**
    * Implementation-level workdir override. When set, the --workdir/-w CLI flag
    * is hidden — the implementation owns the decision of where the workspace is.
@@ -292,8 +410,6 @@ export interface RunOptions {
   stderr?: (message: string) => void;
   /** Headless interactive mode: lines are read from this iterable instead of Ink. */
   interactiveInput?: AsyncIterable<string>;
-  /** Signal to stop --wait mode. In production, connected to SIGINT/SIGTERM. */
-  signal?: AbortSignal;
   /** Resume a previous agent conversation by thread ID. */
   resume?: string;
   /** Override workdir for testing (replaces cwd fallback). */
@@ -319,8 +435,9 @@ export interface Cli {
   version: string;
   description: string;
   configSchema?: z.ZodType;
-  interactive?: InteractiveConfig;
-  defaultCommand?: string;
+  interactive?: InteractiveConfig<any> | ResolvedInteractiveConfig;
+  /** True when an agent factory is configured. */
+  hasAgent: boolean;
   getCommand(id: string): Command | undefined;
   listCommands(): Command[];
   execute(

@@ -637,7 +637,7 @@ describe('default command — agent routing', () => {
     execute: async ({ query }) => ({ text: `Results for: ${query}` }),
   });
 
-  it('routes bare text to agent when defaultCommand is set', async () => {
+  it('routes bare text to agent when agent factory is set', async () => {
     const agent = createTestAgent({
       'What is TypeScript?': [
         { type: 'text-delta', text: 'TypeScript is a typed superset of JavaScript.' },
@@ -649,8 +649,7 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      integrations: [{ id: 'test', agents: [agent] }],
-      defaultCommand: 'agent:test-assistant',
+      agent: { default: async () => agent },
       interactive: { welcome: 'Hi!' },
     });
 
@@ -670,8 +669,7 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      integrations: [{ id: 'test', agents: [agent] }],
-      defaultCommand: 'agent:test-assistant',
+      agent: { default: async () => agent },
       interactive: { welcome: 'Hi!' },
     });
 
@@ -697,8 +695,7 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      integrations: [{ id: 'test', agents: [agent] }],
-      defaultCommand: 'agent:test-assistant',
+      agent: { default: async () => agent },
       interactive: { welcome: '' },
     });
 
@@ -725,8 +722,7 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      integrations: [{ id: 'test', agents: [agent] }],
-      defaultCommand: 'agent:test-assistant',
+      agent: { default: async () => agent },
       interactive: { welcome: '' },
     });
 
@@ -738,7 +734,7 @@ describe('default command — agent routing', () => {
     expect(result.text).toContain('API rate limit exceeded');
   });
 
-  it('returns error for bare text when no defaultCommand is set', async () => {
+  it('returns error for bare text when no agent is configured', async () => {
     const cli = defineCli({
       name: 'test',
       version: '1.0.0',
@@ -754,22 +750,22 @@ describe('default command — agent routing', () => {
     expect(result.type).toBe('error');
   });
 
-  it('returns error when agent provider is not found', async () => {
+  it('returns error when agent factory is set but provider is not passed', async () => {
     const cli = defineCli({
       name: 'assist',
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      integrations: [{ id: 'test', agents: [] }],
-      defaultCommand: 'agent:nonexistent',
+      agent: { default: async () => ({ id: 'x', async *stream() {} }) },
       interactive: { welcome: '' },
     });
 
     const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '' };
+    // No agentProvider passed — session should still route text to agent handler
     const session = createReplSession({ cli, context });
 
     const result = await session.processInput('hello');
     expect(result.type).toBe('error');
-    expect(result.text).toContain('nonexistent');
+    expect(result.text).toContain('Agent not available');
   });
 });

@@ -21,7 +21,7 @@ The full-featured reference implementation: a multi-agent CLI for Powerhouse Rea
 ```typescript
 import {
   defineCli, defineCommand, defineService, defineTrigger,
-  defineMastraIntegration, definePowerhouseIntegration,
+  definePowerhouseIntegration,
 } from 'ph-clint';
 import { z } from 'zod';
 
@@ -33,11 +33,12 @@ const configSchema = z.object({
   connectPort: z.number().default(5000).describe('Vetra Connect port'),
   switchboardPort: z.number().default(6100).describe('Vetra Switchboard port'),
   startupTimeout: z.number().default(90_000).describe('Vetra startup timeout (ms)'),
+  model: z.string().default('anthropic/claude-haiku-4-5').describe('Default LLM model'),
 });
 
 // ENV mapping auto-generated:
 // RDEV_DRIVE_URL, RDEV_INBOX_ID, RDEV_WBS_ID, RDEV_PROJECTS_DIR,
-// RDEV_CONNECT_PORT, RDEV_SWITCHBOARD_PORT, RDEV_STARTUP_TIMEOUT
+// RDEV_CONNECT_PORT, RDEV_SWITCHBOARD_PORT, RDEV_STARTUP_TIMEOUT, RDEV_MODEL
 ```
 
 ### Powerhouse integration
@@ -61,41 +62,33 @@ const powerhouse = definePowerhouseIntegration({
 });
 ```
 
-### Mastra integration with multiple agents
+### Agent factory with multiple agents
 
 ```typescript
-const mastra = defineMastraIntegration({
-  agents: {
-    'reactor-dev': {
-      model: 'anthropic/claude-haiku-4-5',
-      instructions: (config) => `You are a Reactor Package developer. Projects dir: ${config.projectsDir}`,
-      tools: [
-        'init-project', 'run-project', 'stop-project', 'project-status',
-        'project-logs', 'inbox', 'reply', 'ls', 'read', 'dispatch',
-      ],
-      dynamicTools: {
-        // MCP tools from running Reactor are merged in at runtime
-        mcp: (context) => context.services.get('reactor')?.endpoints?.mcpUrl,
-      },
+const cli = defineCli({
+  // ...
+  agent: {
+    default: async (ctx) => {
+      const { createMastraHelpers } = await import('ph-clint/mastra');
+      const { Agent } = await import('@mastra/core/agent');
+      const m = createMastraHelpers(ctx);
+
+      return m.wrapAgent(new Agent({
+        id: 'reactor-dev',
+        instructions: `You are a Reactor Package developer. Projects dir: ${ctx.config.projectsDir}`,
+        model: ctx.config.model as string,
+        tools: {
+          ...await m.getTools(),
+          // MCP tools from running Reactor can be merged in at runtime
+        },
+        workspace: await m.createWorkspace(),
+        memory: await m.createMemory(),
+      }));
     },
-    'architect': {
-      model: 'anthropic/claude-sonnet-4-5',
-      instructions: 'You are a Powerhouse architect. Design document models and coordinate development.',
-      tools: ['inbox', 'reply', 'ls', 'read', 'dispatch'],
-    },
+    // Multi-agent support (future): additional named agents
+    // architect: async (ctx) => { ... },
   },
-  memory: { backend: 'libsql' },
-  skills: {
-    standard: [
-      'powerhouse/document-access',
-      'powerhouse/document-modeling',
-    ],
-    custom: [
-      'skills-src/reactor-package-project-management',
-      'skills-src/document-editor-creation',
-      'skills-src/handle-stakeholder-message',
-    ],
-  },
+  // ...
 });
 ```
 
@@ -270,11 +263,28 @@ const cli = defineCli({
   description: 'Reactor Package Development Agent',
   configSchema,
   commands: [initProject, runProject, stopProject, /* ...all others */],
-  integrations: [powerhouse, mastra],
+  integrations: [powerhouse],
   services: [reactor],
   triggers: [inboxTrigger, wbsGoalTrigger],
   middleware: [authMiddleware, loggingMiddleware],
-  defaultCommand: 'agent:reactor-dev',
+
+  agent: {
+    default: async (ctx) => {
+      const { createMastraHelpers } = await import('ph-clint/mastra');
+      const { Agent } = await import('@mastra/core/agent');
+      const m = createMastraHelpers(ctx);
+
+      return m.wrapAgent(new Agent({
+        id: 'reactor-dev',
+        instructions: `You are a Reactor Package developer. Projects dir: ${ctx.config.projectsDir}`,
+        model: ctx.config.model as string,
+        tools: await m.getTools(),
+        workspace: await m.createWorkspace(),
+        memory: await m.createMemory(),
+      }));
+    },
+  },
+
   routine: {
     tickInterval: 2_000,
     idleInterval: 500,
@@ -292,7 +302,7 @@ const cli = defineCli({
 
 ```bash
 # Autonomous mode
-rdev --wait --agent reactor-dev
+rdev --wait
 
 # Interactive mode
 rdev -i
@@ -316,13 +326,6 @@ rdev -i
 # Triggers: inbox-message (active), wbs-goal (active)
 # Queue: empty
 
-# Switch agent
-> /agent architect
-# Switched to architect agent
-
-> Review the invoice document model and suggest improvements
-# → (architect agent responds with architectural guidance)
-
 # Resume later
 rdev -i --resume abc-123
 ```
@@ -330,8 +333,8 @@ rdev -i --resume abc-123
 ## Acceptance Criteria
 
 - [ ] All features from examples 01–07 work
-- [ ] Multi-agent: `--agent reactor-dev` and `--agent architect` select different agents
-- [ ] `/agent <name>` switches agents in REPL
+- [ ] Agent factory creates Mastra agent with full tool set
+- [ ] `/agent <name>` switches agents in REPL (multi-agent, future)
 - [ ] Reactor service starts as background process with readiness detection
 - [ ] MCP tools from running Reactor merge into agent toolset dynamically
 - [ ] Inbox trigger creates `skill` work items for incoming messages

@@ -9,10 +9,10 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import {
   defineCli,
-  defineMastraIntegration,
   formatStreamChunk,
+  createMemoryWorkspace,
 } from 'ph-clint';
-import type { StreamChunk, Integration } from 'ph-clint';
+import type { StreamChunk, AgentProvider, AgentContext } from 'ph-clint';
 import { ascii } from '../src/commands/ascii.js';
 import { saveImage } from '../src/commands/save-image.js';
 import { listImages } from '../src/commands/list-images.js';
@@ -40,25 +40,35 @@ const commands = [ascii, saveImage, listImages];
 const describeWithKey = apiKey ? describe : describe.skip;
 
 describeWithKey('Mastra agent E2E', () => {
-  let integration: Integration;
+  let agentProvider: AgentProvider;
 
   beforeAll(async () => {
-    integration = await defineMastraIntegration({
-      agents: [{
-        id: 'assistant',
-        name: 'Image Assistant',
-        instructions: 'You are a helpful assistant with image tools. Keep responses concise.',
-      }],
-      commands,
+    const { createMastraHelpers } = await import('ph-clint/mastra');
+    const { Agent } = await import('@mastra/core/agent');
+
+    const ctx: AgentContext = {
       workdir: '/tmp/ph-clint-test-e2e',
+      config: {},
       cliName: 'assist',
-    });
+      cliVersion: '1.0.0',
+      context: { workdir: '/tmp/ph-clint-test-e2e', workspace: createMemoryWorkspace(), config: {} },
+      commands,
+    };
+    const m = createMastraHelpers(ctx);
+
+    agentProvider = m.wrapAgent(new Agent({
+      id: 'assistant',
+      name: 'Image Assistant',
+      instructions: 'You are a helpful assistant with image tools. Keep responses concise.',
+      model: 'anthropic/claude-haiku-4-5',
+      tools: await m.getTools(),
+      memory: await m.createMemory(),
+    }));
   });
 
   it('streams a text response from the real LLM', async () => {
-    const agent = integration.agents![0]!;
     const chunks: StreamChunk[] = [];
-    for await (const chunk of agent.stream('Say hello in exactly 3 words.')) {
+    for await (const chunk of agentProvider.stream('Say hello in exactly 3 words.')) {
       chunks.push(chunk);
     }
 
@@ -73,9 +83,8 @@ describeWithKey('Mastra agent E2E', () => {
   }, 30_000);
 
   it('agent calls the ascii tool when asked to convert an image', async () => {
-    const agent = integration.agents![0]!;
     const chunks: StreamChunk[] = [];
-    for await (const chunk of agent.stream(
+    for await (const chunk of agentProvider.stream(
       'Use the ascii tool to convert https://picsum.photos/100/100 to ASCII art. Just call the tool, nothing else.',
     )) {
       chunks.push(chunk);
@@ -96,9 +105,8 @@ describeWithKey('Mastra agent E2E', () => {
   }, 60_000);
 
   it('formatStreamChunk renders tool calls and results', async () => {
-    const agent = integration.agents![0]!;
     const chunks: StreamChunk[] = [];
-    for await (const chunk of agent.stream(
+    for await (const chunk of agentProvider.stream(
       'Use the ascii tool to convert https://picsum.photos/50/50 to ASCII. Just call the tool.',
     )) {
       chunks.push(chunk);
@@ -117,8 +125,9 @@ describeWithKey('Mastra agent E2E', () => {
       version: '1.0.0',
       description: 'Test assistant',
       commands,
-      integrations: [integration],
-      defaultCommand: 'agent:assistant',
+      agent: {
+        default: async () => agentProvider,
+      },
     });
 
     const output: string[] = [];
@@ -139,8 +148,9 @@ describeWithKey('Mastra agent E2E', () => {
       version: '1.0.0',
       description: 'Test assistant',
       commands,
-      integrations: [integration],
-      defaultCommand: 'agent:assistant',
+      agent: {
+        default: async () => agentProvider,
+      },
       interactive: { welcome: 'Hi!' },
     });
 
@@ -162,15 +172,14 @@ describeWithKey('Mastra agent E2E', () => {
   }, 30_000);
 
   it('remembers conversation context across turns with thread ID', async () => {
-    const agent = integration.agents![0]!;
     const threadId = `test-memory-${Date.now()}`;
 
     // Turn 1: tell it something
-    for await (const _ of agent.stream('My favorite color is purple. Just acknowledge.', { threadId })) {}
+    for await (const _ of agentProvider.stream('My favorite color is purple. Just acknowledge.', { threadId })) {}
 
     // Turn 2: ask it to recall
     const chunks: StreamChunk[] = [];
-    for await (const chunk of agent.stream('What is my favorite color?', { threadId })) {
+    for await (const chunk of agentProvider.stream('What is my favorite color?', { threadId })) {
       chunks.push(chunk);
     }
     const text = chunks

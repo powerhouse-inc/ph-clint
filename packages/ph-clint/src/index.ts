@@ -8,13 +8,13 @@ export { createConfigCommand, generateConfigCommandHelp } from './core/config-co
 export { resolveWorkdir } from './core/workdir.js';
 export { createEventBus } from './core/events.js';
 export { createProcessManager } from './core/processes.js';
+export { defineService, createServiceManager } from './core/services.js';
 export { createRoutine } from './core/routine.js';
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
 export { renderMarkdown } from './interactive/markdown.js';
-export { defineMastraIntegration, getMastraPaths, getMastraWorkspacePaths, mapMastraStream } from './integrations/mastra/index.js';
 export type { FieldInfo } from './core/schema.js';
 export type {
   ReplSession,
@@ -32,6 +32,7 @@ export type {
   CommandContext,
   PromptConfig,
   InteractiveConfig,
+  ResolvedInteractiveConfig,
   ConfigEnvVar,
   InferConfig,
   WorkItem,
@@ -51,6 +52,12 @@ export type {
   ErrorChunk,
   AgentProvider,
   AgentStreamOptions,
+  AgentContext,
+  Resolvable,
   Integration,
+  ReadinessPattern,
+  ReadinessConfig,
+  ServiceDefinition,
+  ServiceStatus,
+  ServiceManager,
 } from './core/types.js';
-export type { MastraIntegrationOptions, MastraAgentConfig } from './integrations/mastra/types.js';

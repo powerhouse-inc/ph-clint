@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./mastra": {
+      "types": "./dist/integrations/mastra/index.d.ts",
+      "import": "./dist/integrations/mastra/index.js"
     }
   },
   "files": [
