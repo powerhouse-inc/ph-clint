@@ -1,4 +1,5 @@
 export { defineCommand } from './core/command.js';
+export { formatZodError } from './core/errors.js';
 export { defineCli } from './core/cli.js';
 export { defineTrigger } from './core/trigger.js';
 export { getSchemaFields } from './core/schema.js';

@@ -93,8 +93,10 @@ describe('defineCli', () => {
       expect(result).toEqual({ mode: 'dev' });
     });
 
-    it('throws on invalid input', async () => {
-      await expect(cli.execute('echo', {})).rejects.toThrow();
+    it('throws on invalid input with formatted error', async () => {
+      await expect(cli.execute('echo', {})).rejects.toThrow(
+        "Invalid arguments for 'echo'",
+      );
     });
   });
 

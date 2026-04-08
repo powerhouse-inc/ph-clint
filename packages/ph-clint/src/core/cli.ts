@@ -27,6 +27,7 @@ import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
 import { createServiceManager } from './services.js';
 import { createReplSession } from '../interactive/session.js';
+import { formatZodError } from './errors.js';
 
 /* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
 const defaultStdout = (text: string) => { process.stdout.write(text); };
@@ -182,7 +183,12 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     if (!cmd) {
       throw new Error(`Unknown command: ${commandId}`);
     }
-    const parsed = cmd.inputSchema.parse(args);
+    let parsed;
+    try {
+      parsed = cmd.inputSchema.parse(args);
+    } catch (err) {
+      throw new Error(formatZodError(err, commandId));
+    }
     const ctx = buildContext(context);
     return cmd.execute(parsed, ctx);
   }
@@ -437,7 +443,12 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       }
 
       sub.action(async (opts) => {
-        const parsed = cmd.inputSchema.parse(opts);
+        let parsed;
+        try {
+          parsed = cmd.inputSchema.parse(opts);
+        } catch (err) {
+          throw new Error(formatZodError(err, cmd.id));
+        }
         const result = await cmd.execute(parsed, context);
         const output = formatResult(result);
         if (output !== undefined) {

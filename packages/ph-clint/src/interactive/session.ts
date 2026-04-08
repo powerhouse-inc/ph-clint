@@ -5,6 +5,7 @@ import { getCompletions, getGhostSuggestion, getCompletionSuffix } from './compl
 import { getSchemaFields } from '../core/schema.js';
 import { renderMarkdown } from './markdown.js';
 import { renderStream } from '../core/stream.js';
+import { formatZodError } from '../core/errors.js';
 
 /**
  * Format a command result for display.
@@ -153,7 +154,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         const text = formatResult(result);
         return { text: renderMarkdown(text), type: 'result' };
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = formatZodError(err, commandId);
         return { text: msg, type: 'error' };
       }
     }
@@ -267,7 +268,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
           const text = formatResult(result);
           return { text: renderMarkdown(text), type: 'result' };
         } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = formatZodError(err, parsed.commandId!);
 
           // If the error is about a missing required field and the command has prompt config,
           // enter prompting mode with what we have
