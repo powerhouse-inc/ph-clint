@@ -71,7 +71,7 @@ describe('createMastraHelpers', () => {
     const memory = await helpers.createMemory();
     expect(memory).toBeDefined();
     // Verify the database directory was created
-    expect(existsSync(join(testWorkspace, '.ph', 'test-cli', 'mastra'))).toBe(true);
+    expect(existsSync(join(testWorkspace, '.ph', 'test-cli', '.mastra', 'db'))).toBe(true);
   });
 
   it('wrapAgent wraps a mock agent as AgentProvider', () => {

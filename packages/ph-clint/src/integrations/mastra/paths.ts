@@ -1,36 +1,67 @@
 import { join } from 'node:path';
+import type { WorkdirStore } from '../../core/types.js';
 
 /**
- * Compute Mastra paths for a CLI.
- *
- * Layout:
- *   {workdir}/                          — User/agent working directory (Mastra Workspace root)
- *     .ph/{cliName}/
- *       mastra/
- *         mastra.db                     — LibSQL database for memory
- *
- * @param workdir  Resolved workspace directory (absolute path).
- * @param cliName  CLI name, used to namespace under .ph/.
+ * Options for getMastraPaths.
  */
-export function getMastraPaths(workdir: string, cliName: string) {
-  const contextDir = join(workdir, '.ph', cliName);
-  return {
-    /** The working directory — passed to Mastra as the Workspace/LocalFilesystem root. */
-    filesystemPath: workdir,
-    /** LibSQL database file path. */
-    dbPath: join(contextDir, 'mastra', 'mastra.db'),
-  };
+export interface MastraPathOptions {
+  /** Pre-packaged skill names under `.mastra/skills/`. */
+  prePackagedSkills?: string[];
 }
 
 /**
- * @deprecated Use getMastraPaths(workdir, cliName) instead.
- * Kept for backward compatibility during migration.
+ * Structured Mastra paths computed from a WorkdirStore.
  */
-export function getMastraWorkspacePaths(workspacePath: string) {
-  const mastraRoot = join(workspacePath, 'mastra');
+export interface MastraPaths {
+  /** Root of the `.mastra` folder: `store.getStoreFolder('.mastra')`. */
+  rootFolder: string;
+  /** Database folder: `store.getStoreFolder('.mastra/db')`. */
+  dbFolder: string;
+  /** LibSQL database file path. */
+  dbPath: string;
+  /** The working directory — passed to Mastra as the Workspace basePath. */
+  workspaceBasePath: string;
+  /** Absolute skill paths: pre-packaged + runtime glob. */
+  skillPaths: string[];
+  /** Allowed paths for LocalFilesystem containment. */
+  allowedPaths: string[];
+}
+
+/**
+ * Compute Mastra paths from a WorkdirStore.
+ *
+ * Layout:
+ *   {workdir}/                              ← workspaceBasePath
+ *     .ph/{cliName}/                        ← store root
+ *       skills/                             ← runtime skills (glob **)
+ *       .mastra/
+ *         db/
+ *           mastra.db                       ← LibSQL database
+ *         skills/{skill}/SKILL.md           ← pre-packaged skills
+ */
+export function getMastraPaths(store: WorkdirStore, options?: MastraPathOptions): MastraPaths {
+  const rootFolder = store.getStoreFolder('.mastra');
+  const dbFolder = store.getStoreFolder('.mastra/db');
+  const dbPath = join(dbFolder, 'mastra.db');
+  const workspaceBasePath = store.getWorkdir();
+
+  const prePackaged = (options?.prePackagedSkills ?? [])
+    .map(name => store.getStoreFolder(join('.mastra', 'skills', name)));
+  const runtimeGlob = store.getStoreFolder('skills') + '/**';
+
+  const skillPaths = [...prePackaged, runtimeGlob];
+
+  const allowedPaths = [
+    store.getStoreFolder('.mastra/skills'),
+    store.getStoreFolder('skills'),
+  ];
+
   return {
-    mastraRoot,
-    filesystemPath: join(mastraRoot, 'workspace'),
-    dbPath: join(mastraRoot, 'db', 'mastra.db'),
+    rootFolder,
+    dbFolder,
+    dbPath,
+    workspaceBasePath,
+    skillPaths,
+    allowedPaths,
   };
 }

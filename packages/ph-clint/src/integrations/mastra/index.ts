@@ -1,5 +1,4 @@
 import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
 import type { AgentContext, AgentProvider, StreamChunk } from '../../core/types.js';
 import { createWorkdirStore } from '../../core/store.js';
 import { mapMastraStream } from './stream.js';
@@ -8,7 +7,8 @@ import { getMastraPaths } from './paths.js';
 import type { MastraHelpers } from './types.js';
 
 export type { MastraHelpers } from './types.js';
-export { getMastraPaths, getMastraWorkspacePaths } from './paths.js';
+export type { MastraPaths, MastraPathOptions } from './paths.js';
+export { getMastraPaths } from './paths.js';
 export { mapMastraStream } from './stream.js';
 export { commandsToMastraTools } from './tools.js';
 
@@ -31,9 +31,9 @@ export { commandsToMastraTools } from './tools.js';
  * ```
  */
 export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
-  const paths = getMastraPaths(ctx.workdir, ctx.cliName);
-  const cliWorkspace = createWorkdirStore(ctx.workdir, ctx.cliName);
-  const commandContext = { workdir: ctx.workdir, workspace: cliWorkspace, config: ctx.config, stdout: console.log };
+  const store = createWorkdirStore(ctx.workdir, ctx.cliName);
+  const paths = getMastraPaths(store);
+  const commandContext = { workdir: ctx.workdir, workspace: store, config: ctx.config, stdout: console.log };
 
   return {
     async getTools() {
@@ -44,7 +44,7 @@ export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
       const { Workspace: MastraWorkspace, LocalFilesystem } = await import('@mastra/core/workspace');
       return new MastraWorkspace({
         filesystem: new LocalFilesystem({
-          basePath: paths.filesystemPath,
+          basePath: paths.workspaceBasePath,
         }),
       });
     },
@@ -54,10 +54,10 @@ export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
       const { LibSQLStore } = await import('@mastra/libsql');
 
       // Ensure database directory exists
-      mkdirSync(dirname(paths.dbPath), { recursive: true });
+      mkdirSync(paths.dbFolder, { recursive: true });
 
-      const store = new LibSQLStore({ id: 'ph-clint-storage', url: `file:${paths.dbPath}` });
-      return new Memory({ storage: store });
+      const libsqlStore = new LibSQLStore({ id: 'ph-clint-storage', url: `file:${paths.dbPath}` });
+      return new Memory({ storage: libsqlStore });
     },
 
     wrapAgent(agent: any): AgentProvider {
