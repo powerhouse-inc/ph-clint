@@ -16,7 +16,6 @@ export const configSchema = z.object({
   model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model to use'),
   connectPort: z.number().default(3000).describe('Connect Studio port'),
   switchboardPort: z.number().default(4001).describe('Vetra Switchboard port'),
-  startupTimeout: z.number().default(90_000).describe('Service startup timeout (ms)'),
   phVersion: z.string().default('staging').describe('Powerhouse version'),
 });
 

@@ -193,4 +193,3 @@ When working with Powerhouse document models:
 - **Reactor Packages Folder**: {{reactorPackagesDir}}
 - **Default Vetra Connect Port**: {{vetraConnectPort}}
 - **Default Vetra Switchboard Port**: {{vetraSwitchboardPort}}
-- **Startup Timeout**: {{vetraStartupTimeout}}ms

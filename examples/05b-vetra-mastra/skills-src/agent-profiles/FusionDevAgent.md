@@ -76,7 +76,5 @@ A Fusion project **ALWAYS** needs a _Switchboard URL_ to work with as backend. C
 - **Fusion Projects Folder**: {{fusionProjectsDir}}
 - **Default Vetra Connect Port**: {{vetraConnectPort}}
 - **Default Vetra Switchboard Port**: {{vetraSwitchboardPort}}
-- **Reactor Startup Timeout**: {{vetraStartupTimeout}}ms
 - **Default Fusion Port**: {{fusionPort}}
 - **Default Fusion Switchboard URL**: {{fusionSwitchboardUrl}}
-- **Fusion Startup Timeout**: {{fusionStartupTimeout}}ms

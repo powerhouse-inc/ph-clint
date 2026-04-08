@@ -28,22 +28,18 @@ function loadBuildContext() {
   const workspaceDir = process.env.VETRA_MASTRA_WORKDIR ?? process.cwd();
   const connectPort = process.env.VETRA_MASTRA_CONNECT_PORT ?? '3000';
   const switchboardPort = process.env.VETRA_MASTRA_SWITCHBOARD_PORT ?? '4001';
-  const startupTimeout = process.env.VETRA_MASTRA_STARTUP_TIMEOUT ?? '90000';
   return {
     agentName: '{{AGENT_NAME}}', // placeholder — replaced per-agent below
     workspaceDir,
     connectPort,
     switchboardPort,
-    startupTimeout,
     // Aliases used by prototype agent profiles (ReactorPackageDevAgent, FusionDevAgent)
     vetraConnectPort: connectPort,
     vetraSwitchboardPort: switchboardPort,
-    vetraStartupTimeout: startupTimeout,
     reactorPackagesDir: process.env.VETRA_MASTRA_REACTOR_PACKAGES_DIR ?? `${workspaceDir}/reactor-packages`,
     fusionProjectsDir: process.env.VETRA_MASTRA_FUSION_PROJECTS_DIR ?? `${workspaceDir}/fusion-projects`,
     fusionPort: process.env.VETRA_MASTRA_FUSION_PORT ?? '3001',
     fusionSwitchboardUrl: process.env.VETRA_MASTRA_FUSION_SWITCHBOARD_URL ?? `http://localhost:${switchboardPort}/graphql`,
-    fusionStartupTimeout: process.env.VETRA_MASTRA_FUSION_STARTUP_TIMEOUT ?? '90000',
   };
 }
 

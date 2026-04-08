@@ -102,4 +102,3 @@ Reading and editing documents:
 - **Workspace Location**: {{workspaceDir}}
 - **Default Connect Port**: {{connectPort}}
 - **Default Switchboard Port**: {{switchboardPort}}
-- **Startup Timeout**: {{startupTimeout}}ms
