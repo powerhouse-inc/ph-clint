@@ -4,7 +4,7 @@
  */
 
 export interface ParsedReplInput {
-  type: 'command' | 'help' | 'exit' | 'empty' | 'unknown' | 'text';
+  type: 'command' | 'exit' | 'empty' | 'unknown' | 'text';
   commandId?: string;
   args?: string[];
   raw: string;
@@ -14,7 +14,6 @@ export interface ParsedReplInput {
  * Parse a REPL input line.
  *
  * - Empty/whitespace → { type: 'empty' }
- * - /help → { type: 'help' }
  * - /exit or /quit → { type: 'exit' }
  * - /cmd --arg val → { type: 'command', commandId: 'cmd', args: ['--arg', 'val'] }
  * - Anything else → { type: 'unknown' }
@@ -43,10 +42,6 @@ export function parseReplInput(
 
   const [, name, rest] = match;
   const cmdName = name!.toLowerCase();
-
-  if (cmdName === 'help') {
-    return { type: 'help', raw: trimmed };
-  }
 
   if (cmdName === 'exit' || cmdName === 'quit') {
     return { type: 'exit', raw: trimmed };

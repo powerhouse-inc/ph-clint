@@ -49,8 +49,8 @@ describe('defineCli', () => {
 
     it('lists all commands', () => {
       const cmds = cli.listCommands();
-      expect(cmds).toHaveLength(2);
-      expect(cmds.map((c) => c.id).sort()).toEqual(['add', 'echo']);
+      expect(cmds).toHaveLength(3);
+      expect(cmds.map((c) => c.id).sort()).toEqual(['add', 'cli-docs', 'echo']);
     });
   });
 
@@ -241,6 +241,29 @@ describe('defineCli', () => {
       });
       const help = noDescCli.generateCommandHelp('cmd');
       expect(help).toContain('--value');
+    });
+  });
+
+  describe('built-in cli-docs command', () => {
+    it('returns general help with agent preamble and rewritten headings', async () => {
+      const result = await cli.execute('cli-docs', {}) as { text: string };
+      expect(result.text).toContain('As a CLI-first agent');
+      expect(result.text).toContain('CLI Usage: test-cli');
+      expect(result.text).toContain('CLI Options:');
+      expect(result.text).toContain('Commands / Agent Tools:');
+      expect(result.text).toContain('echo');
+    });
+
+    it('returns command-specific help with agent preamble', async () => {
+      const result = await cli.execute('cli-docs', { command: 'echo' }) as { text: string };
+      expect(result.text).toContain('As a CLI-first agent');
+      expect(result.text).toContain('--message');
+    });
+
+    it('returns general help for unknown command', async () => {
+      const result = await cli.execute('cli-docs', { command: 'nope' }) as { text: string };
+      expect(result.text).toContain('As a CLI-first agent');
+      expect(result.text).toContain('CLI Usage: test-cli');
     });
   });
 

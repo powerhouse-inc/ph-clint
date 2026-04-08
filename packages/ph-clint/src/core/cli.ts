@@ -20,6 +20,7 @@ import { getConfigEnvVars, resolveConfig } from './config.js';
 import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
 import { createSvcCommand } from './service-command.js';
+import { createHelpCommand } from './help-command.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
@@ -103,6 +104,15 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   if (hasServices && !commandMap.has('svc')) {
     const serviceIds = options.services!.map((s) => s.id);
     commandMap.set('svc', createSvcCommand(serviceIds));
+  }
+
+  // Auto-inject built-in help command — uses lazy getCli() since the Cli object
+  // is created at the end of defineCli, but execute() is only called at runtime.
+  let cliRef: Cli | undefined;
+  if (!commandMap.has('cli-docs')) {
+    commandMap.set('cli-docs', createHelpCommand({
+      getCli: () => cliRef!,
+    }));
   }
 
   const eventBus = (hasTriggers || hasServices) ? createEventBus() : undefined;
@@ -345,7 +355,11 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       .version(options.version)
       .description(resolvedDescription)
       .enablePositionalOptions()
-      .exitOverride();
+      .exitOverride()
+      .configureOutput({
+        writeOut: (str) => stdout(str.trimEnd()),
+        writeErr: (str) => stdout(str.trimEnd()),
+      });
 
     if (options.interactive) {
       program.option('-i, --interactive', 'Start interactive REPL mode');
@@ -374,6 +388,10 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     };
 
     for (const cmd of commandMap.values()) {
+      // Skip cli-docs — it exists in commandMap only so the agent gets it as a tool.
+      // Commander's built-in `help` handles CLI users.
+      if (cmd.id === 'cli-docs') continue;
+
       const sub = program.command(cmd.id).description(cmd.description);
       const isBuiltinConfig = cmd.id === 'config' && options.configSchema;
 
@@ -658,7 +676,12 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         return;
       }
       const msg = err instanceof Error ? err.message : String(err);
-      stderr(msg);
+      // Commander's exitOverride wraps help/version output as errors with
+      // messages like "(outputHelp)" or "(version)". The actual text has
+      // already been written via configureOutput, so skip these.
+      if (msg !== '(outputHelp)' && msg !== '(version)') {
+        stderr(msg);
+      }
       exit(err.exitCode ?? 1);
       return;
     }
@@ -680,7 +703,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     ? options.description
     : options.description({ workdir: activeWorkdir, config: {} as import('zod').infer<TSchema> });
 
-  return {
+  cliRef = {
     name: options.name,
     version: options.version,
     description: staticDescription,
@@ -699,4 +722,6 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     run,
     stopRoutine,
   };
+
+  return cliRef;
 }

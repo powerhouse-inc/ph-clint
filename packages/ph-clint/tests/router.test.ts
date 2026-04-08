@@ -9,9 +9,10 @@ describe('parseReplInput', () => {
     expect(parseReplInput('   ', commandIds)).toEqual({ type: 'empty', raw: '' });
   });
 
-  it('parses /help', () => {
-    expect(parseReplInput('/help', commandIds)).toEqual({ type: 'help', raw: '/help' });
-    expect(parseReplInput('/HELP', commandIds)).toEqual({ type: 'help', raw: '/HELP' });
+  it('parses /cli-docs as a regular command', () => {
+    const idsWithCliDocs = [...commandIds, 'cli-docs'];
+    expect(parseReplInput('/cli-docs', idsWithCliDocs)).toEqual({ type: 'command', commandId: 'cli-docs', args: [], raw: '/cli-docs' });
+    expect(parseReplInput('/cli-docs --command greet', idsWithCliDocs)).toEqual({ type: 'command', commandId: 'cli-docs', args: ['--command', 'greet'], raw: '/cli-docs --command greet' });
   });
 
   it('parses /exit and /quit', () => {

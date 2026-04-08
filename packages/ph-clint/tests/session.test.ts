@@ -68,13 +68,12 @@ describe('createReplSession', () => {
       expect(result.type).toBe('empty');
     });
 
-    it('handles /help', async () => {
-      const result = await session.processInput('/help');
-      expect(result.type).toBe('help');
+    it('handles /cli-docs', async () => {
+      const result = await session.processInput('/cli-docs');
+      expect(result.type).toBe('result');
+      expect(result.text).toContain('As a CLI-first agent');
       expect(result.text).toContain('greet');
       expect(result.text).toContain('echo');
-      expect(result.text).toContain('/help');
-      expect(result.text).toContain('/exit');
     });
 
     it('handles /exit', async () => {
@@ -116,7 +115,7 @@ describe('createReplSession', () => {
     it('returns error for bare text', async () => {
       const result = await session.processInput('just some text');
       expect(result.type).toBe('error');
-      expect(result.text).toContain('/help');
+      expect(result.text).toContain('/cli-docs');
     });
 
     it('returns error for missing required arg', async () => {
@@ -168,7 +167,7 @@ describe('createReplSession', () => {
       expect(result).toContain('/greet');
       expect(result).toContain('/echo');
       expect(result).toContain('/fail');
-      expect(result).toContain('/help');
+      expect(result).toContain('/cli-docs');
       expect(result).toContain('/exit');
     });
   });
@@ -576,7 +575,7 @@ describe('headless interactive mode via run()', () => {
     expect(output[0]).toBe('Welcome!');
   });
 
-  it('handles /help in headless mode', async () => {
+  it('handles /cli-docs in headless mode', async () => {
     const output: string[] = [];
 
     await cli.run(['node', 'test', '-i'], {
@@ -584,12 +583,12 @@ describe('headless interactive mode via run()', () => {
       stderr: () => {},
       exit: () => {},
       interactiveInput: (async function* () {
-        yield '/help';
+        yield '/cli-docs';
         yield '/exit';
       })(),
     });
 
-    const helpOutput = output.find((o) => o.includes('greet'));
+    const helpOutput = output.find((o) => o.includes('As a CLI-first agent'));
     expect(helpOutput).toBeDefined();
   });
 

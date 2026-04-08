@@ -137,17 +137,6 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     ? `Goodbye! \x1b[2mTo resume, run: ${cli.name} -i --resume ${threadId}\x1b[0m`
     : 'Goodbye!';
 
-  function generateHelp(): string {
-    const lines = ['Available commands:'];
-    for (const cmd of commands) {
-      lines.push(`  /${cmd.id.padEnd(16)} ${cmd.description}`);
-    }
-    lines.push('');
-    lines.push('  /help             Show this help');
-    lines.push('  /exit             Exit the REPL');
-    return lines.join('\n');
-  }
-
   /**
    * Return the next prompt output for the current prompting state,
    * or execute the command if all fields are collected.
@@ -226,9 +215,6 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       case 'empty':
         return { text: '', type: 'empty' };
 
-      case 'help':
-        return { text: generateHelp(), type: 'help' };
-
       case 'exit':
         return { text: exitMessage, type: 'exit' };
 
@@ -238,12 +224,12 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       case 'unknown':
         if (parsed.commandId) {
           return {
-            text: `Unknown command: /${parsed.commandId}. Type /help for available commands.`,
+            text: `Unknown command: /${parsed.commandId}. Type /cli-docs for available commands.`,
             type: 'error',
           };
         }
         return {
-          text: 'Commands start with /. Type /help for available commands.',
+          text: 'Commands start with /. Type /cli-docs for available commands.',
           type: 'error',
         };
 

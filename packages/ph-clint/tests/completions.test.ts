@@ -38,7 +38,7 @@ describe('getCompletions', () => {
       const result = getCompletions('/', commands);
       expect(result).toContain('/greet');
       expect(result).toContain('/list');
-      expect(result).toContain('/help');
+      expect(result).not.toContain('/help'); // help is no longer a builtin; cli-docs is a command
       expect(result).toContain('/exit');
     });
 
