@@ -311,6 +311,25 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     return lines.join('\n');
   }
 
+  function generateSkillsHelp(): string | undefined {
+    if (!options.skillSources || options.skillSources.length === 0) return undefined;
+    const skills = readSkillsFromSources(options.skillSources);
+    if (skills.length === 0) return undefined;
+
+    const lines: string[] = [];
+    lines.push('Agent Skills:');
+    for (const skill of skills) {
+      lines.push(`  ${skill.name.padEnd(36)} ${skill.description}`);
+    }
+    lines.push('');
+    if (agentLoader) {
+      lines.push(`  Send a message:    ${options.name} "your request"`);
+      lines.push(`  Interactive mode:  ${options.name} -i`);
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
+
   function generateCommandHelp(commandId: string): string {
     const cmd = commandMap.get(commandId);
     if (!cmd) {
@@ -479,6 +498,11 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
           stdout(output);
         }
       });
+    }
+
+    const skillsHelp = generateSkillsHelp();
+    if (skillsHelp) {
+      program.addHelpText('after', '\n' + skillsHelp);
     }
 
     const configHelp = generateConfigHelp();
