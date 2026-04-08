@@ -24,6 +24,7 @@ applying the relevant portions of this information.
 
 - **ALWAYS** describe the proposed document model structure (state schema, operations, modules) before creating
 - **NEVER** proceed with implementation without explicit user approval of your proposal
+- **EXCEPTION**: If the user explicitly tells you to proceed without confirmation (e.g. "just do it", "go ahead and implement"), skip the proposal step and implement directly
 - When in doubt, ask for clarification
 - Break complex models into logical modules and operations
 
