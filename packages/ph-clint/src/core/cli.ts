@@ -497,8 +497,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     activeConfigFile = configFileFlag;
 
     // Context store lives at {workdir}/.ph/{cli-name}/
-    const workspacePath = `${workdir}/.ph/${options.name}`;
-    const workspace = createWorkdirStore(workspacePath);
+    const workspace = createWorkdirStore(workdir, options.name);
 
     // Resolve config through 6 layers
     const config = options.configSchema
@@ -515,7 +514,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
 
     // Create ServiceManager when services are defined
     if (hasServices && options.services && eventBus) {
-      const svcDir = `${workspacePath}/services`;
+      const svcDir = workspace.getStoreFolder('services');
       const serviceManager = createServiceManager(options.services as any[], {
         config,
         servicesDir: svcDir,

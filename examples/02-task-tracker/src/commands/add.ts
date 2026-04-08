@@ -15,7 +15,7 @@ export const add = defineCommand({
     promptOptional: ['priority'],
   },
   execute: async ({ title, priority, due }, { workspace, config }) => {
-    const tasks = await workspace.read<Task[]>('tasks.json', []);
+    const tasks = await workspace.loadJsonObject<Task[]>('tasks.json', []);
     const task: Task = {
       id: crypto.randomUUID(),
       title,
@@ -24,7 +24,7 @@ export const add = defineCommand({
       done: false,
     };
     tasks.push(task);
-    await workspace.write('tasks.json', tasks);
+    await workspace.storeJsonObject('tasks.json', tasks);
     return { text: `Added: ${task.title} [${task.priority}]`, data: task };
   },
 });

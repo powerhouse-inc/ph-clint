@@ -986,7 +986,7 @@ describe('defineCli', () => {
       });
 
       it('creates workspace store at {workdir}/.ph/{cli-name}/', async () => {
-        let basePath: string | undefined;
+        let storeFolder: string | undefined;
         const wdCli = defineCli({
           name: 'store-test',
           version: '0.0.1',
@@ -997,7 +997,7 @@ describe('defineCli', () => {
               description: 'Check workspace path',
               inputSchema: z.object({}),
               execute: async (_, ctx) => {
-                basePath = ctx.workspace.basePath;
+                storeFolder = ctx.workspace.getStoreFolder();
                 return 'ok';
               },
             }),
@@ -1009,7 +1009,7 @@ describe('defineCli', () => {
           ...cap.options,
           workdir: tmpDir,
         });
-        expect(basePath).toBe(`${tmpDir}/.ph/store-test`);
+        expect(storeFolder).toBe(`${tmpDir}/.ph/store-test`);
       });
     });
 

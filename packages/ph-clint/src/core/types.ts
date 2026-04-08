@@ -17,10 +17,20 @@ export type InferConfig<T extends z.ZodType> = z.infer<T>;
  * Backed by `{workdir}/.ph/{cli-name}/` on disk, or in-memory for testing.
  */
 export interface WorkdirStore {
-  /** Root directory of this store (e.g. `{workdir}/.ph/{cli-name}/`). */
-  readonly basePath: string;
-  read<T>(key: string, fallback: T): Promise<T>;
-  write(key: string, value: unknown): Promise<void>;
+  /** Resolved absolute working directory. */
+  getWorkdir(): string;
+  /** Path to the local config file: `{workdir}/.ph/{cliName}.config.local.json`. */
+  getLocalConfigPath(): string;
+  /** Absolute path to `{workdir}/.ph/{cliName}/{path}`. When path is omitted, returns the store root. */
+  getStoreFolder(path?: string): string;
+  /** Load a JSON file from the store. Throws if filename doesn't end with `.json`. */
+  loadJsonObject<T>(filename: string, fallback: T): Promise<T>;
+  /** Write a JSON file to the store (atomic write with temp file). */
+  storeJsonObject(filename: string, value: unknown): Promise<void>;
+  /** Shorthand for loadJsonObject on the local config file. */
+  loadLocalConfig<T>(fallback: T): Promise<T>;
+  /** Shorthand for storeJsonObject on the local config file. */
+  storeLocalConfig(value: unknown): Promise<void>;
 }
 
 /**

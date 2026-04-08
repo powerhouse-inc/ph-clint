@@ -9,7 +9,7 @@ export const done = defineCommand({
     title: z.string().describe('Task title (partial match)'),
   }),
   execute: async ({ title }, { workspace }) => {
-    const tasks = await workspace.read<Task[]>('tasks.json', []);
+    const tasks = await workspace.loadJsonObject<Task[]>('tasks.json', []);
     const task = tasks.find(t =>
       t.title.toLowerCase().includes(title.toLowerCase()) && !t.done
     );
@@ -19,7 +19,7 @@ export const done = defineCommand({
     }
 
     task.done = true;
-    await workspace.write('tasks.json', tasks);
+    await workspace.storeJsonObject('tasks.json', tasks);
     return { text: `Completed: ${task.title}`, data: task };
   },
 });

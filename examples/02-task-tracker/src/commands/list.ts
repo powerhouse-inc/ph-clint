@@ -9,7 +9,7 @@ export const list = defineCommand({
     filter: z.enum(['all', 'open', 'done']).default('open').describe('Filter tasks'),
   }),
   execute: async ({ filter }, { workspace }) => {
-    const tasks = await workspace.read<Task[]>('tasks.json', []);
+    const tasks = await workspace.loadJsonObject<Task[]>('tasks.json', []);
     const filtered = filter === 'all'
       ? tasks
       : tasks.filter(t => (filter === 'done') ? t.done : !t.done);

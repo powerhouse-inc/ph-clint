@@ -32,7 +32,7 @@ export { commandsToMastraTools } from './tools.js';
  */
 export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
   const paths = getMastraPaths(ctx.workdir, ctx.cliName);
-  const cliWorkspace = createWorkdirStore(`${ctx.workdir}/.ph/${ctx.cliName}`);
+  const cliWorkspace = createWorkdirStore(ctx.workdir, ctx.cliName);
   const commandContext = { workdir: ctx.workdir, workspace: cliWorkspace, config: ctx.config, stdout: console.log };
 
   return {

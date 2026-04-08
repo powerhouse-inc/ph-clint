@@ -1,55 +1,114 @@
 import { readFile, writeFile, rename, mkdir, unlink } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { WorkdirStore } from './types.js';
 
 /**
- * Create a file-based workdir store rooted at the given directory.
- * Each key maps to a JSON file within that directory.
+ * Read a JSON file, returning `fallback` on ENOENT.
  */
-export function createWorkdirStore(basePath: string): WorkdirStore {
+async function readJson<T>(filePath: string, fallback: T): Promise<T> {
+  try {
+    const raw = await readFile(filePath, 'utf8');
+    return JSON.parse(raw) as T;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return fallback;
+    throw err;
+  }
+}
+
+/**
+ * Atomic JSON write: write to temp file, then rename.
+ */
+async function writeJson(filePath: string, value: unknown): Promise<void> {
+  const dir = dirname(filePath);
+  await mkdir(dir, { recursive: true });
+
+  const tmp = join(dir, `.tmp-${randomBytes(6).toString('hex')}`);
+  try {
+    await writeFile(tmp, JSON.stringify(value, null, 2) + '\n', 'utf8');
+    await rename(tmp, filePath);
+  } catch (err) {
+    try { await unlink(tmp); } catch {}
+    throw err;
+  }
+}
+
+function assertJsonFilename(filename: string): void {
+  if (!filename.endsWith('.json')) {
+    throw new Error(`Filename must end with .json: ${filename}`);
+  }
+}
+
+/**
+ * Create a file-based WorkdirStore.
+ *
+ * @param cliWorkdir  Working directory (resolved to absolute via `path.resolve(cwd, cliWorkdir)`).
+ * @param cliName     CLI name, used to namespace under `.ph/`.
+ */
+export function createWorkdirStore(cliWorkdir: string, cliName: string): WorkdirStore {
+  const workdir = resolve(process.cwd(), cliWorkdir);
+  const storeRoot = join(workdir, '.ph', cliName);
+  const localConfigPath = join(workdir, '.ph', `${cliName}.config.local.json`);
+
   return {
-    basePath,
-    async read<T>(key: string, fallback: T): Promise<T> {
-      const filePath = join(basePath, key);
-      try {
-        const raw = await readFile(filePath, 'utf8');
-        return JSON.parse(raw) as T;
-      } catch (err: unknown) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return fallback;
-        throw err;
-      }
+    getWorkdir: () => workdir,
+    getLocalConfigPath: () => localConfigPath,
+    getStoreFolder: (path?: string) => path ? join(storeRoot, path) : storeRoot,
+
+    async loadJsonObject<T>(filename: string, fallback: T): Promise<T> {
+      assertJsonFilename(filename);
+      return readJson(join(storeRoot, filename), fallback);
     },
 
-    async write(key: string, value: unknown): Promise<void> {
-      const filePath = join(basePath, key);
-      const dir = dirname(filePath);
-      await mkdir(dir, { recursive: true });
+    async storeJsonObject(filename: string, value: unknown): Promise<void> {
+      assertJsonFilename(filename);
+      return writeJson(join(storeRoot, filename), value);
+    },
 
-      const tmp = join(dir, `.tmp-${randomBytes(6).toString('hex')}`);
-      try {
-        await writeFile(tmp, JSON.stringify(value, null, 2) + '\n', 'utf8');
-        await rename(tmp, filePath);
-      } catch (err) {
-        try { await unlink(tmp); } catch {}
-        throw err;
-      }
+    async loadLocalConfig<T>(fallback: T): Promise<T> {
+      return readJson(localConfigPath, fallback);
+    },
+
+    async storeLocalConfig(value: unknown): Promise<void> {
+      return writeJson(localConfigPath, value);
     },
   };
 }
 
 /**
- * Create an in-memory workdir store for testing or when no persistence is needed.
+ * Create an in-memory WorkdirStore for testing or when no persistence is needed.
+ *
+ * @param cliWorkdir  Working directory (defaults to `'.'`, resolved to absolute).
+ * @param cliName     CLI name (defaults to `'test'`).
  */
-export function createMemoryWorkdirStore(basePath = ''): WorkdirStore {
-  const store = new Map<string, unknown>();
+export function createMemoryWorkdirStore(cliWorkdir = '.', cliName = 'test'): WorkdirStore {
+  const workdir = resolve(process.cwd(), cliWorkdir);
+  const storeRoot = join(workdir, '.ph', cliName);
+  const localConfigPath = join(workdir, '.ph', `${cliName}.config.local.json`);
+
+  const data = new Map<string, unknown>();
+
   return {
-    basePath,
-    async read<T>(key: string, fallback: T): Promise<T> {
-      return store.has(key) ? (store.get(key) as T) : fallback;
+    getWorkdir: () => workdir,
+    getLocalConfigPath: () => localConfigPath,
+    getStoreFolder: (path?: string) => path ? join(storeRoot, path) : storeRoot,
+
+    async loadJsonObject<T>(filename: string, fallback: T): Promise<T> {
+      assertJsonFilename(filename);
+      return data.has(filename) ? (data.get(filename) as T) : fallback;
     },
-    async write(key: string, value: unknown): Promise<void> {
-      store.set(key, value);
+
+    async storeJsonObject(filename: string, value: unknown): Promise<void> {
+      assertJsonFilename(filename);
+      data.set(filename, value);
+    },
+
+    async loadLocalConfig<T>(fallback: T): Promise<T> {
+      return data.has('__local_config__') ? (data.get('__local_config__') as T) : fallback;
+    },
+
+    async storeLocalConfig(value: unknown): Promise<void> {
+      data.set('__local_config__', value);
     },
   };
 }

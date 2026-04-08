@@ -9,13 +9,17 @@ import type { Task } from '../src/types.js';
 function createMockWorkspace() {
   const store: Record<string, any> = {};
   return {
-    basePath: '',
-    read: async <T>(key: string, fallback: T): Promise<T> => {
+    getWorkdir: () => '',
+    getLocalConfigPath: () => '',
+    getStoreFolder: (path?: string) => path ?? '',
+    loadJsonObject: async <T>(key: string, fallback: T): Promise<T> => {
       return (store[key] as T) ?? fallback;
     },
-    write: async (key: string, value: any): Promise<void> => {
+    storeJsonObject: async (key: string, value: any): Promise<void> => {
       store[key] = value;
     },
+    loadLocalConfig: async <T>(fallback: T): Promise<T> => fallback,
+    storeLocalConfig: async () => {},
     _store: store,
   };
 }
@@ -58,7 +62,7 @@ describe('add command', () => {
     expect(result.data.done).toBe(false);
     expect(result.data.id).toBeDefined();
 
-    const tasks = await workspace.read<Task[]>('tasks.json', []);
+    const tasks = await workspace.loadJsonObject<Task[]>('tasks.json', []);
     expect(tasks).toHaveLength(1);
   });
 
@@ -101,7 +105,7 @@ describe('add command', () => {
     await add.execute({ title: 'First' }, ctx);
     await add.execute({ title: 'Second' }, ctx);
 
-    const tasks = await workspace.read<Task[]>('tasks.json', []);
+    const tasks = await workspace.loadJsonObject<Task[]>('tasks.json', []);
     expect(tasks).toHaveLength(2);
     expect(tasks[0]!.title).toBe('First');
     expect(tasks[1]!.title).toBe('Second');
@@ -182,7 +186,7 @@ describe('done command', () => {
     expect(result.text).toContain('Completed');
     expect(result.text).toContain('Write tests');
 
-    const tasks = await workspace.read<Task[]>('tasks.json', []);
+    const tasks = await workspace.loadJsonObject<Task[]>('tasks.json', []);
     expect(tasks[0]!.done).toBe(true);
   });
 
@@ -234,7 +238,7 @@ describe('remove command', () => {
     expect(result.text).toContain('Removed');
     expect(result.text).toContain('Write tests');
 
-    const tasks = await workspace.read<Task[]>('tasks.json', []);
+    const tasks = await workspace.loadJsonObject<Task[]>('tasks.json', []);
     expect(tasks).toHaveLength(1);
     expect(tasks[0]!.title).toBe('Deploy app');
   });
