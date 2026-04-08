@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { Command as Commander } from 'commander';
 import type {
   AgentContext,
@@ -22,7 +23,7 @@ import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
 import { createServiceCommands } from './service-command.js';
 import { createHelpCommand } from './help-command.js';
-import { createInitCommand } from './init.js';
+import { installSkills } from './init.js';
 import { readSkillsFromSources } from './skills.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
@@ -125,12 +126,6 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     }));
   }
 
-  // Auto-inject built-in init command when skillSources are defined
-  if (options.skillSources && options.skillSources.length > 0 && !commandMap.has('init')) {
-    commandMap.set('init', createInitCommand({
-      skillSources: options.skillSources,
-    }));
-  }
 
   const eventBus = (hasTriggers || hasServices) ? createEventBus() : undefined;
   const processManager = hasTriggers ? createProcessManager() : undefined;
@@ -588,6 +583,21 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
 
     // Context store lives at {workdir}/.ph/{cli-name}/
     const workspace = createWorkdirStore(workdir, options.name);
+
+    // Auto-initialize store and install skills on first use
+    if (options.skillSources && options.skillSources.length > 0) {
+      const storeRoot = workspace.getStoreFolder();
+      if (!fs.existsSync(storeRoot)) {
+        fs.mkdirSync(storeRoot, { recursive: true });
+        const dbFolder = workspace.getStoreFolder('.mastra/db');
+        fs.mkdirSync(dbFolder, { recursive: true });
+        installSkills({
+          store: workspace,
+          skillSources: options.skillSources,
+          stdout: verboseFlag ? stderr : () => {},
+        });
+      }
+    }
 
     // Resolve config through 6 layers
     const config = options.configSchema

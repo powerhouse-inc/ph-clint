@@ -2,8 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { installSkills, createInitCommand } from '../src/core/init.js';
-import { createWorkdirStore, createMemoryWorkdirStore } from '../src/core/store.js';
+import { z } from 'zod';
+import { installSkills } from '../src/core/init.js';
+import { createWorkdirStore } from '../src/core/store.js';
+import { defineCommand } from '../src/core/command.js';
+import { defineCli } from '../src/core/cli.js';
 
 let tmpDir: string;
 
@@ -122,76 +125,116 @@ describe('installSkills', () => {
   });
 });
 
-describe('createInitCommand', () => {
-  it('creates store directories and installs skills', async () => {
-    const store = createWorkdirStore(tmpDir, 'testcli');
+describe('auto-initialization on first run', () => {
+  const dummyCommand = defineCommand({
+    id: 'ping',
+    description: 'Ping',
+    inputSchema: z.object({}),
+    execute: async () => ({ text: 'pong' }),
+  });
+
+  it('creates store and installs skills when running any command', async () => {
     const skillsDir = path.join(tmpDir, 'skills');
     fs.mkdirSync(path.join(skillsDir, 'my-skill'), { recursive: true });
     fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '# My Skill');
 
-    const cmd = createInitCommand({ skillSources: [skillsDir] });
-    const logs: string[] = [];
-    const context = {
-      workdir: tmpDir,
-      workspace: store,
-      config: {},
-      stdout: (msg: string) => logs.push(msg),
-    };
+    const cli = defineCli({
+      name: 'testcli',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [dummyCommand],
+      skillSources: [skillsDir],
+    });
 
-    const result = await cmd.execute({}, context) as { text: string };
+    const output: string[] = [];
+    await cli.run(['node', 'testcli', 'ping'], {
+      stdout: (msg) => output.push(msg),
+      stderr: () => {},
+      exit: () => {},
+      workdir: tmpDir,
+    });
 
     // Store root should exist
+    const store = createWorkdirStore(tmpDir, 'testcli');
     expect(fs.existsSync(store.getStoreFolder())).toBe(true);
     // DB folder should exist
     expect(fs.existsSync(store.getStoreFolder('.mastra/db'))).toBe(true);
     // Skill should be installed
     expect(fs.existsSync(path.join(store.getStoreFolder('.mastra/skills'), 'my-skill', 'SKILL.md'))).toBe(true);
-    // Output should contain init messages
-    expect(result.text).toContain('[init]');
-    expect(result.text).toContain('Workspace initialized');
+    // Command output should be present
+    expect(output).toContain('pong');
   });
 
-  it('works without any skill sources existing', async () => {
-    const store = createWorkdirStore(tmpDir, 'testcli');
-    const cmd = createInitCommand({ skillSources: ['/nonexistent'] });
-    const logs: string[] = [];
-    const context = {
-      workdir: tmpDir,
-      workspace: store,
-      config: {},
-      stdout: (msg: string) => logs.push(msg),
-    };
-
-    const result = await cmd.execute({}, context) as { text: string };
-
-    expect(fs.existsSync(store.getStoreFolder())).toBe(true);
-    expect(fs.existsSync(store.getStoreFolder('.mastra/db'))).toBe(true);
-    expect(result.text).toContain('no skills to install');
-  });
-
-  it('is idempotent — safe to run multiple times', async () => {
-    const store = createWorkdirStore(tmpDir, 'testcli');
+  it('is silent by default (no init output)', async () => {
     const skillsDir = path.join(tmpDir, 'skills');
     fs.mkdirSync(path.join(skillsDir, 'my-skill'), { recursive: true });
     fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '# My Skill');
 
-    const cmd = createInitCommand({ skillSources: [skillsDir] });
-    const context = {
+    const cli = defineCli({
+      name: 'testcli',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [dummyCommand],
+      skillSources: [skillsDir],
+    });
+
+    const output: string[] = [];
+    const errOutput: string[] = [];
+    await cli.run(['node', 'testcli', 'ping'], {
+      stdout: (msg) => output.push(msg),
+      stderr: (msg) => errOutput.push(msg),
+      exit: () => {},
       workdir: tmpDir,
-      workspace: store,
-      config: {},
-      stdout: () => {},
-    };
+    });
 
-    await cmd.execute({}, context);
-    await cmd.execute({}, context);
-
-    expect(fs.existsSync(path.join(store.getStoreFolder('.mastra/skills'), 'my-skill', 'SKILL.md'))).toBe(true);
+    // No init messages in stdout or stderr
+    expect(output.join('\n')).not.toContain('[init]');
+    expect(errOutput.join('\n')).not.toContain('[init]');
   });
 
-  it('has correct id and description', () => {
-    const cmd = createInitCommand({ skillSources: [] });
-    expect(cmd.id).toBe('init');
-    expect(cmd.description).toContain('Initialize');
+  it('does not re-initialize when store already exists', async () => {
+    const skillsDir = path.join(tmpDir, 'skills');
+    fs.mkdirSync(path.join(skillsDir, 'my-skill'), { recursive: true });
+    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '# My Skill');
+
+    const cli = defineCli({
+      name: 'testcli',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [dummyCommand],
+      skillSources: [skillsDir],
+    });
+
+    const runOpts = {
+      stdout: () => {},
+      stderr: () => {},
+      exit: () => {},
+      workdir: tmpDir,
+    };
+
+    // First run — creates store
+    await cli.run(['node', 'testcli', 'ping'], runOpts);
+
+    // Modify the installed skill to detect re-install
+    const store = createWorkdirStore(tmpDir, 'testcli');
+    const installedSkill = path.join(store.getStoreFolder('.mastra/skills'), 'my-skill', 'SKILL.md');
+    fs.writeFileSync(installedSkill, '# Modified');
+
+    // Second run — should NOT re-install
+    await cli.run(['node', 'testcli', 'ping'], runOpts);
+
+    expect(fs.readFileSync(installedSkill, 'utf8')).toBe('# Modified');
+  });
+
+  it('does not inject an init command', () => {
+    const cli = defineCli({
+      name: 'testcli',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [dummyCommand],
+      skillSources: ['/some/path'],
+    });
+
+    expect(cli.getCommand('init')).toBeUndefined();
   });
 });

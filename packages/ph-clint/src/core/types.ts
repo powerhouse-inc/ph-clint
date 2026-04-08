@@ -463,10 +463,10 @@ export interface CliOptions<TSchema extends z.ZodType = z.ZodType<Record<string,
    */
   configDefaults?: Record<string, unknown>;
   /**
-   * Candidate directories containing built skill folders to install during `init`.
-   * The first existing directory wins. Resolved at `init` execution time.
+   * Candidate directories containing built skill folders.
+   * The first existing directory wins.
    *
-   * When set, a built-in `init` command is auto-injected (like `config` and `cli-docs`).
+   * When set, skills are auto-installed on first run (when the store directory is created).
    */
   skillSources?: string[];
 }
