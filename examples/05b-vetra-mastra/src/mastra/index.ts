@@ -7,7 +7,8 @@
  * auto-injected commands like config and svc).
  */
 import fs from 'node:fs';
-import { resolveWorkdir, resolveConfig, createWorkdirStore } from 'ph-clint';
+import path from 'node:path';
+import { resolveWorkdir, resolveConfig, createWorkdirStore, installSkills } from 'ph-clint';
 import { getMastraPaths } from 'ph-clint/mastra';
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
@@ -48,6 +49,20 @@ if (config.apiKey && !process.env.ANTHROPIC_API_KEY) {
 }
 
 fs.mkdirSync(paths.dbFolder, { recursive: true });
+
+// Install pre-packaged skills into .ph/{cliName}/.mastra/skills/
+// Under `mastra dev`, PROJECT_ROOT resolves to .mastra/ (bundler output).
+// The actual project root with skills/ is its parent.
+const actualRoot = path.basename(PROJECT_ROOT) === '.mastra'
+  ? path.dirname(PROJECT_ROOT)
+  : PROJECT_ROOT;
+installSkills({
+  store,
+  skillSources: [
+    path.join(actualRoot, 'skills'),
+    path.join(actualRoot, 'dist', 'skills'),
+  ],
+});
 
 // Use the CLI as single source of truth for commands (includes auto-injected config + svc)
 const commands = cli.listCommands();

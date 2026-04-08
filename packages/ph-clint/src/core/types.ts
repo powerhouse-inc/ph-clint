@@ -416,6 +416,13 @@ export interface CliOptions<TSchema extends z.ZodType = z.ZodType<Record<string,
    * config resolution (above hardcoded schema defaults, below user/local config).
    */
   configDefaults?: Record<string, unknown>;
+  /**
+   * Candidate directories containing built skill folders to install during `init`.
+   * The first existing directory wins. Resolved at `init` execution time.
+   *
+   * When set, a built-in `init` command is auto-injected (like `config` and `cli-docs`).
+   */
+  skillSources?: string[];
 }
 
 /**

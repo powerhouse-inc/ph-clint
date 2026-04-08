@@ -1,0 +1,7 @@
+dist/
+.mastra/
+.ph/
+node_modules/
+*.db
+*.db-shm
+*.db-wal

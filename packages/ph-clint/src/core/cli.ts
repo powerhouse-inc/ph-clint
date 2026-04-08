@@ -21,6 +21,7 @@ import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
 import { createSvcCommand } from './service-command.js';
 import { createHelpCommand } from './help-command.js';
+import { createInitCommand } from './init.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
@@ -112,6 +113,13 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   if (!commandMap.has('cli-docs')) {
     commandMap.set('cli-docs', createHelpCommand({
       getCli: () => cliRef!,
+    }));
+  }
+
+  // Auto-inject built-in init command when skillSources are defined
+  if (options.skillSources && options.skillSources.length > 0 && !commandMap.has('init')) {
+    commandMap.set('init', createInitCommand({
+      skillSources: options.skillSources,
     }));
   }
 
