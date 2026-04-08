@@ -11,12 +11,13 @@ import { rupertDevAgentInstructions } from './instructions.js';
 import { createDemoAgent } from './demo-agent.js';
 
 const SKILL_NAMES = [
-  'reactor-package-project-management',
-  'document-modeling',
   'document-editor-creation',
+  'document-modeling',
   'fusion-development',
   'fusion-project-management',
   'handle-stakeholder-message',
+  'project-management',
+  'reactor-package-project-management',
 ];
 
 /**

@@ -5,7 +5,6 @@ import os from 'node:os';
 import { defineCli, defineCommand, defineService, createServiceManager, createEventBus, createMemoryWorkdirStore, formatStreamChunk, renderStream } from 'ph-clint';
 import type { ServiceDefinition, StreamChunk } from 'ph-clint';
 import { z } from 'zod';
-import { weather } from '../src/commands/weather.js';
 import { createDemoAgent } from '../src/agents/demo-agent.js';
 
 const FIXTURE = path.resolve(import.meta.dirname, 'fixtures/test-server.js');
@@ -68,21 +67,6 @@ const vetraDef: ServiceDefinition = defineService({
   restart: { enabled: true, maxRetries: 3, delay: 2000 },
 });
 
-// ── Weather command ─────────────────────────────────────────────
-
-describe('weather command', () => {
-  it('has correct schema', () => {
-    expect(weather.id).toBe('weather');
-    expect(weather.description).toBe('Get current weather for a location');
-    const parsed = weather.inputSchema.parse({ location: 'Amsterdam' });
-    expect(parsed.location).toBe('Amsterdam');
-  });
-
-  it('rejects missing location', () => {
-    expect(() => weather.inputSchema.parse({})).toThrow();
-  });
-});
-
 // ── Demo agent ──────────────────────────────────────────────────
 
 describe('createDemoAgent', () => {
@@ -131,18 +115,6 @@ describe('createDemoAgent', () => {
     expect(text).not.toContain('turn 2');
   });
 
-  it('routes weather queries to weather tool', async () => {
-    const agent = createDemoAgent();
-    const chunks: StreamChunk[] = [];
-    const tools = new Map([['weather', weather]]);
-    for await (const chunk of agent.stream('what is the weather in Amsterdam', { tools })) {
-      chunks.push(chunk);
-    }
-    const types = chunks.map((c) => c.type);
-    expect(types).toContain('tool-call');
-    expect(types).toContain('tool-result');
-    expect(types).toContain('text-delta');
-  }, 15_000);
 });
 
 // ── CLI integration ─────────────────────────────────────────────
@@ -176,7 +148,7 @@ describe('CLI integration', () => {
     configSchema: z.object({
       switchboardPort: z.number().default(4001),
     }),
-    commands: [weather],
+    commands: [],
     services: [vetraDef],
     agent: {
       default: async () => demoAgent,
@@ -189,22 +161,7 @@ describe('CLI integration', () => {
   it('has correct metadata', () => {
     expect(cli.name).toBe('vetra-mastra');
     expect(cli.hasAgent).toBe(true);
-    const commands = cli.listCommands();
-    expect(commands.map((c: any) => c.id)).toContain('weather');
   });
-
-  it('executes weather command via CLI', async () => {
-    const output: string[] = [];
-    await cli.run(['node', 'vetra-mastra', 'weather', '--location', 'London'], {
-      stdout: (msg) => output.push(msg),
-      stderr: () => {},
-      exit: () => {},
-      workdir: tmpDir,
-    });
-    const combined = output.join('');
-    // Weather command produces formatted text with city name and conditions
-    expect(combined).toContain('Weather in London');
-  }, 15_000);
 
   it('routes bare text to agent in command mode', async () => {
     const output: string[] = [];
