@@ -53,6 +53,19 @@ function logFilePath(servicesDir: string, serviceId: string, instanceId: string)
   return path.join(serviceDir(servicesDir, serviceId), `${instanceId}.log`);
 }
 
+/**
+ * Read the last N lines from a log file, returning an empty string if unavailable.
+ */
+function tailLogFile(filePath: string, lines = 20): string {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const allLines = content.split('\n').filter(l => l.length > 0);
+    return allLines.slice(-lines).join('\n');
+  } catch {
+    return '';
+  }
+}
+
 function readStateFile(filePath: string): ServiceStateFile | null {
   try {
     const raw = fs.readFileSync(filePath, 'utf-8');
@@ -204,12 +217,13 @@ export function createServiceManager(
 
     const env = { ...process.env, ...(def.env ? def.env(config, params) : {}) };
 
+    const spawnCwd = startOpts?.cwd ?? startOpts?.workdir;
     const child = spawn(commandStr, {
       shell: true,
       detached: true,
       stdio: ['ignore', logFd, logFd],
       env,
-      cwd: startOpts?.cwd ?? startOpts?.workdir,
+      cwd: spawnCwd,
     });
 
     child.unref();
@@ -270,7 +284,20 @@ export function createServiceManager(
           state.error = 'Process exited before becoming ready';
           writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
           eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
-          reject(new Error(state.error));
+          const tail = tailLogFile(logPath);
+          const hint = `Check the workdir and run '${id}-logs' for the full log.`;
+          const lines = [state.error];
+          lines.push('');
+          lines.push(`  workdir:  ${spawnCwd}`);
+          lines.push(`  command:  ${commandStr}`);
+          if (tail) {
+            lines.push('');
+            lines.push('  Recent log output:');
+            lines.push(...tail.split('\n').map(l => '    ' + l));
+          }
+          lines.push('');
+          lines.push(`  ${hint}`);
+          reject(new Error(lines.join('\n')));
           return;
         }
 
@@ -341,7 +368,21 @@ export function createServiceManager(
           state.error = `Readiness timeout exceeded (unmatched: ${unmatched.join(', ')})`;
           writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
           eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
-          reject(new Error(state.error));
+          const tail = tailLogFile(logPath);
+          const hint = `Check the workdir and run '${id}-logs' for the full log.`;
+          const tLines = [state.error];
+          tLines.push('');
+          tLines.push(`  workdir:  ${spawnCwd}`);
+          tLines.push(`  command:  ${commandStr}`);
+          if (tail) {
+            tLines.push('');
+            tLines.push('  Recent log output:');
+            tLines.push(...tail.split('\n').map(l => '    ' + l));
+          }
+          tLines.push('');
+          tLines.push(`  ${hint}`);
+          const detail = tLines.join('\n');
+          reject(new Error(detail));
         }
       }, 100);
     });
