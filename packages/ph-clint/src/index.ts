@@ -9,7 +9,7 @@ export { resolveWorkdir } from './core/workdir.js';
 export { createEventBus } from './core/events.js';
 export { createProcessManager } from './core/processes.js';
 export { defineService, createServiceManager } from './core/services.js';
-export { createSvcCommand, formatStatus } from './core/service-command.js';
+export { createServiceCommands, formatStatus } from './core/service-command.js';
 export { createHelpCommand } from './core/help-command.js';
 export { installSkills, createInitCommand } from './core/init.js';
 export { createRoutine } from './core/routine.js';
@@ -63,6 +63,8 @@ export type {
   ReadinessPattern,
   ReadinessConfig,
   ServiceDefinition,
+  ServiceStartOptions,
+  ServiceInstanceStatus,
   ServiceStatus,
   ServiceManager,
 } from './core/types.js';

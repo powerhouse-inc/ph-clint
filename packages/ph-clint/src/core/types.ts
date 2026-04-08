@@ -292,15 +292,47 @@ export interface ReadinessConfig {
 export interface ServiceDefinition<TConfig = Record<string, unknown>> {
   id: string;
   label: string;
-  command: string;
-  env?: (config: TConfig) => Record<string, string>;
+  command: string | ((params?: Record<string, unknown>) => string);
+  env?: (config: TConfig, params?: Record<string, unknown>) => Record<string, string>;
+  /** Zod schema for typed start parameters (merged into start command flags). */
+  paramsSchema?: import('zod').ZodType;
+  /** Maximum concurrent instances (default 1). */
+  maxInstances?: number;
   readiness?: ReadinessConfig;
   shutdown?: { signal: NodeJS.Signals; timeout: number };
   restart?: { enabled: boolean; maxRetries: number; delay: number };
 }
 
 /**
- * Runtime status of a service.
+ * Options for starting a service instance.
+ */
+export interface ServiceStartOptions {
+  /** Working directory for instance identity (affects instance ID via hash). */
+  workdir?: string;
+  /** Spawn cwd — where the process actually runs. Defaults to process.cwd(). */
+  cwd?: string;
+  params?: Record<string, unknown>;
+  name?: string;
+}
+
+/**
+ * Runtime status of a service instance.
+ */
+export interface ServiceInstanceStatus {
+  serviceId: string;
+  instanceId: string;
+  label: string;
+  status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping';
+  pid?: number;
+  endpoints?: Record<string, string>;
+  error?: string;
+  restartAttempt?: number;
+  workdir?: string;
+  params?: Record<string, unknown>;
+}
+
+/**
+ * Runtime status of a service (legacy single-instance view).
  */
 export interface ServiceStatus {
   id: string;
@@ -316,14 +348,14 @@ export interface ServiceStatus {
  * Manager for long-running background services.
  */
 export interface ServiceManager {
-  start(id: string): Promise<void>;
-  stop(id: string): Promise<void>;
-  list(): ServiceStatus[];
+  start(id: string, opts?: ServiceStartOptions): Promise<string>;
+  stop(id: string, instanceId?: string): Promise<void>;
+  list(serviceId?: string): ServiceInstanceStatus[];
   /** Get the static definition for a service. */
   getDefinition(id: string): ServiceDefinition | undefined;
-  logs(id: string, lines?: number): string;
+  logs(id: string, instanceId?: string, lines?: number): string;
   /** Watch a service's log file for new lines. Returns cleanup function. */
-  watchLogs(id: string, onLine: (line: string) => void): () => void;
+  watchLogs(id: string, instanceId: string, onLine: (line: string) => void): () => void;
 }
 
 // ── Event Bus ─────────────────────────────────────────────────────

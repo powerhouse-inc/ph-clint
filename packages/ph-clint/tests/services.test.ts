@@ -28,17 +28,24 @@ function safeKill(pid: number): void {
   try { process.kill(pid, 'SIGKILL'); } catch { /* ignore */ }
 }
 
-/** Collect all PIDs from state files in a services dir. */
+/** Collect all PIDs from state files in a services dir (multi-instance layout). */
 function collectPids(servicesDir: string): number[] {
   const pids: number[] = [];
   try {
-    for (const f of fs.readdirSync(servicesDir)) {
-      if (f.endsWith('.json')) {
-        try {
-          const state = JSON.parse(fs.readFileSync(path.join(servicesDir, f), 'utf-8'));
-          if (state.pid) pids.push(state.pid);
-        } catch { /* ignore */ }
-      }
+    for (const dir of fs.readdirSync(servicesDir)) {
+      const subDir = path.join(servicesDir, dir);
+      try {
+        const stat = fs.statSync(subDir);
+        if (!stat.isDirectory()) continue;
+        for (const f of fs.readdirSync(subDir)) {
+          if (f.endsWith('.json')) {
+            try {
+              const state = JSON.parse(fs.readFileSync(path.join(subDir, f), 'utf-8'));
+              if (state.pid) pids.push(state.pid);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
   return pids;
@@ -113,9 +120,11 @@ describe('createServiceManager', () => {
   };
 
   describe('start()', () => {
-    it('starts a service and detects readiness', async () => {
+    it('starts a service and detects readiness, returns instanceId', async () => {
       const mgr = createManager([readyDef]);
-      await mgr.start('test-svc');
+      const instanceId = await mgr.start('test-svc');
+
+      expect(instanceId).toBe('test-svc');
 
       const statuses = mgr.list();
       expect(statuses).toHaveLength(1);
@@ -125,12 +134,12 @@ describe('createServiceManager', () => {
       trackedPids.push(statuses[0]!.pid!);
     });
 
-    it('creates state file and log file', async () => {
+    it('creates state file and log file in service subdir', async () => {
       const mgr = createManager([readyDef]);
       await mgr.start('test-svc');
 
-      const statePath = path.join(servicesDir, 'test-svc.json');
-      const logPath = path.join(servicesDir, 'test-svc.log');
+      const statePath = path.join(servicesDir, 'test-svc', 'test-svc.json');
+      const logPath = path.join(servicesDir, 'test-svc', 'test-svc.log');
 
       expect(fs.existsSync(statePath)).toBe(true);
       expect(fs.existsSync(logPath)).toBe(true);
@@ -160,7 +169,6 @@ describe('createServiceManager', () => {
     });
 
     it('throws "already running" when status is starting', async () => {
-      // Start a service with wait=false so it stays in "starting" via state file
       const slowDef: ServiceDefinition = {
         id: 'slow-svc',
         label: 'Slow Service',
@@ -179,7 +187,7 @@ describe('createServiceManager', () => {
       trackedPids.push(statuses[0]!.pid!);
 
       // Manually write state as 'starting' to simulate an in-progress service
-      const statePath = path.join(servicesDir, 'slow-svc.json');
+      const statePath = path.join(servicesDir, 'slow-svc', 'slow-svc.json');
       const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
       state.status = 'starting';
       fs.writeFileSync(statePath, JSON.stringify(state));
@@ -240,7 +248,7 @@ describe('createServiceManager', () => {
       expect(statuses[0]!.status).toBe('failed');
     }, PROCESS_TEST_TIMEOUT);
 
-    it('emits service:ready event', async () => {
+    it('emits service:ready event with instanceId', async () => {
       const events: any[] = [];
       eventBus.on('service:ready', (data) => events.push(data));
 
@@ -250,6 +258,7 @@ describe('createServiceManager', () => {
 
       expect(events).toHaveLength(1);
       expect(events[0].id).toBe('test-svc');
+      expect(events[0].instanceId).toBe('test-svc');
       expect(events[0].label).toBe('Test Service');
       expect(events[0].endpoints?.port).toBe('4567');
     });
@@ -271,6 +280,63 @@ describe('createServiceManager', () => {
       expect(events).toHaveLength(1);
       expect(events[0].error).toContain('timeout');
     }, PROCESS_TEST_TIMEOUT);
+
+    it('enforces maxInstances limit', async () => {
+      const singleDef: ServiceDefinition = {
+        ...readyDef,
+        maxInstances: 1,
+      };
+      const mgr = createManager([singleDef]);
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      // Second start with different name should fail
+      await expect(mgr.start('test-svc', { name: 'second' }))
+        .rejects.toThrow(/max instances/i);
+    });
+
+    it('passes params to env function', async () => {
+      const paramsDef: ServiceDefinition<{ apiPort: number }> = defineService({
+        id: 'params-svc',
+        label: 'Params Service',
+        command: `node ${TEST_SERVICE}`,
+        env: (_config, params) => ({
+          TEST_SERVICE_MODE: 'ready',
+          TEST_SERVICE_PORT: String(params?.port ?? 4567),
+        }),
+        readiness: {
+          pattern: /Server listening on http:\/\/localhost:(\d+)/,
+          timeout: 5000,
+          captures: { port: 1 },
+        },
+      });
+      const mgr = createManager([paramsDef as any]);
+      const instanceId = await mgr.start('params-svc', { params: { port: 9876 } });
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.endpoints?.port).toBe('9876');
+      expect(statuses[0]!.params).toEqual({ port: 9876 });
+      trackedPids.push(statuses[0]!.pid!);
+    });
+
+    it('supports dynamic command function', async () => {
+      const dynDef: ServiceDefinition = {
+        id: 'dyn-svc',
+        label: 'Dynamic Service',
+        command: (params) => `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
+        readiness: {
+          pattern: /Server listening on http:\/\/localhost:(\d+)/,
+          timeout: 5000,
+          captures: { port: 1 },
+        },
+      };
+      const mgr = createManager([dynDef]);
+      await mgr.start('dyn-svc', { params: { port: 3000 } });
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('ready');
+      trackedPids.push(statuses[0]!.pid!);
+    });
   });
 
   describe('stop()', () => {
@@ -313,7 +379,7 @@ describe('createServiceManager', () => {
 
       await mgr.stop('test-svc');
 
-      const statePath = path.join(servicesDir, 'test-svc.json');
+      const statePath = path.join(servicesDir, 'test-svc', 'test-svc.json');
       expect(fs.existsSync(statePath)).toBe(false);
     });
 
@@ -326,6 +392,17 @@ describe('createServiceManager', () => {
       const mgr = createManager([readyDef]);
       await expect(mgr.stop('nonexistent')).rejects.toThrow(/Unknown service/);
     });
+
+    it('can stop a specific instance by instanceId', async () => {
+      const mgr = createManager([readyDef]);
+      const instanceId = await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      await mgr.stop('test-svc', instanceId);
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('idle');
+    });
   });
 
   describe('list()', () => {
@@ -334,7 +411,7 @@ describe('createServiceManager', () => {
       const statuses = mgr.list();
       expect(statuses).toHaveLength(1);
       expect(statuses[0]!.status).toBe('idle');
-      expect(statuses[0]!.id).toBe('test-svc');
+      expect(statuses[0]!.serviceId).toBe('test-svc');
     });
 
     it('reconnects to a running service via PID', async () => {
@@ -365,6 +442,24 @@ describe('createServiceManager', () => {
       const statuses = mgr.list();
       expect(statuses[0]!.status).toBe('failed');
     }, PROCESS_TEST_TIMEOUT);
+
+    it('can filter by serviceId', async () => {
+      const secondDef: ServiceDefinition = {
+        id: 'other-svc',
+        label: 'Other Service',
+        command: `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4568' }),
+        readiness: {
+          pattern: /Server listening on http:\/\/localhost:(\d+)/,
+          timeout: 5000,
+          captures: { port: 1 },
+        },
+      };
+      const mgr = createManager([readyDef, secondDef]);
+      const filtered = mgr.list('test-svc');
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0]!.serviceId).toBe('test-svc');
+    });
   });
 
   describe('logs()', () => {
@@ -396,10 +491,8 @@ describe('createServiceManager', () => {
       trackedPids.push(mgr.list()[0]!.pid!);
 
       const lines: string[] = [];
-      // The log file already has content from start, but watchLogs starts from current position
-      // Write some additional content to the log to trigger the watcher
-      const logPath = path.join(servicesDir, 'test-svc.log');
-      const cleanup = mgr.watchLogs('test-svc', (line) => lines.push(line));
+      const logPath = path.join(servicesDir, 'test-svc', 'test-svc.log');
+      const cleanup = mgr.watchLogs('test-svc', 'test-svc', (line) => lines.push(line));
 
       // Append to log file to trigger watcher
       fs.appendFileSync(logPath, 'new log line\n');
@@ -411,7 +504,7 @@ describe('createServiceManager', () => {
 
     it('throws for unknown service', () => {
       const mgr = createManager([readyDef]);
-      expect(() => mgr.watchLogs('nonexistent', () => {})).toThrow(/Unknown service/);
+      expect(() => mgr.watchLogs('nonexistent', 'nonexistent', () => {})).toThrow(/Unknown service/);
     });
   });
 
@@ -628,7 +721,7 @@ describe('createServiceManager', () => {
     it('returns fallback message when log file does not exist', () => {
       const mgr = createManager([readyDef]);
       const lines: string[] = [];
-      const cleanup = mgr.watchLogs('test-svc', (line) => lines.push(line));
+      const cleanup = mgr.watchLogs('test-svc', 'test-svc', (line) => lines.push(line));
       cleanup();
 
       expect(lines).toEqual(['Log file not found']);
@@ -640,8 +733,6 @@ describe('createServiceManager', () => {
       const failedEvents: any[] = [];
       eventBus.on('service:failed', (data) => failedEvents.push(data));
 
-      // A service that starts ok (no readiness → immediate ready), then crashes.
-      // maxRetries: 0 means no restarts allowed — any crash goes straight to "exceeded".
       const crashDef: ServiceDefinition = {
         id: 'max-retry',
         label: 'Max Retry Service',

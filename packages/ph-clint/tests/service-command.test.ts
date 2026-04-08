@@ -4,8 +4,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { z } from 'zod';
 import { defineService, defineCli, defineCommand, createServiceManager, createEventBus, formatStatus } from '../src/index.js';
-import { createSvcCommand } from '../src/core/service-command.js';
-import type { ServiceDefinition, ServiceManager, ServiceStatus, CommandContext, EventBus } from '../src/core/types.js';
+import { createServiceCommands } from '../src/core/service-command.js';
+import type { ServiceDefinition, ServiceManager, ServiceInstanceStatus, CommandContext, EventBus } from '../src/core/types.js';
 import { createMemoryWorkdirStore } from '../src/core/store.js';
 
 const TEST_SERVICE = path.resolve(import.meta.dirname, 'fixtures/test-service.js');
@@ -22,13 +22,20 @@ function safeKill(pid: number): void {
 function collectPids(servicesDir: string): number[] {
   const pids: number[] = [];
   try {
-    for (const f of fs.readdirSync(servicesDir)) {
-      if (f.endsWith('.json')) {
-        try {
-          const state = JSON.parse(fs.readFileSync(path.join(servicesDir, f), 'utf-8'));
-          if (state.pid) pids.push(state.pid);
-        } catch { /* ignore */ }
-      }
+    for (const dir of fs.readdirSync(servicesDir)) {
+      const subDir = path.join(servicesDir, dir);
+      try {
+        const stat = fs.statSync(subDir);
+        if (!stat.isDirectory()) continue;
+        for (const f of fs.readdirSync(subDir)) {
+          if (f.endsWith('.json')) {
+            try {
+              const state = JSON.parse(fs.readFileSync(path.join(subDir, f), 'utf-8'));
+              if (state.pid) pids.push(state.pid);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
   return pids;
@@ -36,7 +43,7 @@ function collectPids(servicesDir: string): number[] {
 
 describe('formatStatus', () => {
   it('shows ● icon for ready status', () => {
-    const result = formatStatus({ id: 'svc', label: 'My Svc', status: 'ready', pid: 123 });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready', pid: 123 });
     expect(result).toContain('●');
     expect(result).toContain('My Svc');
     expect(result).toContain('ready');
@@ -44,32 +51,32 @@ describe('formatStatus', () => {
   });
 
   it('shows ◐ icon for starting status', () => {
-    const result = formatStatus({ id: 'svc', label: 'My Svc', status: 'starting' });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'starting' });
     expect(result).toContain('◐');
     expect(result).toContain('starting');
   });
 
   it('shows ✗ icon for failed status', () => {
-    const result = formatStatus({ id: 'svc', label: 'My Svc', status: 'failed' });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'failed' });
     expect(result).toContain('✗');
     expect(result).toContain('failed');
   });
 
   it('shows ◑ icon for stopping status', () => {
-    const result = formatStatus({ id: 'svc', label: 'My Svc', status: 'stopping' as ServiceStatus['status'] });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'stopping' as ServiceInstanceStatus['status'] });
     expect(result).toContain('◑');
     expect(result).toContain('stopping');
   });
 
   it('shows ○ icon for idle status', () => {
-    const result = formatStatus({ id: 'svc', label: 'My Svc', status: 'idle' });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'idle' });
     expect(result).toContain('○');
     expect(result).toContain('idle');
   });
 
   it('includes endpoints in output', () => {
     const result = formatStatus({
-      id: 'svc', label: 'My Svc', status: 'ready',
+      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready',
       endpoints: { port: '3000', url: 'http://localhost:3000' },
     });
     expect(result).toContain('port=3000');
@@ -78,7 +85,7 @@ describe('formatStatus', () => {
 
   it('does not show endpoints section when endpoints object is empty', () => {
     const result = formatStatus({
-      id: 'svc', label: 'My Svc', status: 'ready',
+      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready',
       endpoints: {},
     });
     expect(result).not.toContain('=');
@@ -86,7 +93,7 @@ describe('formatStatus', () => {
 
   it('includes error in output', () => {
     const result = formatStatus({
-      id: 'svc', label: 'My Svc', status: 'failed',
+      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'failed',
       error: 'Process crashed',
     });
     expect(result).toContain('error: Process crashed');
@@ -94,24 +101,103 @@ describe('formatStatus', () => {
 
   it('includes restart attempt in output', () => {
     const result = formatStatus({
-      id: 'svc', label: 'My Svc', status: 'starting',
+      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'starting',
       restartAttempt: 2,
     });
     expect(result).toContain('restart #2');
   });
 });
 
-describe('createSvcCommand — no services', () => {
-  it('shows "No services defined" when service list is empty', async () => {
+describe('createServiceCommands', () => {
+  it('generates 6 commands per service', () => {
+    const def: ServiceDefinition = {
+      id: 'vetra',
+      label: 'Vetra Server',
+      command: 'echo start',
+    };
+    const cmds = createServiceCommands(def);
+    expect(cmds).toHaveLength(6);
+    const ids = cmds.map((c) => c.id);
+    expect(ids).toEqual([
+      'vetra-start', 'vetra-stop', 'vetra-restart',
+      'vetra-ps', 'vetra-logs', 'vetra-manage',
+    ]);
+  });
+
+  it('omits --instance flag when maxInstances is 1 (default)', () => {
+    const def: ServiceDefinition = {
+      id: 'vetra',
+      label: 'Vetra Server',
+      command: 'echo start',
+    };
+    const cmds = createServiceCommands(def);
+    const stopCmd = cmds.find((c) => c.id === 'vetra-stop')!;
+    const parsed = stopCmd.inputSchema.parse({});
+    // instance field should not exist
+    expect(parsed).toEqual({});
+  });
+
+  it('includes --instance flag when maxInstances > 1', () => {
+    const def: ServiceDefinition = {
+      id: 'vetra',
+      label: 'Vetra Server',
+      command: 'echo start',
+      maxInstances: 3,
+    };
+    const cmds = createServiceCommands(def);
+    const stopCmd = cmds.find((c) => c.id === 'vetra-stop')!;
+    const parsed = stopCmd.inputSchema.parse({ instance: 'vetra:web' });
+    expect(parsed).toEqual({ instance: 'vetra:web' });
+  });
+
+  it('includes --name flag in start when maxInstances > 1', () => {
+    const def: ServiceDefinition = {
+      id: 'vetra',
+      label: 'Vetra Server',
+      command: 'echo start',
+      maxInstances: 3,
+    };
+    const cmds = createServiceCommands(def);
+    const startCmd = cmds.find((c) => c.id === 'vetra-start')!;
+    const parsed = startCmd.inputSchema.parse({ name: 'web' });
+    expect(parsed).toEqual({ name: 'web', workdir: undefined });
+  });
+
+  it('merges paramsSchema fields into start command', () => {
+    const def: ServiceDefinition = {
+      id: 'vetra',
+      label: 'Vetra Server',
+      command: 'echo start',
+      paramsSchema: z.object({
+        port: z.coerce.number().default(3000).describe('Port number'),
+        watch: z.boolean().default(true).describe('Watch mode'),
+      }),
+    };
+    const cmds = createServiceCommands(def);
+    const startCmd = cmds.find((c) => c.id === 'vetra-start')!;
+    const parsed = startCmd.inputSchema.parse({ port: '4000' }) as Record<string, unknown>;
+    expect(parsed.port).toBe(4000);
+    expect(parsed.watch).toBe(true);
+  });
+});
+
+describe('createServiceCommands — no services', () => {
+  it('shows "No instances" when service list is empty', async () => {
     const emptyMgr: ServiceManager = {
-      start: async () => {},
+      start: async () => 'test',
       stop: async () => {},
       list: () => [],
       getDefinition: () => undefined,
       logs: () => '',
       watchLogs: () => () => {},
     };
-    const cmd = createSvcCommand([]);
+    const def: ServiceDefinition = {
+      id: 'test-svc',
+      label: 'Test Service',
+      command: 'echo start',
+    };
+    const cmds = createServiceCommands(def);
+    const psCmd = cmds.find((c) => c.id === 'test-svc-ps')!;
     const ctx: CommandContext = {
       workdir: '/tmp',
       workspace: createMemoryWorkdirStore(),
@@ -119,12 +205,12 @@ describe('createSvcCommand — no services', () => {
       stdout: () => {},
       services: emptyMgr,
     };
-    const result = await cmd.execute({ action: 'ps', lines: 50, manage: false }, ctx) as any;
-    expect(result.text).toBe('No services defined');
+    const result = await psCmd.execute({}, ctx) as any;
+    expect(result.text).toBe('No instances of test-svc');
   });
 });
 
-describe('createSvcCommand', () => {
+describe('createServiceCommands — with real services', () => {
   let tmpDir: string;
   let servicesDir: string;
   let eventBus: EventBus;
@@ -185,51 +271,34 @@ describe('createSvcCommand', () => {
     };
   }
 
-  it('has id "svc"', () => {
-    const cmd = createSvcCommand(['test-svc']);
-    expect(cmd.id).toBe('svc');
-  });
-
-  describe('ps action', () => {
+  describe('ps command', () => {
     it('shows idle status when no services are running', async () => {
-      const cmd = createSvcCommand(['test-svc', 'second-svc']);
-      const result = await cmd.execute({ action: 'ps', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const psCmd = cmds.find((c) => c.id === 'test-svc-ps')!;
+      const result = await psCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('idle');
       expect(result.text).toContain('Test Service');
-      expect(result.text).toContain('Second Service');
     });
 
     it('shows ready status after starting', async () => {
       await mgr.start('test-svc');
-      trackedPids.push(mgr.list().find(s => s.id === 'test-svc')!.pid!);
+      trackedPids.push(mgr.list('test-svc').find(s => s.serviceId === 'test-svc')!.pid!);
 
-      const cmd = createSvcCommand(['test-svc']);
-      const result = await cmd.execute({ action: 'ps', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const psCmd = cmds.find((c) => c.id === 'test-svc-ps')!;
+      const result = await psCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('ready');
       expect(result.text).toContain('Test Service');
-    });
-
-    it('defaults to ps when no action given', async () => {
-      const cmd = createSvcCommand(['test-svc']);
-      const parsed = cmd.inputSchema.parse({}) as any;
-      expect(parsed.action).toBe('ps');
     });
   });
 
-  describe('up action', () => {
-    it('starts a specific service', async () => {
-      const cmd = createSvcCommand(['test-svc', 'second-svc']);
-      const result = await cmd.execute({ action: 'up', id: 'test-svc', lines: 50, manage: false }, makeContext()) as any;
+  describe('start command', () => {
+    it('starts a service', async () => {
+      const cmds = createServiceCommands(readyDef);
+      const startCmd = cmds.find((c) => c.id === 'test-svc-start')!;
+      const result = await startCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('ready');
       expect(result.text).toContain('Test Service');
-      trackedPids.push(...collectPids(servicesDir));
-    });
-
-    it('starts all services when no id given', async () => {
-      const cmd = createSvcCommand(['test-svc', 'second-svc']);
-      const result = await cmd.execute({ action: 'up', lines: 50, manage: false }, makeContext()) as any;
-      expect(result.text).toContain('Test Service');
-      expect(result.text).toContain('Second Service');
       trackedPids.push(...collectPids(servicesDir));
     });
 
@@ -237,43 +306,48 @@ describe('createSvcCommand', () => {
       await mgr.start('test-svc');
       trackedPids.push(...collectPids(servicesDir));
 
-      const cmd = createSvcCommand(['test-svc']);
-      const result = await cmd.execute({ action: 'up', id: 'test-svc', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const startCmd = cmds.find((c) => c.id === 'test-svc-start')!;
+      const result = await startCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('already running');
     });
   });
 
-  describe('down action', () => {
-    it('stops a specific service', async () => {
+  describe('stop command', () => {
+    it('stops a running service', async () => {
       await mgr.start('test-svc');
       trackedPids.push(...collectPids(servicesDir));
 
-      const cmd = createSvcCommand(['test-svc']);
-      const result = await cmd.execute({ action: 'down', id: 'test-svc', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const stopCmd = cmds.find((c) => c.id === 'test-svc-stop')!;
+      const result = await stopCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('stopped');
     });
 
     it('reports error for not-running service', async () => {
-      const cmd = createSvcCommand(['test-svc']);
-      const result = await cmd.execute({ action: 'down', id: 'test-svc', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const stopCmd = cmds.find((c) => c.id === 'test-svc-stop')!;
+      const result = await stopCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('not running');
     });
   });
 
-  describe('restart action', () => {
+  describe('restart command', () => {
     it('restarts a running service', async () => {
       await mgr.start('test-svc');
       trackedPids.push(...collectPids(servicesDir));
 
-      const cmd = createSvcCommand(['test-svc']);
-      const result = await cmd.execute({ action: 'restart', id: 'test-svc', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const restartCmd = cmds.find((c) => c.id === 'test-svc-restart')!;
+      const result = await restartCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('ready');
       trackedPids.push(...collectPids(servicesDir));
     });
 
     it('starts a non-running service', async () => {
-      const cmd = createSvcCommand(['test-svc']);
-      const result = await cmd.execute({ action: 'restart', id: 'test-svc', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const restartCmd = cmds.find((c) => c.id === 'test-svc-restart')!;
+      const result = await restartCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('ready');
       trackedPids.push(...collectPids(servicesDir));
     });
@@ -292,37 +366,38 @@ describe('createSvcCommand', () => {
         eventBus,
       });
       const ctx = { ...makeContext(), services: failMgr };
-      const cmd = createSvcCommand(['fail-svc']);
-      const result = await cmd.execute({ action: 'restart', id: 'fail-svc', lines: 50, manage: false }, ctx) as any;
+      const cmds = createServiceCommands(failDef);
+      const restartCmd = cmds.find((c) => c.id === 'fail-svc-restart')!;
+      const result = await restartCmd.execute({}, ctx) as any;
       expect(result.text).toContain('✗');
       expect(result.text).toContain('fail-svc');
     }, 10_000);
   });
 
-  describe('logs action', () => {
-    it('shows logs for a specific service', async () => {
+  describe('logs command', () => {
+    it('shows logs for a service', async () => {
       await mgr.start('test-svc');
       trackedPids.push(...collectPids(servicesDir));
 
-      const cmd = createSvcCommand(['test-svc']);
-      const result = await cmd.execute({ action: 'logs', id: 'test-svc', lines: 50, manage: false }, makeContext()) as any;
+      const cmds = createServiceCommands(readyDef);
+      const logsCmd = cmds.find((c) => c.id === 'test-svc-logs')!;
+      const result = await logsCmd.execute({ lines: 50 }, makeContext()) as any;
       expect(result.text).toContain('listening');
     });
 
-    it('shows logs for all services when no id', async () => {
-      await mgr.start('test-svc');
-      trackedPids.push(...collectPids(servicesDir));
-
-      const cmd = createSvcCommand(['test-svc', 'second-svc']);
-      const result = await cmd.execute({ action: 'logs', lines: 50, manage: false }, makeContext()) as any;
-      expect(result.text).toContain('Test Service');
+    it('shows "No logs available" when no logs exist', async () => {
+      const cmds = createServiceCommands(readyDef);
+      const logsCmd = cmds.find((c) => c.id === 'test-svc-logs')!;
+      const result = await logsCmd.execute({ lines: 50 }, makeContext()) as any;
+      expect(result.text).toBe('No logs available');
     });
   });
 
   it('throws when no services configured', async () => {
-    const cmd = createSvcCommand(['test-svc']);
+    const cmds = createServiceCommands(readyDef);
+    const psCmd = cmds.find((c) => c.id === 'test-svc-ps')!;
     const ctx = { ...makeContext(), services: undefined };
-    await expect(cmd.execute({ action: 'ps', lines: 50, manage: false }, ctx)).rejects.toThrow('No services configured');
+    await expect(psCmd.execute({}, ctx)).rejects.toThrow('No services configured');
   });
 });
 
@@ -364,7 +439,7 @@ describe('ServiceManager.getDefinition', () => {
   });
 });
 
-describe('auto-injected svc command in CLI', () => {
+describe('auto-injected service commands in CLI', () => {
   let tmpDir: string;
   let trackedPids: number[];
 
@@ -410,7 +485,7 @@ describe('auto-injected svc command in CLI', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('auto-injects svc command when services are defined', () => {
+  it('auto-injects per-service commands when services are defined', () => {
     const cli = defineCli({
       name: 'svc',
       version: '1.0.0',
@@ -418,7 +493,12 @@ describe('auto-injected svc command in CLI', () => {
       commands: [],
       services: [svcDef],
     });
-    expect(cli.getCommand('svc')).toBeDefined();
+    expect(cli.getCommand('test-svc-start')).toBeDefined();
+    expect(cli.getCommand('test-svc-stop')).toBeDefined();
+    expect(cli.getCommand('test-svc-restart')).toBeDefined();
+    expect(cli.getCommand('test-svc-ps')).toBeDefined();
+    expect(cli.getCommand('test-svc-logs')).toBeDefined();
+    expect(cli.getCommand('test-svc-manage')).toBeDefined();
   });
 
   it('does not auto-inject when no services', () => {
@@ -428,13 +508,13 @@ describe('auto-injected svc command in CLI', () => {
       description: 'test',
       commands: [],
     });
-    expect(cli.getCommand('svc')).toBeUndefined();
+    expect(cli.getCommand('test-svc-ps')).toBeUndefined();
   });
 
-  it('does not override user-defined svc command', () => {
+  it('does not override user-defined command with same id', () => {
     const userCmd = defineCommand({
-      id: 'svc',
-      description: 'My custom svc command',
+      id: 'test-svc-ps',
+      description: 'My custom ps command',
       inputSchema: z.object({}),
       execute: async () => ({ text: 'custom' }),
     });
@@ -445,10 +525,10 @@ describe('auto-injected svc command in CLI', () => {
       commands: [userCmd],
       services: [svcDef],
     });
-    expect(cli.getCommand('svc')!.description).toBe('My custom svc command');
+    expect(cli.getCommand('test-svc-ps')!.description).toBe('My custom ps command');
   });
 
-  it('svc ps via run()', async () => {
+  it('test-svc-ps via run()', async () => {
     const cli = defineCli({
       name: 'svc',
       version: '1.0.0',
@@ -458,11 +538,11 @@ describe('auto-injected svc command in CLI', () => {
     });
 
     const cap = capture();
-    await cli.run(['node', 'svc', 'svc'], cap.options);
+    await cli.run(['node', 'svc', 'test-svc-ps'], cap.options);
     expect(cap.output.join('')).toContain('idle');
   });
 
-  it('svc up + down via run()', async () => {
+  it('test-svc-start + test-svc-stop via run()', async () => {
     const cli = defineCli({
       name: 'svc',
       version: '1.0.0',
@@ -472,18 +552,18 @@ describe('auto-injected svc command in CLI', () => {
     });
 
     const cap = capture();
-    await cli.run(['node', 'svc', 'svc', '--action', 'up'], cap.options);
+    await cli.run(['node', 'svc', 'test-svc-start'], cap.options);
     expect(cap.output.join('')).toContain('ready');
 
     const svcDir = path.join(tmpDir, '.ph', 'svc', 'services');
     trackedPids.push(...collectPids(svcDir));
 
     const cap2 = capture();
-    await cli.run(['node', 'svc', 'svc', '--action', 'down'], cap2.options);
+    await cli.run(['node', 'svc', 'test-svc-stop'], cap2.options);
     expect(cap2.output.join('')).toContain('stopped');
   });
 
-  it('/svc works in headless interactive mode', async () => {
+  it('/test-svc-ps works in headless interactive mode', async () => {
     const cli = defineCli({
       name: 'svc',
       version: '1.0.0',
@@ -500,7 +580,7 @@ describe('auto-injected svc command in CLI', () => {
       exit: () => {},
       workdir: tmpDir,
       interactiveInput: (async function* () {
-        yield '/svc';
+        yield '/test-svc-ps';
         yield '/exit';
       })(),
     });
@@ -523,7 +603,7 @@ describe('auto-injected svc command in CLI', () => {
     });
 
     const cap = capture();
-    await cli.run(['node', 'svc', 'svc', '--action', 'up'], cap.options);
+    await cli.run(['node', 'svc', 'test-svc-start'], cap.options);
     expect(cap.output.join('')).toContain('ready');
 
     const svcDir = path.join(tmpDir, '.ph', 'svc', 'services');
@@ -534,8 +614,7 @@ describe('auto-injected svc command in CLI', () => {
     expect(receivedEvents[0].id).toBe('test-svc');
   });
 
-  it('svc logs shows "No logs available" when all services have empty logs', async () => {
-    // Don't start any services, so there are no log files
+  it('test-svc-logs shows "No logs available" when service has no logs', async () => {
     const cli = defineCli({
       name: 'svc',
       version: '1.0.0',
@@ -552,7 +631,7 @@ describe('auto-injected svc command in CLI', () => {
       exit: () => {},
       workdir: tmpDir,
       interactiveInput: (async function* () {
-        yield '/svc --action logs';
+        yield '/test-svc-logs';
         yield '/exit';
       })(),
     });
@@ -560,7 +639,7 @@ describe('auto-injected svc command in CLI', () => {
     expect(output.join('')).toContain('No logs available');
   });
 
-  it('/svc --manage returns panel type in session', async () => {
+  it('/test-svc-manage returns panel type in session', async () => {
     const cli = defineCli({
       name: 'svc',
       version: '1.0.0',
@@ -577,7 +656,7 @@ describe('auto-injected svc command in CLI', () => {
       exit: () => {},
       workdir: tmpDir,
       interactiveInput: (async function* () {
-        yield '/svc --manage';
+        yield '/test-svc-manage';
         yield '/exit';
       })(),
     });

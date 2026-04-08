@@ -19,7 +19,7 @@ import { createMemoryWorkdirStore, createWorkdirStore } from './store.js';
 import { getConfigEnvVars, resolveConfig } from './config.js';
 import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
-import { createSvcCommand } from './service-command.js';
+import { createServiceCommands } from './service-command.js';
 import { createHelpCommand } from './help-command.js';
 import { createInitCommand } from './init.js';
 import { createRoutine } from './routine.js';
@@ -101,10 +101,14 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   const hasTriggers = options.triggers && options.triggers.length > 0;
   const hasServices = options.services && options.services.length > 0;
 
-  // Auto-inject built-in svc command when services are defined
-  if (hasServices && !commandMap.has('svc')) {
-    const serviceIds = options.services!.map((s) => s.id);
-    commandMap.set('svc', createSvcCommand(serviceIds));
+  // Auto-inject per-service commands when services are defined
+  if (hasServices) {
+    for (const svcDef of options.services!) {
+      const cmds = createServiceCommands(svcDef);
+      for (const cmd of cmds) {
+        if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
+      }
+    }
   }
 
   // Auto-inject built-in help command — uses lazy getCli() since the Cli object
@@ -474,22 +478,37 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   async function runImpl(argv: string[], opts: ResolvedRunOptions): Promise<void> {
     const { exit, stdout, stderr, cwd, writeRaw } = opts;
 
-    // Extract --workdir and --config before Commander sees them
+    // ── Extract pre-command framework flags ────────────────────────
+    // Framework flags (--workdir, --config, --resume, -i) are extracted from
+    // args that appear BEFORE the subcommand name, to set up context before
+    // Commander runs.  Commander (with enablePositionalOptions) handles the
+    // scoping natively — post-subcommand options belong to the subcommand —
+    // so we pass argv through unmodified.
+    //   rupert --workdir ws vetra-start --workdir proj
+    //          ^^^^^^^^^^^              ^^^^^^^^^^^^^^
+    //          framework flag           subcommand flag (Commander scopes it)
     const userArgs = argv.slice(2);
+    const subcommandNames = new Set([...commandMap.keys(), 'help']);
+    let subcommandIdx = userArgs.findIndex((a) => subcommandNames.has(a));
+    if (subcommandIdx === -1) subcommandIdx = userArgs.length;
+    const preCommandArgs = userArgs.slice(0, subcommandIdx);
+
+    // Extract framework flag values from pre-command args only
     let workdirFlag: string | undefined;
     let configFileFlag: string | undefined = opts.configFile;
-    {
-      const wIdx = userArgs.indexOf('--workdir');
-      const wShort = userArgs.indexOf('-w');
-      const wdIdx = wIdx !== -1 ? wIdx : (wShort !== -1 ? wShort : -1);
-      if (wdIdx !== -1 && wdIdx + 1 < userArgs.length) {
-        workdirFlag = userArgs[wdIdx + 1];
-      }
-      const cIdx = userArgs.indexOf('--config');
-      const cShort = userArgs.indexOf('-c');
-      const cfIdx = cIdx !== -1 ? cIdx : (cShort !== -1 ? cShort : -1);
-      if (cfIdx !== -1 && cfIdx + 1 < userArgs.length) {
-        configFileFlag = userArgs[cfIdx + 1];
+    let resumeId: string | undefined = opts.resume;
+    let interactiveFlag = false;
+    const frameworkFlags = new Set(['--resume', '--workdir', '-w', '--config', '-c']);
+    for (let i = 0; i < preCommandArgs.length; i++) {
+      const arg = preCommandArgs[i]!;
+      if (arg === '-i' || arg === '--interactive') {
+        interactiveFlag = true;
+      } else if (frameworkFlags.has(arg) && i + 1 < preCommandArgs.length) {
+        const value = preCommandArgs[i + 1]!;
+        if (arg === '--workdir' || arg === '-w') workdirFlag = value;
+        else if (arg === '--config' || arg === '-c') configFileFlag = value;
+        else if (arg === '--resume') resumeId = value;
+        i++; // skip value
       }
     }
 
@@ -565,17 +584,8 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       return cachedProvider;
     }
 
-    // Extract --resume <id> before Commander sees it
-    let resumeId = opts.resume;
-    {
-      const resumeIdx = userArgs.indexOf('--resume');
-      if (resumeIdx !== -1 && resumeIdx + 1 < userArgs.length) {
-        resumeId = userArgs[resumeIdx + 1];
-      }
-    }
-
     // Check for interactive mode (-i or --interactive)
-    if (userArgs.includes('-i') || userArgs.includes('--interactive')) {
+    if (interactiveFlag) {
       if (!options.interactive) {
         stderr('Interactive mode is not configured for this CLI');
         exit(1);
@@ -637,46 +647,43 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     // Update the routine's context so it uses the resolved config/workspace
     if (routine) routine.setContext(context);
 
-    // Strip framework flags and their values from argv before Commander sees them
-    let commandArgv: string[];
-    {
-      const frameworkFlags = ['--resume', '--workdir', '-w', '--config', '-c'];
-      const filtered: string[] = [];
-      for (let i = 0; i < argv.length; i++) {
-        if (frameworkFlags.includes(argv[i]!) && i + 1 < argv.length) {
-          i++; // skip the flag and its value
-        } else {
-          filtered.push(argv[i]!);
-        }
+    // Check if the first non-flag arg is a registered subcommand or Commander built-in.
+    // We already know from subcommandIdx whether a subcommand is present.
+    // If not, and we have an agent, treat remaining non-flag args as an agent prompt.
+    const postCmdArgs = userArgs.slice(subcommandIdx);
+    const firstSubcmd = postCmdArgs[0];
+    const isSubcommand = firstSubcmd && (commandMap.has(firstSubcmd) || firstSubcmd === 'help');
+
+    if (!isSubcommand && agentLoader) {
+      // Collect non-flag, non-framework-value args as the agent prompt.
+      // Skip framework flag values by tracking when we see a framework flag.
+      const promptArgs: string[] = [];
+      let skipNext = false;
+      for (const arg of preCommandArgs) {
+        if (skipNext) { skipNext = false; continue; }
+        if (frameworkFlags.has(arg)) { skipNext = true; continue; }
+        if (arg.startsWith('-')) continue; // other flags like -i
+        promptArgs.push(arg);
       }
-      commandArgv = filtered;
-    }
-
-    // Check if the first non-flag arg is a registered subcommand or Commander built-in
-    // If not, and we have an agent, treat remaining args as an agent prompt
-    const nonFlagArgs = commandArgv.slice(2).filter((a) => !a.startsWith('-'));
-    const firstArg = nonFlagArgs[0];
-    const isSubcommand = firstArg && (commandMap.has(firstArg) || firstArg === 'help');
-
-    if (!isSubcommand && agentLoader && nonFlagArgs.length > 0) {
-      // Agent prompt in command mode
-      const agentProvider = await getAgentProvider();
-      if (agentProvider) {
-        const prompt = nonFlagArgs.join(' ');
-        const parts: string[] = [];
-        for await (const chunk of agentProvider.stream(prompt, { threadId: resumeId, tools: commandMap })) {
-          const text = formatStreamChunk(chunk);
-          parts.push(text);
-          stdout(text);
+      if (promptArgs.length > 0) {
+        const agentProvider = await getAgentProvider();
+        if (agentProvider) {
+          const prompt = promptArgs.join(' ');
+          const parts: string[] = [];
+          for await (const chunk of agentProvider.stream(prompt, { threadId: resumeId, tools: commandMap })) {
+            const text = formatStreamChunk(chunk);
+            parts.push(text);
+            stdout(text);
+          }
+          return;
         }
-        return;
       }
     }
 
     const program = buildProgram(stdout, context, resolvedDescription);
 
     try {
-      await program.parseAsync(commandArgv);
+      await program.parseAsync(argv);
     } catch (err: any) {
       if (err.exitCode === 0) {
         exit(0);

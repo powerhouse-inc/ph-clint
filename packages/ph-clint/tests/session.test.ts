@@ -787,7 +787,7 @@ describe('session edge cases', () => {
     execute: async () => ({ text: 'ok' }),
   });
 
-  it('/svc --manage without services returns error', async () => {
+  it('/foo-manage for unregistered service returns unknown command', async () => {
     const cli = defineCli({
       name: 'test',
       version: '1.0.0',
@@ -796,13 +796,12 @@ describe('session edge cases', () => {
       interactive: { welcome: '' },
     });
 
-    // No context.services set → "No services configured"
     const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} };
     const session = createReplSession({ cli, context });
 
-    const result = await session.processInput('/svc --manage');
+    const result = await session.processInput('/foo-manage');
     expect(result.type).toBe('error');
-    expect(result.text).toContain('No services configured');
+    expect(result.text).toContain('Unknown command');
   });
 
   it('handles agent stream errors gracefully', async () => {

@@ -1,23 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import Spinner from 'ink-spinner';
-import type { ServiceManager, ServiceStatus, ServiceDefinition } from '../core/types.js';
+import type { ServiceManager, ServiceInstanceStatus, ServiceDefinition } from '../core/types.js';
 
 interface ServicePanelProps {
   services: ServiceManager;
   onExit: () => void;
+  /** When set, scope the panel to a single service. */
+  serviceId?: string;
 }
 
 type PanelView = 'list' | 'details' | 'logs';
 
-function statusIcon(status: ServiceStatus['status']): string {
+function statusIcon(status: ServiceInstanceStatus['status']): string {
   return status === 'ready' ? '●' :
     status === 'starting' ? '◐' :
     status === 'failed' ? '✗' :
     status === 'stopping' ? '◑' : '○';
 }
 
-function statusColor(status: ServiceStatus['status']): string {
+function statusColor(status: ServiceInstanceStatus['status']): string {
   return status === 'ready' ? 'green' :
     status === 'starting' ? 'yellow' :
     status === 'failed' ? 'red' : 'gray';
@@ -27,11 +29,11 @@ function statusColor(status: ServiceStatus['status']): string {
  * Interactive service management panel for the REPL.
  * Shows service status, supports start/stop, log viewing, and detail inspection.
  */
-export function ServicePanel({ services, onExit }: ServicePanelProps) {
+export function ServicePanel({ services, onExit, serviceId }: ServicePanelProps) {
   const { stdout } = useStdout();
   const columns = stdout?.columns || 80;
 
-  const [statuses, setStatuses] = useState<ServiceStatus[]>(() => services.list());
+  const [statuses, setStatuses] = useState(() => services.list(serviceId));
   const [selected, setSelected] = useState(0);
   const [view, setView] = useState<PanelView>('list');
   const [busy, setBusy] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
   // Poll service statuses
   useEffect(() => {
     const timer = setInterval(() => {
-      setStatuses(services.list());
+      setStatuses(services.list(serviceId));
     }, 2000);
     return () => clearInterval(timer);
   }, [services]);
@@ -52,13 +54,13 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
     return () => { cleanupRef.current?.(); };
   }, []);
 
-  const openLogs = useCallback((svcId: string) => {
+  const openLogs = useCallback((svcId: string, instId: string) => {
     cleanupRef.current?.();
-    const initial = services.logs(svcId, 30).split('\n');
+    const initial = services.logs(svcId, instId, 30).split('\n');
     setLogLines(initial);
     setDetailServiceId(svcId);
     setView('logs');
-    const cleanup = services.watchLogs(svcId, (line) => {
+    const cleanup = services.watchLogs(svcId, instId, (line) => {
       setLogLines((prev) => [...prev.slice(-200), line]);
     });
     cleanupRef.current = cleanup;
@@ -70,7 +72,7 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
     setLogLines([]);
     setDetailServiceId(null);
     setView('list');
-    setStatuses(services.list());
+    setStatuses(services.list(serviceId));
   }, [services]);
 
   const openDetails = useCallback((svcId: string) => {
@@ -84,13 +86,13 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
 
     if (svc.status === 'ready' || svc.status === 'starting') {
       setBusy(`Stopping ${svc.label}...`);
-      try { await services.stop(svc.id); } catch { /* ignore */ }
+      try { await services.stop(svc.serviceId, svc.instanceId); } catch { /* ignore */ }
     } else {
       setBusy(`Starting ${svc.label}...`);
-      try { await services.start(svc.id); } catch { /* ignore */ }
+      try { await services.start(svc.serviceId); } catch { /* ignore */ }
     }
     setBusy(null);
-    setStatuses(services.list());
+    setStatuses(services.list(serviceId));
   }, [statuses, selected, busy, services]);
 
   useInput((ch, key) => {
@@ -102,7 +104,9 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
       }
       // In details view, allow 'l' to jump to logs
       if (view === 'details' && (ch === 'l' || ch === 'L') && detailServiceId) {
-        openLogs(detailServiceId);
+        // Find the instance to get its instanceId
+        const inst = statuses.find((s) => s.serviceId === detailServiceId);
+        if (inst) openLogs(detailServiceId, inst.instanceId);
         return;
       }
       return;
@@ -130,18 +134,18 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
 
     if (ch === 'd' || ch === 'D') {
       const svc = statuses[selected];
-      if (svc) openDetails(svc.id);
+      if (svc) openDetails(svc.serviceId);
       return;
     }
 
     if (ch === 'l' || ch === 'L') {
       const svc = statuses[selected];
-      if (svc) openLogs(svc.id);
+      if (svc) openLogs(svc.serviceId, svc.instanceId);
       return;
     }
 
     if (ch === 'r' || ch === 'R') {
-      setStatuses(services.list());
+      setStatuses(services.list(serviceId));
       return;
     }
   });
@@ -150,7 +154,7 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
 
   // ── Details view ──
   if (view === 'details' && detailServiceId) {
-    const svc = statuses.find((s) => s.id === detailServiceId);
+    const svc = statuses.find((s) => s.serviceId === detailServiceId);
     const def = services.getDefinition(detailServiceId);
 
     // Readiness patterns from definition
@@ -169,7 +173,7 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
           <Text><Text bold>ID:      </Text>{detailServiceId}</Text>
           <Text><Text bold>Status:  </Text><Text color={statusColor(svc?.status ?? 'idle')}>{statusIcon(svc?.status ?? 'idle')} {svc?.status ?? 'idle'}</Text></Text>
           <Text><Text bold>PID:     </Text>{svc?.pid ?? '—'}</Text>
-          <Text><Text bold>Command: </Text>{def?.command ?? '—'}</Text>
+          <Text><Text bold>Command: </Text>{typeof def?.command === 'function' ? '(dynamic)' : (def?.command ?? '—')}</Text>
           {def?.shutdown && (
             <Text><Text bold>Shutdown:</Text> {def.shutdown.signal} (timeout {def.shutdown.timeout}ms)</Text>
           )}
@@ -213,7 +217,7 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
 
   // ── Log view ──
   if (view === 'logs' && detailServiceId) {
-    const svc = statuses.find((s) => s.id === detailServiceId);
+    const svc = statuses.find((s) => s.serviceId === detailServiceId);
     const visibleLines = logLines.slice(-20);
     return (
       <Box flexDirection="column">
@@ -256,7 +260,7 @@ export function ServicePanel({ services, onExit }: ServicePanelProps) {
           }
 
           return (
-            <Box key={svc.id}>
+            <Box key={svc.instanceId}>
               <Text color={isSelected ? 'cyan' : undefined}>
                 {isSelected ? '▸ ' : '  '}
               </Text>

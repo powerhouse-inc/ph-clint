@@ -98,7 +98,7 @@ export const cli = defineCli({
         '',
         `  ${D}Agent:${R} ${mode}`,
         `  ${D}Workdir:${R} ${workdir}`,
-        `  ${D}/init-project${R} new project  ${D}/svc${R} services`,
+        `  ${D}/init-project${R} new project  ${D}/vetra-ps${R} services`,
         '',
       ].join('\n');
     },

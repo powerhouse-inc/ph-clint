@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import net from 'node:net';
-import type { EventBus, ReadinessPattern, ServiceDefinition, ServiceManager, ServiceStatus } from './types.js';
+import type { EventBus, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
 
 /**
  * Identity wrapper for service definitions — provides type checking and IDE support.
@@ -14,10 +15,11 @@ export function defineService<TConfig = Record<string, unknown>>(
 }
 
 /**
- * Persisted state for a service on disk.
+ * Persisted state for a service instance on disk.
  */
 interface ServiceStateFile {
-  id: string;
+  serviceId: string;
+  instanceId: string;
   label: string;
   pid: number;
   status: 'starting' | 'ready' | 'failed';
@@ -26,6 +28,8 @@ interface ServiceStateFile {
   startedAt: string;
   command: string;
   restartAttempt?: number;
+  workdir?: string;
+  params?: Record<string, unknown>;
 }
 
 export interface ServiceManagerOptions {
@@ -34,12 +38,19 @@ export interface ServiceManagerOptions {
   eventBus?: EventBus;
 }
 
-function stateFilePath(servicesDir: string, id: string): string {
-  return path.join(servicesDir, `${id}.json`);
+/**
+ * Get the directory for a service's instance state files.
+ */
+function serviceDir(servicesDir: string, serviceId: string): string {
+  return path.join(servicesDir, serviceId);
 }
 
-function logFilePath(servicesDir: string, id: string): string {
-  return path.join(servicesDir, `${id}.log`);
+function stateFilePath(servicesDir: string, serviceId: string, instanceId: string): string {
+  return path.join(serviceDir(servicesDir, serviceId), `${instanceId}.json`);
+}
+
+function logFilePath(servicesDir: string, serviceId: string, instanceId: string): string {
+  return path.join(serviceDir(servicesDir, serviceId), `${instanceId}.log`);
 }
 
 function readStateFile(filePath: string): ServiceStateFile | null {
@@ -109,6 +120,43 @@ function waitForExit(pid: number, timeout: number, interval = 100): Promise<bool
 }
 
 /**
+ * Generate an instance ID from start options.
+ * - Default (no name, no workdir) → serviceId
+ * - Named → serviceId:name
+ * - Workdir-derived → serviceId:hash8
+ */
+function resolveInstanceId(serviceId: string, opts?: ServiceStartOptions): string {
+  if (opts?.name) return `${serviceId}:${opts.name}`;
+  if (opts?.workdir) {
+    const hash = crypto.createHash('sha256').update(opts.workdir).digest('hex').slice(0, 8);
+    return `${serviceId}:${hash}`;
+  }
+  return serviceId;
+}
+
+/**
+ * Resolve a service command — supports static string or dynamic function.
+ */
+function resolveCommand(def: ServiceDefinition<any>, params?: Record<string, unknown>): string {
+  return typeof def.command === 'function' ? def.command(params) : def.command;
+}
+
+/**
+ * Scan a service's instance directory for all state files.
+ */
+function scanInstances(servicesDir: string, serviceId: string): ServiceStateFile[] {
+  const dir = serviceDir(servicesDir, serviceId);
+  try {
+    return fs.readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => readStateFile(path.join(dir, f)))
+      .filter((s): s is ServiceStateFile => s !== null);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Create a ServiceManager for managing long-running detached services.
  */
 export function createServiceManager(
@@ -121,34 +169,47 @@ export function createServiceManager(
     defMap.set(def.id, def);
   }
 
-  function ensureDir(): void {
-    fs.mkdirSync(servicesDir, { recursive: true });
+  function ensureServiceDir(serviceId: string): void {
+    fs.mkdirSync(serviceDir(servicesDir, serviceId), { recursive: true });
   }
 
-  async function start(id: string): Promise<void> {
+  async function start(id: string, startOpts?: ServiceStartOptions): Promise<string> {
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
 
-    // Check if already running
-    const existingState = readStateFile(stateFilePath(servicesDir, id));
+    const instanceId = resolveInstanceId(id, startOpts);
+    const maxInstances = def.maxInstances ?? 1;
+
+    // Check if this specific instance is already running
+    const existingState = readStateFile(stateFilePath(servicesDir, id, instanceId));
     if (existingState && existingState.pid && isPidAlive(existingState.pid)) {
       if (existingState.status === 'ready' || existingState.status === 'starting') {
         throw new Error(`Service ${id} is already running (pid ${existingState.pid})`);
       }
     }
 
-    ensureDir();
+    // Check maxInstances limit
+    const running = scanInstances(servicesDir, id)
+      .filter((s) => s.instanceId !== instanceId && s.pid && isPidAlive(s.pid));
+    if (running.length >= maxInstances) {
+      throw new Error(`Service ${id} has reached max instances (${maxInstances})`);
+    }
 
-    const logPath = logFilePath(servicesDir, id);
+    ensureServiceDir(id);
+
+    const params = startOpts?.params;
+    const commandStr = resolveCommand(def, params);
+    const logPath = logFilePath(servicesDir, id, instanceId);
     const logFd = fs.openSync(logPath, 'a');
 
-    const env = { ...process.env, ...(def.env ? def.env(config) : {}) };
+    const env = { ...process.env, ...(def.env ? def.env(config, params) : {}) };
 
-    const child = spawn(def.command, {
+    const child = spawn(commandStr, {
       shell: true,
       detached: true,
       stdio: ['ignore', logFd, logFd],
       env,
+      cwd: startOpts?.cwd ?? startOpts?.workdir,
     });
 
     child.unref();
@@ -159,31 +220,34 @@ export function createServiceManager(
 
     // Write initial state
     const state: ServiceStateFile = {
-      id,
+      serviceId: id,
+      instanceId,
       label: def.label,
       pid,
       status: 'starting',
       startedAt: new Date().toISOString(),
-      command: def.command,
+      command: commandStr,
       restartAttempt,
+      workdir: startOpts?.workdir,
+      params,
     };
-    writeStateFile(stateFilePath(servicesDir, id), state);
+    writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
 
     // Handle early exit (unreachable with shell: true — the shell always spawns)
     /* istanbul ignore next -- defensive guard */
     child.on('error', () => {
       state.status = 'failed';
       state.error = 'Failed to spawn process';
-      writeStateFile(stateFilePath(servicesDir, id), state);
-      eventBus?.emit('service:failed', { id, label: def.label, error: state.error });
+      writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
+      eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
     });
 
     // If no readiness or wait === false, mark ready immediately
     if (!def.readiness || def.readiness.wait === false) {
       state.status = 'ready';
-      writeStateFile(stateFilePath(servicesDir, id), state);
-      eventBus?.emit('service:ready', { id, label: def.label, endpoints: state.endpoints });
-      return;
+      writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
+      eventBus?.emit('service:ready', { id, instanceId, label: def.label, endpoints: state.endpoints });
+      return instanceId;
     }
 
     // Normalize to a list of named patterns
@@ -204,8 +268,8 @@ export function createServiceManager(
           clearInterval(pollInterval);
           state.status = 'failed';
           state.error = 'Process exited before becoming ready';
-          writeStateFile(stateFilePath(servicesDir, id), state);
-          eventBus?.emit('service:failed', { id, label: def.label, error: state.error });
+          writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
+          eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
           reject(new Error(state.error));
           return;
         }
@@ -232,6 +296,7 @@ export function createServiceManager(
                 }
                 eventBus?.emit('service:pattern-matched', {
                   id,
+                  instanceId,
                   label: def.label,
                   name: rp.name,
                   endpoints: state.endpoints,
@@ -245,9 +310,10 @@ export function createServiceManager(
               clearInterval(pollInterval);
               state.status = 'ready';
               state.restartAttempt = 0;
-              writeStateFile(stateFilePath(servicesDir, id), state);
+              writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
               eventBus?.emit('service:ready', {
                 id,
+                instanceId,
                 label: def.label,
                 endpoints: state.endpoints,
               });
@@ -273,12 +339,14 @@ export function createServiceManager(
             .map((rp) => rp.name);
           state.status = 'failed';
           state.error = `Readiness timeout exceeded (unmatched: ${unmatched.join(', ')})`;
-          writeStateFile(stateFilePath(servicesDir, id), state);
-          eventBus?.emit('service:failed', { id, label: def.label, error: state.error });
+          writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
+          eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
           reject(new Error(state.error));
         }
       }, 100);
     });
+
+    return instanceId;
   }
 
   /**
@@ -306,14 +374,11 @@ export function createServiceManager(
     await waitForExit(pid, 2_000);
   }
 
-  async function stop(id: string): Promise<void> {
-    const def = defMap.get(id);
-    if (!def) throw new Error(`Unknown service: ${id}`);
-
-    const statePath = stateFilePath(servicesDir, id);
+  async function stopInstance(def: ServiceDefinition<any>, serviceId: string, instanceId: string): Promise<void> {
+    const statePath = stateFilePath(servicesDir, serviceId, instanceId);
     const state = readStateFile(statePath);
     if (!state || !state.pid) {
-      throw new Error(`Service ${id} is not running`);
+      throw new Error(`Service ${serviceId} is not running`);
     }
 
     if (!isPidAlive(state.pid)) {
@@ -347,114 +412,165 @@ export function createServiceManager(
     }
 
     removeStateFile(statePath);
-    eventBus?.emit('service:stopped', { id, label: def.label });
+    eventBus?.emit('service:stopped', { id: serviceId, instanceId, label: def.label });
   }
 
-  function list(): ServiceStatus[] {
-    const results: ServiceStatus[] = [];
+  async function stop(id: string, instanceId?: string): Promise<void> {
+    const def = defMap.get(id);
+    if (!def) throw new Error(`Unknown service: ${id}`);
 
-    for (const def of definitions) {
-      const statePath = stateFilePath(servicesDir, def.id);
-      const state = readStateFile(statePath);
+    if (instanceId) {
+      return stopInstance(def, id, instanceId);
+    }
 
-      if (!state) {
-        results.push({ id: def.id, label: def.label, status: 'idle' });
+    // Stop all instances of this service
+    const instances = scanInstances(servicesDir, id);
+    if (instances.length === 0) {
+      throw new Error(`Service ${id} is not running`);
+    }
+
+    for (const inst of instances) {
+      try {
+        await stopInstance(def, id, inst.instanceId);
+      } catch {
+        // Instance may already be dead
+      }
+    }
+  }
+
+  function list(serviceId?: string): ServiceInstanceStatus[] {
+    const results: ServiceInstanceStatus[] = [];
+    const defs = serviceId ? [defMap.get(serviceId)].filter(Boolean) as ServiceDefinition<any>[] : definitions;
+
+    for (const def of defs) {
+      const instances = scanInstances(servicesDir, def.id);
+
+      if (instances.length === 0) {
+        // No instances — show idle placeholder
+        results.push({
+          serviceId: def.id,
+          instanceId: def.id,
+          label: def.label,
+          status: 'idle',
+        });
         continue;
       }
 
-      // Verify PID is alive
-      if (state.pid && !isPidAlive(state.pid)) {
-        // Process died — check restart policy
-        if (
-          def.restart?.enabled &&
-          (state.restartAttempt ?? 0) < def.restart.maxRetries &&
-          state.status === 'ready'
-        ) {
-          // Mark for restart (async, don't block list())
-          const attempt = (state.restartAttempt ?? 0) + 1;
-          eventBus?.emit('service:restarting', {
-            id: def.id,
-            label: def.label,
-            attempt,
-            maxRetries: def.restart.maxRetries,
-          });
+      for (const state of instances) {
+        // Verify PID is alive
+        if (state.pid && !isPidAlive(state.pid)) {
+          const statePath = stateFilePath(servicesDir, def.id, state.instanceId);
 
-          // Update state file with incremented attempt
-          state.status = 'starting';
-          state.restartAttempt = attempt;
-          writeStateFile(statePath, state);
-
-          // Trigger async restart after delay
-          setTimeout(async () => {
-            try {
-              removeStateFile(statePath);
-              // Write a temp state so start() knows the attempt count
-              ensureDir();
-              const tempState: ServiceStateFile = {
-                id: def.id,
-                label: def.label,
-                pid: 0,
-                status: 'failed',
-                startedAt: new Date().toISOString(),
-                command: def.command,
-                restartAttempt: attempt,
-              };
-              writeStateFile(statePath, tempState);
-              await start(def.id);
-            } catch {
-              // Restart failed — dir may have been removed (test teardown)
-            }
-          }, def.restart.delay);
-
-          results.push({
-            id: def.id,
-            label: def.label,
-            status: 'starting',
-            restartAttempt: attempt,
-          });
-        } else {
-          // No restart or max retries exceeded
-          const status: ServiceStatus = {
-            id: def.id,
-            label: def.label,
-            status: 'failed',
-            error: 'Process exited unexpectedly',
-          };
+          // Process died — check restart policy
           if (
             def.restart?.enabled &&
-            (state.restartAttempt ?? 0) >= def.restart.maxRetries
+            (state.restartAttempt ?? 0) < def.restart.maxRetries &&
+            state.status === 'ready'
           ) {
-            status.restartAttempt = state.restartAttempt;
-            eventBus?.emit('service:failed', {
+            // Mark for restart (async, don't block list())
+            const attempt = (state.restartAttempt ?? 0) + 1;
+            eventBus?.emit('service:restarting', {
               id: def.id,
+              instanceId: state.instanceId,
               label: def.label,
-              error: 'Max restart retries exceeded',
+              attempt,
+              maxRetries: def.restart.maxRetries,
             });
-          }
-          removeStateFile(statePath);
-          results.push(status);
-        }
-        continue;
-      }
 
-      results.push({
-        id: def.id,
-        label: def.label,
-        status: state.status as ServiceStatus['status'],
-        pid: state.pid,
-        endpoints: state.endpoints,
-        restartAttempt: state.restartAttempt,
-      });
+            // Update state file with incremented attempt
+            state.status = 'starting';
+            state.restartAttempt = attempt;
+            writeStateFile(statePath, state);
+
+            // Trigger async restart after delay — recover params from state
+            const restartParams = state.params;
+            const restartWorkdir = state.workdir;
+            const restartName = state.instanceId.includes(':') ? state.instanceId.split(':')[1] : undefined;
+            setTimeout(async () => {
+              try {
+                removeStateFile(statePath);
+                // Write a temp state so start() knows the attempt count
+                ensureServiceDir(def.id);
+                const commandStr = resolveCommand(def, restartParams);
+                const tempState: ServiceStateFile = {
+                  serviceId: def.id,
+                  instanceId: state.instanceId,
+                  label: def.label,
+                  pid: 0,
+                  status: 'failed',
+                  startedAt: new Date().toISOString(),
+                  command: commandStr,
+                  restartAttempt: attempt,
+                  params: restartParams,
+                  workdir: restartWorkdir,
+                };
+                writeStateFile(statePath, tempState);
+                await start(def.id, { params: restartParams, workdir: restartWorkdir, name: restartName });
+              } catch {
+                // Restart failed — dir may have been removed (test teardown)
+              }
+            }, def.restart.delay);
+
+            results.push({
+              serviceId: def.id,
+              instanceId: state.instanceId,
+              label: def.label,
+              status: 'starting',
+              restartAttempt: attempt,
+              params: state.params,
+              workdir: state.workdir,
+            });
+          } else {
+            // No restart or max retries exceeded
+            const status: ServiceInstanceStatus = {
+              serviceId: def.id,
+              instanceId: state.instanceId,
+              label: def.label,
+              status: 'failed',
+              error: 'Process exited unexpectedly',
+            };
+            if (
+              def.restart?.enabled &&
+              (state.restartAttempt ?? 0) >= def.restart.maxRetries
+            ) {
+              status.restartAttempt = state.restartAttempt;
+              eventBus?.emit('service:failed', {
+                id: def.id,
+                instanceId: state.instanceId,
+                label: def.label,
+                error: 'Max restart retries exceeded',
+              });
+            }
+            removeStateFile(statePath);
+            results.push(status);
+          }
+          continue;
+        }
+
+        results.push({
+          serviceId: def.id,
+          instanceId: state.instanceId,
+          label: def.label,
+          status: state.status as ServiceInstanceStatus['status'],
+          pid: state.pid,
+          endpoints: state.endpoints,
+          restartAttempt: state.restartAttempt,
+          params: state.params,
+          workdir: state.workdir,
+        });
+      }
     }
 
     return results;
   }
 
-  function logs(id: string, lines = 50): string {
+  function logs(id: string, instanceId?: string, lines = 50): string {
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
 
-    const logPath = logFilePath(servicesDir, id);
+    // Default to service id as instance id for single-instance services
+    const resolvedInstanceId = instanceId ?? id;
+    const logPath = logFilePath(servicesDir, id, resolvedInstanceId);
     try {
       const content = fs.readFileSync(logPath, 'utf-8');
       const allLines = content.split('\n');
@@ -465,11 +581,11 @@ export function createServiceManager(
     }
   }
 
-  function watchLogs(id: string, onLine: (line: string) => void): () => void {
+  function watchLogs(id: string, instanceId: string, onLine: (line: string) => void): () => void {
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
 
-    const logPath = logFilePath(servicesDir, id);
+    const logPath = logFilePath(servicesDir, id, instanceId);
     let lastPos = 0;
 
     // Initialize position to end of file

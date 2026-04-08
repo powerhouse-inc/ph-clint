@@ -368,9 +368,10 @@ export function Repl({ session, services }: ReplProps) {
       </Static>
 
       {/* Current execution, panel, or input */}
-      {phase === 'panel' && activePanelId === 'services' && services ? (
+      {phase === 'panel' && activePanelId?.startsWith('services:') && services ? (
         <ServicePanel
           services={services}
+          serviceId={activePanelId.split(':')[1]}
           onExit={() => {
             setActivePanelId(null);
             setPhase('idle');

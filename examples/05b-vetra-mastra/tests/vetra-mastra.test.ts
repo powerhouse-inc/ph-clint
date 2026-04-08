@@ -150,13 +150,12 @@ describe('CLI integration', () => {
     }),
     commands: [],
     services: [vetraDef],
-    agent: {
-      default: async () => demoAgent,
-    },
     interactive: {
       welcome: 'Vetra Mastra — demo mode',
     },
   });
+
+  cli.setAgentLoader(async () => demoAgent);
 
   it('has correct metadata', () => {
     expect(cli.name).toBe('vetra-mastra');
