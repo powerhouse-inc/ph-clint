@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ReplOutput, ReplSession, ReplSessionOptions } from './types.js';
 import type { FieldInfo } from '../core/schema.js';
 import { parseReplInput } from './router.js';
@@ -123,7 +124,8 @@ function buildPromptText(field: FieldInfo): string {
  * It is independent of Ink rendering.
  */
 export function createReplSession(opts: ReplSessionOptions): ReplSession {
-  const { cli, context, agentProvider, threadId } = opts;
+  const { cli, context, agentProvider } = opts;
+  const threadId = opts.threadId ?? (agentProvider ? randomUUID() : undefined);
   const commands = cli.listCommands();
   const commandIds = commands.map((c) => c.id);
   const hasDefaultCommand = cli.hasAgent;
