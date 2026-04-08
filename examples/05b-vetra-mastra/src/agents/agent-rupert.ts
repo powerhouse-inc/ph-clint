@@ -5,7 +5,7 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
 import { createWorkdirStore } from 'ph-clint';
 import { getMastraPaths, commandsToMastraTools } from 'ph-clint/mastra';
-import type { AgentContext, AgentProvider, Command } from 'ph-clint';
+import type { AgentContext, AgentProvider, Command, Logger } from 'ph-clint';
 import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
 import { rupertDevAgentInstructions } from './instructions.js';
 import { createDemoAgent } from './demo-agent.js';
@@ -38,20 +38,20 @@ export async function createAgentRupert(
   workdir: string,
   projectRoot: string,
   commands: Command[],
+  log?: Logger,
 ): Promise<Agent> {
   const store = createWorkdirStore(workdir, CLI_NAME);
   const paths = getMastraPaths(store, { prePackagedSkills: SKILL_NAMES });
   fs.mkdirSync(paths.dbFolder, { recursive: true });
 
-  // Debug: show the new path structure
-  console.log('[agent-rupert] workdir:', paths.workspaceBasePath);
-  console.log('[agent-rupert] rootFolder:', paths.rootFolder);
-  console.log('[agent-rupert] dbFolder:', paths.dbFolder);
-  console.log('[agent-rupert] skillPaths:');
+  log?.debug('[agent-rupert] workdir:', paths.workspaceBasePath);
+  log?.debug('[agent-rupert] rootFolder:', paths.rootFolder);
+  log?.debug('[agent-rupert] dbFolder:', paths.dbFolder);
+  log?.debug('[agent-rupert] skillPaths:');
   for (const sp of paths.skillPaths) {
-    console.log(`[agent-rupert]   ${sp}`);
+    log?.debug(`[agent-rupert]   ${sp}`);
   }
-  console.log('[agent-rupert] allowedPaths:', paths.allowedPaths);
+  log?.debug('[agent-rupert] allowedPaths:', paths.allowedPaths);
 
   const workspace = new Workspace({
     filesystem: new LocalFilesystem({
@@ -64,7 +64,7 @@ export async function createAgentRupert(
   const libsqlStore = new LibSQLStore({ id: 'ph-clint-storage', url: `file:${paths.dbPath}` });
   const memory = new Memory({ storage: libsqlStore });
 
-  const commandContext = { workdir, workspace: store, config, stdout: console.log };
+  const commandContext = { workdir, workspace: store, config, stdout: console.log, log };
   const cliTools = await commandsToMastraTools(commands, commandContext);
 
   return new Agent({
@@ -91,6 +91,6 @@ export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvi
 
   const { createMastraHelpers } = await import('ph-clint/mastra');
   const m = createMastraHelpers(ctx);
-  const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands);
+  const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context.log);
   return m.wrapAgent(agent);
 }

@@ -704,6 +704,62 @@ describe('defineCli', () => {
       expect(cap.output).toEqual(['display text']);
     });
 
+    it('accepts --verbose flag without error', async () => {
+      const cap = capture();
+      await cli.run(
+        ['node', 'test', '--verbose', 'echo', '--message', 'hi'],
+        cap.options,
+      );
+      expect(cap.output).toEqual(['hi']);
+      expect(cap.exitCode).toBeUndefined();
+    });
+
+    it('provides logger to command context via --verbose', async () => {
+      let hasLog = false;
+      const logCli = defineCli({
+        name: 'log-test',
+        version: '0.0.1',
+        description: 'Logger test',
+        commands: [
+          defineCommand({
+            id: 'check',
+            description: 'Check logger',
+            inputSchema: z.object({}),
+            execute: async (_, ctx) => {
+              hasLog = ctx.log !== undefined;
+              return 'ok';
+            },
+          }),
+        ],
+      });
+      const cap = capture();
+      await logCli.run(['node', 'test', 'check'], cap.options);
+      expect(hasLog).toBe(true);
+    });
+
+    it('sets debug level when --verbose is used', async () => {
+      let logLevel: string | undefined;
+      const logCli = defineCli({
+        name: 'log-test',
+        version: '0.0.1',
+        description: 'Logger test',
+        commands: [
+          defineCommand({
+            id: 'check',
+            description: 'Check log level',
+            inputSchema: z.object({}),
+            execute: async (_, ctx) => {
+              logLevel = ctx.log?.level;
+              return 'ok';
+            },
+          }),
+        ],
+      });
+      const cap = capture();
+      await logCli.run(['node', 'test', '--verbose', 'check'], cap.options);
+      expect(logLevel).toBe('debug');
+    });
+
     it('handles non-Error throws from commands', async () => {
       const throwCli = defineCli({
         name: 'throw',

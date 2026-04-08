@@ -12,6 +12,18 @@ import type { z } from 'zod';
  */
 export type InferConfig<T extends z.ZodType> = z.infer<T>;
 
+// ── Logging ───────────────────────────────────────────────────────
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface Logger {
+  debug(msg: string, ...args: unknown[]): void;
+  info(msg: string, ...args: unknown[]): void;
+  warn(msg: string, ...args: unknown[]): void;
+  error(msg: string, ...args: unknown[]): void;
+  level: LogLevel;
+}
+
 /**
  * A key-value store for CLI-managed state.
  * Backed by `{workdir}/.ph/{cli-name}/` on disk, or in-memory for testing.
@@ -45,6 +57,8 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   config: TConfig;
   /** Write progressive output during command execution (raw — no trailing newline added). */
   stdout: (text: string) => void;
+  /** Structured logger — level controlled by --verbose flag or RunOptions.logLevel. */
+  log?: Logger;
   routine?: Routine;
   processes?: ProcessManager;
   services?: ServiceManager;
@@ -475,6 +489,8 @@ export interface RunOptions {
   workdir?: string;
   /** Path to a config file (--config flag value), relative to cwd. */
   configFile?: string;
+  /** Override log verbosity. Default: 'info'. */
+  logLevel?: LogLevel;
 }
 
 /**

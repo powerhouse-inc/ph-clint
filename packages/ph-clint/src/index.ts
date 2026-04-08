@@ -1,5 +1,6 @@
 export { defineCommand } from './core/command.js';
 export { formatZodError } from './core/errors.js';
+export { createLogger } from './core/logger.js';
 export { defineCli } from './core/cli.js';
 export { defineTrigger } from './core/trigger.js';
 export { getSchemaFields } from './core/schema.js';
@@ -59,6 +60,8 @@ export type {
   AgentStreamOptions,
   AgentContext,
   AgentLoader,
+  Logger,
+  LogLevel,
   Resolvable,
   Integration,
   ReadinessPattern,

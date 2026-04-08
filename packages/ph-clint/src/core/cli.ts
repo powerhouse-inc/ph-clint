@@ -28,6 +28,7 @@ import { createProcessManager } from './processes.js';
 import { createServiceManager } from './services.js';
 import { createReplSession } from '../interactive/session.js';
 import { formatZodError } from './errors.js';
+import { createLogger } from './logger.js';
 
 /* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
 const defaultStdout = (text: string) => { process.stdout.write(text); };
@@ -42,6 +43,7 @@ interface ResolvedRunOptions {
   configFile?: string;
   resume?: string;
   interactiveInput?: AsyncIterable<string>;
+  logLevel?: import('./types.js').LogLevel;
 }
 
 /**
@@ -383,6 +385,8 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       program.option('-i, --interactive', 'Start interactive REPL mode');
     }
 
+    program.option('--verbose', 'Enable debug-level logging');
+
     if (agentLoader) {
       program.option('--resume <thread-id>', 'Resume a previous conversation');
     }
@@ -479,6 +483,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       configFile: runOptions?.configFile,
       resume: runOptions?.resume,
       interactiveInput: runOptions?.interactiveInput,
+      logLevel: runOptions?.logLevel,
     };
     return runImpl(argv, resolved);
   }
@@ -509,11 +514,14 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     let configFileFlag: string | undefined = opts.configFile;
     let resumeId: string | undefined = opts.resume;
     let interactiveFlag = false;
+    let verboseFlag = false;
     const frameworkFlags = new Set(['--resume', '--workdir', '-w', '--config', '-c']);
     for (let i = 0; i < preCommandArgs.length; i++) {
       const arg = preCommandArgs[i]!;
       if (arg === '-i' || arg === '--interactive') {
         interactiveFlag = true;
+      } else if (arg === '--verbose') {
+        verboseFlag = true;
       } else if (frameworkFlags.has(arg) && i + 1 < preCommandArgs.length) {
         const value = preCommandArgs[i + 1]!;
         if (arg === '--workdir' || arg === '-w') workdirFlag = value;
@@ -548,7 +556,9 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
           implementationDefaults: options.configDefaults,
         })
       : {};
-    const context = buildContext({ workdir, workspace, config, stdout: writeRaw });
+    const logLevel = opts.logLevel ?? (verboseFlag ? 'debug' : 'info');
+    const log = createLogger(logLevel, stderr);
+    const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
 
     // Create ServiceManager when services are defined
     if (hasServices && options.services && eventBus) {
