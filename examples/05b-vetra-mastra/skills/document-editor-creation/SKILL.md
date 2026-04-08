@@ -1,6 +1,6 @@
 ---
 name: document-editor-creation
-description: "Skill for document editor creation. Provides step-by-step guidance for completing document editor creation tasks."
+description: "Build React editor components for Powerhouse document types"
 metadata:
   author: Powerhouse
   version: "1.0.0"

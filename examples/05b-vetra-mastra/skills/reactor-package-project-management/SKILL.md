@@ -1,6 +1,6 @@
 ---
 name: reactor-package-project-management
-description: "Skill for reactor package project management. Provides step-by-step guidance for completing reactor package project management tasks."
+description: "Initialize and run Reactor Package projects with Vetra services"
 metadata:
   author: Powerhouse
   version: "1.0.0"

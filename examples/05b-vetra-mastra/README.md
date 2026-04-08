@@ -70,7 +70,6 @@ Seven pre-packaged skills are compiled from `skills-src/` during `pnpm build:ski
 | `fusion-development` | Implement Fusion UI pages |
 | `fusion-project-management` | Initialize and manage Fusion projects |
 | `handle-stakeholder-message` | Triage stakeholder messages and update WBS docs |
-| `project-management` | General project management operations |
 | `reactor-package-project-management` | Initialize and manage Reactor packages |
 
 Skills are installed into `.ph/vetra-mastra/.mastra/skills/` by the built-in `init` command (auto-injected by ph-clint when `skillSources` is set).

@@ -1,6 +1,6 @@
 ---
 name: document-modeling
-description: "Skill for document modeling. Provides step-by-step guidance for completing document modeling tasks."
+description: "Design Powerhouse document models with state schemas, operations, and reducers"
 metadata:
   author: Powerhouse
   version: "1.0.0"

@@ -1,6 +1,6 @@
 ---
 name: fusion-development
-description: "Skill for fusion development. Provides step-by-step guidance for completing fusion development tasks."
+description: "Build local-first platforms based on Next.js with document drives as the backend"
 metadata:
   author: Powerhouse
   version: "1.0.0"

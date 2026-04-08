@@ -97,9 +97,17 @@ function slugToTitle(slug: string): string {
     .join(' ');
 }
 
+const SKILL_DESCRIPTIONS: Record<string, string> = {
+  'document-modeling': 'Design Powerhouse document models with state schemas, operations, and reducers',
+  'document-editor-creation': 'Build React editor components for Powerhouse document types',
+  'fusion-development': 'Build local-first platforms based on Next.js with document drives as the backend',
+  'fusion-project-management': 'Initialize, configure, and run Fusion project instances',
+  'handle-stakeholder-message': 'Triage stakeholder messages, update WBS documents, and draft replies',
+  'reactor-package-project-management': 'Initialize and run Reactor Package projects with Vetra services',
+};
+
 function slugToDescription(slug: string): string {
-  const title = slugToTitle(slug);
-  return `Skill for ${title.toLowerCase()}. Provides step-by-step guidance for completing ${title.toLowerCase()} tasks.`;
+  return SKILL_DESCRIPTIONS[slug] ?? `${slugToTitle(slug)} tasks`;
 }
 
 // ---------------------------------------------------------------------------

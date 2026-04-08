@@ -1,6 +1,6 @@
 ---
 name: fusion-project-management
-description: "Skill for fusion project management. Provides step-by-step guidance for completing fusion project management tasks."
+description: "Initialize, configure, and run Fusion project instances"
 metadata:
   author: Powerhouse
   version: "1.0.0"

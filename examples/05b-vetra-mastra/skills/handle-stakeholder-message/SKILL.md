@@ -1,6 +1,6 @@
 ---
 name: handle-stakeholder-message
-description: "Skill for handle stakeholder message. Provides step-by-step guidance for completing handle stakeholder message tasks."
+description: "Triage stakeholder messages, update WBS documents, and draft replies"
 metadata:
   author: Powerhouse
   version: "1.0.0"
