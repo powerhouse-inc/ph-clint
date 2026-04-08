@@ -158,6 +158,9 @@ export const cli = defineCli({
         `  ${D}/fusion-project-init${R} new fusion    ${D}/fusion-projects-list${R} browse`,
         `  ${D}/vetra-start${R} dev server  ${D}/fusion-project-start${R} fusion server`,
         '',
+        `  Type a message to talk to the agent`,
+        `  ${D}Try:${R} "Create a document model for invoices"`,
+        '',
       ].join('\n');
     },
   },
