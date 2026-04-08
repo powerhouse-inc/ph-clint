@@ -14,6 +14,7 @@ export { defineService, createServiceManager } from './core/services.js';
 export { createServiceCommands, formatStatus } from './core/service-command.js';
 export { createHelpCommand } from './core/help-command.js';
 export { installSkills, createInitCommand } from './core/init.js';
+export { readSkillsFromSources } from './core/skills.js';
 export { createRoutine } from './core/routine.js';
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export { createReplSession } from './interactive/session.js';
@@ -22,6 +23,7 @@ export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletio
 export { renderMarkdown } from './interactive/markdown.js';
 export type { FieldInfo } from './core/schema.js';
 export type { InstallSkillsOptions, InitCommandOptions } from './core/init.js';
+export type { SkillInfo } from './core/skills.js';
 export type {
   ReplSession,
   ReplOutput,

@@ -180,6 +180,77 @@ describe('defineCli', () => {
       expect(help).toContain('add');
     });
 
+    it('includes Agent Skills section when skillSources have skills', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-help-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'skill-test',
+          version: '1.0.0',
+          description: 'Skills test',
+          commands: [echo],
+          skillSources: [tmp],
+        });
+        skillCli.setAgentLoader(async () => ({
+          id: 'test',
+          async *stream() { yield { type: 'text-delta' as const, text: 'ok' }; },
+        }));
+
+        const help = skillCli.generateHelp();
+        expect(help).toContain('Agent Skills:');
+        expect(help).toContain('my-skill');
+        expect(help).toContain('A test skill');
+        expect(help).toContain('Send a message:');
+        expect(help).toContain('skill-test "your request"');
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('omits Agent Skills section when no skills found', () => {
+      const skillCli = defineCli({
+        name: 'empty-skills',
+        version: '1.0.0',
+        description: 'No skills',
+        commands: [echo],
+        skillSources: ['/nonexistent/path'],
+      });
+      const help = skillCli.generateHelp();
+      expect(help).not.toContain('Agent Skills:');
+    });
+
+    it('omits usage hint when no agent loader is set', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-noagent-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'no-agent',
+          version: '1.0.0',
+          description: 'No agent',
+          commands: [echo],
+          skillSources: [tmp],
+        });
+        // No agent loader set
+        const help = skillCli.generateHelp();
+        expect(help).toContain('Agent Skills:');
+        expect(help).not.toContain('Send a message:');
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
     it('includes -i option in help when interactive is configured', () => {
       const interactiveCli = defineCli({
         name: 'test',
@@ -1193,6 +1264,35 @@ describe('defineCli', () => {
           { ...cap.options, resume: 'thread-from-options' },
         );
         expect(receivedThreadId).toBe('thread-from-options');
+      });
+
+      it('prints thread ID after agent response in command mode', async () => {
+        const agent = createTestAgent({
+          'hello': [{ type: 'text-delta', text: 'Hi there!' }],
+        });
+        const agentCli = cliWithAgent(agent);
+
+        const cap = capture();
+        await agentCli.run(['node', 'assist', 'hello'], cap.options);
+        const output = cap.output.join('');
+        expect(output).toContain('Hi there!');
+        expect(output).toMatch(/Thread: [0-9a-f-]+/);
+        expect(output).toContain('continue with: assist --resume');
+      });
+
+      it('prints the provided --resume thread ID (not a new one)', async () => {
+        const agent = createTestAgent({
+          'hello': [{ type: 'text-delta', text: 'resumed!' }],
+        });
+        const agentCli = cliWithAgent(agent);
+
+        const cap = capture();
+        await agentCli.run(
+          ['node', 'assist', '--resume', 'my-thread-42', 'hello'],
+          cap.options,
+        );
+        const output = cap.output.join('');
+        expect(output).toContain('Thread: my-thread-42');
       });
 
       it('headless interactive routes bare text to agent', async () => {

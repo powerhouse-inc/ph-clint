@@ -13,6 +13,7 @@ import type {
   Routine,
   RunOptions,
 } from './types.js';
+import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
 import { getSchemaFields } from './schema.js';
 import { createMemoryWorkdirStore, createWorkdirStore } from './store.js';
@@ -22,6 +23,7 @@ import { createConfigCommand, generateConfigCommandHelp } from './config-command
 import { createServiceCommands } from './service-command.js';
 import { createHelpCommand } from './help-command.js';
 import { createInitCommand } from './init.js';
+import { readSkillsFromSources } from './skills.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
@@ -262,6 +264,24 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       lines.push(`  ${cmd.id.padEnd(20)} ${cmd.description}`);
     }
     lines.push('');
+
+    // Skills section — show agent skills when skillSources are defined
+    if (options.skillSources && options.skillSources.length > 0) {
+      const skills = readSkillsFromSources(options.skillSources);
+      if (skills.length > 0) {
+        lines.push('Agent Skills:');
+        for (const skill of skills) {
+          lines.push(`  ${skill.name.padEnd(36)} ${skill.description}`);
+        }
+        lines.push('');
+        if (agentLoader) {
+          lines.push(`  Send a message:    ${options.name} "your request"`);
+          lines.push(`  Interactive mode:  ${options.name} -i`);
+          lines.push('');
+        }
+      }
+    }
+
     const configHelp = generateConfigHelp();
     if (configHelp) {
       lines.push(configHelp);
@@ -690,12 +710,15 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         const agentProvider = await getAgentProvider();
         if (agentProvider) {
           const prompt = promptArgs.join(' ');
+          const threadId = resumeId ?? randomUUID();
           const parts: string[] = [];
-          for await (const chunk of agentProvider.stream(prompt, { threadId: resumeId, tools: commandMap })) {
+          for await (const chunk of agentProvider.stream(prompt, { threadId, tools: commandMap })) {
             const text = formatStreamChunk(chunk);
             parts.push(text);
             stdout(text);
           }
+          stdout('');
+          stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
           return;
         }
       }
