@@ -32,9 +32,9 @@ Detailed grading criteria for each of the 15 design principles. Use this referen
 
 | Grade | Criteria |
 |-------|----------|
-| Good | Every command and option has a `.describe()`. `--help` at every level is sufficient. Welcome message orients the user. |
-| Needs work | Most commands have descriptions but some options lack `.describe()`. Welcome message exists but is minimal. |
-| Poor | Majority of commands/options have no descriptions. Help output is bare names. No welcome message. |
+| Good | Every command and option has a `.describe()`. `--help` at every level is sufficient. Welcome message orients the user. Error messages guide the user toward the correct usage or fix. |
+| Needs work | Most commands have descriptions but some options lack `.describe()`. Welcome message exists but is minimal. Some error messages are informative but not guiding. |
+| Poor | Majority of commands/options have no descriptions. Help output is bare names. No welcome message. Error messages are opaque — users cannot recover without reading source. |
 
 ## Principle 4: CLI Identity
 
@@ -88,17 +88,17 @@ Detailed grading criteria for each of the 15 design principles. Use this referen
 
 | Grade | Criteria |
 |-------|----------|
-| Good | All commands work as agent tools. Output schemas are informative. Side effects are documented. Granularity is right. |
-| Needs work | Most commands work as tools but some outputs are uninformative or descriptions are vague. |
-| Poor | Commands return human-formatted text. Descriptions are too vague for agent selection. Granularity is wrong. |
+| Good | Agent selects the right tool on the first try for simple tasks. Output schemas provide values needed for chaining. No ambiguity between tool descriptions. Error messages help the agent self-correct. |
+| Needs work | Agent mostly selects correctly but hesitates between 1-2 ambiguous tools, or some outputs lack fields needed for chaining. Error messages inform but don't guide recovery. |
+| Poor | Agent frequently picks the wrong tool or hallucinates parameters. Descriptions are too vague to distinguish tools. Outputs are human-formatted text. Errors are opaque to the agent. |
 
 ## Principle 11: Agent Instructions and Skills
 
 | Grade | Criteria |
 |-------|----------|
-| Good | System prompt defines role/boundaries. Skills are scoped, reference commands, include guardrails. |
-| Needs work | Agent setup exists but skills are outdated or missing guardrails. |
-| Poor | No system prompt differentiation. Skills are documentation dumps. Agent improvises instead of following guidance. |
+| Good | Agent follows skill guidance through multi-step tasks on the first try. Skills reference specific tools, include prerequisite checks, and have recovery guidance. Confusion points from testing are covered by skill content. |
+| Needs work | Agent setup exists and skills reference tools, but some workflows lack prerequisite checks or recovery guidance. Agent occasionally improvises where a skill should have guided it. |
+| Poor | No system prompt differentiation. Skills are documentation dumps that don't reference tools. Agent improvises instead of following guidance. Most confusion points from testing are skill gaps. |
 
 ## Principle 12: Interactive Mode Experience
 
@@ -112,9 +112,9 @@ Detailed grading criteria for each of the 15 design principles. Use this referen
 
 | Grade | Criteria |
 |-------|----------|
-| Good | Structured output for all commands. Streaming where appropriate. Actionable error messages. |
-| Needs work | Most output is structured but some commands use `console.log`. Error messages could be more actionable. |
-| Poor | Commands primarily use `console.log`. No streaming. Error messages are stack traces or "Failed." |
+| Good | Structured output for all commands. Streaming where appropriate. Error messages are **guiding** — they say what went wrong, why, and how to fix it. Dependency errors name the missing dependency and suggest the fix command. Validation errors show correct usage. |
+| Needs work | Most output is structured but some commands use `console.log`. Error messages are **informative** (say what broke) but don't consistently tell the user how to fix it. |
+| Poor | Commands primarily use `console.log`. No streaming. Error messages are **opaque** — stack traces, bare "Failed", or "Connection refused" with no context. Users must read source to recover from errors. |
 
 ## Principle 14: Trigger and Routine Design
 

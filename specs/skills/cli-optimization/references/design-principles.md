@@ -54,14 +54,16 @@ The audience is dual: **human users** typing commands in a terminal or REPL, and
 - Are Zod `.describe()` strings present and useful for every command, option, and config field? These are the source of truth for all user-facing text — help output, interactive prompts, agent tool descriptions, and MCP schemas all derive from them.
 - Can a user accomplish any supported task without reading source code?
 - Does the welcome message in interactive mode orient the user to available commands and current state?
+- **Are error messages part of the documentation?** When a user makes a mistake or hits a missing prerequisite, the error message is the CLI teaching the user how to use it correctly. Errors that don't guide the user toward the fix are a self-documentation failure.
 
-**Quality test:** Delete the README and try to use the CLI from `--help` alone. Is anything unclear, missing, or misleading?
+**Quality test:** Delete the README and try to use the CLI from `--help` alone. Deliberately make mistakes. Is the combination of help text and error messages sufficient to complete any task without reading source code?
 
 **Common pitfalls:**
 - Commands or options with no `.describe()` — they appear as bare names in help output with no context
 - Help text that describes implementation details ("Calls the Mastra agent with thread context") instead of user intent ("Ask the AI assistant a question")
 - Welcome message that's empty or just prints a version number — no guidance on what to do next
 - Inconsistent vocabulary between help text, error messages, and the README
+- Error messages that dead-end the user — they know something failed but have no idea what to try next
 
 ---
 
@@ -187,13 +189,18 @@ The audience is dual: **human users** typing commands in a terminal or REPL, and
 - Are commands at the right granularity for agent use? Too coarse (one command does everything via flags) prevents precise tool selection. Too fine (dozens of micro-commands) overwhelms the tool list and increases the chance of selecting the wrong one.
 - Is the output schema informative? Agents use structured output to chain tool results into subsequent actions. A command that returns only `{ success: true }` is less useful than one returning `{ id: "pkg-123", path: "/workspace/packages/pkg-123" }`.
 - Are command side effects clear from the description? An agent needs to know if a command is read-only (safe to call speculatively) or mutating (requires confidence before calling).
+- **Does the agent select the right tool on the first try?** Observe the agent's chain of thought when given a task. If it hesitates between tools, the names or descriptions are ambiguous. If it picks the wrong tool, the description is misleading. First-try tool selection is the strongest signal of tool surface quality.
+- **Can the agent chain tool outputs?** When a multi-step task requires passing output from one tool to the next, does the output schema provide the values the agent needs? Missing fields force the agent to guess or make extra calls.
+- **Do error messages help the agent self-correct?** When a tool call fails, does the error tell the agent what to try instead? An agent that can recover from errors without user intervention has a well-designed tool surface.
 
-**Quality test:** Give an agent the tool list and a natural-language task. Does it select the right tool, provide correct parameters, and interpret the output — without needing additional instructions in the system prompt?
+**Quality test:** Give an agent the tool list and a natural-language task. Watch its chain of thought. Does it select the right tool on the first try, provide correct parameters, and interpret the output — without needing additional instructions in the system prompt? If it fails, identify whether the cause is the tool name, description, parameter descriptions, output schema, or error messages.
 
 **Common pitfalls:**
 - A "list" command returns human-formatted text instead of structured data — agents can't parse it reliably
 - A command description says "manage packages" (too vague) instead of "create a new reactor package in the workspace" (actionable)
 - Destructive commands that lack confirmation or dry-run options — agents invoke them without realizing they're irreversible
+- Two tools with overlapping descriptions — the agent can't tell which one to use and picks randomly
+- Output that omits IDs or paths needed by the next step — forces the agent to make a speculative lookup call
 
 ---
 
@@ -206,13 +213,19 @@ The audience is dual: **human users** typing commands in a terminal or REPL, and
 - Do skills reference the actual commands and services available to the agent? A skill that describes a workflow but doesn't mention which tools to use leaves the agent guessing.
 - Are skills kept up to date with command changes? A skill referencing a renamed or removed command is worse than no skill at all.
 - Is the agent instructed about *when not* to use certain tools? Guardrails (e.g., "do not call `init` if the package already exists") prevent common failure modes.
+- **Does the agent follow the skill or improvise?** Observe the agent's chain of thought during multi-step tasks. If it follows the skill's prescribed sequence, the skill is well-written. If it ignores the skill and makes up its own approach, the skill is either not loaded, too vague, or contradicts what the tool surface suggests.
+- **Does the skill prevent common confusions?** Compare the agent's confusion points (from testing) against the skill content. Every confusion that the skill *could have* prevented but didn't is a skill gap. Every confusion the skill *did* prevent is a skill success.
+- **Are prerequisite checks built into skill guidance?** A skill that says "run X then Y" without "first verify Z is running" will fail when Z isn't available. Skills should front-load prerequisite verification.
 
-**Quality test:** Give the agent a complex, multi-step task within its domain. Does it follow the skill's guidance to produce a correct result, or does it ignore the skill and improvise?
+**Quality test:** Give the agent a complex, multi-step task within its domain. Watch its chain of thought step by step. Does it follow the skill's guidance to produce a correct result on the first try? Where it deviates, is the deviation an improvement or a mistake? Could better skill instructions have prevented the mistakes?
 
 **Common pitfalls:**
 - System prompt that duplicates the skill content (wasted context window)
 - Skills written as documentation (explains concepts) rather than as operational guides (step-by-step with tool references)
 - Missing boundary instructions — the agent tries to do things outside its capabilities instead of telling the user it can't
+- Skills that don't mention prerequisites — agent attempts a workflow step that fails because a service isn't running or config isn't set
+- Skills that describe *what* to do but not *which tool* to use — agent has to guess the tool mapping, often incorrectly
+- No recovery guidance — when a step fails, the skill doesn't tell the agent what to check or try next
 
 ---
 
@@ -240,12 +253,21 @@ The audience is dual: **human users** typing commands in a terminal or REPL, and
 - Do commands produce output appropriate to their context? A list command should return structured data (renderable as a table). A mutation command should confirm what changed. An error should explain what went wrong and what to do about it.
 - Is streaming output used where appropriate? Long-running operations and agent responses should stream — not buffer and dump.
 - Is the output useful for both terminal display and programmatic consumption? Commands should return typed result objects, not `console.log()` strings.
-- Are error messages actionable? "Failed to connect" is useless; "Failed to connect to Switchboard at localhost:4001 — is the vetra service running? Try: /vetra-start" tells the user what to do next.
+- **Are error messages guiding?** Every error should answer three questions: *what* went wrong, *why* it went wrong, and *how to fix it*. Rate each error:
+  - **Guiding**: All three answered. A user can recover without searching docs. Example: "Failed to connect to Switchboard at localhost:4001 — is the vetra service running? Try: /vetra-start"
+  - **Informative**: Says what went wrong but not how to fix it. Example: "Failed to connect to Switchboard at localhost:4001"
+  - **Opaque**: Just says something failed. Example: "Connection failed" or a raw stack trace.
+- Do dependency-failure errors name the missing dependency and tell the user how to provide it? (e.g., "Config field 'endpoint' is required — set VETRA_ENDPOINT or run /config")
+- Do validation errors show the correct usage? When a command receives wrong arguments, does it print the usage line or reference `--help`?
+
+**Quality test:** Deliberately break things — stop a required service, omit a required config field, pass wrong argument types. For each failure, ask: "Could a user who has never seen this CLI fix this error on their first try, without reading source code?"
 
 **Common pitfalls:**
 - Commands that `console.log()` instead of returning structured results — breaks transport-agnostic rendering and makes testing harder
 - Error messages that expose stack traces to end users instead of human-readable explanations
 - Success output that doesn't confirm what actually happened ("Done" vs. "Created reactor package 'my-pkg' at ./packages/my-pkg")
+- Errors that say "failed" without naming the prerequisite ("Connection refused" vs. "Switchboard is not running on port 4001 — start it with vetra-start")
+- Validation errors that reject input without showing what was expected ("Invalid value" vs. "Expected one of: json, table, markdown")
 
 ---
 
