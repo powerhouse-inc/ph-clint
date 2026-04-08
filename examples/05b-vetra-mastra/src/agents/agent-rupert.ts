@@ -9,6 +9,7 @@ import type { AgentContext, AgentProvider, Command, Logger } from 'ph-clint';
 import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
 import { rupertDevAgentInstructions } from './instructions.js';
 import { createDemoAgent } from './demo-agent.js';
+import { getMcpTools } from '../mcp/client.js';
 
 const SKILL_NAMES = [
   'document-editor-creation',
@@ -74,7 +75,10 @@ export async function createAgentRupert(
     model: config.apiKey
       ? { id: config.model as `${string}/${string}`, apiKey: config.apiKey }
       : (config.model as `${string}/${string}`),
-    tools: cliTools,
+    tools: async () => ({
+      ...cliTools,
+      ...(await getMcpTools()),
+    }),
     workspace,
     memory,
   });
