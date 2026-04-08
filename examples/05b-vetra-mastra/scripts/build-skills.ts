@@ -36,7 +36,7 @@ function loadBuildContext() {
     // Aliases used by prototype agent profiles (ReactorPackageDevAgent, FusionDevAgent)
     vetraConnectPort: connectPort,
     vetraSwitchboardPort: switchboardPort,
-    reactorPackagesDir: process.env.VETRA_MASTRA_REACTOR_PACKAGES_DIR ?? `${workspaceDir}/reactor-packages`,
+    reactorPackagesDir: process.env.VETRA_MASTRA_REACTOR_PACKAGES_DIR ?? workspaceDir,
     fusionProjectsDir: process.env.VETRA_MASTRA_FUSION_PROJECTS_DIR ?? `${workspaceDir}/fusion-projects`,
     fusionPort: process.env.VETRA_MASTRA_FUSION_PORT ?? '3001',
     fusionSwitchboardUrl: process.env.VETRA_MASTRA_FUSION_SWITCHBOARD_URL ?? `http://localhost:${switchboardPort}/graphql`,
