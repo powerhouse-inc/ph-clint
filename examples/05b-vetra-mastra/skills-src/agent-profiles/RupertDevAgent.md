@@ -38,7 +38,7 @@ Unlike, for example, tables in a database, Reactor documents are `self-contained
 
 Starting Vetra:
 - Human developers: `ph vetra --watch`
-- **IMPORTANT**: As an AI Agent, ALWAYS use the service management tools (`/svc`) instead
+- **IMPORTANT**: As an AI Agent, ALWAYS use the service commands (`vetra-start`, `vetra-stop`, `vetra-ps`) instead
 
 Reading and editing documents:
 - Human developers: through the Vetra Studio UI
@@ -49,10 +49,13 @@ Reading and editing documents:
 ### Reactor Package Development
 
 **Project management tools**
-- `init` — initialize a new Reactor Package project
-- `/svc --action up` — start Vetra Studio and Switchboard
-- `/svc --action down` — stop Vetra
-- `/svc` — check service status and endpoints
+- `reactor-package-init` — initialize a new Reactor Package project
+- `reactor-packages-list` — list Reactor Package projects
+- `vetra-start` — start Vetra Studio and Switchboard
+- `vetra-stop` — stop Vetra
+- `vetra-ps` — check service status and endpoints
+- `vetra-logs` — get recent logs from the running project
+- `vetra-restart` — restart Vetra
 
 **Reactor MCP tools** (available after running a project)
 - When a reactor project is running, MCP tools (`reactor-mcp__*`) automatically become available for document and drive operations.

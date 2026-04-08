@@ -36,24 +36,22 @@ Since Fusion does not use a Reactor directly but works through the Switchboard A
 As a Fusion Platform Developer, you have access to the following tools:
 
 **Fusion project management tools**
-- `init-fusion-project` — initialize a new Fusion project
-- `list-fusion-projects` — list all available Fusion projects and their status
-- `run-fusion-project` — start a Fusion project with a Switchboard backend URL
-- `shutdown-fusion-project` — shutdown the running Fusion project
-- `get-fusion-project-logs` — get recent logs from the running Fusion project
-- `get-fusion-project-status` — get current status including port and URL
-- `is-fusion-project-ready` — check if the Fusion project is fully started
-- `get-fusion-projects-dir` — get the Fusion projects directory path
+- `fusion-project-init` — initialize a new Fusion project
+- `fusion-projects-list` — list all available Fusion projects and their status
+- `fusion-project-start` — start a Fusion project with a Switchboard backend URL
+- `fusion-project-stop` — shutdown the running Fusion project
+- `fusion-project-logs` — get recent logs from the running Fusion project
+- `fusion-project-ps` — get current status including port, URL, and readiness
+- `fusion-project-restart` — restart the running Fusion project
 
 **Reactor project management tools** (for managing the backend)
-- `init-project` — initialize a new Reactor Package project
-- `list-projects` — list Reactor Package projects
-- `run-project` — start a Reactor Package project (provides Switchboard backend)
-- `shutdown-project` — shutdown a running Reactor Package project
-- `get-project-logs` — get recent logs from the running Reactor project
-- `get-project-status` — get Reactor project status including Switchboard URL
-- `is-project-ready` — check if the Reactor project is fully started
-- `get-projects-dir` — get the Reactor projects directory path
+- `reactor-package-init` — initialize a new Reactor Package project
+- `reactor-packages-list` — list Reactor Package projects
+- `vetra-start` — start a Reactor Package project (provides Switchboard backend)
+- `vetra-stop` — shutdown a running Reactor Package project
+- `vetra-logs` — get recent logs from the running Reactor project
+- `vetra-ps` — get Reactor project status including Switchboard URL and readiness
+- `vetra-restart` — restart a running Reactor Package project
 
 ## Usage rules for Fusion project management
 

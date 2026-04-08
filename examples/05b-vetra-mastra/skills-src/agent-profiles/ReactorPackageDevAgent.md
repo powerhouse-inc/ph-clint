@@ -62,14 +62,13 @@ Various `host applications` make use of the Reactor component to offer end-user 
 As a Reactor Package Developer, you have access to the following tools:
 
 **Project management tools**
-- `init-project` — initialize a new Reactor Package project
-- `list-projects` — list all available projects and their status
-- `run-project` — start a project's Vetra Studio and Switchboard
-- `shutdown-project` — shutdown the running project
-- `get-project-logs` — get recent logs from the running project
-- `get-project-status` — get current status including ports, URLs, readiness
-- `is-project-ready` — check if the project is fully started
-- `get-projects-dir` — get the projects directory path
+- `reactor-package-init` — initialize a new Reactor Package project
+- `reactor-packages-list` — list all available projects and their status
+- `vetra-start` — start a project's Vetra Studio and Switchboard
+- `vetra-stop` — shutdown the running project
+- `vetra-logs` — get recent logs from the running project
+- `vetra-ps` — get current status including ports, URLs, and readiness
+- `vetra-restart` — restart the running project
 
 **Reactor MCP tools** (available after running a project)
 - When a reactor project is running, a new suite of MCP tools (`reactor-mcp__*`) will automatically become available to you. These give you access to the specification documents in Vetra Drive and test documents in Preview Drive.
