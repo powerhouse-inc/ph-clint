@@ -698,6 +698,11 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
           if (result.text) stdout(result.text);
         }
         exit(0);
+      } else if (!process.stdin.isTTY) {
+        /* istanbul ignore next -- no TTY in CI */
+        stderr('Interactive mode requires a terminal. Use command mode instead: ' + options.name + ' "your message"');
+        exit(1);
+        return;
       } else {
         /* istanbul ignore next -- Ink REPL requires a real terminal */
         const { startInkRepl } = await import('../interactive/start.js');
