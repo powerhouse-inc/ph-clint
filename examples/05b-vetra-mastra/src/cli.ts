@@ -120,6 +120,9 @@ export const cli = defineCli({
     },
     'service:failed': (event) => {
       console.log(`\u2717 ${event.label} failed: ${event.error}`);
+      if (event.id === 'vetra' && /exited before becoming ready/.test(event.error ?? '')) {
+        console.log('  Hint: Is the working directory a Reactor package project? Try: vetra-start --workdir <project-name>');
+      }
     },
     'service:restarting': (event) => {
       console.log(`\u21BB ${event.label} restarting (attempt ${event.attempt}/${event.maxRetries})`);
