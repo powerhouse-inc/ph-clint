@@ -3,7 +3,7 @@ import {
   defineCli,
   defineCommand,
   createReplSession,
-  createMemoryWorkspace,
+  createMemoryWorkdirStore,
   createEventBus,
   createProcessManager,
 } from 'ph-clint';
@@ -62,7 +62,7 @@ describe('Interactive mode', () => {
     processManager = createProcessManager();
     context = {
       workdir: '',
-      workspace: createMemoryWorkspace(),
+      workspace: createMemoryWorkdirStore(),
       config: { watchDir: './src', buildCommand: 'echo test-build' },
       processes: processManager,
     };

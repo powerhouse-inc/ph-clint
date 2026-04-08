@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
-import { createMemoryWorkspace } from '../src/core/workspace.js';
+import { createMemoryWorkdirStore } from '../src/core/store.js';
 
 describe('defineCommand', () => {
   const cmd = defineCommand({
@@ -26,7 +26,7 @@ describe('defineCommand', () => {
   });
 
   it('executes with parsed input', async () => {
-    const ctx = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    const ctx = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     const result = await cmd.execute({ name: 'Alice', count: 3 }, ctx);
     expect(result).toBe('Alice x3');
   });

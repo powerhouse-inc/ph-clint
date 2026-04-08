@@ -4,7 +4,7 @@ import {
   defineCli,
   defineCommand,
   createReplSession,
-  createMemoryWorkspace,
+  createMemoryWorkdirStore,
 } from '../src/index.js';
 import type { ReplSession, CommandContext, AgentProvider, StreamChunk } from '../src/index.js';
 
@@ -52,7 +52,7 @@ describe('createReplSession', () => {
   let context: CommandContext;
 
   beforeEach(() => {
-    context = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    context = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     session = createReplSession({ cli, context });
   });
 
@@ -148,7 +148,7 @@ describe('createReplSession', () => {
       });
       const s = createReplSession({
         cli: nullCli,
-        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
       });
       const result = await s.processInput('/null');
       expect(result.type).toBe('result');
@@ -245,7 +245,7 @@ describe('parameter prompting', () => {
     });
     return createReplSession({
       cli,
-      context: { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+      context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
     });
   }
 
@@ -652,7 +652,7 @@ describe('default command — agent routing', () => {
     });
     cli.setAgentLoader(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('What is TypeScript?');
@@ -672,7 +672,7 @@ describe('default command — agent routing', () => {
     });
     cli.setAgentLoader(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('/search --query "hello"');
@@ -698,7 +698,7 @@ describe('default command — agent routing', () => {
     });
     cli.setAgentLoader(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('search for cats');
@@ -725,7 +725,7 @@ describe('default command — agent routing', () => {
     });
     cli.setAgentLoader(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('break');
@@ -742,7 +742,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context });
 
     const result = await session.processInput('just some text');
@@ -759,7 +759,7 @@ describe('default command — agent routing', () => {
     });
     cli.setAgentLoader(async () => ({ id: 'x', async *stream() {} }));
 
-    const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
     // No agentProvider passed — session should still route text to agent handler
     const session = createReplSession({ cli, context });
 
@@ -797,7 +797,7 @@ describe('session edge cases', () => {
     });
 
     // No context.services set → "No services configured"
-    const context: CommandContext = { workdir: '', workspace: createMemoryWorkspace(), config: {}, stdout: () => {} };
+    const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} };
     const session = createReplSession({ cli, context });
 
     const result = await session.processInput('/svc --manage');
@@ -822,7 +822,7 @@ describe('session edge cases', () => {
     });
     cli.setAgentLoader(async () => failingAgent);
 
-    const context: CommandContext = { workdir: '', workspace: createMemoryWorkspace(), config: {}, stdout: () => {} };
+    const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: failingAgent });
 
     const result = await session.processInput('hello agent');

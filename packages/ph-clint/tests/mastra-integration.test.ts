@@ -9,7 +9,7 @@ import { defineCommand } from '../src/core/command.js';
 import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
 import { mapMastraStream } from '../src/integrations/mastra/stream.js';
-import { createMemoryWorkspace } from '../src/core/workspace.js';
+import { createMemoryWorkdirStore } from '../src/core/store.js';
 import type { AgentContext } from '../src/core/types.js';
 
 const testWorkspace = join(tmpdir(), `ph-clint-mastra-test-${randomBytes(4).toString('hex')}`);
@@ -32,7 +32,7 @@ function makeAgentContext(overrides?: Partial<AgentContext>): AgentContext {
     config: {},
     cliName: 'test-cli',
     cliVersion: '1.0.0',
-    context: { workdir, workspace: createMemoryWorkspace(), config: {}, stdout: () => {} },
+    context: { workdir, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} },
     commands: [echoCommand],
     ...overrides,
   };
@@ -144,7 +144,7 @@ describe('commandsToMastraTools', () => {
   it('converts ph-clint commands to Mastra tools', async () => {
     const tools = await commandsToMastraTools(
       [echoCommand],
-      { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+      { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
     );
     expect(Object.keys(tools)).toEqual(['echo']);
     expect(tools.echo).toBeDefined();
@@ -153,7 +153,7 @@ describe('commandsToMastraTools', () => {
   it('returns empty object for empty commands', async () => {
     const tools = await commandsToMastraTools(
       [],
-      { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+      { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
     );
     expect(tools).toEqual({});
   });
@@ -161,7 +161,7 @@ describe('commandsToMastraTools', () => {
   it('tool execute calls the original command', async () => {
     const tools = await commandsToMastraTools(
       [echoCommand],
-      { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+      { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
     );
     const tool = tools.echo;
     const result = await tool.execute!({ text: 'hello' }, {} as any);

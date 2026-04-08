@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   defineCli,
   createReplSession,
-  createMemoryWorkspace,
+  createMemoryWorkdirStore,
 } from 'ph-clint';
-import type { Workspace, ReplSession } from 'ph-clint';
+import type { WorkdirStore, ReplSession } from 'ph-clint';
 import { z } from 'zod';
 import { add } from '../src/commands/add.js';
 import { list } from '../src/commands/list.js';
@@ -30,11 +30,11 @@ const cli = defineCli({
 });
 
 describe('Interactive mode', () => {
-  let workspace: Workspace;
+  let workspace: WorkdirStore;
   let session: ReplSession;
 
   beforeEach(() => {
-    workspace = createMemoryWorkspace();
+    workspace = createMemoryWorkdirStore();
     session = createReplSession({
       cli,
       context: { workdir: '', workspace, config: { defaultPriority: 'medium' } },

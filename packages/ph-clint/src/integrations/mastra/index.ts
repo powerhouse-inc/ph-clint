@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { AgentContext, AgentProvider, StreamChunk } from '../../core/types.js';
-import { createWorkspace } from '../../core/workspace.js';
+import { createWorkdirStore } from '../../core/store.js';
 import { mapMastraStream } from './stream.js';
 import { commandsToMastraTools } from './tools.js';
 import { getMastraPaths } from './paths.js';
@@ -32,7 +32,7 @@ export { commandsToMastraTools } from './tools.js';
  */
 export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
   const paths = getMastraPaths(ctx.workdir, ctx.cliName);
-  const cliWorkspace = createWorkspace(`${ctx.workdir}/.ph/${ctx.cliName}`);
+  const cliWorkspace = createWorkdirStore(`${ctx.workdir}/.ph/${ctx.cliName}`);
   const commandContext = { workdir: ctx.workdir, workspace: cliWorkspace, config: ctx.config, stdout: console.log };
 
   return {

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { defineService, defineCli, defineCommand, createServiceManager, createEventBus, formatStatus } from '../src/index.js';
 import { createSvcCommand } from '../src/core/service-command.js';
 import type { ServiceDefinition, ServiceManager, ServiceStatus, CommandContext, EventBus } from '../src/core/types.js';
-import { createMemoryWorkspace } from '../src/core/workspace.js';
+import { createMemoryWorkdirStore } from '../src/core/store.js';
 
 const TEST_SERVICE = path.resolve(import.meta.dirname, 'fixtures/test-service.js');
 
@@ -114,7 +114,7 @@ describe('createSvcCommand — no services', () => {
     const cmd = createSvcCommand([]);
     const ctx: CommandContext = {
       workdir: '/tmp',
-      workspace: createMemoryWorkspace(),
+      workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
       services: emptyMgr,
@@ -178,7 +178,7 @@ describe('createSvcCommand', () => {
   function makeContext(): CommandContext {
     return {
       workdir: tmpDir,
-      workspace: createMemoryWorkspace(),
+      workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
       services: mgr,

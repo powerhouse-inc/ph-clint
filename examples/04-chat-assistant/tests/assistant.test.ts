@@ -4,7 +4,7 @@ import {
   defineCli,
   defineCommand,
   createReplSession,
-  createMemoryWorkspace,
+  createMemoryWorkdirStore,
   formatStreamChunk,
   renderStream,
 } from 'ph-clint';
@@ -51,7 +51,7 @@ describe('ascii command', () => {
   it('converts a remote image to ASCII art', async () => {
     const result = await ascii.execute(
       { image: 'https://picsum.photos/100/100', width: 20, height: 10, fit: 'box' },
-      { workdir: '', workspace: createMemoryWorkspace(), config: {} },
+      { workdir: '', workspace: createMemoryWorkdirStore(), config: {} },
     ) as any;
     expect(typeof result.text).toBe('string');
     expect(result.text.length).toBeGreaterThan(0);
@@ -79,7 +79,7 @@ describe('save-image command', () => {
   it('downloads an image and saves to workspace', async () => {
     const result = await saveImage.execute(
       { url: 'https://picsum.photos/10/10' },
-      { workdir: testDir, workspace: createMemoryWorkspace(testDir), config: {} },
+      { workdir: testDir, workspace: createMemoryWorkdirStore(testDir), config: {} },
     ) as any;
     expect(result.text).toContain('Saved');
     expect(result.data.size).toBeGreaterThan(0);
@@ -89,7 +89,7 @@ describe('save-image command', () => {
   it('uses custom filename when provided', async () => {
     const result = await saveImage.execute(
       { url: 'https://picsum.photos/10/10', name: 'custom.jpg' },
-      { workdir: testDir, workspace: createMemoryWorkspace(testDir), config: {} },
+      { workdir: testDir, workspace: createMemoryWorkdirStore(testDir), config: {} },
     ) as any;
     expect(result.data.filename).toBe('custom.jpg');
     expect(result.data.path).toContain('custom.jpg');
@@ -109,7 +109,7 @@ describe('list-images command', () => {
     const nonExistent = join(tmpdir(), `ph-clint-test-empty-${randomBytes(4).toString('hex')}`);
     const result = await listImages.execute(
       {},
-      { workdir: nonExistent, workspace: createMemoryWorkspace(nonExistent), config: {} },
+      { workdir: nonExistent, workspace: createMemoryWorkdirStore(nonExistent), config: {} },
     ) as any;
     expect(result.data.images).toHaveLength(0);
     expect(result.text).toContain('No images');
@@ -124,7 +124,7 @@ describe('list-images command', () => {
 
     const result = await listImages.execute(
       {},
-      { workdir: testDir, workspace: createMemoryWorkspace(testDir), config: {} },
+      { workdir: testDir, workspace: createMemoryWorkdirStore(testDir), config: {} },
     ) as any;
     expect(result.data.images).toHaveLength(2);
     expect(result.data.images.map((i: any) => i.name).sort()).toEqual(['logo.jpg', 'photo.png']);
@@ -397,7 +397,7 @@ describe('REPL session with agent', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workdir: '', workspace: createMemoryWorkspace(), config: {} };
+    const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     // Bare text → agent

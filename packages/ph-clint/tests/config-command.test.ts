@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { createConfigCommand, generateConfigCommandHelp } from '../src/core/config-command.js';
 import { defineCommand } from '../src/core/command.js';
 import { defineCli } from '../src/core/cli.js';
-import { createMemoryWorkspace } from '../src/core/workspace.js';
+import { createMemoryWorkdirStore } from '../src/core/store.js';
 import type { CommandContext } from '../src/core/types.js';
 
 const configSchema = z.object({
@@ -35,7 +35,7 @@ describe('createConfigCommand', () => {
   function makeContext(workdir?: string): CommandContext {
     return {
       workdir: workdir ?? workDir,
-      workspace: createMemoryWorkspace(),
+      workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
     };

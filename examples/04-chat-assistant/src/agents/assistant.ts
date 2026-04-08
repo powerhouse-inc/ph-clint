@@ -1,4 +1,4 @@
-import { createMemoryWorkspace } from 'ph-clint';
+import { createMemoryWorkdirStore } from 'ph-clint';
 import type { AgentProvider, StreamChunk } from 'ph-clint';
 
 /**
@@ -24,7 +24,7 @@ export function createAssistant(): AgentProvider {
 
       const tools = opts?.tools;
       const lower = prompt.toLowerCase();
-      const dummyCtx = { workdir: '', workspace: createMemoryWorkspace(), config: {}, stdout: () => {} };
+      const dummyCtx = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} };
 
       // Handle list-images
       if ((lower.includes('list') || lower.includes('saved') || lower.includes('my images')) && tools?.has('list-images')) {

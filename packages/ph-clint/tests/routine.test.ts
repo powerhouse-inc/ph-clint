@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from '@jest/globals';
 import { createRoutine } from '../src/core/routine.js';
 import { defineTrigger } from '../src/core/trigger.js';
 import { defineCommand } from '../src/core/command.js';
-import { createMemoryWorkspace } from '../src/core/workspace.js';
+import { createMemoryWorkdirStore } from '../src/core/store.js';
 import { createEventBus } from '../src/core/events.js';
 import { z } from 'zod';
 import type { Routine } from '../src/core/types.js';
@@ -175,7 +175,7 @@ describe('createRoutine', () => {
       routine = makeRoutine({
         triggers: [trigger],
         commands: new Map([['build', buildCmd]]),
-        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
       });
       routine.start();
       await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT));
@@ -358,7 +358,7 @@ describe('createRoutine', () => {
       routine = makeRoutine({
         triggers: [trigger],
         context: {
-          workspace: createMemoryWorkspace(),
+          workspace: createMemoryWorkdirStore(),
           config: { watchDir: './src' },
           workdir: '',
           stdout: () => {},
@@ -405,7 +405,7 @@ describe('createRoutine', () => {
       routine = makeRoutine({
         triggers: [trigger],
         commands: new Map([['check', checkCmd]]),
-        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
         eventBus: bus,
       });
       routine.start();
@@ -600,7 +600,7 @@ describe('createRoutine', () => {
       });
 
       routine.setContext({
-        workspace: createMemoryWorkspace(),
+        workspace: createMemoryWorkdirStore(),
         config: { key: 'updated-value' },
         workdir: '',
         stdout: () => {},

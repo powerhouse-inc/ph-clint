@@ -1,8 +1,8 @@
 import { describe, it, expect } from '@jest/globals';
-import { createMemoryWorkspace } from 'ph-clint';
+import { createMemoryWorkdirStore } from 'ph-clint';
 import { greet } from '../src/commands/greet.js';
 
-const ctx = { workdir: '', workspace: createMemoryWorkspace(), config: {} };
+const ctx = { workdir: '', workspace: createMemoryWorkdirStore(), config: {} };
 
 describe('greet command', () => {
   describe('definition', () => {

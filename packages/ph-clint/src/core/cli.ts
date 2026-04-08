@@ -15,7 +15,7 @@ import type {
 } from './types.js';
 import { formatStreamChunk } from './stream.js';
 import { getSchemaFields } from './schema.js';
-import { createMemoryWorkspace, createWorkspace } from './workspace.js';
+import { createMemoryWorkdirStore, createWorkdirStore } from './store.js';
 import { getConfigEnvVars, resolveConfig } from './config.js';
 import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
@@ -148,7 +148,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   function buildContext(base?: CommandContext): CommandContext {
     const ctx: CommandContext = base ?? {
       workdir: process.cwd(),
-      workspace: createMemoryWorkspace(),
+      workspace: createMemoryWorkdirStore(),
       config: options.configSchema
         ? (options.configSchema.parse({}) as Record<string, unknown>)
         : {},
@@ -498,7 +498,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
 
     // Context store lives at {workdir}/.ph/{cli-name}/
     const workspacePath = `${workdir}/.ph/${options.name}`;
-    const workspace = createWorkspace(workspacePath);
+    const workspace = createWorkdirStore(workspacePath);
 
     // Resolve config through 6 layers
     const config = options.configSchema

@@ -10,7 +10,7 @@ import { resolve } from 'path';
 import {
   defineCli,
   formatStreamChunk,
-  createMemoryWorkspace,
+  createMemoryWorkdirStore,
 } from 'ph-clint';
 import type { StreamChunk, AgentProvider, AgentContext } from 'ph-clint';
 import { ascii } from '../src/commands/ascii.js';
@@ -51,7 +51,7 @@ describeWithKey('Mastra agent E2E', () => {
       config: {},
       cliName: 'assist',
       cliVersion: '1.0.0',
-      context: { workdir: '/tmp/ph-clint-test-e2e', workspace: createMemoryWorkspace(), config: {} },
+      context: { workdir: '/tmp/ph-clint-test-e2e', workspace: createMemoryWorkdirStore(), config: {} },
       commands,
     };
     const m = createMastraHelpers(ctx);

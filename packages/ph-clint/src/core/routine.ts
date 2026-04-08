@@ -11,7 +11,7 @@ import type {
 } from './types.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
-import { createMemoryWorkspace } from './workspace.js';
+import { createMemoryWorkdirStore } from './store.js';
 
 export interface RoutineOptions {
   triggers: Trigger[];
@@ -35,7 +35,7 @@ export function createRoutine(options: RoutineOptions): Routine {
   const bus = options.eventBus ?? createEventBus();
   const pm = options.processManager ?? createProcessManager();
   let ctx: CommandContext = options.context ?? {
-    workspace: createMemoryWorkspace(),
+    workspace: createMemoryWorkdirStore(),
     config: {},
     workdir: '',
     stdout: console.log,

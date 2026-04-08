@@ -1,13 +1,13 @@
 import { readFile, writeFile, rename, mkdir, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import type { Workspace } from './types.js';
+import type { WorkdirStore } from './types.js';
 
 /**
- * Create a file-based workspace rooted at the given directory.
+ * Create a file-based workdir store rooted at the given directory.
  * Each key maps to a JSON file within that directory.
  */
-export function createWorkspace(basePath: string): Workspace {
+export function createWorkdirStore(basePath: string): WorkdirStore {
   return {
     basePath,
     async read<T>(key: string, fallback: T): Promise<T> {
@@ -39,9 +39,9 @@ export function createWorkspace(basePath: string): Workspace {
 }
 
 /**
- * Create an in-memory workspace for testing or when no persistence is needed.
+ * Create an in-memory workdir store for testing or when no persistence is needed.
  */
-export function createMemoryWorkspace(basePath = ''): Workspace {
+export function createMemoryWorkdirStore(basePath = ''): WorkdirStore {
   const store = new Map<string, unknown>();
   return {
     basePath,

@@ -3,7 +3,7 @@ import {
   defineCli,
   defineCommand,
   defineTrigger,
-  createMemoryWorkspace,
+  createMemoryWorkdirStore,
   createEventBus,
   createProcessManager,
   createRoutine,
@@ -265,7 +265,7 @@ describe('Routine', () => {
       idleInterval: 50,
       context: {
         workdir: '',
-        workspace: createMemoryWorkspace(),
+        workspace: createMemoryWorkdirStore(),
         config: {},
       },
     });

@@ -16,8 +16,8 @@ export type InferConfig<T extends z.ZodType> = z.infer<T>;
  * A key-value store for CLI-managed state.
  * Backed by `{workdir}/.ph/{cli-name}/` on disk, or in-memory for testing.
  */
-export interface Workspace {
-  /** Root directory of this workspace (e.g. `{workdir}/.ph/{cli-name}/`). */
+export interface WorkdirStore {
+  /** Root directory of this store (e.g. `{workdir}/.ph/{cli-name}/`). */
   readonly basePath: string;
   read<T>(key: string, fallback: T): Promise<T>;
   write(key: string, value: unknown): Promise<void>;
@@ -31,7 +31,7 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   /** The resolved working directory — where the user/agent collaborate on data. */
   workdir: string;
   /** Key-value store for CLI-managed state at {workdir}/.ph/{cli-name}/. */
-  workspace: Workspace;
+  workspace: WorkdirStore;
   config: TConfig;
   /** Write progressive output during command execution (raw — no trailing newline added). */
   stdout: (text: string) => void;

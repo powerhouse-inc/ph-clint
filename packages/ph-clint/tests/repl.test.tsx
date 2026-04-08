@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { render } from 'ink-testing-library';
 import { z } from 'zod';
 import { defineCommand, defineCli, createReplSession } from '../src/index.js';
-import { createMemoryWorkspace } from '../src/core/workspace.js';
+import { createMemoryWorkdirStore } from '../src/core/store.js';
 import { Repl } from '../src/interactive/repl.js';
 import type { ReplSession } from '../src/interactive/types.js';
 
@@ -61,7 +61,7 @@ function makeSession() {
 
   return createReplSession({
     cli,
-    context: { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+    context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
   });
 }
 
@@ -411,7 +411,7 @@ describe('Repl component', () => {
       });
       const slowSession = createReplSession({
         cli,
-        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
       });
       const { stdin, lastFrame, unmount } = render(<Repl session={slowSession} />);
 
@@ -728,7 +728,7 @@ describe('Repl component', () => {
 
       return createReplSession({
         cli,
-        context: { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
       });
     }
 
