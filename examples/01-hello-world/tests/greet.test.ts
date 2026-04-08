@@ -2,7 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import { createMemoryWorkdirStore } from 'ph-clint';
 import { greet } from '../src/commands/greet.js';
 
-const ctx = { workdir: '', workspace: createMemoryWorkdirStore(), config: {} };
+const ctx = { workdir: '', workspace: createMemoryWorkdirStore(), stdout: () => {}, config: {} };
 
 describe('greet command', () => {
   describe('definition', () => {

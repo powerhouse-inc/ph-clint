@@ -28,6 +28,7 @@ function createContext(workspace: ReturnType<typeof createMockWorkspace>, config
   return {
     workdir: '',
     workspace,
+    stdout: () => {},
     config: {
       defaultPriority: 'medium' as const,
       ...configOverrides,

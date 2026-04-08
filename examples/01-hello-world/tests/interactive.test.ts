@@ -16,7 +16,7 @@ describe('Interactive mode', () => {
   function makeSession() {
     return createReplSession({
       cli,
-      context: { workdir: '', workspace: createMemoryWorkdirStore(), config: {} },
+      context: { workdir: '', workspace: createMemoryWorkdirStore(), stdout: () => {}, config: {} },
     });
   }
 
@@ -46,10 +46,10 @@ describe('Interactive mode', () => {
     expect(result.text).toContain('name');
   });
 
-  it('/help lists the greet command', async () => {
+  it('/cli-docs lists the greet command', async () => {
     const session = makeSession();
-    const result = await session.processInput('/help');
-    expect(result.type).toBe('help');
+    const result = await session.processInput('/cli-docs');
+    expect(result.type).toBe('result');
     expect(result.text).toContain('greet');
     expect(result.text).toContain('Greet someone by name');
   });
@@ -70,7 +70,7 @@ describe('Interactive mode', () => {
     const session = makeSession();
     const completions = session.getCompletions('/');
     expect(completions).toContain('/greet');
-    expect(completions).toContain('/help');
+    expect(completions).toContain('/cli-docs');
     expect(completions).toContain('/exit');
   });
 

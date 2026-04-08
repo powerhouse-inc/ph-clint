@@ -10,10 +10,10 @@ metadata:
 
 ## FPM.00.1 Inspect existing projects
 
-- Use the `list-fusion-projects` tool to get all existing Fusion projects
+- Use the `fusion-projects-list` tool to get all existing Fusion projects
 - Note how many projects already exist in the system and what the project paths are
 - Verify that NO project is currently in "running" state
-- If a project is running, use `shutdown-fusion-project` to stop it first
+- If a project is running, use `fusion-project-stop` to stop it first
 
 ## FPM.00.2 Generate unique project name
 
@@ -23,10 +23,10 @@ metadata:
 
 ## FPM.00.3 Initialize the project
 
-- Use `init-fusion-project` with the generated project name
+- Use `fusion-project-init` with the generated project name
 - Wait for the initialization to complete
 - Capture the project path returned by the tool
-- Use `list-fusion-projects` to confirm the new project appears in the list and see its status
+- Use `fusion-projects-list` to confirm the new project appears in the list and see its status
 
 # FPM.01 Obtain a Switchboard URL for Fusion
 
@@ -76,13 +76,13 @@ Attach the Switchboard URL to the task outcome and/or instructions to the releva
 
 ## FPM.02.1 Start the project and wait until it's ready
 
-- Use `run-fusion-project` with the project name and switchboard URL from steps FPM.01 and FPM.02
+- Use `fusion-project-start --workdir <name> --switchboardUrl <url>` with the project name and switchboard URL from steps FPM.01 and FPM.02
 - The project will start running `pnpm dev` in the background
 - Wait for the command to be accepted
-- Use `is-fusion-project-ready` repeatedly to check if the project is ready
+- Use `fusion-project-ps` repeatedly to check if the project is ready
 - Poll every 2-3 seconds for up to 90 seconds
-- The project is ready when Vetra Connect and Switchboard are both running. Use `get-fusion-project-status` to get the current status.
-- Use `get-fusion-project-logs` to capture the startup logs
+- The project is ready when the Next.js dev server is running. Use `fusion-project-ps` to get the current status.
+- Use `fusion-project-logs` to capture the startup logs
 
 ## FPM.02.2 Parse and verify the Fusion endpoint
 
@@ -94,14 +94,14 @@ Attach the fusion URL to the relevant task instructions or comments in your WBS.
 
 ## FPM.03.1 Verify project is running
 
-- Use `get-fusion-project-status` with the project name
+- Use `fusion-project-ps` with the project name
 - Confirm the project is currently in "running" state
 - If not running, skip to the final status step
 
 ## FPM.03.2 Shutdown the project
 
-- Use `shutdown-fusion-project` with the project name
+- Use `fusion-project-stop` with the project name
 - This will stop the Next.js service
 - Wait for the shutdown command to complete
-- Use `get-fusion-project-status` to confirm the project is now "stopped"
-- Optionally get final logs with `get-fusion-project-logs`
+- Use `fusion-project-ps` to confirm the project is now "stopped"
+- Optionally get final logs with `fusion-project-logs`

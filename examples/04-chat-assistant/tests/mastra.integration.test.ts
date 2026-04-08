@@ -51,7 +51,7 @@ describeWithKey('Mastra agent E2E', () => {
       config: {},
       cliName: 'assist',
       cliVersion: '1.0.0',
-      context: { workdir: '/tmp/ph-clint-test-e2e', workspace: createMemoryWorkdirStore(), config: {} },
+      context: { workdir: '/tmp/ph-clint-test-e2e', workspace: createMemoryWorkdirStore(), stdout: () => {}, config: {} },
       commands,
     };
     const m = createMastraHelpers(ctx);
@@ -125,10 +125,8 @@ describeWithKey('Mastra agent E2E', () => {
       version: '1.0.0',
       description: 'Test assistant',
       commands,
-      agent: {
-        default: async () => agentProvider,
-      },
     });
+    cli.setAgentLoader(async () => agentProvider);
 
     const output: string[] = [];
     await cli.run(['node', 'assist', 'Say "hello world" and nothing else.'], {
@@ -148,11 +146,9 @@ describeWithKey('Mastra agent E2E', () => {
       version: '1.0.0',
       description: 'Test assistant',
       commands,
-      agent: {
-        default: async () => agentProvider,
-      },
       interactive: { welcome: 'Hi!' },
     });
+    cli.setAgentLoader(async () => agentProvider);
 
     const output: string[] = [];
     await cli.run(['node', 'assist', '-i'], {

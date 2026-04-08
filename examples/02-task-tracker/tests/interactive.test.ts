@@ -37,7 +37,7 @@ describe('Interactive mode', () => {
     workspace = createMemoryWorkdirStore();
     session = createReplSession({
       cli,
-      context: { workdir: '', workspace, config: { defaultPriority: 'medium' } },
+      context: { workdir: '', workspace, stdout: () => {}, config: { defaultPriority: 'medium' } },
     });
   });
 
@@ -110,9 +110,9 @@ describe('Interactive mode', () => {
     expect(result.text).toContain('Removed');
   });
 
-  it('/help lists all commands', async () => {
-    const result = await session.processInput('/help');
-    expect(result.type).toBe('help');
+  it('/cli-docs lists all commands', async () => {
+    const result = await session.processInput('/cli-docs');
+    expect(result.type).toBe('result');
     expect(result.text).toContain('add');
     expect(result.text).toContain('list');
     expect(result.text).toContain('done');

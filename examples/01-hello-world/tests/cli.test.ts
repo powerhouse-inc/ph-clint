@@ -30,8 +30,9 @@ describe('hello CLI', () => {
 
     it('lists all registered commands', () => {
       const commands = cli.listCommands();
-      expect(commands).toHaveLength(1);
-      expect(commands[0]!.id).toBe('greet');
+      expect(commands).toHaveLength(2);
+      const ids = commands.map(c => c.id).sort();
+      expect(ids).toEqual(['cli-docs', 'greet']);
     });
   });
 

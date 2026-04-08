@@ -1,17 +1,35 @@
 import path from 'node:path';
+import { z } from 'zod';
 import { defineCli, defineService } from 'ph-clint';
 import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, type Config } from './config.js';
-import { initProject } from './commands/init-project.js';
+import { reactorPackageInit } from './commands/reactor-package-init.js';
+import { reactorPackagesList } from './commands/reactor-packages-list.js';
+import { fusionProjectInit } from './commands/fusion-project-init.js';
+import { fusionProjectsList } from './commands/fusion-projects-list.js';
 import { createAgent } from './agents/agent-rupert.js';
 
 // ── Service definitions ──────────────────────────────────────────
 
+const vetraParams = z.object({
+  watch: z.boolean().default(true).describe('Enable file watching'),
+  connectPort: z.coerce.number().optional().describe('Connect Studio port (overrides config)'),
+  switchboardPort: z.coerce.number().optional().describe('Vetra Switchboard port (overrides config)'),
+});
+
 const vetra = defineService<Config>({
   id: 'vetra',
   label: 'Vetra Dev Server',
-  command: 'ph vetra --watch',
-  env: (config) => ({
-    PORT: String(config.switchboardPort),
+  command: (params) => {
+    const parts = ['ph', 'vetra'];
+    if (params?.watch !== false) parts.push('--watch');
+    if (params?.connectPort) parts.push('--connect-port', String(params.connectPort));
+    if (params?.switchboardPort) parts.push('--switchboard-port', String(params.switchboardPort));
+    return parts.join(' ');
+  },
+  paramsSchema: vetraParams,
+  env: (config, params) => ({
+    // PORT workaround: https://github.com/powerhouse-inc/powerhouse/commit/9830c16b
+    PORT: String(params?.switchboardPort ?? config.switchboardPort),
     HOST: '0.0.0.0',
     NODE_ENV: 'development',
     NODE_OPTIONS: '--max-old-space-size=4096',
@@ -40,6 +58,36 @@ const vetra = defineService<Config>({
   restart: { enabled: true, maxRetries: 3, delay: 5_000 },
 });
 
+const fusionProjectParams = z.object({
+  fusionPort: z.coerce.number().default(8000).describe('Next.js dev server port'),
+  switchboardUrl: z
+    .string()
+    .default('http://localhost:4001/graphql')
+    .describe('Switchboard backend URL'),
+});
+
+const fusionProject = defineService<Config>({
+  id: 'fusion-project',
+  label: 'Fusion Dev Server',
+  command: (params) => `pnpm dev -p ${params?.fusionPort ?? 8000}`,
+  paramsSchema: fusionProjectParams,
+  env: (_config, params) => ({
+    NODE_ENV: 'development',
+    PH_SWITCHBOARD_URL: String(params?.switchboardUrl ?? 'http://localhost:4001/graphql'),
+  }),
+  readiness: {
+    patterns: [
+      {
+        name: 'fusion-port',
+        pattern: /Local:\s*http:\/\/localhost:(\d+)/,
+        captures: { 'fusion-url': 1 },
+      },
+    ],
+    timeout: 60_000,
+  },
+  shutdown: { signal: 'SIGTERM', timeout: 10_000 },
+});
+
 // ── CLI ──────────────────────────────────────────────────────────
 
 export const cli = defineCli({
@@ -47,8 +95,8 @@ export const cli = defineCli({
   version: CLI_VERSION,
   description: 'Vetra Mastra — Reactor development with AI agent',
   configSchema,
-  commands: [initProject],
-  services: [vetra],
+  commands: [reactorPackageInit, reactorPackagesList, fusionProjectInit, fusionProjectsList],
+  services: [vetra, fusionProject],
   skillSources: [
     path.join(PROJECT_ROOT, 'skills'),
     path.join(PROJECT_ROOT, 'dist', 'skills'),
@@ -98,7 +146,9 @@ export const cli = defineCli({
         '',
         `  ${D}Agent:${R} ${mode}`,
         `  ${D}Workdir:${R} ${workdir}`,
-        `  ${D}/init-project${R} new project  ${D}/vetra-ps${R} services`,
+        `  ${D}/reactor-package-init${R} new project   ${D}/reactor-packages-list${R} browse`,
+        `  ${D}/fusion-project-init${R} new fusion    ${D}/fusion-projects-list${R} browse`,
+        `  ${D}/vetra-start${R} dev server  ${D}/fusion-project-start${R} fusion server`,
         '',
       ].join('\n');
     },

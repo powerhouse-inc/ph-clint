@@ -63,6 +63,7 @@ describe('Interactive mode', () => {
     context = {
       workdir: '',
       workspace: createMemoryWorkdirStore(),
+      stdout: () => {},
       config: { watchDir: './src', buildCommand: 'echo test-build' },
       processes: processManager,
     };
@@ -88,9 +89,9 @@ describe('Interactive mode', () => {
     expect(result.text).toContain('Build succeeded');
   });
 
-  it('/help lists commands', async () => {
-    const result = await session.processInput('/help');
-    expect(result.type).toBe('help');
+  it('/cli-docs lists commands', async () => {
+    const result = await session.processInput('/cli-docs');
+    expect(result.type).toBe('result');
     expect(result.text).toContain('build');
     expect(result.text).toContain('status');
   });
@@ -115,7 +116,7 @@ describe('Headless interactive mode via run()', () => {
       stderr: () => {},
       exit: () => {},
       interactiveInput: (async function* () {
-        yield '/help';
+        yield '/cli-docs';
         yield '/exit';
       })(),
     });

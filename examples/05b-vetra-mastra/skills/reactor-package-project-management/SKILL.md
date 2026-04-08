@@ -10,10 +10,10 @@ metadata:
 
 ## RPPM.00.1 Inspect existing projects
 
-- Use the `list-projects` tool to get all existing projects
+- Use the `reactor-packages-list` tool to get all existing projects
 - Note how many projects already exist in the system and what the project paths are
 - Verify that NO project is currently in "running" state
-- If a project is running, use `shutdown-project` to stop it first
+- If a project is running, use `vetra-stop` to stop it first
 
 ## RPPM.00.2 Generate unique project name
 
@@ -23,22 +23,22 @@ metadata:
 
 ## RPPM.00.3 Initialize the project
 
-- Use `init-project` with the generated project name
+- Use `reactor-package-init` with the generated project name
 - Wait for the initialization to complete
 - Capture the project path returned by the tool
-- Use `list-projects` to confirm the new project appears in the list and see its status
+- Use `reactor-packages-list` to confirm the new project appears in the list and see its status
 
 # RPPM.01 Run the Reactor Package project and capture Vetra MCP endpoint
 
 ## RPPM.01.1 Start the Reactor Package project and wait until it's ready
 
-- Use `run-project` with the project name from step 01
+- Use `vetra-start` with the project name from step 01
 - The project will start running `ph vetra --watch` in the background
 - Wait for the command to be accepted
-- Use `is-project-ready` repeatedly to check if the project is ready
+- Use `vetra-ps` repeatedly to check if the project is ready
 - Poll every 2-3 seconds for up to 90 seconds
-- The project is ready when Vetra Connect and Switchboard are both running. Use `get-project-status` to get the current status.
-- Use `get-project-logs` to capture the startup logs
+- The project is ready when Vetra Connect and Switchboard are both running. Use `vetra-ps` to get the current status.
+- Use `vetra-logs` to capture the startup logs
 
 ## RPPM.01.2 Parse and verify the Vetra endpoints
 
@@ -59,14 +59,14 @@ models you will yourself create.
 
 ## RPPM.02.1 Verify project is running
 
-- Use `get-project-status` with the project name
+- Use `vetra-ps` with the project name
 - Confirm the project is currently in "running" state
 - If not running, skip to the final status step
 
 ## RPPM.02.2 Shutdown the project
 
-- Use `shutdown-project` with the project name
+- Use `vetra-stop` with the project name
 - This will stop both Vetra Connect and Switchboard services
 - Wait for the shutdown command to complete
-- Use `get-project-status` to confirm the project is now "stopped"
-- Optionally get final logs with `get-project-logs`
+- Use `vetra-ps` to confirm the project is now "stopped"
+- Optionally get final logs with `vetra-logs`

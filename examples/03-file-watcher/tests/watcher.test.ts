@@ -266,6 +266,7 @@ describe('Routine', () => {
       context: {
         workdir: '',
         workspace: createMemoryWorkdirStore(),
+        stdout: () => {},
         config: {},
       },
     });
@@ -393,7 +394,7 @@ describe('CLI integration', () => {
     });
 
     expect(cli.name).toBe('watcher');
-    expect(cli.listCommands()).toHaveLength(4); // 3 commands + built-in config
+    expect(cli.listCommands()).toHaveLength(5); // 3 commands + built-in config + cli-docs
   });
 
   it('executes build command with process manager', async () => {
