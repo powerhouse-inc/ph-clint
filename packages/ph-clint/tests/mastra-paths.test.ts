@@ -40,10 +40,7 @@ describe('getMastraPaths', () => {
     const paths = getMastraPaths(store);
     const workdir = resolve('/project');
 
-    expect(paths.allowedPaths).toEqual([
-      join(workdir, '.ph', 'mycli', '.mastra', 'skills'),
-      join(workdir, '.ph', 'mycli', 'skills'),
-    ]);
+    expect(paths.allowedPaths).toEqual([workdir]);
   });
 
   it('returns empty pre-packaged skills when option omitted', () => {

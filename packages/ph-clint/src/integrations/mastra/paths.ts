@@ -23,7 +23,7 @@ export interface MastraPaths {
   workspaceBasePath: string;
   /** Absolute skill paths: pre-packaged + runtime glob. */
   skillPaths: string[];
-  /** Allowed paths for LocalFilesystem containment. */
+  /** Allowed paths for LocalFilesystem containment (the workdir itself). */
   allowedPaths: string[];
 }
 
@@ -51,10 +51,7 @@ export function getMastraPaths(store: WorkdirStore, options?: MastraPathOptions)
 
   const skillPaths = [...prePackaged, runtimeGlob];
 
-  const allowedPaths = [
-    store.getStoreFolder('.mastra/skills'),
-    store.getStoreFolder('skills'),
-  ];
+  const allowedPaths = [workspaceBasePath];
 
   return {
     rootFolder,
