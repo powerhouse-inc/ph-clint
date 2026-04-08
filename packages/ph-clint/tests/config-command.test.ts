@@ -122,6 +122,49 @@ describe('createConfigCommand', () => {
       expect(result.text).toContain('defaultPriority');
     });
 
+    it('reads from scope user when value is set', async () => {
+      // Write to user config first, then read
+      const cmd = makeCommand();
+      await cmd.execute(
+        { name: 'defaultPriority', write: 'high', scope: 'user' },
+        makeContext(),
+      );
+      const result = await cmd.execute(
+        { name: 'defaultPriority', scope: 'user' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('"high"');
+      expect(result.text).toContain('user');
+
+      // Clean up: remove from user config
+      await cmd.execute(
+        { name: 'defaultPriority', remove: true, scope: 'user' },
+        makeContext(),
+      );
+    });
+
+    it('shows user config as source in resolved read (no scope)', async () => {
+      const cmd = makeCommand();
+      // Write to user config
+      await cmd.execute(
+        { name: 'defaultPriority', write: 'low', scope: 'user' },
+        makeContext(),
+      );
+      // Read without scope — resolveSource should return 'user'
+      const result = await cmd.execute(
+        { name: 'defaultPriority' },
+        makeContext(),
+      ) as { text: string };
+      expect(result.text).toContain('"low"');
+      expect(result.text).toContain('user');
+
+      // Clean up
+      await cmd.execute(
+        { name: 'defaultPriority', remove: true, scope: 'user' },
+        makeContext(),
+      );
+    });
+
     it('reads from scope env', async () => {
       process.env.TASKS_DEFAULT_PRIORITY = 'low';
       const cmd = makeCommand();
@@ -423,6 +466,20 @@ describe('createConfigCommand', () => {
       expect(result.text).toContain('"high"');
       // Fields not set in env show as (not set)
       expect(result.text).toContain('(not set)');
+    });
+
+    it('shows <error> when config resolution fails for a field', async () => {
+      // Schema with a required field and no default — resolveConfig will throw
+      const strictSchema = z.object({
+        apiKey: z.string().describe('API key'),
+      });
+      const cmd = createConfigCommand({ cliName: 'strict', configSchema: strictSchema });
+      const result = await cmd.execute(
+        { list: true },
+        makeContext(),
+      ) as { text: string };
+      // resolveConfig fails because apiKey is required but not provided
+      expect(result.text).toContain('<error>');
     });
 
     it('rejects --list with --name', async () => {

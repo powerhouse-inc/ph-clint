@@ -64,30 +64,35 @@ export function createRoutine(options: RoutineOptions): Routine {
   }
 
   async function executeWorkItem(item: WorkItem): Promise<unknown> {
-    if (item.type === 'function') {
-      const fn = item.params.fn as () => Promise<unknown>;
-      return fn();
-    }
-
-    if (item.type === 'command') {
-      const commandId = item.params.commandId as string;
-      const args = (item.params.args ?? {}) as Record<string, unknown>;
-      const cmd = options.commands.get(commandId);
-      if (!cmd) {
-        throw new Error(`Unknown command: ${commandId}`);
+    switch (item.type) {
+      case 'function': {
+        const fn = item.params.fn as () => Promise<unknown>;
+        return fn();
       }
-      const parsed = cmd.inputSchema.parse(args);
-      // Provide extended context with routine, processes, emit
-      const extCtx: CommandContext = {
-        ...ctx,
-        routine: routine,
-        processes: pm,
-        emit: (event: string, data?: unknown) => bus.emit(event, data),
-      };
-      return cmd.execute(parsed, extCtx);
-    }
 
-    throw new Error(`Unknown work item type: ${item.type}`);
+      case 'command': {
+        const commandId = item.params.commandId as string;
+        const args = (item.params.args ?? {}) as Record<string, unknown>;
+        const cmd = options.commands.get(commandId);
+        if (!cmd) {
+          throw new Error(`Unknown command: ${commandId}`);
+        }
+        const parsed = cmd.inputSchema.parse(args);
+        // Provide extended context with routine, processes, emit
+        const extCtx: CommandContext = {
+          ...ctx,
+          routine: routine,
+          processes: pm,
+          emit: (event: string, data?: unknown) => bus.emit(event, data),
+        };
+        return cmd.execute(parsed, extCtx);
+      }
+
+      default: {
+        const _exhaustive: never = item.type;
+        throw new Error(`Unknown work item type: ${_exhaustive}`);
+      }
+    }
   }
 
   async function loop(): Promise<void> {

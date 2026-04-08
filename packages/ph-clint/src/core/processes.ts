@@ -72,6 +72,7 @@ export function createProcessManager(): ProcessManager {
         finish(code === 0, chunks.join(''));
       });
 
+      /* istanbul ignore next -- with shell: true, failures come via exit code, not error event */
       child.on('error', (err) => {
         finish(false, err.message);
       });

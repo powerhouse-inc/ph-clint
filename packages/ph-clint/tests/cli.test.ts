@@ -190,6 +190,24 @@ describe('defineCli', () => {
       expect(help).toContain('-i, --interactive');
     });
 
+    it('registers -i option on Commander when interactive is configured and command is run', async () => {
+      const interactiveCli = defineCli({
+        name: 'int-test',
+        version: '1.0.0',
+        description: 'Interactive test',
+        commands: [echo],
+        interactive: { welcome: 'Hello' },
+      });
+      const output: string[] = [];
+      let exitCode: number | undefined;
+      await interactiveCli.run(['node', 'int-test', 'echo', '--message', 'hi'], {
+        stdout: (msg) => output.push(msg),
+        stderr: () => {},
+        exit: (code) => { exitCode = code; },
+      });
+      expect(output).toEqual(['hi']);
+    });
+
     it('generates command-level help', () => {
       const help = cli.generateCommandHelp('echo');
       expect(help).toContain('--message');
@@ -289,6 +307,23 @@ describe('defineCli', () => {
       expect(cli.configEnvVars()).toEqual([]);
     });
 
+    it('includes required field marker in config help section', () => {
+      const reqCli = defineCli({
+        name: 'req',
+        version: '0.0.1',
+        description: 'Required config CLI',
+        configSchema: z.object({
+          apiKey: z.string().describe('API key'),
+        }),
+        commands: [echo],
+      });
+      const help = reqCli.generateHelp();
+      expect(help).toContain('(required)');
+      expect(help).toContain('API_KEY');
+      // No default marker for required fields
+      expect(help).not.toContain('(default:');
+    });
+
     it('exposes interactive config when provided', () => {
       const interactiveCli = defineCli({
         name: 'int',
@@ -385,6 +420,42 @@ describe('defineCli', () => {
       await cli.stopRoutine?.();
       // should not throw
     });
+
+    it('stopRoutine stops a running routine', async () => {
+      const triggerCli = defineCli({
+        name: 'stop-routine-test',
+        version: '0.0.1',
+        description: 'Stop routine test',
+        commands: [
+          defineCommand({
+            id: 'start-it',
+            description: 'Start the routine',
+            inputSchema: z.object({}),
+            execute: async (_, { routine }) => {
+              routine!.start();
+              return 'ok';
+            },
+          }),
+        ],
+        triggers: [{
+          id: 'tick',
+          type: 'condition',
+          poll: async () => null,
+        }],
+        routine: { tickInterval: 50, idleInterval: 20 },
+      });
+
+      const output: string[] = [];
+      await triggerCli.run(['node', 'test', 'start-it'], {
+        stdout: (msg: string) => output.push(msg),
+        stderr: () => {},
+        exit: () => {},
+      });
+      // The routine was started by the command and stopped by run() cleanup.
+      // Now call stopRoutine explicitly — should be safe (already stopped).
+      await triggerCli.stopRoutine!();
+    });
+
   });
 
   describe('edge cases', () => {
@@ -665,6 +736,28 @@ describe('defineCli', () => {
       // Command mode is one-shot — routine should be stopped after run() returns
       expect(cap.output).toContain('Started');
     });
+
+    it('stopRoutine stops ticking after run()', async () => {
+      let tickCount = 0;
+      const triggerCli = defineCli({
+        name: 'stop-test',
+        version: '0.0.1',
+        description: 'Stop test',
+        commands: [echo],
+        triggers: [{
+          id: 'counter',
+          type: 'condition',
+          poll: async () => { tickCount++; return null; },
+        }],
+        routine: { tickInterval: 50, idleInterval: 50 },
+      });
+
+      const cap = capture();
+      await triggerCli.run(['node', 'test', 'echo', '--text', 'hi'], cap.options);
+      const countAfterRun = tickCount;
+      await new Promise((r) => setTimeout(r, 200));
+      expect(tickCount).toBe(countAfterRun);
+    });
     });
 
     describe('workdir and config flags', () => {
@@ -791,6 +884,84 @@ describe('defineCli', () => {
         expect(receivedConfig.priority).toBe('medium');
       });
 
+      it('--workdir flag in argv sets workdir', async () => {
+        let receivedWorkdir: string | undefined;
+        const wdCli = defineCli({
+          name: 'wd-test',
+          version: '0.0.1',
+          description: 'Workdir test',
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check workdir',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                receivedWorkdir = ctx.workdir;
+                return 'ok';
+              },
+            }),
+          ],
+        });
+
+        const cap = capture();
+        await wdCli.run(['node', 'test', '--workdir', tmpDir, 'check'], cap.options);
+        expect(receivedWorkdir).toBe(tmpDir);
+      });
+
+      it('-w short flag in argv sets workdir', async () => {
+        let receivedWorkdir: string | undefined;
+        const wdCli = defineCli({
+          name: 'wd-test',
+          version: '0.0.1',
+          description: 'Workdir test',
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check workdir',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                receivedWorkdir = ctx.workdir;
+                return 'ok';
+              },
+            }),
+          ],
+        });
+
+        const cap = capture();
+        await wdCli.run(['node', 'test', '-w', tmpDir, 'check'], cap.options);
+        expect(receivedWorkdir).toBe(tmpDir);
+      });
+
+      it('-c short flag in argv loads config file', async () => {
+        const configFile = join(tmpDir, 'short.json');
+        await writeFile(configFile, JSON.stringify({ priority: 'high' }));
+
+        let receivedConfig: Record<string, unknown> = {};
+        const cfgCli = defineCli({
+          name: 'cfg-test',
+          version: '0.0.1',
+          description: 'Config test',
+          configSchema: z.object({
+            priority: z.enum(['low', 'medium', 'high']).default('low'),
+          }),
+          commands: [
+            defineCommand({
+              id: 'check',
+              description: 'Check config',
+              inputSchema: z.object({}),
+              execute: async (_, ctx) => {
+                receivedConfig = ctx.config;
+                return 'ok';
+              },
+            }),
+          ],
+        });
+
+        const cap = capture();
+        await cfgCli.run(['node', 'test', '-c', configFile, 'check'], cap.options);
+        expect(receivedConfig.priority).toBe('high');
+      });
+
       it('creates workspace store at {workdir}/.ph/{cli-name}/', async () => {
         let basePath: string | undefined;
         const wdCli = defineCli({
@@ -834,8 +1005,16 @@ describe('defineCli', () => {
         };
       }
 
-      function agentFactory(agent: AgentProvider) {
-        return { default: async () => agent };
+      function cliWithAgent(agent: AgentProvider, extra?: Partial<Parameters<typeof defineCli>[0]>) {
+        const cli = defineCli({
+          name: 'assist',
+          version: '1.0.0',
+          description: 'Assistant',
+          commands: [echo],
+          ...extra,
+        });
+        cli.setAgentLoader(async () => agent);
+        return cli;
       }
 
       it('routes positional text to agent when agent factory is set', async () => {
@@ -845,13 +1024,7 @@ describe('defineCli', () => {
           ],
         });
 
-        const agentCli = defineCli({
-          name: 'assist',
-          version: '1.0.0',
-          description: 'Assistant',
-          commands: [echo],
-          agent: agentFactory(agent),
-        });
+        const agentCli = cliWithAgent(agent);
 
         const cap = capture();
         await agentCli.run(
@@ -872,13 +1045,7 @@ describe('defineCli', () => {
           },
         };
 
-        const agentCli = defineCli({
-          name: 'assist',
-          version: '1.0.0',
-          description: 'Assistant',
-          commands: [echo],
-          agent: agentFactory(agent),
-        });
+        const agentCli = cliWithAgent(agent);
 
         const cap = capture();
         await agentCli.run(
@@ -890,13 +1057,7 @@ describe('defineCli', () => {
 
       it('still runs subcommands normally', async () => {
         const agent = createTestAgent({});
-        const agentCli = defineCli({
-          name: 'assist',
-          version: '1.0.0',
-          description: 'Assistant',
-          commands: [echo],
-          agent: agentFactory(agent),
-        });
+        const agentCli = cliWithAgent(agent);
 
         const cap = capture();
         await agentCli.run(
@@ -908,13 +1069,7 @@ describe('defineCli', () => {
 
       it('routes "help" to Commander, not to agent', async () => {
         const agent = createTestAgent({});
-        const agentCli = defineCli({
-          name: 'assist',
-          version: '1.0.0',
-          description: 'Assistant',
-          commands: [echo],
-          agent: agentFactory(agent),
-        });
+        const agentCli = cliWithAgent(agent);
 
         const cap = capture();
         await agentCli.run(
@@ -925,6 +1080,40 @@ describe('defineCli', () => {
         expect(cap.exitCode).toBe(0);
       });
 
+      it('adds --resume option to Commander when agent loader is set', async () => {
+        const agent = createTestAgent({});
+        const agentCli = cliWithAgent(agent);
+
+        // The --resume flag should be accepted without error
+        const cap = capture();
+        await agentCli.run(
+          ['node', 'assist', '--resume', 'thread-xyz', 'hello world'],
+          cap.options,
+        );
+        // Agent should have been invoked (not an error)
+        expect(cap.output.join('')).toContain('Echo: hello world');
+      });
+
+      it('passes resume from RunOptions to agent', async () => {
+        let receivedThreadId: string | undefined;
+        const agent: AgentProvider = {
+          id: 'test-assistant',
+          async *stream(_prompt, opts) {
+            receivedThreadId = opts?.threadId;
+            yield { type: 'text-delta', text: 'ok' };
+          },
+        };
+
+        const agentCli = cliWithAgent(agent);
+
+        const cap = capture();
+        await agentCli.run(
+          ['node', 'assist', 'test prompt'],
+          { ...cap.options, resume: 'thread-from-options' },
+        );
+        expect(receivedThreadId).toBe('thread-from-options');
+      });
+
       it('headless interactive routes bare text to agent', async () => {
         const agent = createTestAgent({
           'tell me a joke': [
@@ -932,14 +1121,7 @@ describe('defineCli', () => {
           ],
         });
 
-        const agentCli = defineCli({
-          name: 'assist',
-          version: '1.0.0',
-          description: 'Assistant',
-          commands: [echo],
-          agent: agentFactory(agent),
-          interactive: { welcome: 'Hi!' },
-        });
+        const agentCli = cliWithAgent(agent, { interactive: { welcome: 'Hi!' } });
 
         const output: string[] = [];
         await agentCli.run(['node', 'assist', '-i'], {

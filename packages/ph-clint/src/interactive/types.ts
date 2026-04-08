@@ -5,9 +5,11 @@ import type { AgentProvider, Cli, CommandContext } from '../core/types.js';
  */
 export interface ReplOutput {
   text: string;
-  type: 'result' | 'error' | 'help' | 'exit' | 'empty' | 'prompt';
+  type: 'result' | 'error' | 'help' | 'exit' | 'empty' | 'prompt' | 'panel';
   /** When type is 'prompt', the label to show instead of '> ' (e.g. "priority"). */
   promptLabel?: string;
+  /** When type is 'panel', the panel identifier to render (e.g. 'services'). */
+  panelId?: string;
 }
 
 /**

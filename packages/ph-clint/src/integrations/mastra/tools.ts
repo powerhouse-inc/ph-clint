@@ -9,10 +9,10 @@ import type { Command, CommandContext } from '../../core/types.js';
 export async function commandsToMastraTools(
   commands: Command[],
   context: CommandContext,
-): Promise<Record<string, unknown>> {
+) {
   const { createTool } = await import('@mastra/core/tools');
 
-  const tools: Record<string, unknown> = {};
+  const tools: Record<string, ReturnType<typeof createTool>> = {};
   for (const cmd of commands) {
     tools[cmd.id] = createTool({
       id: cmd.id,

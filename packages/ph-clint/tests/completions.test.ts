@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
-import { defineCommand, getCompletions, getGhostSuggestion, applyCompletion } from '../src/index.js';
+import { defineCommand, getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from '../src/index.js';
 
 describe('getCompletions', () => {
   const greet = defineCommand({
@@ -239,5 +239,74 @@ describe('getGhostSuggestion', () => {
   it('suggests enum value', () => {
     const ghost = getGhostSuggestion('/list --filter d', commands);
     expect(ghost).toBe('/list --filter done');
+  });
+
+  it('suggests closing quote inside open quote', () => {
+    const ghost = getGhostSuggestion('/greet --name "Alice', commands);
+    expect(ghost).toBe('/greet --name "Alice"');
+  });
+});
+
+describe('completions — coverage gaps', () => {
+  const greet = defineCommand({
+    id: 'greet',
+    description: 'Greet someone',
+    inputSchema: z.object({
+      name: z.string().describe('Name'),
+      loud: z.boolean().default(false).describe('Shout'),
+    }),
+    execute: async () => 'hi',
+  });
+
+  const list = defineCommand({
+    id: 'list',
+    description: 'List items',
+    inputSchema: z.object({
+      filter: z.enum(['all', 'open', 'done']).default('open').describe('Filter'),
+    }),
+    execute: async () => 'items',
+  });
+
+  const commands = [greet, list];
+
+  it('handles tab character in tokenizer', () => {
+    const result = getCompletions('/greet\t--na', commands);
+    expect(result).toEqual(['--name']);
+  });
+
+  it('returns empty tokens after bare / with trailing space', () => {
+    // `/ ` → tokens = ['/'], trailingSpace = true, cmdName = '' → no cmd → empty
+    const result = getCompletions('/ ', commands);
+    expect(result).toEqual([]);
+  });
+
+  it('completes value via prevToken for enum field', () => {
+    // `/list --filter d` where `d` is a partial value and `--filter` is prevToken
+    const result = getCompletions('/list --filter d', commands);
+    expect(result).toEqual(['done']);
+  });
+
+  it('returns empty suffix for unknown command', () => {
+    const result = getCompletionSuffix('--x', '/unknown --x', commands);
+    expect(result).toBe('');
+  });
+
+  it('returns space suffix for enum field completion', () => {
+    const result = getCompletionSuffix('--filter', '/list --filter', commands);
+    expect(result).toBe(' ');
+  });
+
+  it('unwraps enum through default/optional wrappers', () => {
+    const wrappedCmd = defineCommand({
+      id: 'wrapped',
+      description: 'Wrapped enum',
+      inputSchema: z.object({
+        status: z.enum(['active', 'inactive']).default('active').optional().describe('Status'),
+      }),
+      execute: async () => 'ok',
+    });
+    const result = getCompletions('/wrapped --status ', [wrappedCmd]);
+    expect(result).toContain('active');
+    expect(result).toContain('inactive');
   });
 });

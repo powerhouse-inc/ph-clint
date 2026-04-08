@@ -83,6 +83,13 @@ describe('parseReplInput', () => {
       raw: '/list',
     });
   });
+
+  it('returns unknown for bare "/" input (regex requires at least one non-space char)', () => {
+    expect(parseReplInput('/', commandIds)).toEqual({
+      type: 'unknown',
+      raw: '/',
+    });
+  });
 });
 
 describe('tokenizeArgs', () => {

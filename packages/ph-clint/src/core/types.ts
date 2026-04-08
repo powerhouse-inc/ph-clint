@@ -309,6 +309,8 @@ export interface ServiceManager {
   start(id: string): Promise<void>;
   stop(id: string): Promise<void>;
   list(): ServiceStatus[];
+  /** Get the static definition for a service. */
+  getDefinition(id: string): ServiceDefinition | undefined;
   logs(id: string, lines?: number): string;
   /** Watch a service's log file for new lines. Returns cleanup function. */
   watchLogs(id: string, onLine: (line: string) => void): () => void;
@@ -360,6 +362,16 @@ export interface AgentContext<TConfig = Record<string, unknown>> {
   commands: Command<any, any, any>[];
 }
 
+// ── Agent Loader ──────────────────────────────────────────────────
+
+/**
+ * A loader that dynamically imports and constructs the agent.
+ * Receives the full AgentContext (including auto-injected commands)
+ * and should return a configured AgentProvider.
+ */
+export type AgentLoader<TConfig = Record<string, unknown>> =
+  (ctx: AgentContext<TConfig>) => Promise<AgentProvider>;
+
 // ── CLI ───────────────────────────────────────────────────────────
 
 /**
@@ -379,10 +391,6 @@ export interface CliOptions<TSchema extends z.ZodType = z.ZodType<Record<string,
   triggers?: Trigger[];
   routine?: RoutineConfig;
   integrations?: Integration[];
-  /** Agent configuration — lazy factory, only called when agent is needed. */
-  agent?: {
-    default: (ctx: AgentContext<z.infer<TSchema>>) => Promise<AgentProvider>;
-  };
   /** Service definitions for the ServiceManager. */
   services?: ServiceDefinition<z.infer<TSchema>>[];
   /** Event handlers registered on the event bus. */
@@ -438,8 +446,10 @@ export interface Cli {
   description: string;
   configSchema?: z.ZodType;
   interactive?: InteractiveConfig<any> | ResolvedInteractiveConfig;
-  /** True when an agent factory is configured. */
+  /** True when an agent loader has been set. */
   hasAgent: boolean;
+  /** Set the agent loader — called lazily when the agent is first needed. */
+  setAgentLoader(loader: AgentLoader<any>): void;
   getCommand(id: string): Command | undefined;
   listCommands(): Command[];
   execute(

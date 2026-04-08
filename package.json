@@ -9,5 +9,10 @@
   ],
   "engines": {
     "node": ">=22.13.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "mastra>@mastra/deployer": "1.22.0"
+    }
   }
 }

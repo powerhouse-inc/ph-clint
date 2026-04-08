@@ -145,7 +145,57 @@ Commit the implementation. The commit history should tell a clear story: refacto
 
 The `ph-clint` library (`packages/ph-clint/`) is production-grade code — treat it accordingly. Maintain a minimum of 95% test coverage (statements, branches, functions, lines) across unit and integration tests combined. Prefer real execution over mocks: unit tests should exercise logic directly, integration tests should spawn real processes and verify actual stdout/stderr/exit codes. Do not mock `process.exit`, `process.stdout`, child processes, filesystem, or other runtime internals — if you believe a mock is genuinely necessary, ask the user before introducing it. Continuously review the library for code smells, duplication, and structural issues; clean these up as you encounter them rather than letting them accumulate. When you notice that implementation choices are leading to technical debt — unclear module boundaries, leaky abstractions, growing coupling between components — proactively raise the issue with the user and propose an architecture change before proceeding.
 
+#### Coverage technique: defaults wrapper
+
+When a function accepts optional parameters that get filled with defaults, every `??` / `||` fallback creates a branch that tests may never exercise — the test always passes the explicit value, so the default path stays uncovered. Fix this by splitting the function into a thin public wrapper that resolves all defaults and an internal implementation that receives a fully-resolved options object with no optionals:
+
+```ts
+interface ResolvedOpts {
+  exit: (code: number) => void;
+  stdout: (msg: string) => void;
+}
+
+async function run(argv: string[], opts?: RunOptions): Promise<void> {
+  /* istanbul ignore next -- process defaults only used as a real CLI */
+  const resolved: ResolvedOpts = {
+    exit: opts?.exit ?? ((code) => process.exit(code)),
+    stdout: opts?.stdout ?? ((msg) => { console.log(msg); }),
+  };
+  return runImpl(argv, resolved);
+}
+
+async function runImpl(argv: string[], opts: ResolvedOpts): Promise<void> {
+  // All branches here are fully testable — no fallback paths
+}
+```
+
+The wrapper concentrates all default-resolution into a single `istanbul ignore` block. The implementation body has no optional checks left, so every branch is reachable from tests.
+
 Before using any library's internal APIs, undocumented properties, or unconventional patterns, always research the library's intended public API and best practices first. Implementations must follow the documented, stable API surface of dependencies — not internal structures that may break between releases. When in doubt, consult the library's type definitions, documentation, or changelog to confirm a pattern is part of the public contract. Exceptions must be few and always documented.
+
+### Running TypeScript and other tools
+
+This is a pnpm monorepo. TypeScript is installed as a devDependency in individual workspace packages, **not** at the root. This means:
+
+- **`npx tsc`** does NOT work — it resolves to a global pnpm shim that prints "This is not the tsc command you are looking for". The `npx` command looks for a root-level install and falls through to the global shim when it can't find one.
+- **`node node_modules/.bin/tsc`** does NOT work — the `.bin/tsc` entry is a shell script (bash), not a JavaScript file. Running it with `node` causes a `SyntaxError`.
+- **`pnpm exec tsc`** works — it resolves through the pnpm workspace to the package's own `node_modules`.
+- **`pnpm build`** works — it runs the `build` script which invokes `tsc` through pnpm's resolution.
+
+Use these commands to type-check:
+
+```bash
+# Type-check the library
+cd packages/ph-clint && pnpm exec tsc --noEmit
+
+# Type-check an example
+cd examples/04-chat-assistant && pnpm exec tsc --noEmit
+
+# Build the library (must do this before type-checking examples that depend on it)
+cd packages/ph-clint && pnpm build
+```
+
+The same applies to other CLI tools installed as dependencies (jest, tsx, etc.) — always use `pnpm exec <tool>` or the `pnpm <script>` form, never `npx <tool>` or `node node_modules/.bin/<tool>`.
 
 ### What NOT to do
 

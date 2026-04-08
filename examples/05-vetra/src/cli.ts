@@ -141,79 +141,14 @@ const init = defineCommand<typeof initInput, { text: string }, Config>({
   },
 });
 
-const up = defineCommand({
-  id: 'up',
-  description: 'Start Vetra dev server',
-  inputSchema: z.object({}),
-  execute: async (_, { services }) => {
-    await services!.start('vetra');
-    const status = services!.list().find((s) => s.id === 'vetra')!;
-    const parts = [`Vetra is ready`];
-    if (status.endpoints?.['connect-studio']) {
-      parts.push(`Connect Studio: http://localhost:${status.endpoints['connect-studio']}`);
-    }
-    if (status.endpoints?.['drive-url']) {
-      parts.push(`Drive URL: ${status.endpoints['drive-url']}`);
-    }
-    if (status.endpoints?.['mcp-server']) {
-      parts.push(`MCP server: ${status.endpoints['mcp-server']}`);
-    }
-    return { text: parts.join('\n') };
-  },
-});
-
-const down = defineCommand({
-  id: 'down',
-  description: 'Stop Vetra dev server',
-  inputSchema: z.object({}),
-  execute: async (_, { services }) => {
-    await services!.stop('vetra');
-    return { text: 'Vetra stopped' };
-  },
-});
-
-const ps = defineCommand({
-  id: 'ps',
-  description: 'Show service status',
-  inputSchema: z.object({}),
-  execute: async (_, { services }) => {
-    const all = services!.list();
-    return {
-      text: all
-        .map((s) => {
-          const icon = s.status === 'ready' ? '●' : '○';
-          const ep = s.endpoints ?? {};
-          const info: string[] = [];
-          if (ep['connect-studio']) info.push(`:${ep['connect-studio']}`);
-          if (ep['drive-url']) info.push(ep['drive-url']);
-          if (ep['mcp-server']) info.push(`MCP ${ep['mcp-server']}`);
-          return `${icon} ${s.label} [${s.status}]` + (info.length ? ` ${info.join(' | ')}` : '');
-        })
-        .join('\n'),
-      data: all,
-    };
-  },
-});
-
-const logs = defineCommand({
-  id: 'logs',
-  description: 'Show recent logs',
-  inputSchema: z.object({
-    lines: z.number().default(50).describe('Number of lines'),
-  }),
-  execute: async ({ lines }, { services }) => {
-    return { text: services!.logs('vetra', lines) };
-  },
-});
-
 // ── CLI ──────────────────────────────────────────────────────────
 
 export const cli = defineCli({
-  name: 'svc',
+  name: 'vetra',
   version: '1.0.0',
   description: 'Reactor Service Manager — manage Powerhouse Vetra dev server',
   configSchema,
-  commands: [init, up, down, ps, logs],
+  commands: [init],
   services: [vetra],
   events: {
     'service:pattern-matched': (event) => {
@@ -254,7 +189,7 @@ export const cli = defineCli({
         `  ${G}▒▒▒▒▒▒▒▒hj▒▒▒▒▒▒▒▒${R}`,
         '',
         `  ${D}Reactor Service Manager${R}  ${D}workdir:${R} ${workdir}`,
-        `  ${D}/up${R} start  ${D}/down${R} stop  ${D}/ps${R} status  ${D}/logs${R} output`,
+        `  ${D}/svc --action up${R} start  ${D}/svc --action down${R} stop  ${D}/svc${R} status  ${D}/svc --manage${R} panel`,
         '',
       ].join('\n');
     },

@@ -48,27 +48,6 @@ const cli = defineCli({
   configSchema,
   commands: [ascii, saveImage, listImages],
 
-  agent: {
-    default: async (ctx) => {
-      if (!ctx.config.apiKey) return createAssistant();
-
-      // Lazy-load Mastra only when an API key is configured
-      const { createMastraHelpers } = await import('ph-clint/mastra');
-      const { Agent } = await import('@mastra/core/agent');
-      const m = createMastraHelpers(ctx);
-
-      return m.wrapAgent(new Agent({
-        id: 'assistant',
-        name: 'Image Assistant',
-        instructions: `${instructions}\n\nWorkspace: ${ctx.workdir}`,
-        model: ctx.config.model,
-        tools: await m.getTools(),
-        workspace: await m.createWorkspace(),
-        memory: await m.createMemory(),
-      }));
-    },
-  },
-
   interactive: {
     welcome: ({ config }) => {
       const mode = config.apiKey
@@ -77,6 +56,25 @@ const cli = defineCli({
       return `${logo}\n\nImage Assistant (${mode})\nAsk me to convert images to ASCII art, save images, or use /ascii directly`;
     },
   },
+});
+
+cli.setAgentLoader(async (ctx) => {
+  if (!ctx.config.apiKey) return createAssistant();
+
+  // Lazy-load Mastra only when an API key is configured
+  const { createMastraHelpers } = await import('ph-clint/mastra');
+  const { Agent } = await import('@mastra/core/agent');
+  const m = createMastraHelpers(ctx);
+
+  return m.wrapAgent(new Agent({
+    id: 'assistant',
+    name: 'Image Assistant',
+    instructions: `${instructions}\n\nWorkspace: ${ctx.workdir}`,
+    model: ctx.config.model,
+    tools: await m.getTools(),
+    workspace: await m.createWorkspace(),
+    memory: await m.createMemory(),
+  }));
 });
 
 cli.run(process.argv);

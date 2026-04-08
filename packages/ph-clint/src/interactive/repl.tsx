@@ -2,12 +2,15 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Box, Text, Static, useInput, useApp, useStdout } from 'ink';
 import Spinner from 'ink-spinner';
 import type { ReplSession, HistoryEntry } from './types.js';
+import type { ServiceManager } from '../core/types.js';
 import { renderMarkdown } from './markdown.js';
 import { applyCompletion } from './completions.js';
 import { TextInput } from './text-input.js';
+import { ServicePanel } from './service-panel.js';
 
 interface ReplProps {
   session: ReplSession;
+  services?: ServiceManager;
 }
 
 /**
@@ -22,7 +25,7 @@ type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
 /**
  * Main REPL component for interactive mode.
  */
-export function Repl({ session }: ReplProps) {
+export function Repl({ session, services }: ReplProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const columns = stdout?.columns || 80;
@@ -36,7 +39,8 @@ export function Repl({ session }: ReplProps) {
     return () => { stdout.write('\x1b[?1004l'); };
   }, [stdout, isTTY]);
 
-  const [phase, setPhase] = useState<'idle' | 'executing'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'executing' | 'panel'>('idle');
+  const [activePanelId, setActivePanelId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [input, setInput] = useState('');
   const [cursorOffset, setCursorOffset] = useState<number | undefined>(undefined);
@@ -107,6 +111,16 @@ export function Repl({ session }: ReplProps) {
           stdout.write(result.text + '\n\n');
         }
         exit();
+        return;
+      }
+
+      if (result.type === 'panel') {
+        setHistory((h) => [
+          ...h,
+          { id: nextId.current++, input: trimmed, output: '', type: 'empty' },
+        ]);
+        setActivePanelId(result.panelId ?? null);
+        setPhase('panel');
         return;
       }
 
@@ -353,8 +367,16 @@ export function Repl({ session }: ReplProps) {
         )}
       </Static>
 
-      {/* Current execution or input */}
-      {phase === 'executing' ? (
+      {/* Current execution, panel, or input */}
+      {phase === 'panel' && activePanelId === 'services' && services ? (
+        <ServicePanel
+          services={services}
+          onExit={() => {
+            setActivePanelId(null);
+            setPhase('idle');
+          }}
+        />
+      ) : phase === 'executing' ? (
         <Box flexDirection="column" marginBottom={1}>
           <Text>{' '}</Text>
           <Text backgroundColor="#333333" color="#eeeeee">{' > '}{currentInput}{' '}</Text>

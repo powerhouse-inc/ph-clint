@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
 import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
+import { mapMastraStream } from '../src/integrations/mastra/stream.js';
 import { createMemoryWorkspace } from '../src/core/workspace.js';
 import type { AgentContext } from '../src/core/types.js';
 
@@ -88,6 +89,57 @@ describe('createMastraHelpers', () => {
   });
 });
 
+describe('mapMastraStream', () => {
+  it('maps error chunks', async () => {
+    async function* fakeStream() {
+      yield { type: 'error', error: 'API rate limit' };
+    }
+    const chunks: any[] = [];
+    for await (const chunk of mapMastraStream(fakeStream())) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0].type).toBe('error');
+    expect(chunks[0].error).toContain('API rate limit');
+  });
+
+  it('maps error chunk with payload format', async () => {
+    async function* fakeStream() {
+      yield { type: 'error', payload: { error: 'wrapped error' } };
+    }
+    const chunks: any[] = [];
+    for await (const chunk of mapMastraStream(fakeStream())) {
+      chunks.push(chunk);
+    }
+    expect(chunks[0].error).toContain('wrapped error');
+  });
+
+  it('falls back to stringifying chunk when error field is missing', async () => {
+    async function* fakeStream() {
+      yield { type: 'error' };
+    }
+    const chunks: any[] = [];
+    for await (const chunk of mapMastraStream(fakeStream())) {
+      chunks.push(chunk);
+    }
+    expect(chunks[0].type).toBe('error');
+    expect(chunks[0].error).toContain('object');
+  });
+
+  it('ignores unknown chunk types', async () => {
+    async function* fakeStream() {
+      yield { type: 'step-finish', data: {} };
+      yield { type: 'text-delta', textDelta: 'hello' };
+    }
+    const chunks: any[] = [];
+    for await (const chunk of mapMastraStream(fakeStream())) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0].text).toBe('hello');
+  });
+});
+
 describe('commandsToMastraTools', () => {
   it('converts ph-clint commands to Mastra tools', async () => {
     const tools = await commandsToMastraTools(
@@ -111,8 +163,8 @@ describe('commandsToMastraTools', () => {
       [echoCommand],
       { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} },
     );
-    const tool = tools.echo as { execute: (input: unknown) => Promise<unknown> };
-    const result = await tool.execute({ text: 'hello' });
+    const tool = tools.echo;
+    const result = await tool.execute!({ text: 'hello' }, {} as any);
     expect(result).toEqual({ text: 'hello' });
   });
 });

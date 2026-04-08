@@ -9,6 +9,7 @@ export { resolveWorkdir } from './core/workdir.js';
 export { createEventBus } from './core/events.js';
 export { createProcessManager } from './core/processes.js';
 export { defineService, createServiceManager } from './core/services.js';
+export { createSvcCommand, formatStatus } from './core/service-command.js';
 export { createRoutine } from './core/routine.js';
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export { createReplSession } from './interactive/session.js';
@@ -53,6 +54,7 @@ export type {
   AgentProvider,
   AgentStreamOptions,
   AgentContext,
+  AgentLoader,
   Resolvable,
   Integration,
   ReadinessPattern,

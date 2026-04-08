@@ -1,6 +1,7 @@
 import { Command as Commander } from 'commander';
 import type {
   AgentContext,
+  AgentLoader,
   AgentProvider,
   Cli,
   CliOptions,
@@ -18,12 +19,27 @@ import { createMemoryWorkspace, createWorkspace } from './workspace.js';
 import { getConfigEnvVars, resolveConfig } from './config.js';
 import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
+import { createSvcCommand } from './service-command.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
 import { createServiceManager } from './services.js';
 import { createReplSession } from '../interactive/session.js';
-import { renderMarkdown } from '../interactive/markdown.js';
+
+/* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
+const defaultStdout = (text: string) => { process.stdout.write(text); };
+
+/** Fully-resolved run options — no optionals for process defaults. Internal to defineCli. */
+interface ResolvedRunOptions {
+  exit: (code: number) => void;
+  stdout: (message: string) => void;
+  stderr: (message: string) => void;
+  cwd: string;
+  writeRaw: (text: string) => void;
+  configFile?: string;
+  resume?: string;
+  interactiveInput?: AsyncIterable<string>;
+}
 
 /**
  * Format a command result for output.
@@ -82,6 +98,13 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   // If triggers/routine config provided, create shared runtime services
   const hasTriggers = options.triggers && options.triggers.length > 0;
   const hasServices = options.services && options.services.length > 0;
+
+  // Auto-inject built-in svc command when services are defined
+  if (hasServices && !commandMap.has('svc')) {
+    const serviceIds = options.services!.map((s) => s.id);
+    commandMap.set('svc', createSvcCommand(serviceIds));
+  }
+
   const eventBus = (hasTriggers || hasServices) ? createEventBus() : undefined;
   const processManager = hasTriggers ? createProcessManager() : undefined;
   let routine: Routine | undefined;
@@ -97,7 +120,12 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     });
   }
 
-  const hasAgent = !!options.agent?.default;
+  // Mutable agent loader — set via setAgentLoader()
+  let agentLoader: AgentLoader<any> | undefined;
+
+  function setAgentLoader(loader: AgentLoader<any>): void {
+    agentLoader = loader;
+  }
 
   function getCommand(id: string): Command | undefined {
     return commandMap.get(id);
@@ -114,7 +142,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       config: options.configSchema
         ? (options.configSchema.parse({}) as Record<string, unknown>)
         : {},
-      stdout: (text: string) => process.stdout.write(text),
+      stdout: defaultStdout,
     };
     // Extend with runtime services if available
     if (routine) ctx.routine = routine;
@@ -214,6 +242,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   function generateConfigHelp(): string | undefined {
     if (!options.configSchema) return undefined;
     const envVars = configEnvVars();
+    /* istanbul ignore next -- configSchema always has at least one field when present */
     if (envVars.length === 0) return undefined;
     const fields = getSchemaFields(options.configSchema);
 
@@ -322,7 +351,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       program.option('-i, --interactive', 'Start interactive REPL mode');
     }
 
-    if (hasAgent) {
+    if (agentLoader) {
       program.option('--resume <thread-id>', 'Resume a previous conversation');
     }
 
@@ -382,7 +411,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         const result = await cmd.execute(parsed, context);
         const output = formatResult(result);
         if (output !== undefined) {
-          stdout(renderMarkdown(output));
+          stdout(output);
         }
       });
     }
@@ -395,15 +424,34 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     return program;
   }
 
+  /**
+   * Public entry point — fills in process defaults, then delegates to runImpl.
+   */
   async function run(argv: string[], runOptions?: RunOptions): Promise<void> {
-    const exit = runOptions?.exit ?? process.exit;
-    const stdout = runOptions?.stdout ?? console.log;
-    const stderr = runOptions?.stderr ?? console.error;
+    /* istanbul ignore next -- process defaults only used when running as a real CLI */
+    const resolved: ResolvedRunOptions = {
+      exit: runOptions?.exit ?? ((code: number) => process.exit(code)),
+      stdout: runOptions?.stdout ?? ((msg: string) => { console.log(msg); }),
+      stderr: runOptions?.stderr ?? ((msg: string) => { console.error(msg); }),
+      cwd: runOptions?.workdir ?? process.cwd(),
+      writeRaw: runOptions?.stdout ?? defaultStdout,
+      configFile: runOptions?.configFile,
+      resume: runOptions?.resume,
+      interactiveInput: runOptions?.interactiveInput,
+    };
+    return runImpl(argv, resolved);
+  }
+
+  /**
+   * Internal run with fully-resolved options — no process globals, fully testable.
+   */
+  async function runImpl(argv: string[], opts: ResolvedRunOptions): Promise<void> {
+    const { exit, stdout, stderr, cwd, writeRaw } = opts;
 
     // Extract --workdir and --config before Commander sees them
     const userArgs = argv.slice(2);
     let workdirFlag: string | undefined;
-    let configFileFlag: string | undefined = runOptions?.configFile;
+    let configFileFlag: string | undefined = opts.configFile;
     {
       const wIdx = userArgs.indexOf('--workdir');
       const wShort = userArgs.indexOf('-w');
@@ -420,7 +468,6 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     }
 
     // Resolve workdir: implementation override > --workdir flag > cwd
-    const cwd = runOptions?.workdir ?? process.cwd();
     const workdir = resolveWorkdir({
       implementationOverride: options.workdir,
       cliFlag: workdirFlag,
@@ -446,10 +493,6 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
           implementationDefaults: options.configDefaults,
         })
       : {};
-    // context.stdout is a raw writer (no trailing newline) for progressive output
-    const writeRaw = runOptions?.stdout
-      ? (text: string) => { runOptions.stdout!(text); }
-      : (text: string) => { process.stdout.write(text); };
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw });
 
     // Create ServiceManager when services are defined
@@ -484,7 +527,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     let cachedProvider: AgentProvider | undefined;
     async function getAgentProvider(): Promise<AgentProvider | undefined> {
       if (cachedProvider) return cachedProvider;
-      if (!options.agent?.default) return undefined;
+      if (!agentLoader) return undefined;
       const agentCtx: AgentContext<TConfig> = {
         workdir,
         config: typedConfig,
@@ -493,12 +536,12 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         context,
         commands: [...commandMap.values()],
       };
-      cachedProvider = await options.agent.default(agentCtx);
+      cachedProvider = await agentLoader(agentCtx);
       return cachedProvider;
     }
 
     // Extract --resume <id> before Commander sees it
-    let resumeId = runOptions?.resume;
+    let resumeId = opts.resume;
     {
       const resumeIdx = userArgs.indexOf('--resume');
       if (resumeIdx !== -1 && resumeIdx + 1 < userArgs.length) {
@@ -521,7 +564,8 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         description: resolvedDescription,
         configSchema: options.configSchema,
         interactive: resolvedInteractive,
-        hasAgent,
+        get hasAgent() { return !!agentLoader; },
+        setAgentLoader,
         getCommand,
         listCommands,
         execute,
@@ -542,10 +586,10 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         threadId: resumeId,
       });
 
-      if (runOptions?.interactiveInput) {
+      if (opts.interactiveInput) {
         // Headless mode for testing
         if (session.welcome) stdout(session.welcome);
-        for await (const line of runOptions.interactiveInput) {
+        for await (const line of opts.interactiveInput) {
           const result = await session.processInput(line);
           if (result.type === 'exit') {
             if (result.text) stdout(result.text);
@@ -555,9 +599,11 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         }
         exit(0);
       } else {
-        // Ink REPL mode — lazy load to keep non-interactive startup fast
+        /* istanbul ignore next -- Ink REPL requires a real terminal */
         const { startInkRepl } = await import('../interactive/start.js');
-        await startInkRepl(session);
+        /* istanbul ignore next */
+        await startInkRepl(session, { services: context.services });
+        /* istanbul ignore next */
         exit(0);
       }
       return;
@@ -587,7 +633,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     const firstArg = nonFlagArgs[0];
     const isSubcommand = firstArg && (commandMap.has(firstArg) || firstArg === 'help');
 
-    if (!isSubcommand && hasAgent && nonFlagArgs.length > 0) {
+    if (!isSubcommand && agentLoader && nonFlagArgs.length > 0) {
       // Agent prompt in command mode
       const agentProvider = await getAgentProvider();
       if (agentProvider) {
@@ -640,7 +686,8 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     description: staticDescription,
     configSchema: options.configSchema,
     interactive: options.interactive,
-    hasAgent,
+    get hasAgent() { return !!agentLoader; },
+    setAgentLoader,
     getCommand,
     listCommands,
     execute,

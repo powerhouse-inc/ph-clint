@@ -649,9 +649,9 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      agent: { default: async () => agent },
       interactive: { welcome: 'Hi!' },
     });
+    cli.setAgentLoader(async () => agent);
 
     const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
@@ -669,9 +669,9 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      agent: { default: async () => agent },
       interactive: { welcome: 'Hi!' },
     });
+    cli.setAgentLoader(async () => agent);
 
     const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
@@ -695,9 +695,9 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      agent: { default: async () => agent },
       interactive: { welcome: '' },
     });
+    cli.setAgentLoader(async () => agent);
 
     const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
@@ -722,9 +722,9 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      agent: { default: async () => agent },
       interactive: { welcome: '' },
     });
+    cli.setAgentLoader(async () => agent);
 
     const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
@@ -756,9 +756,9 @@ describe('default command — agent routing', () => {
       version: '1.0.0',
       description: 'Assistant',
       commands: [search],
-      agent: { default: async () => ({ id: 'x', async *stream() {} }) },
       interactive: { welcome: '' },
     });
+    cli.setAgentLoader(async () => ({ id: 'x', async *stream() {} }));
 
     const context: CommandContext = { workspace: createMemoryWorkspace(), config: {}, workdir: '', stdout: () => {} };
     // No agentProvider passed — session should still route text to agent handler
@@ -767,5 +767,67 @@ describe('default command — agent routing', () => {
     const result = await session.processInput('hello');
     expect(result.type).toBe('error');
     expect(result.text).toContain('Agent not available');
+  });
+});
+
+describe('session edge cases', () => {
+  const echo = defineCommand({
+    id: 'echo',
+    description: 'Echo message',
+    inputSchema: z.object({ message: z.string().describe('Message') }),
+    execute: async ({ message }) => ({ text: message }),
+  });
+
+  const svc = defineCommand({
+    id: 'svc',
+    description: 'Service management',
+    inputSchema: z.object({
+      action: z.string().default('ps'),
+      manage: z.boolean().default(false),
+    }),
+    execute: async () => ({ text: 'ok' }),
+  });
+
+  it('/svc --manage without services returns error', async () => {
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [echo, svc],
+      interactive: { welcome: '' },
+    });
+
+    // No context.services set → "No services configured"
+    const context: CommandContext = { workdir: '', workspace: createMemoryWorkspace(), config: {}, stdout: () => {} };
+    const session = createReplSession({ cli, context });
+
+    const result = await session.processInput('/svc --manage');
+    expect(result.type).toBe('error');
+    expect(result.text).toContain('No services configured');
+  });
+
+  it('handles agent stream errors gracefully', async () => {
+    const failingAgent: AgentProvider = {
+      id: 'failing',
+      async *stream() {
+        throw new Error('LLM connection failed');
+      },
+    };
+
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [echo],
+      interactive: { welcome: '' },
+    });
+    cli.setAgentLoader(async () => failingAgent);
+
+    const context: CommandContext = { workdir: '', workspace: createMemoryWorkspace(), config: {}, stdout: () => {} };
+    const session = createReplSession({ cli, context, agentProvider: failingAgent });
+
+    const result = await session.processInput('hello agent');
+    expect(result.type).toBe('error');
+    expect(result.text).toContain('LLM connection failed');
   });
 });

@@ -52,3 +52,23 @@ export const DEFAULT_TIMEOUT = 5_000;
 
 /** Jest timeout for tests that spawn processes */
 export const PROCESS_TEST_TIMEOUT = 10_000;
+
+// ── Service manager test defaults ────────────────────────────────
+
+/** How long a crash-mode service waits before exiting */
+export const SERVICE_CRASH_DELAY = 100;
+
+/** Wait for a service to crash (crash delay + buffer for spawn + poll interval) */
+export const SERVICE_CRASH_WAIT = SERVICE_CRASH_DELAY + PROCESS_START_WAIT + TEST_TIMING_BUFFER;
+
+/** Wait for a log watcher to pick up new content */
+export const LOG_WATCH_WAIT = 300;
+
+/** Wait for a service restart cycle to complete (delay + start + readiness + crash) */
+export const SERVICE_RESTART_WAIT = 2500;
+
+/** Shutdown timeout for force-kill tests (short so SIGKILL fires quickly) */
+export const FORCE_KILL_SHUTDOWN_TIMEOUT = 500;
+
+/** Jest timeout for service tests that involve restarts or force-kill */
+export const SERVICE_TEST_TIMEOUT = 15_000;

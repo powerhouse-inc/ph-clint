@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, chmod, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { createWorkspace, createMemoryWorkspace } from '../src/core/workspace.js';
 
 describe('createWorkspace', () => {
@@ -77,6 +78,24 @@ describe('createWorkspace', () => {
       await ws.write('data.json', { a: 1 });
       const raw = await readFile(join(dir, 'data.json'), 'utf8');
       expect(raw).toBe('{\n  "a": 1\n}\n');
+    });
+
+    it('cleans up temp file on rename failure', async () => {
+      const ws = createWorkspace(dir);
+      // Write a file first, then make the dir read-only so rename fails
+      await ws.write('data.json', { v: 1 });
+      // Now make the directory read-only (no write permission) so rename fails
+      await chmod(dir, 0o444);
+      try {
+        await expect(ws.write('data.json', { v: 2 })).rejects.toThrow();
+        // The temp file should have been cleaned up
+        const files = (await import('node:fs')).readdirSync(dir);
+        const tmpFiles = files.filter((f: string) => f.startsWith('.tmp-'));
+        expect(tmpFiles).toHaveLength(0);
+      } finally {
+        // Restore permissions so afterEach cleanup works
+        await chmod(dir, 0o755);
+      }
     });
   });
 });

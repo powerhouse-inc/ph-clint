@@ -16,8 +16,8 @@ marked.use(markedTerminal() as any);
 export function renderMarkdown(text: string): string {
   if (!text) return '';
   const rendered = marked.parse(text);
+  /* istanbul ignore next -- marked.parse() always returns string with sync config */
   if (typeof rendered !== 'string') {
-    // marked.parse() should return a string synchronously with our config
     return text;
   }
   // Trim trailing whitespace that marked/marked-terminal adds

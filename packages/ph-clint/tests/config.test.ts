@@ -279,4 +279,12 @@ describe('getMissingRequiredFields', () => {
     const missing = getMissingRequiredFields(schema, {});
     expect(missing).toEqual([]);
   });
+
+  it('uses empty string when field has no description', () => {
+    const schema = z.object({
+      secret: z.string(),
+    });
+    const missing = getMissingRequiredFields(schema, {});
+    expect(missing).toEqual([{ key: 'secret', description: '' }]);
+  });
 });

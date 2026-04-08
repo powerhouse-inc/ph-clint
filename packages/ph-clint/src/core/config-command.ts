@@ -97,6 +97,8 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
   const { cliName, configSchema, implementationDefaults } = opts;
   const fields = getSchemaFields(configSchema);
   const fieldKeys = fields.map((f) => f.key);
+  // Build a map for O(1) lookup — Zod enum validation guarantees the key exists
+  const fieldMap = new Map(fields.map((f) => [f.key, f]));
 
   const inputSchema = z.object({
     name: z.enum(fieldKeys as [string, ...string[]]).optional().describe('Setting name'),
@@ -140,10 +142,8 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
         throw new Error('--name is required (use --list to show all settings).');
       }
 
-      const field = fields.find((f) => f.key === settingName);
-      if (!field) {
-        throw new Error(`Unknown setting: ${settingName}`);
-      }
+      // Zod enum on `name` guarantees settingName is a valid field key
+      const field = fieldMap.get(settingName)!;
 
       // ── Remove mode ──
       if (remove) {

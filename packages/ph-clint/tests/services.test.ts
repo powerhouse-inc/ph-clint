@@ -5,6 +5,16 @@ import os from 'node:os';
 import { defineService, createServiceManager } from '../src/core/services.js';
 import { createEventBus } from '../src/core/events.js';
 import type { ServiceDefinition, EventBus } from '../src/core/types.js';
+import {
+  PROCESS_CLEANUP_WAIT,
+  PROCESS_TEST_TIMEOUT,
+  SERVICE_CRASH_DELAY,
+  SERVICE_CRASH_WAIT,
+  SERVICE_RESTART_WAIT,
+  SERVICE_TEST_TIMEOUT,
+  FORCE_KILL_SHUTDOWN_TIMEOUT,
+  LOG_WATCH_WAIT,
+} from './fixtures/timing.js';
 
 const TEST_SERVICE = path.resolve(import.meta.dirname, 'fixtures/test-service.js');
 
@@ -149,6 +159,34 @@ describe('createServiceManager', () => {
       await expect(mgr.start('nonexistent')).rejects.toThrow(/Unknown service/);
     });
 
+    it('throws "already running" when status is starting', async () => {
+      // Start a service with wait=false so it stays in "starting" via state file
+      const slowDef: ServiceDefinition = {
+        id: 'slow-svc',
+        label: 'Slow Service',
+        command: `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'slow', READY_DELAY: '10000' }),
+        readiness: {
+          pattern: /Server listening/,
+          timeout: 15000,
+          wait: false,
+        },
+      };
+      const mgr = createManager([slowDef]);
+      await mgr.start('slow-svc');
+
+      const statuses = mgr.list();
+      trackedPids.push(statuses[0]!.pid!);
+
+      // Manually write state as 'starting' to simulate an in-progress service
+      const statePath = path.join(servicesDir, 'slow-svc.json');
+      const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+      state.status = 'starting';
+      fs.writeFileSync(statePath, JSON.stringify(state));
+
+      await expect(mgr.start('slow-svc')).rejects.toThrow(/already running/);
+    });
+
     it('marks ready immediately when readiness.wait is false', async () => {
       const noWaitDef: ServiceDefinition = {
         id: 'no-wait',
@@ -200,7 +238,7 @@ describe('createServiceManager', () => {
 
       const statuses = mgr.list();
       expect(statuses[0]!.status).toBe('failed');
-    }, 10000);
+    }, PROCESS_TEST_TIMEOUT);
 
     it('emits service:ready event', async () => {
       const events: any[] = [];
@@ -232,7 +270,7 @@ describe('createServiceManager', () => {
 
       expect(events).toHaveLength(1);
       expect(events[0].error).toContain('timeout');
-    }, 10000);
+    }, PROCESS_TEST_TIMEOUT);
   });
 
   describe('stop()', () => {
@@ -317,16 +355,16 @@ describe('createServiceManager', () => {
         ...readyDef,
         id: 'crash-svc',
         label: 'Crash Service',
-        env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: '100', TEST_SERVICE_PORT: '4567' }),
+        env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: String(SERVICE_CRASH_DELAY), TEST_SERVICE_PORT: '4567' }),
       }]);
 
       await mgr.start('crash-svc');
       // Wait for crash
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, SERVICE_CRASH_WAIT));
 
       const statuses = mgr.list();
       expect(statuses[0]!.status).toBe('failed');
-    }, 10000);
+    }, PROCESS_TEST_TIMEOUT);
   });
 
   describe('logs()', () => {
@@ -365,7 +403,7 @@ describe('createServiceManager', () => {
 
       // Append to log file to trigger watcher
       fs.appendFileSync(logPath, 'new log line\n');
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, LOG_WATCH_WAIT));
 
       cleanup();
       expect(lines.some((l) => l.includes('new log line'))).toBe(true);
@@ -386,15 +424,15 @@ describe('createServiceManager', () => {
         ...readyDef,
         id: 'restart-svc',
         label: 'Restart Service',
-        env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: '100', TEST_SERVICE_PORT: '4567' }),
-        restart: { enabled: true, maxRetries: 2, delay: 100 },
+        env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: String(SERVICE_CRASH_DELAY), TEST_SERVICE_PORT: '4567' }),
+        restart: { enabled: true, maxRetries: 2, delay: SERVICE_CRASH_DELAY },
       };
 
       const mgr = createManager([crashDef]);
       await mgr.start('restart-svc');
 
       // Wait for crash
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, SERVICE_CRASH_WAIT));
 
       // list() should detect dead PID and trigger restart
       const statuses = mgr.list();
@@ -406,11 +444,11 @@ describe('createServiceManager', () => {
       expect(events[0].maxRetries).toBe(2);
 
       // Wait for restart to complete
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, SERVICE_RESTART_WAIT));
       // Clean up whatever is running
       const finalStatuses = mgr.list();
       if (finalStatuses[0]?.pid) trackedPids.push(finalStatuses[0].pid);
-    }, 15000);
+    }, SERVICE_TEST_TIMEOUT);
   });
 
   describe('multiple readiness patterns', () => {
@@ -493,7 +531,7 @@ describe('createServiceManager', () => {
       expect(error).toBeDefined();
       expect(error!.message).toMatch(/timeout/i);
       expect(error!.message).toContain('mcp-server');
-    }, 10000);
+    }, PROCESS_TEST_TIMEOUT);
 
     it('collects endpoints from all matched patterns', async () => {
       const mgr = createManager([vetraDef]);
@@ -504,6 +542,129 @@ describe('createServiceManager', () => {
       expect(Object.keys(endpoints)).toHaveLength(3);
       trackedPids.push(statuses[0]!.pid!);
     });
+  });
+
+  describe('process exits before readiness', () => {
+    it('marks service as failed when process dies before pattern matches', async () => {
+      const failedEvents: any[] = [];
+      eventBus.on('service:failed', (data) => failedEvents.push(data));
+
+      const exitFastDef: ServiceDefinition = {
+        id: 'exit-fast',
+        label: 'Exit Fast',
+        command: `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'exit-fast' }),
+        readiness: {
+          pattern: /Server listening/,
+          timeout: 5000,
+        },
+      };
+      const mgr = createManager([exitFastDef]);
+
+      await expect(mgr.start('exit-fast')).rejects.toThrow(/exited before becoming ready/);
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('failed');
+
+      expect(failedEvents).toHaveLength(1);
+      expect(failedEvents[0].error).toContain('exited before becoming ready');
+    }, PROCESS_TEST_TIMEOUT);
+  });
+
+  describe('stop() edge cases', () => {
+    it('cleans up state file when process is already dead', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc');
+
+      const pid = mgr.list()[0]!.pid!;
+      trackedPids.push(pid);
+
+      // Kill the process externally
+      try { process.kill(-pid, 'SIGKILL'); } catch { /* ignore */ }
+      try { process.kill(pid, 'SIGKILL'); } catch { /* ignore */ }
+      // Wait for it to die
+      await new Promise((r) => setTimeout(r, PROCESS_CLEANUP_WAIT));
+
+      // stop() should detect dead PID, remove state file, and return cleanly
+      await mgr.stop('test-svc');
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('idle');
+    });
+
+    it('force-kills a service that ignores SIGTERM', async () => {
+      const stubbornDef: ServiceDefinition = {
+        id: 'stubborn',
+        label: 'Stubborn Service',
+        command: `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'ignore-sigterm', TEST_SERVICE_PORT: '4567' }),
+        readiness: {
+          pattern: /Server listening on http:\/\/localhost:(\d+)/,
+          timeout: 5000,
+          captures: { port: 1 },
+        },
+        shutdown: { signal: 'SIGTERM', timeout: FORCE_KILL_SHUTDOWN_TIMEOUT },
+      };
+
+      const mgr = createManager([stubbornDef]);
+      await mgr.start('stubborn');
+      const pid = mgr.list()[0]!.pid!;
+      trackedPids.push(pid);
+
+      // stop() sends SIGTERM → process ignores it → timeout → SIGKILL
+      await mgr.stop('stubborn');
+
+      // Verify process is dead
+      let alive = false;
+      try { process.kill(pid, 0); alive = true; } catch { /* expected */ }
+      expect(alive).toBe(false);
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('idle');
+    }, SERVICE_TEST_TIMEOUT);
+  });
+
+  describe('watchLogs() edge cases', () => {
+    it('returns fallback message when log file does not exist', () => {
+      const mgr = createManager([readyDef]);
+      const lines: string[] = [];
+      const cleanup = mgr.watchLogs('test-svc', (line) => lines.push(line));
+      cleanup();
+
+      expect(lines).toEqual(['Log file not found']);
+    });
+  });
+
+  describe('max restart retries exceeded', () => {
+    it('emits service:failed when max retries are exceeded', async () => {
+      const failedEvents: any[] = [];
+      eventBus.on('service:failed', (data) => failedEvents.push(data));
+
+      // A service that starts ok (no readiness → immediate ready), then crashes.
+      // maxRetries: 0 means no restarts allowed — any crash goes straight to "exceeded".
+      const crashDef: ServiceDefinition = {
+        id: 'max-retry',
+        label: 'Max Retry Service',
+        command: `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: String(SERVICE_CRASH_DELAY) }),
+        // No readiness → marked ready immediately
+        restart: { enabled: true, maxRetries: 0, delay: SERVICE_CRASH_DELAY },
+      };
+
+      const mgr = createManager([crashDef]);
+      await mgr.start('max-retry');
+
+      // Wait for crash
+      await new Promise((r) => setTimeout(r, SERVICE_CRASH_WAIT));
+
+      // list() sees dead PID, restartAttempt (0) >= maxRetries (0) → failed
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('failed');
+      expect(statuses[0]!.restartAttempt).toBe(0);
+
+      const maxRetryFailed = failedEvents.find((e) => e.error?.includes('Max restart'));
+      expect(maxRetryFailed).toBeDefined();
+    }, SERVICE_TEST_TIMEOUT);
   });
 
   describe('env config', () => {

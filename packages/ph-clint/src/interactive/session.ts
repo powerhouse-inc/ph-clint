@@ -248,6 +248,14 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         };
 
       case 'command': {
+        // Intercept /svc --manage → open interactive panel
+        if (parsed.commandId === 'svc' && parsed.args?.includes('--manage')) {
+          if (!context.services) {
+            return { text: 'No services configured', type: 'error' };
+          }
+          return { text: '', type: 'panel', panelId: 'services' };
+        }
+
         const explicitKeys = getExplicitKeys(parsed.args!);
 
         try {

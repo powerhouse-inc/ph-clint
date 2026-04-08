@@ -10,6 +10,8 @@
  *   immediate   — prints readiness and exits immediately
  *   vetra       — simulates Powerhouse Vetra startup (connect port, drive URL, MCP server)
  *   multi-partial — prints 2 of 3 patterns then stays alive (for timeout tests)
+ *   exit-fast     — exits immediately with code 0, no readiness output (for "died before ready" tests)
+ *   ignore-sigterm — traps SIGTERM, stays alive (only killable via SIGKILL, for force-kill tests)
  *
  * Env vars:
  *   TEST_SERVICE_MODE   — one of the modes above
@@ -85,6 +87,21 @@ switch (mode) {
       console.log(`  Drive URL: http://localhost:${port}/drives/main`);
     }, 50);
     // MCP pattern never printed
+    setInterval(() => {}, 60_000);
+    break;
+
+  case 'exit-fast':
+    // Exit immediately — no readiness output, for testing "process died before ready"
+    console.log('Starting up...');
+    process.exit(0);
+    break;
+
+  case 'ignore-sigterm':
+    // Trap SIGTERM so only SIGKILL can stop this process (for force-kill tests)
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received but ignoring');
+    });
+    printReady();
     setInterval(() => {}, 60_000);
     break;
 
