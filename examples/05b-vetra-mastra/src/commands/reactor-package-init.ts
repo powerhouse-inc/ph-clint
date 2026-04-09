@@ -10,9 +10,17 @@ const inputSchema = z.object({
     .regex(/^[a-zA-Z0-9-_]+$/)
     .describe('Project name (alphanumeric, hyphens, underscores)'),
   version: z
-    .enum(['staging', 'dev', 'latest'])
+    .string()
+    .refine(
+      (v) =>
+        ['dev', 'staging', 'latest'].includes(v) ||
+        /^\d+\.\d+\.\d+/.test(v),
+      'Must be dev, staging, latest, or an exact semver version (e.g. 6.0.0-dev.163)',
+    )
     .optional()
-    .describe('Powerhouse version (overrides config)'),
+    .describe(
+      'Powerhouse version: release tag (dev|staging|latest) or exact semver (e.g. 6.0.0-dev.163)',
+    ),
 });
 
 interface Config {
@@ -40,8 +48,12 @@ export const reactorPackageInit = defineCommand<typeof inputSchema, { text: stri
     }
 
     // Run ph init with streaming output
+    const tags = ['dev', 'staging', 'latest'];
     const exitCode = await new Promise<number>((resolve, reject) => {
-      const phCmd = ['ph', 'init', name, `--${phVersion}`].join(' ');
+      const versionArgs = tags.includes(phVersion)
+        ? [`--${phVersion}`]
+        : ['--version', phVersion];
+      const phCmd = ['ph', 'init', name, ...versionArgs].join(' ');
       const child = spawn('script', ['-qec', phCmd, '/dev/null'], {
         cwd: workdir,
         stdio: ['ignore', 'pipe', 'pipe'],
