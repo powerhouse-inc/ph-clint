@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { Agent } from '@mastra/core/agent';
-import { Workspace, LocalFilesystem } from '@mastra/core/workspace';
+import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
 import { MCPClient } from '@mastra/mcp';
@@ -59,6 +59,9 @@ export async function createAgentRupert(
     filesystem: new LocalFilesystem({
       basePath: paths.workspaceBasePath,
       allowedPaths: paths.allowedPaths,
+    }),
+    sandbox: new LocalSandbox({
+      workingDirectory: paths.workspaceBasePath,
     }),
     skills: paths.skillPaths,
   });
