@@ -303,7 +303,7 @@ describe('createServiceCommands — with real services', () => {
     });
 
     it('reports error for already running service', async () => {
-      await mgr.start('test-svc');
+      await mgr.start('test-svc', { workdir: tmpDir });
       trackedPids.push(...collectPids(servicesDir));
 
       const cmds = createServiceCommands(readyDef);

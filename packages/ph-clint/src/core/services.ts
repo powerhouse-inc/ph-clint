@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import type { EventBus, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
+import type { CaptureDefinition, EndpointType, EventBus, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
 import { isPortFree } from './preflight.js';
 
 /**
@@ -24,6 +24,7 @@ interface ServiceStateFile {
   pid: number;
   status: 'starting' | 'ready' | 'failed';
   endpoints?: Record<string, string>;
+  endpointTypes?: Record<string, EndpointType>;
   error?: string;
   startedAt: string;
   command: string;
@@ -158,6 +159,28 @@ function scanInstances(servicesDir: string, serviceId: string): ServiceStateFile
 }
 
 /**
+ * Find the instance ID of the most recently modified .log file in a service directory.
+ * Used as a fallback when no .json state files exist (e.g. after stop).
+ */
+function mostRecentLogInstance(servicesDir: string, serviceId: string): string | undefined {
+  const dir = serviceDir(servicesDir, serviceId);
+  try {
+    const logFiles = fs.readdirSync(dir).filter((f) => f.endsWith('.log'));
+    if (logFiles.length === 0) return undefined;
+    let best: { name: string; mtime: number } | undefined;
+    for (const f of logFiles) {
+      const stat = fs.statSync(path.join(dir, f));
+      if (!best || stat.mtimeMs > best.mtime) {
+        best = { name: f, mtime: stat.mtimeMs };
+      }
+    }
+    return best ? best.name.slice(0, -4) : undefined; // strip .log
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Create a ServiceManager for managing long-running detached services.
  */
 export function createServiceManager(
@@ -281,6 +304,7 @@ export function createServiceManager(
     let lastPos = 0;
     const matched = new Set<string>();
     state.endpoints = {};
+    state.endpointTypes = {};
 
     await new Promise<void>((resolve, reject) => {
       const pollInterval = setInterval(() => {
@@ -320,11 +344,16 @@ export function createServiceManager(
               const match = rp.pattern.exec(newContent);
               if (match) {
                 matched.add(rp.name);
-                // Extract captures as endpoints
+                // Extract captures as endpoints (supports number or CaptureDefinition)
                 if (rp.captures) {
-                  for (const [name, groupIdx] of Object.entries(rp.captures)) {
+                  for (const [name, captureDef] of Object.entries(rp.captures)) {
+                    const groupIdx = typeof captureDef === 'number' ? captureDef : captureDef.group;
                     if (match[groupIdx]) {
                       state.endpoints![name] = match[groupIdx]!;
+                      // Store endpoint type if provided via CaptureDefinition
+                      if (typeof captureDef !== 'number' && captureDef.type) {
+                        state.endpointTypes![name] = captureDef.type;
+                      }
                     }
                   }
                 }
@@ -334,6 +363,7 @@ export function createServiceManager(
                   label: def.label,
                   name: rp.name,
                   endpoints: state.endpoints,
+                  endpointTypes: state.endpointTypes,
                   remaining: readinessPatterns.length - matched.size,
                 });
               }
@@ -350,6 +380,7 @@ export function createServiceManager(
                 instanceId,
                 label: def.label,
                 endpoints: state.endpoints,
+                endpointTypes: state.endpointTypes,
               });
               resolve();
               return;
@@ -505,8 +536,8 @@ export function createServiceManager(
       }
 
       for (const state of instances) {
-        // Verify PID is alive
-        if (state.pid && !isPidAlive(state.pid)) {
+        // Verify PID is alive (pid <= 0 means not yet spawned — treat as dead)
+        if (!state.pid || !isPidAlive(state.pid)) {
           const statePath = stateFilePath(servicesDir, def.id, state.instanceId);
 
           // Process died — check restart policy
@@ -602,6 +633,7 @@ export function createServiceManager(
           status: state.status as ServiceInstanceStatus['status'],
           pid: state.pid,
           endpoints: state.endpoints,
+          endpointTypes: state.endpointTypes,
           restartAttempt: state.restartAttempt,
           params: state.params,
           workdir: state.workdir,
@@ -623,7 +655,8 @@ export function createServiceManager(
       if (instances.length > 0) {
         resolvedInstanceId = instances[instances.length - 1]!.instanceId;
       } else {
-        resolvedInstanceId = id;
+        // No state files (e.g. after stop) — find the most recent .log file by mtime
+        resolvedInstanceId = mostRecentLogInstance(servicesDir, id) ?? id;
       }
     }
     const logPath = logFilePath(servicesDir, id, resolvedInstanceId);

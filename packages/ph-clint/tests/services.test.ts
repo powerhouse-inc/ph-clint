@@ -478,6 +478,23 @@ describe('createServiceManager', () => {
       expect(logContent).toBe('');
     });
 
+    it('falls back to most recent log file when no state files exist', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc', { workdir: tmpDir });
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      // Verify logs work while running
+      const beforeStop = mgr.logs('test-svc');
+      expect(beforeStop).toContain('listening');
+
+      // Stop removes .json state files but preserves .log files
+      await mgr.stop('test-svc');
+
+      // logs() should still find the log via .log file mtime fallback
+      const afterStop = mgr.logs('test-svc');
+      expect(afterStop).toContain('listening');
+    });
+
     it('throws for unknown service', () => {
       const mgr = createManager([readyDef]);
       expect(() => mgr.logs('nonexistent')).toThrow(/Unknown service/);
@@ -756,6 +773,108 @@ describe('createServiceManager', () => {
       const maxRetryFailed = failedEvents.find((e) => e.error?.includes('Max restart'));
       expect(maxRetryFailed).toBeDefined();
     }, SERVICE_TEST_TIMEOUT);
+  });
+
+  describe('typed captures (CaptureDefinition)', () => {
+    const typedCaptureDef: ServiceDefinition = {
+      id: 'typed-svc',
+      label: 'Typed Service',
+      command: `node ${TEST_SERVICE}`,
+      env: () => ({ TEST_SERVICE_MODE: 'vetra', TEST_SERVICE_PORT: '4567' }),
+      readiness: {
+        patterns: [
+          {
+            name: 'connect-port',
+            pattern: /Local:\s*http:\/\/localhost:(\d+)/,
+            captures: { 'connect-studio': 1 }, // plain number — backward compat
+          },
+          {
+            name: 'drive-url',
+            pattern: /Drive URL:\s*(https?:\/\/[^\s]+)/,
+            captures: { 'drive-url': { group: 1, type: 'api-rest' } },
+          },
+          {
+            name: 'mcp-server',
+            pattern: /MCP server available at (https?:\/\/[^\s]+)/,
+            captures: { 'mcp-server': { group: 1, type: 'api-mcp' } },
+          },
+        ],
+        timeout: 5000,
+      },
+      shutdown: { signal: 'SIGTERM', timeout: 3000 },
+    };
+
+    it('stores endpointTypes for CaptureDefinition captures', async () => {
+      const mgr = createManager([typedCaptureDef]);
+      await mgr.start('typed-svc');
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('ready');
+      expect(statuses[0]!.endpointTypes?.['mcp-server']).toBe('api-mcp');
+      expect(statuses[0]!.endpointTypes?.['drive-url']).toBe('api-rest');
+      // Plain number capture should not have a type entry
+      expect(statuses[0]!.endpointTypes?.['connect-studio']).toBeUndefined();
+      trackedPids.push(statuses[0]!.pid!);
+    });
+
+    it('extracts endpoint values correctly for both number and CaptureDefinition', async () => {
+      const mgr = createManager([typedCaptureDef]);
+      await mgr.start('typed-svc');
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.endpoints?.['connect-studio']).toBe('4567');
+      expect(statuses[0]!.endpoints?.['drive-url']).toBe('http://localhost:4567/drives/main');
+      expect(statuses[0]!.endpoints?.['mcp-server']).toBe('http://localhost:4567/mcp');
+      trackedPids.push(statuses[0]!.pid!);
+    });
+
+    it('includes endpointTypes in service:ready event', async () => {
+      const events: any[] = [];
+      eventBus.on('service:ready', (data) => events.push(data));
+
+      const mgr = createManager([typedCaptureDef]);
+      await mgr.start('typed-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].endpointTypes?.['mcp-server']).toBe('api-mcp');
+      expect(events[0].endpointTypes?.['drive-url']).toBe('api-rest');
+    });
+
+    it('includes endpointTypes in service:pattern-matched events', async () => {
+      const events: any[] = [];
+      eventBus.on('service:pattern-matched', (data) => events.push(data));
+
+      const mgr = createManager([typedCaptureDef]);
+      await mgr.start('typed-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      // The last pattern-matched event should have accumulated endpointTypes
+      const lastEvent = events[events.length - 1];
+      expect(lastEvent.endpointTypes).toBeDefined();
+    });
+
+    it('backward compat: plain number captures still work without endpointTypes', async () => {
+      const plainDef: ServiceDefinition = {
+        id: 'plain-cap',
+        label: 'Plain Captures',
+        command: `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
+        readiness: {
+          pattern: /Server listening on http:\/\/localhost:(\d+)/,
+          timeout: 5000,
+          captures: { port: 1 },
+        },
+      };
+      const mgr = createManager([plainDef]);
+      await mgr.start('plain-cap');
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.endpoints?.port).toBe('4567');
+      // endpointTypes should be empty (no typed captures)
+      expect(statuses[0]!.endpointTypes).toEqual({});
+      trackedPids.push(statuses[0]!.pid!);
+    });
   });
 
   describe('env config', () => {

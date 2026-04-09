@@ -100,7 +100,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
         const cwd = resolvedWorkdir ?? context.workdir;
         const instanceId = await services.start(id, {
           name: input.name as string | undefined,
-          workdir: resolvedWorkdir,
+          workdir: cwd,
           cwd,
           params: Object.keys(params).length > 0 ? params : undefined,
         });
