@@ -74,7 +74,7 @@ For ANY document model changes, follow this **mandatory** two-step process:
 
 #### Step 1: Update Document Model via MCP
 
-Use `reactor-mcp__addActions` with operations like:
+Use `vetra-mcp__addActions` with operations like:
 
 - `SET_OPERATION_SCHEMA` - update input/output schemas
 - `SET_OPERATION_REDUCER` - update reducer code

@@ -38,6 +38,7 @@ export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
 
   return {
     async getTools(options?: GetToolsOptions) {
+      const log = ctx.context.log;
       // Use the full runtime CommandContext (ctx.context) — it has services, processes,
       // routine, emit, log attached. Building a new context from raw fields loses those.
       const cliTools = await commandsToMastraTools(ctx.commands, ctx.context);
@@ -45,9 +46,14 @@ export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
       if (options?.includeMcp === false) return cliTools;
 
       const services = ctx.context.services;
-      if (!services) return cliTools;
+      if (!services) {
+        log?.debug('[getTools] No services on context — skipping MCP discovery');
+        return cliTools;
+      }
 
-      const mcpTools = await discoverMcpTools(services);
+      log?.debug('[getTools] Discovering MCP tools from services...');
+      const mcpTools = await discoverMcpTools(services, log, options?.MCPClient);
+      log?.debug(`[getTools] CLI tools: ${Object.keys(cliTools).length}, MCP tools: ${Object.keys(mcpTools).length}`);
       return { ...cliTools, ...mcpTools };
     },
 

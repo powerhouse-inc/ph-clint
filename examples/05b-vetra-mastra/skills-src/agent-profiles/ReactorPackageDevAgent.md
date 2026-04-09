@@ -71,7 +71,7 @@ As a Reactor Package Developer, you have access to the following tools:
 - `vetra-restart` — restart the running project
 
 **Reactor MCP tools** (available after running a project)
-- When a reactor project is running, a new suite of MCP tools (`reactor-mcp__*`) will automatically become available to you. These give you access to the specification documents in Vetra Drive and test documents in Preview Drive.
+- When a reactor project is running, a new suite of MCP tools (`vetra-mcp__*`) will automatically become available to you. These give you access to the specification documents in Vetra Drive and test documents in Preview Drive.
 
 ## Usage rules for Reactor Package project management
 

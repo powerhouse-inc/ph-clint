@@ -6,6 +6,12 @@ import type { AgentProvider } from '../../core/types.js';
 export interface GetToolsOptions {
   /** Include MCP tools from running services with api-mcp endpoints. Default: true */
   includeMcp?: boolean;
+  /**
+   * MCPClient constructor from `@mastra/mcp`. Required for MCP tool discovery.
+   * Must be passed by the consumer because `@mastra/mcp` is resolved from the
+   * consumer's node_modules, not from ph-clint's.
+   */
+  MCPClient?: any;
 }
 
 /**

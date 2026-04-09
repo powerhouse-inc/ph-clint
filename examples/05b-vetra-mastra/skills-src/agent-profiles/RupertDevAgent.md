@@ -58,7 +58,7 @@ Reading and editing documents:
 - `vetra-restart` — restart Vetra
 
 **Reactor MCP tools** (available after running a project)
-- When a reactor project is running, MCP tools (`reactor-mcp__*`) automatically become available for document and drive operations.
+- When a reactor project is running, MCP tools (`vetra-mcp__*`) automatically become available for document and drive operations.
 
 ### Fusion Platform Development
 

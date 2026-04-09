@@ -32,7 +32,7 @@ applying the relevant portions of this information.
 
 **MANDATORY**: Check document model schema before making any MCP tool calls.
 
-- **ALWAYS** use `reactor-mcp__getDocumentModelSchema` with `type: "powerhouse/document-model"` first
+- **ALWAYS** use `vetra-mcp__getDocumentModelSchema` with `type: "powerhouse/document-model"` first
 - Review input schema requirements for operations like `ADD_MODULE`, `ADD_OPERATION`, etc.
 - Ensure all required parameters (like `id` or `scope` fields) are included in action inputs
 - This prevents failed tool calls and reduces iteration
@@ -273,7 +273,7 @@ For ANY document model changes, follow this **mandatory** two-step process:
 
 #### Step 1: Update Document Model via MCP
 
-Use `reactor-mcp__addActions` with operations like:
+Use `vetra-mcp__addActions` with operations like:
 
 - `SET_OPERATION_SCHEMA` - update input/output schemas
 - `SET_OPERATION_REDUCER` - update reducer code
@@ -325,7 +325,7 @@ The required input and context are available and the agent is ready to perform t
 
 ## DM.00.3 Review the existing package specs and implementation
 
-Use the `reactor-mcp__*` tools to complete this task.
+Use the `vetra-mcp__*` tools to complete this task.
 
 - Review any existing specification documents in the Vetra drive and consider how the new document model 
   will fit in.
@@ -336,7 +336,7 @@ Use the `reactor-mcp__*` tools to complete this task.
 
 ## DM.00.4 Ensure the Reactor Package information is sufficiently updated
 
-Use the `reactor-mcp__*` tools to complete this task.
+Use the `vetra-mcp__*` tools to complete this task.
 
 - Read the `powerhouse/package` document in the Vetra drive and check if the information is complete.
 
@@ -426,7 +426,7 @@ wants, and what the kitchen has prepared.
 
 ### Wrap-up
 
-Use the `reactor-mcp__*` tools to verify that all details are correctly written to the 
+Use the `vetra-mcp__*` tools to verify that all details are correctly written to the 
 document model specification in Vetra Studio drive.
 
 ## DM.01.4 Fill out the remaining header fields
@@ -458,7 +458,7 @@ document model specification in Vetra Studio drive.
 
 ### Wrap-up
 
-Use the `reactor-mcp__*` tools to verify that all details are correctly written to the 
+Use the `vetra-mcp__*` tools to verify that all details are correctly written to the 
 document model specification in Vetra Studio drive.
 
 # DM.02 Create the state schema and operations

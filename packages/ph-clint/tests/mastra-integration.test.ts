@@ -192,6 +192,37 @@ describe('getTools with MCP discovery', () => {
     expect(Object.keys(tools)).toEqual(['echo']);
   });
 
+  it('getTools() throws when api-mcp service is ready but no MCPClient provided', async () => {
+    const ctx = makeAgentContext();
+    ctx.context.services = makeMockServiceManager([{
+      serviceId: 'test',
+      instanceId: 'test',
+      label: 'Test',
+      status: 'ready',
+      endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
+      endpointTypes: { 'mcp-server': 'api-mcp' },
+    }]);
+
+    const helpers = createMastraHelpers(ctx);
+    await expect(helpers.getTools()).rejects.toThrow(/MCPClient/);
+  });
+
+  it('getTools({ includeMcp: false }) skips error even with api-mcp services', async () => {
+    const ctx = makeAgentContext();
+    ctx.context.services = makeMockServiceManager([{
+      serviceId: 'test',
+      instanceId: 'test',
+      label: 'Test',
+      status: 'ready',
+      endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
+      endpointTypes: { 'mcp-server': 'api-mcp' },
+    }]);
+
+    const helpers = createMastraHelpers(ctx);
+    const tools = await helpers.getTools({ includeMcp: false });
+    expect(Object.keys(tools)).toEqual(['echo']);
+  });
+
   it('getTools() returns CLI tools when services are not ready', async () => {
     const ctx = makeAgentContext();
     ctx.context.services = makeMockServiceManager([{

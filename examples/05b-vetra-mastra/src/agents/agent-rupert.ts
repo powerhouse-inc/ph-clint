@@ -3,6 +3,7 @@ import { Agent } from '@mastra/core/agent';
 import { Workspace, LocalFilesystem } from '@mastra/core/workspace';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
+import { MCPClient } from '@mastra/mcp';
 import { createWorkdirStore } from 'ph-clint';
 import { createMastraHelpers, getMastraPaths } from 'ph-clint/mastra';
 import type { AgentContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
@@ -65,7 +66,9 @@ export async function createAgentRupert(
   const libsqlStore = new LibSQLStore({ id: 'ph-clint-storage', url: `file:${paths.dbPath}` });
   const memory = new Memory({ storage: libsqlStore });
 
-  // Use createMastraHelpers to get CLI tools + auto-discovered MCP tools
+  // Use createMastraHelpers for CLI tools + auto-discovered MCP tools.
+  // tools callback is invoked per-turn, so MCP endpoints that appear after
+  // agent creation (e.g. vetra-start in interactive mode) are picked up.
   const agentCtx: AgentContext<Config> = {
     workdir,
     config,
@@ -75,7 +78,6 @@ export async function createAgentRupert(
     commands,
   };
   const m = createMastraHelpers(agentCtx);
-  const tools = await m.getTools();
 
   return new Agent({
     id: 'rupert-dev-agent',
@@ -84,7 +86,12 @@ export async function createAgentRupert(
     model: config.apiKey
       ? { id: config.model as `${string}/${string}`, apiKey: config.apiKey }
       : (config.model as `${string}/${string}`),
-    tools: async () => tools,
+    tools: async () => {
+      log?.debug('[agent-rupert] tools callback invoked');
+      const tools = await m.getTools({ MCPClient });
+      log?.debug(`[agent-rupert] tools resolved: ${Object.keys(tools).length} tools`);
+      return tools;
+    },
     workspace,
     memory,
   });
