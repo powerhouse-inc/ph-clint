@@ -53,7 +53,7 @@ export const reactorPackageInit = defineCommand<typeof inputSchema, { text: stri
       const versionArgs = tags.includes(phVersion)
         ? [`--${phVersion}`]
         : ['--version', phVersion];
-      const phCmd = ['ph', 'init', name, ...versionArgs].join(' ');
+      const phCmd = ['ph', 'init', name, ...versionArgs, '--pnpm'].join(' ');
       const child = spawn('script', ['-qec', phCmd, '/dev/null'], {
         cwd: workdir,
         stdio: ['ignore', 'pipe', 'pipe'],
