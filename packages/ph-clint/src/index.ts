@@ -5,7 +5,7 @@ export { defineCli } from './core/cli.js';
 export { defineTrigger } from './core/trigger.js';
 export { getSchemaFields } from './core/schema.js';
 export { createWorkdirStore, createMemoryWorkdirStore } from './core/store.js';
-export { toUpperSnake, configKeyToEnvVar, resolveConfig, localConfigPath, userConfigPath, getMissingRequiredFields } from './core/config.js';
+export { toUpperSnake, configKeyToEnvVar, resolveConfig, localConfigPath, userConfigPath, userStoreFolder, getMissingRequiredFields } from './core/config.js';
 export { createConfigCommand, generateConfigCommandHelp } from './core/config-command.js';
 export { resolveWorkdir } from './core/workdir.js';
 export { createEventBus } from './core/events.js';

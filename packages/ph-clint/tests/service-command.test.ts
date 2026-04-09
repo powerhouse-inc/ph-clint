@@ -479,9 +479,12 @@ describe('auto-injected service commands in CLI', () => {
   });
 
   afterEach(() => {
-    const svcDir = path.join(tmpDir, '.ph', 'svc', 'services');
-    const pids = [...trackedPids, ...collectPids(svcDir)];
+    // Services now live in user-scope (~/.ph/{name}/services/)
+    const userSvcDir = path.join(os.homedir(), '.ph', 'svc', 'services');
+    const localSvcDir = path.join(tmpDir, '.ph', 'svc', 'services');
+    const pids = [...trackedPids, ...collectPids(userSvcDir), ...collectPids(localSvcDir)];
     for (const pid of pids) safeKill(pid);
+    fs.rmSync(userSvcDir, { recursive: true, force: true });
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 

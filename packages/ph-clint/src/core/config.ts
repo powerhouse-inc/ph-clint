@@ -87,6 +87,15 @@ export function userConfigPath(cliName: string): string {
 }
 
 /**
+ * Return the path to a user-scope store folder for a CLI.
+ * Located at ~/.ph/{cli-name}/{subpath...}.
+ * When called with no subpath, returns the store root ~/.ph/{cli-name}/.
+ */
+export function userStoreFolder(cliName: string, ...subpath: string[]): string {
+  return join(homedir(), '.ph', cliName, ...subpath);
+}
+
+/**
  * Options for resolveConfig.
  */
 export interface ResolveConfigOptions {

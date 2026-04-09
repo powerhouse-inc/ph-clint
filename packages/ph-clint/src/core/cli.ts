@@ -18,7 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
 import { getSchemaFields } from './schema.js';
 import { createMemoryWorkdirStore, createWorkdirStore } from './store.js';
-import { getConfigEnvVars, resolveConfig } from './config.js';
+import { getConfigEnvVars, resolveConfig, userStoreFolder } from './config.js';
 import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
 import { createServiceCommands } from './service-command.js';
@@ -616,7 +616,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
 
     // Create ServiceManager when services are defined
     if (hasServices && options.services && eventBus) {
-      const svcDir = workspace.getStoreFolder('services');
+      const svcDir = userStoreFolder(options.name, 'services');
       const serviceManager = createServiceManager(options.services as any[], {
         config,
         servicesDir: svcDir,
