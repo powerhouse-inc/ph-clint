@@ -21,13 +21,19 @@ function safeKill(pid: number): void {
 function collectPids(servicesDir: string): number[] {
   const pids: number[] = [];
   try {
-    for (const f of fs.readdirSync(servicesDir)) {
-      if (f.endsWith('.json')) {
-        try {
-          const state = JSON.parse(fs.readFileSync(path.join(servicesDir, f), 'utf-8'));
-          if (state.pid) pids.push(state.pid);
-        } catch { /* ignore */ }
-      }
+    for (const dir of fs.readdirSync(servicesDir)) {
+      const subDir = path.join(servicesDir, dir);
+      try {
+        if (!fs.statSync(subDir).isDirectory()) continue;
+        for (const f of fs.readdirSync(subDir)) {
+          if (f.endsWith('.json')) {
+            try {
+              const state = JSON.parse(fs.readFileSync(path.join(subDir, f), 'utf-8'));
+              if (state.pid) pids.push(state.pid);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
   return pids;
@@ -131,8 +137,8 @@ describe('CLI integration', () => {
   });
 
   afterEach(() => {
-    const svcDir = path.join(tmpDir, '.ph', 'svc', 'services');
-    const pids = [...trackedPids, ...collectPids(svcDir), ...collectPids(servicesDir)];
+    const eventSvcDir = path.join(tmpDir, 'services');
+    const pids = [...trackedPids, ...collectPids(servicesDir), ...collectPids(eventSvcDir)];
     for (const pid of pids) {
       safeKill(pid);
     }
@@ -224,46 +230,20 @@ describe('CLI integration', () => {
 
   it('event handlers fire on service:ready and service:stopped', async () => {
     const events: string[] = [];
+    const svcDir = path.join(tmpDir, 'services');
 
-    const startCmd = defineCommand({
-      id: 'start-svc',
-      description: 'Start vetra',
-      inputSchema: z.object({}),
-      execute: async (_, { services }) => {
-        await services!.start('vetra');
-        return { text: 'started' };
-      },
+    const eventBus = createEventBus();
+    eventBus.on('service:ready', () => events.push('ready'));
+    eventBus.on('service:stopped', () => events.push('stopped'));
+    eventBus.on('service:pattern-matched', (e) => events.push(`matched:${(e as any).name}`));
+
+    const mgr = createServiceManager([vetraDef], {
+      config: { switchboardPort: 4001 },
+      servicesDir: svcDir,
+      eventBus,
     });
 
-    const stopCmd = defineCommand({
-      id: 'stop-svc',
-      description: 'Stop vetra',
-      inputSchema: z.object({}),
-      execute: async (_, { services }) => {
-        await services!.stop('vetra');
-        return { text: 'stopped' };
-      },
-    });
-
-    const testCli = defineCli({
-      name: 'vetra-mastra',
-      version: '1.0.0',
-      description: 'test',
-      commands: [startCmd, stopCmd],
-      services: [vetraDef],
-      events: {
-        'service:ready': () => events.push('ready'),
-        'service:stopped': () => events.push('stopped'),
-        'service:pattern-matched': (e) => events.push(`matched:${e.name}`),
-      },
-    });
-
-    await testCli.run(['node', 'vetra-mastra', 'start-svc'], {
-      stdout: () => {},
-      stderr: () => {},
-      exit: () => {},
-      workdir: tmpDir,
-    });
+    await mgr.start('vetra');
 
     expect(events).toContain('ready');
     expect(events).toContain('matched:connect-port');
@@ -271,15 +251,9 @@ describe('CLI integration', () => {
     expect(events).toContain('matched:mcp-server');
 
     // Collect PIDs for cleanup
-    const svcDir = path.join(tmpDir, '.ph', 'svc', 'services');
     trackedPids.push(...collectPids(svcDir));
 
-    await testCli.run(['node', 'vetra-mastra', 'stop-svc'], {
-      stdout: () => {},
-      stderr: () => {},
-      exit: () => {},
-      workdir: tmpDir,
-    });
+    await mgr.stop('vetra');
 
     expect(events).toContain('stopped');
   });
