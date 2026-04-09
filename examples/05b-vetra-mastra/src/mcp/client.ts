@@ -19,6 +19,19 @@ export async function connectMcp(mcpServerUrl: string): Promise<void> {
       },
     },
   });
+
+  // Verify the connection actually works
+  try {
+    const tools = await client.listTools();
+    const count = Object.keys(tools).length;
+    if (count === 0) {
+      console.warn(`[mcp] Connected to ${mcpServerUrl} but no tools were returned`);
+    }
+  } catch (error) {
+    console.warn(
+      `[mcp] Connected to ${mcpServerUrl} but tool discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 /**
@@ -42,7 +55,10 @@ export async function getMcpTools(): Promise<Record<string, any>> {
   if (!client) return {};
   try {
     return await client.listTools();
-  } catch {
+  } catch (error) {
+    console.warn(
+      `[mcp] Failed to list MCP tools: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return {};
   }
 }

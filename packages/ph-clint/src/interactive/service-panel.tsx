@@ -172,13 +172,13 @@ export function ServicePanel({ services, onExit, serviceId }: ServicePanelProps)
         <Box flexDirection="column" marginLeft={2} marginTop={1}>
           <Text><Text bold>ID:      </Text>{detailServiceId}</Text>
           <Text><Text bold>Status:  </Text><Text color={statusColor(svc?.status ?? 'idle')}>{statusIcon(svc?.status ?? 'idle')} {svc?.status ?? 'idle'}</Text></Text>
-          <Text><Text bold>PID:     </Text>{svc?.pid ?? '—'}</Text>
+          <Text><Text bold>PID:     </Text>{String(svc?.pid ?? '—')}</Text>
           <Text><Text bold>Command: </Text>{typeof def?.command === 'function' ? '(dynamic)' : (def?.command ?? '—')}</Text>
           {def?.shutdown && (
-            <Text><Text bold>Shutdown:</Text> {def.shutdown.signal} (timeout {def.shutdown.timeout}ms)</Text>
+            <Text><Text bold>Shutdown:</Text>{` ${def.shutdown.signal} (timeout ${def.shutdown.timeout}ms)`}</Text>
           )}
           {def?.restart?.enabled && (
-            <Text><Text bold>Restart: </Text>enabled, max {def.restart.maxRetries} retries, {def.restart.delay}ms delay</Text>
+            <Text><Text bold>Restart: </Text>{`enabled, max ${def.restart.maxRetries} retries, ${def.restart.delay}ms delay`}</Text>
           )}
           {svc?.error && (
             <Text><Text bold>Error:   </Text><Text color="red">{svc.error}</Text></Text>
@@ -269,7 +269,7 @@ export function ServicePanel({ services, onExit, serviceId }: ServicePanelProps)
                 {svc.label.padEnd(24)}
               </Text>
               <Text dimColor> [{svc.status}]</Text>
-              {svc.pid && <Text dimColor> pid {svc.pid}</Text>}
+              {svc.pid != null && svc.pid > 0 && <Text dimColor> pid {String(svc.pid)}</Text>}
               {epParts.length > 0 && <Text dimColor> {epParts.join(' ')}</Text>}
               {svc.error && <Text color="red"> {svc.error}</Text>}
             </Box>

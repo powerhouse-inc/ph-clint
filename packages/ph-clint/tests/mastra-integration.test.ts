@@ -10,7 +10,7 @@ import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
 import { mapMastraStream } from '../src/integrations/mastra/stream.js';
 import { createMemoryWorkdirStore } from '../src/core/store.js';
-import type { AgentContext } from '../src/core/types.js';
+import type { AgentContext, ServiceInstanceStatus, ServiceManager } from '../src/core/types.js';
 
 const testWorkspace = join(tmpdir(), `ph-clint-mastra-test-${randomBytes(4).toString('hex')}`);
 
@@ -137,6 +137,75 @@ describe('mapMastraStream', () => {
     }
     expect(chunks).toHaveLength(1);
     expect(chunks[0].text).toBe('hello');
+  });
+});
+
+describe('getTools with MCP discovery', () => {
+  function makeMockServiceManager(instances: ServiceInstanceStatus[]): ServiceManager {
+    return {
+      start: async () => '',
+      stop: async () => {},
+      list: () => instances,
+      getDefinition: () => undefined,
+      logs: () => '',
+      watchLogs: () => () => {},
+    };
+  }
+
+  it('getTools({ includeMcp: false }) returns only CLI tools', async () => {
+    const ctx = makeAgentContext();
+    // Add a mock service manager with an api-mcp endpoint
+    ctx.context.services = makeMockServiceManager([{
+      serviceId: 'test',
+      instanceId: 'test',
+      label: 'Test',
+      status: 'ready',
+      endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
+      endpointTypes: { 'mcp-server': 'api-mcp' },
+    }]);
+
+    const helpers = createMastraHelpers(ctx);
+    const tools = await helpers.getTools({ includeMcp: false });
+    // Should only have CLI tools, not MCP tools
+    expect(Object.keys(tools)).toEqual(['echo']);
+  });
+
+  it('getTools() returns CLI tools when no services manager', async () => {
+    const helpers = createMastraHelpers(makeAgentContext());
+    const tools = await helpers.getTools();
+    expect(Object.keys(tools)).toEqual(['echo']);
+  });
+
+  it('getTools() returns CLI tools when services have no api-mcp endpoints', async () => {
+    const ctx = makeAgentContext();
+    ctx.context.services = makeMockServiceManager([{
+      serviceId: 'test',
+      instanceId: 'test',
+      label: 'Test',
+      status: 'ready',
+      endpoints: { 'web': 'http://localhost:3000' },
+      endpointTypes: { 'web': 'website' },
+    }]);
+
+    const helpers = createMastraHelpers(ctx);
+    const tools = await helpers.getTools();
+    expect(Object.keys(tools)).toEqual(['echo']);
+  });
+
+  it('getTools() returns CLI tools when services are not ready', async () => {
+    const ctx = makeAgentContext();
+    ctx.context.services = makeMockServiceManager([{
+      serviceId: 'test',
+      instanceId: 'test',
+      label: 'Test',
+      status: 'starting',
+      endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
+      endpointTypes: { 'mcp-server': 'api-mcp' },
+    }]);
+
+    const helpers = createMastraHelpers(ctx);
+    const tools = await helpers.getTools();
+    expect(Object.keys(tools)).toEqual(['echo']);
   });
 });
 

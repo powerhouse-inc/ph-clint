@@ -4,12 +4,11 @@ import { Workspace, LocalFilesystem } from '@mastra/core/workspace';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
 import { createWorkdirStore } from 'ph-clint';
-import { getMastraPaths, commandsToMastraTools } from 'ph-clint/mastra';
-import type { AgentContext, AgentProvider, Command, Logger } from 'ph-clint';
+import { createMastraHelpers, getMastraPaths } from 'ph-clint/mastra';
+import type { AgentContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
 import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
 import { rupertDevAgentInstructions } from './instructions.js';
 import { createDemoAgent } from './demo-agent.js';
-import { getMcpTools } from '../mcp/client.js';
 
 const SKILL_NAMES = [
   'document-editor-creation',
@@ -32,12 +31,14 @@ const SKILL_NAMES = [
  *                    Required because Mastra's bundler breaks import.meta.url paths.
  * @param commands    Commands to convert to Mastra tools. Includes auto-injected
  *                    commands (config, svc) when called from the CLI.
+ * @param context     CommandContext for tool execution and MCP discovery.
  */
 export async function createAgentRupert(
   config: Config,
   workdir: string,
   projectRoot: string,
   commands: Command[],
+  context: CommandContext,
   log?: Logger,
 ): Promise<Agent> {
   const store = createWorkdirStore(workdir, CLI_NAME);
@@ -64,8 +65,17 @@ export async function createAgentRupert(
   const libsqlStore = new LibSQLStore({ id: 'ph-clint-storage', url: `file:${paths.dbPath}` });
   const memory = new Memory({ storage: libsqlStore });
 
-  const commandContext = { workdir, workspace: store, config, stdout: console.log, log };
-  const cliTools = await commandsToMastraTools(commands, commandContext);
+  // Use createMastraHelpers to get CLI tools + auto-discovered MCP tools
+  const agentCtx: AgentContext<Config> = {
+    workdir,
+    config,
+    cliName: CLI_NAME,
+    cliVersion: '0.1.0',
+    context,
+    commands,
+  };
+  const m = createMastraHelpers(agentCtx);
+  const tools = await m.getTools();
 
   return new Agent({
     id: 'rupert-dev-agent',
@@ -74,10 +84,7 @@ export async function createAgentRupert(
     model: config.apiKey
       ? { id: config.model as `${string}/${string}`, apiKey: config.apiKey }
       : (config.model as `${string}/${string}`),
-    tools: async () => ({
-      ...cliTools,
-      ...(await getMcpTools()),
-    }),
+    tools: async () => tools,
     workspace,
     memory,
   });
@@ -94,6 +101,6 @@ export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvi
 
   const { createMastraHelpers } = await import('ph-clint/mastra');
   const m = createMastraHelpers(ctx);
-  const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context.log);
+  const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.context.log);
   return m.wrapAgent(agent);
 }

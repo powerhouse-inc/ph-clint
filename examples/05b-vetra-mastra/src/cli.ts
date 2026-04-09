@@ -8,7 +8,7 @@ import { reactorPackagesList } from './commands/reactor-packages-list.js';
 import { fusionProjectInit } from './commands/fusion-project-init.js';
 import { fusionProjectsList } from './commands/fusion-projects-list.js';
 import { createAgent } from './agents/agent-rupert.js';
-import { connectMcp, disconnectMcp } from './mcp/client.js';
+// MCP client management is handled automatically by the Mastra integration
 
 // ── Service definitions ──────────────────────────────────────────
 
@@ -51,7 +51,7 @@ const vetra = defineService<Config>({
       {
         name: 'mcp-server',
         pattern: /MCP server available at (https?:\/\/[^\s]+)/,
-        captures: { 'mcp-server': 1 },
+        captures: { 'mcp-server': { group: 1, type: 'api-mcp' } },
       },
     ],
     timeout: 90_000,
@@ -129,16 +129,12 @@ export const cli = defineCli({
     'service:pattern-matched': (event) => {
       console.log(`  \u2713 ${event.name} matched (${event.remaining} remaining)`);
     },
-    'service:ready': async (event) => {
+    'service:ready': (event) => {
       const ep = event.endpoints ?? {};
       console.log(
         `\u2713 ${event.label} is ready` +
           (ep['connect-studio'] ? ` \u2014 Connect Studio on port ${ep['connect-studio']}` : ''),
       );
-      if (ep['mcp-server']) {
-        await connectMcp(ep['mcp-server']);
-        console.log(`  \u2713 MCP client connected to ${ep['mcp-server']}`);
-      }
     },
     'service:failed': (event) => {
       console.log(`\u2717 ${event.label} failed: ${event.error}`);
@@ -149,11 +145,8 @@ export const cli = defineCli({
     'service:restarting': (event) => {
       console.log(`\u21BB ${event.label} restarting (attempt ${event.attempt}/${event.maxRetries})`);
     },
-    'service:stopped': async (event) => {
+    'service:stopped': (event) => {
       console.log(`\u25A0 ${event.label} stopped`);
-      if (event.id === 'vetra') {
-        await disconnectMcp();
-      }
     },
   },
 

@@ -67,7 +67,10 @@ installSkills({
 // Use the CLI as single source of truth for commands (includes auto-injected config + svc)
 const commands = cli.listCommands();
 
-const rupertAgent = await createAgentRupert(config, workdir, PROJECT_ROOT, commands);
+// Build a minimal CommandContext for Mastra Studio (no services — runs outside CLI lifecycle)
+const studioContext = { workdir, workspace: store, config, stdout: console.log };
+
+const rupertAgent = await createAgentRupert(config, workdir, PROJECT_ROOT, commands, studioContext);
 
 export const mastra = new Mastra({
   agents: { rupertAgent },

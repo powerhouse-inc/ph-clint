@@ -70,6 +70,8 @@ export type {
   PreflightResult,
   PreflightContext,
   PreflightCheck,
+  EndpointType,
+  CaptureDefinition,
   ReadinessPattern,
   ReadinessConfig,
   ServiceDefinition,

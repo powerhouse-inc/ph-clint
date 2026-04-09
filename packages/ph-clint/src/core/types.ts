@@ -270,13 +270,31 @@ export interface ProcessManager {
 // ── Services ──────────────────────────────────────────────────────
 
 /**
+ * Endpoint type classification for captured service endpoints.
+ * Used by integrations (e.g. Mastra) to auto-discover service capabilities.
+ */
+export type EndpointType = 'other' | 'api-mcp' | 'api-rest' | 'api-graphql' | 'website';
+
+/**
+ * A capture definition with a group index and optional endpoint type.
+ * When only an index is needed, a plain `number` can be used instead.
+ */
+export interface CaptureDefinition {
+  group: number;
+  type?: EndpointType;
+}
+
+/**
  * A named readiness pattern for multi-pattern readiness detection.
  * The service becomes ready when ALL patterns have matched.
+ *
+ * Captures map endpoint names to either a plain group index (`number`)
+ * or a `CaptureDefinition` with an optional endpoint type.
  */
 export interface ReadinessPattern {
   name: string;
   pattern: RegExp;
-  captures?: Record<string, number>;
+  captures?: Record<string, number | CaptureDefinition>;
 }
 
 /**
@@ -289,8 +307,8 @@ export interface ReadinessPattern {
 export interface ReadinessConfig {
   /** Single readiness pattern (mutually exclusive with `patterns`). */
   pattern?: RegExp;
-  /** Captures for the single pattern. Maps endpoint name → capture group index. */
-  captures?: Record<string, number>;
+  /** Captures for the single pattern. Maps endpoint name → group index or CaptureDefinition. */
+  captures?: Record<string, number | CaptureDefinition>;
   /** Multiple named readiness patterns — service is ready when ALL have matched. */
   patterns?: ReadinessPattern[];
   /** Max time (ms) to wait for all patterns to match before marking failed. */
@@ -376,6 +394,7 @@ export interface ServiceInstanceStatus {
   status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping';
   pid?: number;
   endpoints?: Record<string, string>;
+  endpointTypes?: Record<string, EndpointType>;
   error?: string;
   restartAttempt?: number;
   workdir?: string;
