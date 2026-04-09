@@ -8,7 +8,7 @@ The framework is designed for **automatic generation** of CLIs. Given a config o
 
 ## Repository Structure
 
-This is a monorepo:
+This repository contains independent projects (not a pnpm workspace). Each project has its own `node_modules` and `pnpm-lock.yaml`. Examples reference the library via `"ph-clint": "file:../../packages/ph-clint"` (pnpm creates a symlink).
 
 ```
 ph-clint/
@@ -16,7 +16,7 @@ ph-clint/
 │   ├── features.md      # 20 features (the "what")
 │   └── implementation.md # Tech stack, patterns, runtime (the "how")
 ├── packages/
-│   └── ph-clint/        # The library itself (not yet implemented)
+│   └── ph-clint/        # The library itself
 ├── examples/            # 8 progressive examples (implementation targets)
 │   ├── 01-hello-world/  # Minimal: one command, no integrations
 │   ├── 02-task-tracker/ # REPL, workspace, parameter prompting
@@ -28,6 +28,8 @@ ph-clint/
 │   └── 08-reactor-dev/  # Full reference: multi-agent, services, skills, MCP transport
 └── CLAUDE.md            # You are here
 ```
+
+**Important**: After changing `packages/ph-clint/` source, run `pnpm build` there before the examples can see the updated code.
 
 ## Key Concepts
 
@@ -55,12 +57,10 @@ ph-clint/
 
 ## Package Manager
 
-pnpm is the default (`packageManager` field in root `package.json`, `pnpm-workspace.yaml` present). The monorepo is compatible with npm, yarn, and bun:
+pnpm is the default (`packageManager` field in root `package.json`). Each project is independent — run `pnpm install` inside each project directory separately.
 
-- **pnpm**: Uses `pnpm-workspace.yaml` for workspace config. Default for development.
-- **npm / yarn / bun**: Use the `workspaces` array in root `package.json`.
-- All four support the `workspace:*` protocol for local package references (npm since v7, yarn since v2, bun natively).
-- Test scripts use `node node_modules/.bin/jest` (portable across all managers).
+- Examples reference `ph-clint` via `file:` protocol (pnpm creates a symlink to the library).
+- After changing library source, run `pnpm build` in `packages/ph-clint/` — the symlink means examples pick up the new `dist/` without reinstalling.
 - Use `corepack enable` to auto-select the pinned pnpm version.
 
 ## Development Approach

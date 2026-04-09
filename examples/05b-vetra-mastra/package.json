@@ -23,8 +23,13 @@
     "@mastra/mcp": "^1.4.1",
     "@mastra/memory": "^1.13.1",
     "handlebars": "^4.7.8",
-    "ph-clint": "workspace:*",
+    "ph-clint": "file:../../packages/ph-clint",
     "zod": "^4.3.6"
+  },
+  "pnpm": {
+    "overrides": {
+      "mastra>@mastra/deployer": "1.22.0"
+    }
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",

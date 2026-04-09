@@ -1,18 +1,9 @@
 {
-  "name": "ph-clint-monorepo",
+  "name": "ph-clint-repo",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.26.0",
-  "workspaces": [
-    "packages/*",
-    "examples/*"
-  ],
   "engines": {
     "node": ">=22.13.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "mastra>@mastra/deployer": "1.22.0"
-    }
   }
 }
