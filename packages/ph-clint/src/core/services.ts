@@ -2,8 +2,8 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import net from 'node:net';
-import type { EventBus, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
+import type { EventBus, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
+import { isPortFree } from './preflight.js';
 
 /**
  * Identity wrapper for service definitions — provides type checking and IDE support.
@@ -96,19 +96,7 @@ function isPidAlive(pid: number): boolean {
   }
 }
 
-/**
- * Check if a TCP port is free by attempting to bind to it.
- */
-function isPortFree(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once('error', () => resolve(false));
-    server.once('listening', () => {
-      server.close(() => resolve(true));
-    });
-    server.listen(port, '127.0.0.1');
-  });
-}
+// isPortFree is imported from ./preflight.js
 
 /**
  * Wait for a PID to exit, polling with kill(pid, 0).
@@ -212,12 +200,31 @@ export function createServiceManager(
 
     const params = startOpts?.params;
     const commandStr = resolveCommand(def, params);
+    const spawnCwd = startOpts?.cwd ?? startOpts?.workdir;
+
+    // Run preflight checks before any side effects (log file, state file, spawn)
+    if (def.preflight?.length) {
+      const preflightCtx: PreflightContext = {
+        cwd: spawnCwd ?? process.cwd(),
+        config,
+        params,
+        command: commandStr,
+      };
+      for (const check of def.preflight) {
+        const result = await check(preflightCtx);
+        if (!result.ok) {
+          const parts = [`${def.label}: ${result.message}`];
+          if (result.hint) parts.push(`  Hint: ${result.hint}`);
+          throw new Error(parts.join('\n'));
+        }
+      }
+    }
+
     const logPath = logFilePath(servicesDir, id, instanceId);
-    const logFd = fs.openSync(logPath, 'a');
+    const logFd = fs.openSync(logPath, 'w');
 
     const env = { ...process.env, ...(def.env ? def.env(config, params) : {}) };
 
-    const spawnCwd = startOpts?.cwd ?? startOpts?.workdir;
     const child = spawn(commandStr, {
       shell: true,
       detached: true,
@@ -609,8 +616,16 @@ export function createServiceManager(
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
 
-    // Default to service id as instance id for single-instance services
-    const resolvedInstanceId = instanceId ?? id;
+    // Resolve instance ID: if not provided, find the most recent instance on disk
+    let resolvedInstanceId = instanceId;
+    if (!resolvedInstanceId) {
+      const instances = scanInstances(servicesDir, id);
+      if (instances.length > 0) {
+        resolvedInstanceId = instances[instances.length - 1]!.instanceId;
+      } else {
+        resolvedInstanceId = id;
+      }
+    }
     const logPath = logFilePath(servicesDir, id, resolvedInstanceId);
     try {
       const content = fs.readFileSync(logPath, 'utf-8');

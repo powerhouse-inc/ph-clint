@@ -299,6 +299,37 @@ export interface ReadinessConfig {
   wait?: boolean;
 }
 
+// ── Preflight checks ─────────────────────────────────────────────
+
+/**
+ * Result of a preflight check.
+ * Return `{ ok: true }` if the check passes.
+ * Return `{ ok: false, message, hint? }` if it fails.
+ */
+export type PreflightResult =
+  | { ok: true }
+  | { ok: false; message: string; hint?: string };
+
+/**
+ * Context passed to a preflight check before spawning.
+ */
+export interface PreflightContext<TConfig = Record<string, unknown>> {
+  /** Resolved working directory where the process will spawn. */
+  cwd: string;
+  /** CLI config. */
+  config: TConfig;
+  /** Start params (from paramsSchema). */
+  params?: Record<string, unknown>;
+  /** Resolved command string that would be spawned. */
+  command: string;
+}
+
+/**
+ * A preflight check receives the resolved start context and returns pass/fail.
+ */
+export type PreflightCheck<TConfig = Record<string, unknown>> =
+  (ctx: PreflightContext<TConfig>) => PreflightResult | Promise<PreflightResult>;
+
 /**
  * Definition for a long-running background service.
  * Services are spawned as detached processes that survive CLI exit.
@@ -312,6 +343,12 @@ export interface ServiceDefinition<TConfig = Record<string, unknown>> {
   paramsSchema?: import('zod').ZodType;
   /** Maximum concurrent instances (default 1). */
   maxInstances?: number;
+  /**
+   * Checks to run before spawning the process.
+   * All checks run in order. First failure aborts the start.
+   * Use for fast, cheap validations (file existence, port checks, version checks).
+   */
+  preflight?: PreflightCheck<TConfig>[];
   readiness?: ReadinessConfig;
   shutdown?: { signal: NodeJS.Signals; timeout: number };
   restart?: { enabled: boolean; maxRetries: number; delay: number };

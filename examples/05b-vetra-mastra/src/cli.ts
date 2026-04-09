@@ -1,6 +1,7 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { defineCli, defineService } from 'ph-clint';
+import { defineCli, defineService, checkWorkdir, checkCommand, checkPort } from 'ph-clint';
 import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, type Config } from './config.js';
 import { reactorPackageInit } from './commands/reactor-package-init.js';
 import { reactorPackagesList } from './commands/reactor-packages-list.js';
@@ -55,6 +56,19 @@ const vetra = defineService<Config>({
     ],
     timeout: 90_000,
   },
+  preflight: [
+    checkWorkdir(
+      (cwd) => fs.existsSync(path.join(cwd, 'powerhouse.config.ts'))
+             || fs.existsSync(path.join(cwd, 'powerhouse.config.json')),
+      'Not a Reactor Package project',
+      'Run vetra-start --workdir <project>, or create one with /reactor-package-init',
+    ),
+    checkCommand('ph', {
+      hint: 'Install the Powerhouse CLI: npm install -g ph-cli',
+    }),
+    checkPort((ctx) => (ctx.params?.connectPort as number) ?? 3000, 'Connect Studio'),
+    checkPort((ctx) => (ctx.params?.switchboardPort as number) ?? 4001, 'Switchboard'),
+  ],
   shutdown: { signal: 'SIGTERM', timeout: 10_000 },
   restart: { enabled: true, maxRetries: 3, delay: 5_000 },
 });
@@ -76,6 +90,14 @@ const fusionProject = defineService<Config>({
     NODE_ENV: 'development',
     PH_SWITCHBOARD_URL: String(params?.switchboardUrl ?? 'http://localhost:4001/graphql'),
   }),
+  preflight: [
+    checkWorkdir(
+      (cwd) => fs.existsSync(path.join(cwd, 'package.json')),
+      'Not a Node.js project',
+      'Run fusion-project-start --workdir <project>, or create one with /fusion-project-init',
+    ),
+    checkPort((ctx) => (ctx.params?.fusionPort as number) ?? 8000, 'Fusion Dev Server'),
+  ],
   readiness: {
     patterns: [
       {

@@ -1,4 +1,4 @@
-import { defineCli, defineCommand, defineService } from 'ph-clint';
+import { defineCli, defineCommand, defineService, checkWorkdir, checkCommand, checkPort } from 'ph-clint';
 import type { InferConfig } from 'ph-clint';
 import { z } from 'zod';
 import { spawn } from 'node:child_process';
@@ -56,6 +56,19 @@ const vetra = defineService<Config>({
     ],
     timeout: 90_000,
   },
+  preflight: [
+    checkWorkdir(
+      (cwd) => fs.existsSync(path.join(cwd, 'powerhouse.config.ts'))
+             || fs.existsSync(path.join(cwd, 'powerhouse.config.json')),
+      'Not a Reactor Package project',
+      'Run vetra-start --workdir <project>, or create one with /init',
+    ),
+    checkCommand('ph', {
+      hint: 'Install the Powerhouse CLI: npm install -g ph-cli',
+    }),
+    checkPort(3000, 'Connect Studio'),
+    checkPort(4001, 'Switchboard'),
+  ],
   shutdown: { signal: 'SIGTERM', timeout: 10_000 },
   restart: { enabled: true, maxRetries: 3, delay: 5_000 },
 });
