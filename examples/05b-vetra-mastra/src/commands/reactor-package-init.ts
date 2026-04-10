@@ -1,8 +1,27 @@
 import { defineCommand } from 'ph-clint';
 import { z } from 'zod';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+
+function getPhVersion(): string {
+  try {
+    const output = execFileSync('ph', ['--version'], {
+      encoding: 'utf-8',
+      timeout: 5_000,
+    });
+    const match = output.match(/PH CMD version:\s*(\S+)/);
+    if (match?.[1]) return match[1];
+    throw new Error('Could not parse version from ph --version output');
+  } catch (err) {
+    if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+      throw new Error(
+        'ph CLI is not installed. Install it with: pnpm install -g ph-cmd@latest',
+      );
+    }
+    throw err;
+  }
+}
 
 const inputSchema = z.object({
   name: z
@@ -33,7 +52,7 @@ export const reactorPackageInit = defineCommand<typeof inputSchema, { text: stri
   inputSchema,
   execute: async ({ name, version }, { workdir, config, stdout }) => {
     const projectPath = path.join(workdir, name);
-    const phVersion = version ?? config.phVersion ?? 'staging';
+    const phVersion = version ?? config.phVersion ?? getPhVersion();
 
     // Idempotent: if project already has valid config, succeed
     if (fs.existsSync(projectPath)) {

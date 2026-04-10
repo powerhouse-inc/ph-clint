@@ -16,7 +16,7 @@ export const configSchema = z.object({
   model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model to use'),
   connectPort: z.number().default(3000).describe('Connect Studio port'),
   switchboardPort: z.number().default(4001).describe('Vetra Switchboard port'),
-  phVersion: z.string().default('staging').describe('Powerhouse version'),
+  phVersion: z.string().optional().describe('Powerhouse version (defaults to installed ph CLI version)'),
   agentLogging: z.boolean().default(false).describe('Enable agent conversation logging to disk'),
 });
 
