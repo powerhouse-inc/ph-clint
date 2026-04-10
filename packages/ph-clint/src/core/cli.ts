@@ -918,6 +918,7 @@ export function defineCli<
       description: desc,
       hasInteractive: !!options.interactive,
       hasAgent: !!agentLoader,
+      hasReactor: false, // TODO: detect Powerhouse reactor integration when implemented
       config: configMeta,
       commands: commandsMeta,
       services: servicesMeta,

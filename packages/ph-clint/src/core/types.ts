@@ -510,6 +510,8 @@ export interface CliMetadata {
   description: string;
   hasInteractive: boolean;
   hasAgent: boolean;
+  /** Whether a Powerhouse reactor integration is configured. */
+  hasReactor: boolean;
   config: {
     fields: Record<string, Omit<import('./schema.js').FieldInfo, 'key'>>;
     envVars: Record<string, Omit<ConfigEnvVar, 'field'>>;
