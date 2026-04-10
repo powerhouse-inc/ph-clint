@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage"
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage --maxWorkers=4"
   },
   "dependencies": {
     "commander": "^12.1.0",

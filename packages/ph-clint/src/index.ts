@@ -83,5 +83,6 @@ export type {
   ServiceInstanceStatus,
   ServiceStatus,
   ServiceManager,
+  CliMetadata,
   SkillsConfig,
 } from './core/types.js';

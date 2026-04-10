@@ -14,6 +14,7 @@ export interface FieldInfo {
   hasDefault: boolean;
   defaultValue: unknown;
   baseType: string;
+  sensitive: boolean;
 }
 
 const WRAPPER_TYPES = new Set(['default', 'optional', 'nullable']);
@@ -21,8 +22,10 @@ const WRAPPER_TYPES = new Set(['default', 'optional', 'nullable']);
 /**
  * Extract field entries from a ZodObject schema's shape.
  * Returns an empty array for non-object schemas.
+ *
+ * When `sensitiveKeys` is provided, those fields are marked `sensitive: true`.
  */
-export function getSchemaFields(schema: z.ZodType): FieldInfo[] {
+export function getSchemaFields(schema: z.ZodType, sensitiveKeys?: ReadonlySet<string>): FieldInfo[] {
   if (!(schema instanceof z.ZodObject)) {
     return [];
   }
@@ -36,6 +39,7 @@ export function getSchemaFields(schema: z.ZodType): FieldInfo[] {
       hasDefault: field instanceof z.ZodDefault,
       defaultValue: field instanceof z.ZodDefault ? field.def.defaultValue : undefined,
       baseType: resolveBaseType(field),
+      sensitive: sensitiveKeys?.has(key) ?? false,
     });
   }
   return fields;

@@ -24,6 +24,8 @@ export interface BuildConfig {
     skillsTpl?: string;    // default: 'skills-tpl'
     skillsExt?: string;    // default: 'skills-ext'
   };
+  /** Optional CLI instance. When provided, cli metadata is auto-injected into context as `cli`. */
+  cli?: { getMetadata(): Record<string, unknown> };
   /** Logger function. Default: console.log */
   logger?: (msg: string) => void;
 }

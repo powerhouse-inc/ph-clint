@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { defineCli, defineService, checkWorkdir, checkCommand, checkPort } from 'ph-clint';
-import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, type Config } from './config.js';
+import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, secretsSchema, type Config } from './config.js';
 import { reactorPackageInit } from './commands/reactor-package-init.js';
 import { reactorPackagesList } from './commands/reactor-packages-list.js';
 import { fusionProjectInit } from './commands/fusion-project-init.js';
@@ -118,6 +118,7 @@ export const cli = defineCli({
   version: CLI_VERSION,
   description: 'Vetra Mastra — Reactor development with AI agent',
   configSchema,
+  secretsSchema,
   commands: [reactorPackageInit, reactorPackagesList, fusionProjectInit, fusionProjectsList],
   services: [vetra, fusionProject],
   skills: {

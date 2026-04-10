@@ -11,6 +11,11 @@ import { copyExternalSkills } from './skill-copier.js';
  * 3. Copy external skills as-is
  */
 export function buildSkills(config: BuildConfig): BuildResult {
+  // Auto-inject CLI metadata into template context when cli is provided
+  if (config.cli) {
+    config = { ...config, context: { ...config.context, cli: config.cli.getMetadata() } };
+  }
+
   const log = config.logger ?? console.log;
   const allWarnings: string[] = [];
 

@@ -197,6 +197,22 @@ cd packages/ph-clint && pnpm build
 
 The same applies to other CLI tools installed as dependencies (jest, tsx, etc.) — always use `pnpm exec <tool>` or the `pnpm <script>` form, never `npx <tool>` or `node node_modules/.bin/<tool>`.
 
+### Testing
+
+Always use `pnpm test` (never `npx jest` directly — it needs `--experimental-vm-modules`). The test command already includes `--maxWorkers=4` to prevent OOM kills — ts-jest workers are memory-heavy, and the default worker count (cpus/2) will trigger the Linux OOM killer.
+
+When verifying test results, **do not pipe Jest output through grep**. Jest uses ANSI escape codes and carriage returns in its output — grep patterns like `FAIL`, `PASS`, `^FAIL` will not match because invisible escape sequences are interspersed in the text. Instead:
+
+```bash
+# CORRECT: read the last ~15 lines of output directly
+pnpm test 2>&1 | tail -15
+
+# WRONG: grep will silently match nothing due to ANSI codes
+pnpm test 2>&1 | grep "FAIL"
+```
+
+If you need to run a targeted subset, use `pnpm test -- --testPathPattern=<pattern>`.
+
 ### What NOT to do
 
 - Don't add Powerhouse or Mastra imports to `core/`, `routine/`, `execution/`, `output/`, `interactive/`, or `cli/`. Those must stay integration-free.

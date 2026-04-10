@@ -12,7 +12,6 @@ export const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.
 // ── Config schema ─────────────────────────────────────────────────
 
 export const configSchema = z.object({
-  apiKey: z.string().optional().describe('Anthropic API key'),
   model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model to use'),
   connectPort: z.number().default(3000).describe('Connect Studio port'),
   switchboardPort: z.number().default(4001).describe('Vetra Switchboard port'),
@@ -20,4 +19,8 @@ export const configSchema = z.object({
   agentLogging: z.boolean().default(false).describe('Enable agent conversation logging to disk'),
 });
 
-export type Config = z.infer<typeof configSchema>;
+export const secretsSchema = z.object({
+  apiKey: z.string().optional().describe('Anthropic API key'),
+});
+
+export type Config = z.infer<typeof configSchema> & z.infer<typeof secretsSchema>;

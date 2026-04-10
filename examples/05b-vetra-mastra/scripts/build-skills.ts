@@ -8,6 +8,7 @@
 
 import path from 'node:path';
 import { buildSkills } from 'ph-clint-dev';
+import { cli } from '../src/cli.js';
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -29,10 +30,13 @@ function loadBuildContext() {
   };
 }
 
+console.log('\nCLI Metadata:\n' + JSON.stringify(cli.getMetadata(), null, 2) + '\n');
+
 const result = buildSkills({
   projectRoot: PROJECT_ROOT,
   outputGeneratedDir: path.join(PROJECT_ROOT, 'src', 'mastra', 'generated'),
   context: loadBuildContext(),
+  cli,
   agentProfiles: [
     {
       name: 'RupertDevAgent',

@@ -498,6 +498,42 @@ export interface SkillsConfig {
   agents?: Record<string, string[]>;
 }
 
+// ── CLI Metadata ──────────────────────────────────────────────
+
+/**
+ * Static, JSON-serializable metadata about a CLI instance.
+ * Returned by `Cli.getMetadata()` for use in build-time template contexts.
+ */
+export interface CliMetadata {
+  name: string;
+  version: string;
+  description: string;
+  hasInteractive: boolean;
+  hasAgent: boolean;
+  config: {
+    fields: Record<string, Omit<import('./schema.js').FieldInfo, 'key'>>;
+    envVars: Record<string, Omit<ConfigEnvVar, 'field'>>;
+    defaults: Record<string, unknown>;
+  } | null;
+  commands: Record<string, {
+    description: string;
+    parameters: Record<string, Omit<import('./schema.js').FieldInfo, 'key'>>;
+  }>;
+  services: Record<string, {
+    label: string;
+    maxInstances?: number;
+    parameters: Record<string, Omit<import('./schema.js').FieldInfo, 'key'>>;
+    shutdown?: { signal: string; timeout: number };
+    restart?: { enabled: boolean; maxRetries: number; delay: number };
+    readinessTimeout?: number;
+  }> | null;
+  skills: {
+    sources: string[];
+    agents: Record<string, string[]>;
+    resolved: Record<string, { description: string }>;
+  } | null;
+}
+
 // ── CLI ───────────────────────────────────────────────────────────
 
 /**
@@ -507,18 +543,23 @@ export interface SkillsConfig {
  * resolved config type into `Resolvable` callbacks, `AgentContext`, and
  * `InteractiveConfig`, so `ctx.config` is fully typed without casts.
  */
-export interface CliOptions<TSchema extends z.ZodType = z.ZodType<Record<string, unknown>>> {
+export interface CliOptions<
+  TSchema extends z.ZodType = z.ZodType<Record<string, unknown>>,
+  TSecrets extends z.ZodType = z.ZodType<Record<string, unknown>>,
+> {
   name: string;
   version: string;
-  description: Resolvable<string, z.infer<TSchema>>;
+  description: Resolvable<string, z.infer<TSchema> & z.infer<TSecrets>>;
   commands: Command<any, any, any>[];
   configSchema?: TSchema;
-  interactive?: InteractiveConfig<z.infer<TSchema>>;
+  /** Schema for sensitive config values. Merged into configSchema internally; values are censored in output. */
+  secretsSchema?: TSecrets;
+  interactive?: InteractiveConfig<z.infer<TSchema> & z.infer<TSecrets>>;
   triggers?: Trigger[];
   routine?: RoutineConfig;
   integrations?: Integration[];
   /** Service definitions for the ServiceManager. */
-  services?: ServiceDefinition<z.infer<TSchema>>[];
+  services?: ServiceDefinition<z.infer<TSchema> & z.infer<TSecrets>>[];
   /** Event handlers registered on the event bus. */
   events?: Record<string, (data: any) => void>;
   /**
@@ -595,6 +636,8 @@ export interface Cli {
   generateCommandHelp(commandId: string): string;
   generateCompletion(shell: string): string;
   configEnvVars(): ConfigEnvVar[];
+  /** Return static, JSON-serializable metadata about this CLI. */
+  getMetadata(): CliMetadata;
   run(argv: string[], options?: RunOptions): Promise<void>;
   stopRoutine?(): Promise<void>;
 }

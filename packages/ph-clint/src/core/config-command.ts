@@ -76,6 +76,8 @@ function resolveSource(
 export interface ConfigCommandOptions {
   cliName: string;
   configSchema: z.ZodType;
+  /** Keys of config fields that are sensitive (from secretsSchema). */
+  sensitiveKeys?: ReadonlySet<string>;
   /** Implementation defaults (layer 5). */
   implementationDefaults?: Record<string, unknown>;
   /** Config file from --config flag (already resolved to absolute). */
@@ -94,8 +96,8 @@ const WRITABLE_SCOPES = new Set<ConfigScope>(['local', 'user']);
  * Create the built-in `config` command for a CLI.
  */
 export function createConfigCommand(opts: ConfigCommandOptions): Command {
-  const { cliName, configSchema, implementationDefaults } = opts;
-  const fields = getSchemaFields(configSchema);
+  const { cliName, configSchema, sensitiveKeys, implementationDefaults } = opts;
+  const fields = getSchemaFields(configSchema, sensitiveKeys);
   const fieldKeys = fields.map((f) => f.key);
   // Build a map for O(1) lookup — Zod enum validation guarantees the key exists
   const fieldMap = new Map(fields.map((f) => [f.key, f]));
@@ -106,6 +108,7 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
     remove: z.boolean().optional().describe('Remove the setting from the scope'),
     list: z.boolean().optional().describe('List all settings'),
     scope: z.enum(ALL_SCOPES).optional().describe('Scope to read from or write to'),
+    revealSecrets: z.boolean().optional().describe('Show sensitive values instead of censoring them'),
   });
 
   return {
@@ -113,13 +116,15 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
     description: 'View or modify configuration settings',
     inputSchema,
     execute: async (input, context: CommandContext) => {
-      const { name: settingName, write: newValue, remove, list, scope } = input as {
+      const { name: settingName, write: newValue, remove, list, scope, revealSecrets } = input as {
         name?: string;
         write?: string;
         remove?: boolean;
         list?: boolean;
         scope?: ConfigScope;
+        revealSecrets?: boolean;
       };
+      const reveal = !!revealSecrets;
 
       const workdir = context.workdir;
 
@@ -134,7 +139,7 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
         if (settingName) {
           throw new Error('--list does not accept --name.');
         }
-        return listSettings(fields, cliName, workdir, scope, configSchema, opts.configFile, implementationDefaults);
+        return listSettings(fields, cliName, workdir, scope, configSchema, opts.configFile, implementationDefaults, reveal);
       }
 
       // --name is required for read, write, and remove
@@ -199,7 +204,7 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
 
       // If --scope is specified, read from that specific layer
       if (scope) {
-        return readFromScope(settingName, scope, cliName, workdir, field, configSchema, implementationDefaults);
+        return readFromScope(settingName, scope, cliName, workdir, field, configSchema, implementationDefaults, reveal);
       }
 
       // No scope — show resolved value with source
@@ -213,10 +218,20 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
 
       const value = resolved[settingName];
       const source = resolveSource(settingName, cliName, workdir, opts.configFile);
+      const displayValue = !reveal && field.sensitive && value !== undefined && value !== null
+        ? '"***"' : JSON.stringify(value);
 
-      return { text: `${settingName} = ${JSON.stringify(value)}  (source: ${source})` };
+      return { text: `${settingName} = ${displayValue}  (source: ${source})` };
     },
   };
+}
+
+/**
+ * Censor a value if the field is sensitive and reveal is not enabled.
+ */
+function censorValue(value: unknown, field: FieldInfo, reveal: boolean): string {
+  if (!reveal && field.sensitive && value !== undefined && value !== null) return '"***"';
+  return JSON.stringify(value);
 }
 
 /**
@@ -230,6 +245,7 @@ function listSettings(
   configSchema: z.ZodType,
   configFile?: string,
   implementationDefaults?: Record<string, unknown>,
+  reveal = false,
 ): { text: string } {
   const lines: string[] = [];
 
@@ -241,7 +257,7 @@ function listSettings(
 
     if (scope) {
       // Show value from the specific scope
-      const result = readFromScope(field.key, scope, cliName, workdir, field, configSchema, implementationDefaults);
+      const result = readFromScope(field.key, scope, cliName, workdir, field, configSchema, implementationDefaults, reveal);
       // Extract just the value portion or "not set"
       const match = result.text.match(/= (.+?)  \(/);
       if (match) {
@@ -261,7 +277,7 @@ function listSettings(
         });
         const value = resolved[field.key];
         const source = resolveSource(field.key, cliName, workdir, configFile);
-        lines.push(`${paddedKey}  ${JSON.stringify(value)}  (${source})`);
+        lines.push(`${paddedKey}  ${censorValue(value, field, reveal)}  (${source})`);
       } catch {
         lines.push(`${paddedKey}  <error>`);
       }
@@ -282,6 +298,7 @@ function readFromScope(
   field: FieldInfo,
   configSchema: z.ZodType,
   implementationDefaults?: Record<string, unknown>,
+  reveal = false,
 ): { text: string } {
   switch (scope) {
     case 'args': {
@@ -295,7 +312,7 @@ function readFromScope(
       if (value === undefined) {
         return { text: `${key} is not set in environment (${envName})` };
       }
-      return { text: `${key} = ${JSON.stringify(value)}  (env: ${envName})` };
+      return { text: `${key} = ${censorValue(value, field, reveal)}  (env: ${envName})` };
     }
     case 'local': {
       const filePath = localConfigPath(workdir, cliName);
@@ -304,7 +321,7 @@ function readFromScope(
       if (value === undefined) {
         return { text: `${key} is not set in local config` };
       }
-      return { text: `${key} = ${JSON.stringify(value)}  (local)` };
+      return { text: `${key} = ${censorValue(value, field, reveal)}  (local)` };
     }
     case 'user': {
       const filePath = userConfigPath(cliName);
@@ -313,16 +330,16 @@ function readFromScope(
       if (value === undefined) {
         return { text: `${key} is not set in user config` };
       }
-      return { text: `${key} = ${JSON.stringify(value)}  (user)` };
+      return { text: `${key} = ${censorValue(value, field, reveal)}  (user)` };
     }
     case 'sys': {
       // System defaults: implementation defaults merged with schema defaults
       const defaults = implementationDefaults ?? {};
       if (key in defaults) {
-        return { text: `${key} = ${JSON.stringify(defaults[key])}  (system default)` };
+        return { text: `${key} = ${censorValue(defaults[key], field, reveal)}  (system default)` };
       }
       if (field.hasDefault) {
-        return { text: `${key} = ${JSON.stringify(field.defaultValue)}  (system default)` };
+        return { text: `${key} = ${censorValue(field.defaultValue, field, reveal)}  (system default)` };
       }
       return { text: `${key} has no system default` };
     }
@@ -332,8 +349,8 @@ function readFromScope(
 /**
  * Generate a detailed help page for the config command.
  */
-export function generateConfigCommandHelp(cliName: string, configSchema: z.ZodType, workdir: string): string {
-  const fields = getSchemaFields(configSchema);
+export function generateConfigCommandHelp(cliName: string, configSchema: z.ZodType, workdir: string, sensitiveKeys?: ReadonlySet<string>): string {
+  const fields = getSchemaFields(configSchema, sensitiveKeys);
   const lines: string[] = [];
 
   const cliPrefix = toUpperSnake(cliName);
@@ -392,9 +409,9 @@ export function generateConfigCommandHelp(cliName: string, configSchema: z.ZodTy
       const value = resolved[field.key];
       const source = resolveSource(field.key, cliName, workdir);
       if (field.hasDefault || field.isOptional) {
-        lines.push(`    Default: ${JSON.stringify(field.hasDefault ? field.defaultValue : undefined)}`);
+        lines.push(`    Default: ${censorValue(field.hasDefault ? field.defaultValue : undefined, field, false)}`);
       }
-      lines.push(`    Value: ${JSON.stringify(value)}  (${source})`);
+      lines.push(`    Value: ${censorValue(value, field, false)}  (${source})`);
     } catch {
       lines.push('    Value: <error resolving>');
     }

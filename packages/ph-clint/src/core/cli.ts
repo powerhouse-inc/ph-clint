@@ -5,6 +5,7 @@ import type {
   AgentLoader,
   AgentProvider,
   Cli,
+  CliMetadata,
   CliOptions,
   Command,
   CommandContext,
@@ -16,7 +17,7 @@ import type {
 } from './types.js';
 import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
-import { getSchemaFields } from './schema.js';
+import { getSchemaFields, type FieldInfo } from './schema.js';
 import { createMemoryWorkdirStore, createWorkdirStore } from './store.js';
 import { getConfigEnvVars, resolveConfig, userStoreFolder } from './config.js';
 import { resolveWorkdir } from './workdir.js';
@@ -83,7 +84,24 @@ function resolveValue<T, C>(value: Resolvable<T, C>, ctx: { workdir: string; con
  * giving typed `config` in agent factories, `Resolvable` callbacks, and
  * interactive config.
  */
-export function defineCli<TSchema extends import('zod').ZodType = import('zod').ZodType<Record<string, unknown>>>(options: CliOptions<TSchema>): Cli {
+export function defineCli<
+  TSchema extends import('zod').ZodType = import('zod').ZodType<Record<string, unknown>>,
+  TSecrets extends import('zod').ZodType = import('zod').ZodType<Record<string, unknown>>,
+>(options: CliOptions<TSchema, TSecrets>): Cli {
+  // Merged config type — used internally after secrets are folded in
+  type TMerged = import('zod').infer<TSchema> & import('zod').infer<TSecrets>;
+
+  // Merge secretsSchema into configSchema and track secret keys
+  const sensitiveKeys = new Set<string>();
+  if (options.secretsSchema && options.configSchema) {
+    const secretsObj = options.secretsSchema as any;
+    for (const key of Object.keys(secretsObj.shape)) {
+      sensitiveKeys.add(key);
+    }
+    const configObj = options.configSchema as any;
+    options = { ...options, configSchema: configObj.merge(secretsObj) as unknown as TSchema };
+  }
+
   const commandMap = new Map<string, Command>();
   for (const cmd of options.commands) {
     commandMap.set(cmd.id, cmd);
@@ -98,6 +116,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     const configCmd = createConfigCommand({
       cliName: options.name,
       configSchema: options.configSchema,
+      sensitiveKeys,
       implementationDefaults: options.configDefaults,
       // configFile is set lazily during run() via activeConfigFile
       get configFile() { return activeConfigFile; },
@@ -254,7 +273,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   }
 
   function generateHelp(): string {
-    const desc = resolveValue(options.description, { workdir: activeWorkdir, config: {} as import('zod').infer<TSchema> });
+    const desc = resolveValue(options.description, { workdir: activeWorkdir, config: {} as TMerged});
     const lines: string[] = [];
     lines.push(`${options.name} v${options.version}`);
     lines.push('');
@@ -296,7 +315,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     const envVars = configEnvVars();
     /* istanbul ignore next -- configSchema always has at least one field when present */
     if (envVars.length === 0) return undefined;
-    const fields = getSchemaFields(options.configSchema);
+    const fields = getSchemaFields(options.configSchema, sensitiveKeys);
 
     const lines: string[] = [];
     lines.push('Configuration:');
@@ -333,7 +352,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
 
     // Rich help page for the built-in config command
     if (commandId === 'config' && options.configSchema) {
-      return generateConfigCommandHelp(options.name, options.configSchema, activeWorkdir);
+      return generateConfigCommandHelp(options.name, options.configSchema, activeWorkdir, sensitiveKeys);
     }
 
     const lines: string[] = [];
@@ -643,7 +662,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
 
     // Resolve Resolvable values now that workdir/config are known.
     // Cast config to the inferred type — at runtime it IS that type (Zod parsed it).
-    type TConfig = import('zod').infer<TSchema>;
+    type TConfig = TMerged;
     const typedConfig = config as TConfig;
     const resolvableCtx = { workdir, config: typedConfig };
     const resolvedDescription = resolveValue(options.description, resolvableCtx);
@@ -694,6 +713,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         generateCommandHelp,
         generateCompletion,
         configEnvVars,
+        getMetadata,
         run,
         stopRoutine,
       };
@@ -823,10 +843,92 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     }
   }
 
+  function fieldsToMap(fields: FieldInfo[]): Record<string, Omit<FieldInfo, 'key'>> {
+    const map: Record<string, Omit<FieldInfo, 'key'>> = {};
+    for (const { key, ...rest } of fields) {
+      map[key] = rest;
+    }
+    return map;
+  }
+
+  function getMetadata(): CliMetadata {
+    const desc = resolveValue(options.description, { workdir: activeWorkdir, config: {} as TMerged});
+
+    // Config metadata
+    let configMeta: CliMetadata['config'] = null;
+    if (options.configSchema) {
+      const fields = getSchemaFields(options.configSchema, sensitiveKeys);
+      const defaults: Record<string, unknown> = {};
+      for (const f of fields) {
+        if (f.hasDefault) defaults[f.key] = f.sensitive ? '***' : f.defaultValue;
+      }
+      const envVarsMap: Record<string, Omit<ConfigEnvVar, 'field'>> = {};
+      for (const { field, ...rest } of configEnvVars()) {
+        envVarsMap[field] = rest;
+      }
+      configMeta = {
+        fields: fieldsToMap(fields),
+        envVars: envVarsMap,
+        defaults,
+      };
+    }
+
+    // Commands metadata (keyed by id)
+    const commandsMeta: CliMetadata['commands'] = {};
+    for (const cmd of commandMap.values()) {
+      commandsMeta[cmd.id] = {
+        description: cmd.description,
+        parameters: fieldsToMap(getSchemaFields(cmd.inputSchema)),
+      };
+    }
+
+    // Services metadata (keyed by id)
+    let servicesMeta: CliMetadata['services'] = null;
+    if (options.services && options.services.length > 0) {
+      servicesMeta = {};
+      for (const svc of options.services) {
+        servicesMeta[svc.id] = {
+          label: svc.label,
+          ...(svc.maxInstances !== undefined && { maxInstances: svc.maxInstances }),
+          parameters: svc.paramsSchema ? fieldsToMap(getSchemaFields(svc.paramsSchema)) : {},
+          ...(svc.shutdown && { shutdown: { signal: String(svc.shutdown.signal), timeout: svc.shutdown.timeout } }),
+          ...(svc.restart && { restart: { enabled: svc.restart.enabled, maxRetries: svc.restart.maxRetries, delay: svc.restart.delay } }),
+          ...(svc.readiness?.timeout !== undefined && { readinessTimeout: svc.readiness.timeout }),
+        };
+      }
+    }
+
+    // Skills metadata
+    let skillsMeta: CliMetadata['skills'] = null;
+    if (options.skills) {
+      const resolvedMap: Record<string, { description: string }> = {};
+      for (const s of resolvedSkills) {
+        resolvedMap[s.name] = { description: s.description };
+      }
+      skillsMeta = {
+        sources: options.skills.sources,
+        agents: options.skills.agents ?? {},
+        resolved: resolvedMap,
+      };
+    }
+
+    return {
+      name: options.name,
+      version: options.version,
+      description: desc,
+      hasInteractive: !!options.interactive,
+      hasAgent: !!agentLoader,
+      config: configMeta,
+      commands: commandsMeta,
+      services: servicesMeta,
+      skills: skillsMeta,
+    };
+  }
+
   // Resolve description for the static Cli object (best-effort without runtime context)
   const staticDescription = typeof options.description === 'string'
     ? options.description
-    : options.description({ workdir: activeWorkdir, config: {} as import('zod').infer<TSchema> });
+    : options.description({ workdir: activeWorkdir, config: {} as TMerged});
 
   cliRef = {
     name: options.name,
@@ -844,6 +946,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     generateCommandHelp,
     generateCompletion,
     configEnvVars,
+    getMetadata,
     run,
     stopRoutine,
   };
