@@ -120,10 +120,20 @@ export const cli = defineCli({
   configSchema,
   commands: [reactorPackageInit, reactorPackagesList, fusionProjectInit, fusionProjectsList],
   services: [vetra, fusionProject],
-  skillSources: [
-    path.join(PROJECT_ROOT, 'skills'),
-    path.join(PROJECT_ROOT, 'dist', 'skills'),
-  ],
+  skills: {
+    sources: [
+      path.join(PROJECT_ROOT, 'skills'),
+      path.join(PROJECT_ROOT, 'dist', 'skills'),
+    ],
+    agents: {
+      'rupert-dev-agent': [
+        'document-modeling', 'document-editor-creation',
+        'fusion-development', 'fusion-project-management',
+        'handle-stakeholder-message', 'playwright-cli',
+        'reactor-package-project-management',
+      ],
+    },
+  },
 
   events: {
     'service:pattern-matched': (event) => {

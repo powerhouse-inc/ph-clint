@@ -180,7 +180,7 @@ describe('defineCli', () => {
       expect(help).toContain('add');
     });
 
-    it('includes Agent Skills section when skillSources have skills', async () => {
+    it('includes Skills section when skills config has skills', async () => {
       const tmp = await mkdtemp(join(tmpdir(), 'skills-help-'));
       try {
         const skillDir = join(tmp, 'my-skill');
@@ -195,37 +195,127 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills test',
           commands: [echo],
-          skillSources: [tmp],
+          skills: { sources: [tmp] },
         });
-        skillCli.setAgentLoader(async () => ({
-          id: 'test',
-          async *stream() { yield { type: 'text-delta' as const, text: 'ok' }; },
-        }));
 
         const help = skillCli.generateHelp();
-        expect(help).toContain('Agent Skills:');
+        expect(help).toContain('Skills:');
         expect(help).toContain('my-skill');
         expect(help).toContain('A test skill');
-        expect(help).toContain('Send a message:');
-        expect(help).toContain('skill-test "your request"');
       } finally {
         await rm(tmp, { recursive: true, force: true });
       }
     });
 
-    it('omits Agent Skills section when no skills found', () => {
+    it('omits Skills section when no skills found', () => {
       const skillCli = defineCli({
         name: 'empty-skills',
         version: '1.0.0',
         description: 'No skills',
         commands: [echo],
-        skillSources: ['/nonexistent/path'],
+        skills: { sources: ['/nonexistent/path'] },
       });
       const help = skillCli.generateHelp();
-      expect(help).not.toContain('Agent Skills:');
+      expect(help).not.toContain('Skills:');
     });
 
-    it('omits usage hint when no agent loader is set', async () => {
+    it('skill commands are registered in commandMap', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-cmds-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'skill-cmds',
+          version: '1.0.0',
+          description: 'Skills commands test',
+          commands: [echo],
+          skills: { sources: [tmp] },
+        });
+
+        expect(skillCli.getCommand('my-skill')).toBeDefined();
+        expect(skillCli.getCommand('my-skill')!.description).toBe('A test skill');
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('skill command execute returns SkillInvocation', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-exec-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'skill-exec',
+          version: '1.0.0',
+          description: 'Skills exec test',
+          commands: [echo],
+          skills: { sources: [tmp] },
+        });
+
+        const result = await skillCli.execute('my-skill', {});
+        expect(result).toMatchObject({
+          type: 'skill-invocation',
+          skillName: 'my-skill',
+        });
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('skill command in command mode invokes agent with prompt', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-agent-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+
+        const agentPrompts: string[] = [];
+        const skillCli = defineCli({
+          name: 'skill-agent',
+          version: '1.0.0',
+          description: 'Skills agent test',
+          commands: [echo],
+          skills: { sources: [tmp] },
+        });
+        skillCli.setAgentLoader(async () => ({
+          id: 'test-agent',
+          async *stream(prompt: string) {
+            agentPrompts.push(prompt);
+            yield { type: 'text-delta' as const, text: 'agent response' };
+          },
+        }));
+
+        const output: string[] = [];
+        await skillCli.run(['node', 'skill-agent', 'my-skill', '--prompt', 'do something'], {
+          stdout: (msg) => output.push(msg),
+          stderr: () => {},
+          exit: () => {},
+          workdir: tmp,
+        });
+
+        expect(agentPrompts).toHaveLength(1);
+        expect(agentPrompts[0]).toContain('my-skill');
+        expect(agentPrompts[0]).toContain('do something');
+        expect(output.join('')).toContain('agent response');
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('skill command without agent shows skill name', async () => {
       const tmp = await mkdtemp(join(tmpdir(), 'skills-noagent-'));
       try {
         const skillDir = join(tmp, 'my-skill');
@@ -236,16 +326,22 @@ describe('defineCli', () => {
         );
 
         const skillCli = defineCli({
-          name: 'no-agent',
+          name: 'skill-noagent',
           version: '1.0.0',
           description: 'No agent',
           commands: [echo],
-          skillSources: [tmp],
+          skills: { sources: [tmp] },
         });
-        // No agent loader set
-        const help = skillCli.generateHelp();
-        expect(help).toContain('Agent Skills:');
-        expect(help).not.toContain('Send a message:');
+
+        const output: string[] = [];
+        await skillCli.run(['node', 'skill-noagent', 'my-skill'], {
+          stdout: (msg) => output.push(msg),
+          stderr: () => {},
+          exit: () => {},
+          workdir: tmp,
+        });
+
+        expect(output.join('')).toContain('Skill: my-skill');
       } finally {
         await rm(tmp, { recursive: true, force: true });
       }

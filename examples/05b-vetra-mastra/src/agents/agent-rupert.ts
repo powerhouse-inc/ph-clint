@@ -12,15 +12,7 @@ import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
 import { rupertDevAgentInstructions } from './instructions.js';
 import { createDemoAgent } from './demo-agent.js';
 
-const SKILL_NAMES = [
-  'document-editor-creation',
-  'document-modeling',
-  'fusion-development',
-  'fusion-project-management',
-  'handle-stakeholder-message',
-  'playwright-cli',
-  'reactor-package-project-management',
-];
+import type { SkillInfo } from 'ph-clint';
 
 /**
  * Create the fully configured Rupert dev agent.
@@ -42,10 +34,12 @@ export async function createAgentRupert(
   projectRoot: string,
   commands: Command[],
   context: CommandContext,
+  skills: SkillInfo[],
   log?: Logger,
 ): Promise<Agent> {
   const store = createWorkdirStore(workdir, CLI_NAME);
-  const paths = getMastraPaths(store, { prePackagedSkills: SKILL_NAMES });
+  const skillNames = skills.map(s => s.name);
+  const paths = getMastraPaths(store, { prePackagedSkills: skillNames });
   fs.mkdirSync(paths.dbFolder, { recursive: true });
 
   log?.debug('[agent-rupert] workdir:', paths.workspaceBasePath);
@@ -81,6 +75,7 @@ export async function createAgentRupert(
     cliVersion: '0.1.0',
     context,
     commands,
+    skills,
   };
   const m = createMastraHelpers(agentCtx);
 
@@ -113,7 +108,7 @@ export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvi
 
   const { createMastraHelpers } = await import('ph-clint/mastra');
   const m = createMastraHelpers(ctx);
-  const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.context.log);
+  const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.skills, ctx.context.log);
 
   const store = createWorkdirStore(ctx.workdir, CLI_NAME);
   const wrapOpts: WrapAgentOptions = {

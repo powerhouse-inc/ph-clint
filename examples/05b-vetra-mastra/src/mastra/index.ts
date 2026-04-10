@@ -70,7 +70,7 @@ const commands = cli.listCommands();
 // Build a minimal CommandContext for Mastra Studio (no services — runs outside CLI lifecycle)
 const studioContext = { workdir, workspace: store, config, stdout: console.log };
 
-const rupertAgent = await createAgentRupert(config, workdir, PROJECT_ROOT, commands, studioContext);
+const rupertAgent = await createAgentRupert(config, workdir, PROJECT_ROOT, commands, studioContext, []);
 
 export const mastra = new Mastra({
   agents: { rupertAgent },

@@ -25,6 +25,8 @@ import { createServiceCommands } from './service-command.js';
 import { createHelpCommand } from './help-command.js';
 import { installSkills } from './init.js';
 import { readSkillsFromSources } from './skills.js';
+import type { SkillInfo } from './skills.js';
+import { createSkillCommands, isSkillInvocation } from './skill-commands.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
@@ -126,6 +128,15 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     }));
   }
 
+  // Read skill metadata and register skill commands
+  let resolvedSkills: SkillInfo[] = [];
+  if (options.skills && options.skills.sources.length > 0) {
+    resolvedSkills = readSkillsFromSources(options.skills.sources);
+    const skillCmds = createSkillCommands(resolvedSkills);
+    for (const cmd of skillCmds) {
+      if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
+    }
+  }
 
   const eventBus = (hasTriggers || hasServices) ? createEventBus() : undefined;
   const processManager = hasTriggers ? createProcessManager() : undefined;
@@ -254,27 +265,23 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       lines.push('  -i, --interactive    Start interactive REPL mode');
       lines.push('');
     }
+    // Separate skill commands from regular commands
+    const skillIds = new Set(resolvedSkills.map(s => s.name));
+    const regularCmds = [...commandMap.values()].filter(c => !skillIds.has(c.id));
+    const skillCmds = [...commandMap.values()].filter(c => skillIds.has(c.id));
+
     lines.push('Commands:');
-    for (const cmd of commandMap.values()) {
+    for (const cmd of regularCmds) {
       lines.push(`  ${cmd.id.padEnd(20)} ${cmd.description}`);
     }
     lines.push('');
 
-    // Skills section — show agent skills when skillSources are defined
-    if (options.skillSources && options.skillSources.length > 0) {
-      const skills = readSkillsFromSources(options.skillSources);
-      if (skills.length > 0) {
-        lines.push('Agent Skills:');
-        for (const skill of skills) {
-          lines.push(`  ${skill.name.padEnd(36)} ${skill.description}`);
-        }
-        lines.push('');
-        if (agentLoader) {
-          lines.push(`  Send a message:    ${options.name} "your request"`);
-          lines.push(`  Interactive mode:  ${options.name} -i`);
-          lines.push('');
-        }
+    if (skillCmds.length > 0) {
+      lines.push('Skills:');
+      for (const cmd of skillCmds) {
+        lines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
       }
+      lines.push('');
     }
 
     const configHelp = generateConfigHelp();
@@ -307,21 +314,14 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
   }
 
   function generateSkillsHelp(): string | undefined {
-    if (!options.skillSources || options.skillSources.length === 0) return undefined;
-    const skills = readSkillsFromSources(options.skillSources);
-    if (skills.length === 0) return undefined;
+    if (resolvedSkills.length === 0) return undefined;
 
     const lines: string[] = [];
-    lines.push('Agent Skills:');
-    for (const skill of skills) {
+    lines.push('Skills:');
+    for (const skill of resolvedSkills) {
       lines.push(`  ${skill.name.padEnd(36)} ${skill.description}`);
     }
     lines.push('');
-    if (agentLoader) {
-      lines.push(`  Send a message:    ${options.name} "your request"`);
-      lines.push(`  Interactive mode:  ${options.name} -i`);
-      lines.push('');
-    }
     return lines.join('\n');
   }
 
@@ -402,6 +402,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     stdout: (msg: string) => void,
     context: CommandContext,
     resolvedDescription: string,
+    onSkillInvocation?: (skillName: string, userMessage?: string) => Promise<void>,
   ): Commander {
     const program = new Commander();
     program
@@ -488,6 +489,14 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
           throw new Error(formatZodError(err, cmd.id));
         }
         const result = await cmd.execute(parsed, context);
+        if (isSkillInvocation(result)) {
+          if (onSkillInvocation) {
+            await onSkillInvocation(result.skillName, result.userMessage);
+          } else {
+            stdout(`Skill: ${result.skillName}` + (result.userMessage ? ` — ${result.userMessage}` : ''));
+          }
+          return;
+        }
         const output = formatResult(result);
         if (output !== undefined) {
           stdout(output);
@@ -585,7 +594,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
     const workspace = createWorkdirStore(workdir, options.name);
 
     // Auto-initialize store and install skills on first use
-    if (options.skillSources && options.skillSources.length > 0) {
+    if (options.skills && options.skills.sources.length > 0) {
       const storeRoot = workspace.getStoreFolder();
       if (!fs.existsSync(storeRoot)) {
         fs.mkdirSync(storeRoot, { recursive: true });
@@ -593,7 +602,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         fs.mkdirSync(dbFolder, { recursive: true });
         installSkills({
           store: workspace,
-          skillSources: options.skillSources,
+          skillSources: options.skills.sources,
           stdout: verboseFlag ? stderr : () => {},
         });
       }
@@ -654,6 +663,7 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
         cliVersion: options.version,
         context,
         commands: [...commandMap.values()],
+        skills: resolvedSkills,
       };
       cachedProvider = await agentLoader(agentCtx);
       return cachedProvider;
@@ -763,7 +773,25 @@ export function defineCli<TSchema extends import('zod').ZodType = import('zod').
       }
     }
 
-    const program = buildProgram(stdout, context, resolvedDescription);
+    // Skill invocation handler for command mode — routes to agent with skill prefix
+    async function handleSkillInvocation(skillName: string, userMessage?: string) {
+      const agentProvider = await getAgentProvider();
+      if (!agentProvider) {
+        stderr('Agent not available — cannot invoke skill');
+        exit(1);
+        return;
+      }
+      const prompt = `Use your ${skillName} skill for the following instructions: ${userMessage ?? ''}`.trim();
+      const threadId = resumeId ?? randomUUID();
+      for await (const chunk of agentProvider.stream(prompt, { threadId, tools: commandMap })) {
+        const text = formatStreamChunk(chunk);
+        stdout(text);
+      }
+      stdout('');
+      stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
+    }
+
+    const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
 
     try {
       await program.parseAsync(argv);

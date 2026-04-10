@@ -7,13 +7,15 @@ import path from 'node:path';
 export interface SkillInfo {
   name: string;
   description: string;
+  /** Absolute path to the SKILL.md file. */
+  skillMdPath: string;
 }
 
 /**
  * Parse YAML-ish frontmatter from a SKILL.md file.
  * Only extracts `name` and `description` — no YAML parser dependency needed.
  */
-function parseFrontmatter(content: string): SkillInfo | null {
+function parseFrontmatter(content: string): Omit<SkillInfo, 'skillMdPath'> | null {
   const match = content.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
 
@@ -61,7 +63,7 @@ export function readSkillsFromSources(skillSources: string[]): SkillInfo[] {
         const info = parseFrontmatter(content);
         if (info) {
           seen.add(entry.name);
-          skills.push(info);
+          skills.push({ ...info, skillMdPath });
         }
       } catch {
         // Skip unreadable files

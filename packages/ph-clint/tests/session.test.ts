@@ -828,4 +828,50 @@ describe('session edge cases', () => {
     expect(result.type).toBe('error');
     expect(result.text).toContain('LLM connection failed');
   });
+
+  it('routes skill command invocation to agent with skill prefix', async () => {
+    const { defineCli, defineCommand, createReplSession, createMemoryWorkdirStore } = await import('../src/index.js');
+    const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+
+    const tmp = await mkdtemp(join(tmpdir(), 'session-skill-'));
+    try {
+      const skillDir = join(tmp, 'my-skill');
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, 'SKILL.md'),
+        '---\nname: my-skill\ndescription: "Test skill"\n---\n\nSkill content.\n',
+      );
+
+      const skillCli = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Test',
+        commands: [],
+        skills: { sources: [tmp] },
+        interactive: { welcome: 'hi' },
+      });
+
+      const prompts: string[] = [];
+      const agent: AgentProvider = {
+        id: 'test-agent',
+        async *stream(prompt: string) {
+          prompts.push(prompt);
+          yield { type: 'text-delta' as const, text: 'skill done' };
+        },
+      };
+
+      const ctx = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+      const session = createReplSession({ cli: skillCli, context: ctx, agentProvider: agent });
+
+      const result = await session.processInput('/my-skill --prompt "build an invoice model"');
+      expect(result.type).toBe('result');
+      expect(prompts).toHaveLength(1);
+      expect(prompts[0]).toContain('my-skill');
+      expect(prompts[0]).toContain('build an invoice model');
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
 });

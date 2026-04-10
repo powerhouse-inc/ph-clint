@@ -136,14 +136,14 @@ describe('auto-initialization on first run', () => {
   it('creates store and installs skills when running any command', async () => {
     const skillsDir = path.join(tmpDir, 'skills');
     fs.mkdirSync(path.join(skillsDir, 'my-skill'), { recursive: true });
-    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '# My Skill');
+    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '---\nname: my-skill\ndescription: test\n---\n# My Skill');
 
     const cli = defineCli({
       name: 'testcli',
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skillSources: [skillsDir],
+      skills: { sources: [skillsDir] },
     });
 
     const output: string[] = [];
@@ -168,14 +168,14 @@ describe('auto-initialization on first run', () => {
   it('is silent by default (no init output)', async () => {
     const skillsDir = path.join(tmpDir, 'skills');
     fs.mkdirSync(path.join(skillsDir, 'my-skill'), { recursive: true });
-    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '# My Skill');
+    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '---\nname: my-skill\ndescription: test\n---\n# My Skill');
 
     const cli = defineCli({
       name: 'testcli',
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skillSources: [skillsDir],
+      skills: { sources: [skillsDir] },
     });
 
     const output: string[] = [];
@@ -195,14 +195,14 @@ describe('auto-initialization on first run', () => {
   it('does not re-initialize when store already exists', async () => {
     const skillsDir = path.join(tmpDir, 'skills');
     fs.mkdirSync(path.join(skillsDir, 'my-skill'), { recursive: true });
-    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '# My Skill');
+    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '---\nname: my-skill\ndescription: test\n---\n# My Skill');
 
     const cli = defineCli({
       name: 'testcli',
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skillSources: [skillsDir],
+      skills: { sources: [skillsDir] },
     });
 
     const runOpts = {
@@ -232,7 +232,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skillSources: ['/some/path'],
+      skills: { sources: ['/some/path'] },
     });
 
     expect(cli.getCommand('init')).toBeUndefined();

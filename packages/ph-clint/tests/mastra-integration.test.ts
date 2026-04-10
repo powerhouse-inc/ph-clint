@@ -34,6 +34,7 @@ function makeAgentContext(overrides?: Partial<AgentContext>): AgentContext {
     cliVersion: '1.0.0',
     context: { workdir, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} },
     commands: [echoCommand],
+    skills: [],
     ...overrides,
   };
 }

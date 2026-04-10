@@ -1,6 +1,5 @@
 // Re-export generated instructions for convenience
 export {
   rupertDevAgentInstructions,
-  reactorPackageDevAgentInstructions,
-  fusionDevAgentInstructions,
+  powerhouseArchitectAgentInstructions,
 } from '../mastra/generated/agent-instructions.js';

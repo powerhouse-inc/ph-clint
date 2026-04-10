@@ -1,0 +1,212 @@
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { buildSkills, buildAgentProfiles, buildSkillTemplates, copyExternalSkills } from '../src/index.js';
+import type { BuildConfig } from '../src/index.js';
+
+let tmpDir: string;
+
+beforeEach(() => {
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-skills-test-'));
+});
+
+afterEach(() => {
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+function makeConfig(overrides?: Partial<BuildConfig>): BuildConfig {
+  return {
+    projectRoot: tmpDir,
+    context: { workspaceDir: '/test/workspace', connectPort: '3000' },
+    logger: () => {},
+    ...overrides,
+  };
+}
+
+describe('buildAgentProfiles', () => {
+  it('builds agent profile instructions from base + specialized templates', () => {
+    const profilesDir = path.join(tmpDir, 'prompts', 'agent-profiles');
+    fs.mkdirSync(profilesDir, { recursive: true });
+    fs.writeFileSync(path.join(profilesDir, 'Base.md'), 'Base for {{agentName}} at {{workspaceDir}}');
+    fs.writeFileSync(path.join(profilesDir, 'Agent.md'), 'Specialized: port {{connectPort}}');
+
+    const config = makeConfig({
+      agentProfiles: [{ name: 'TestAgent', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+    });
+
+    const result = buildAgentProfiles(config);
+    expect(result.count).toBe(1);
+    expect(result.warnings).toEqual([]);
+
+    const outputPath = path.join(tmpDir, 'src', 'generated', 'agent-instructions.ts');
+    expect(fs.existsSync(outputPath)).toBe(true);
+    const content = fs.readFileSync(outputPath, 'utf-8');
+    expect(content).toContain('testAgentInstructions');
+    expect(content).toContain('TestAgent');
+    expect(content).toContain('/test/workspace');
+    expect(content).toContain('port 3000');
+  });
+
+  it('skips profiles with missing template files', () => {
+    const config = makeConfig({
+      agentProfiles: [{ name: 'Missing', baseTemplate: 'nope.md', specializedTemplate: 'nope2.md' }],
+    });
+
+    const result = buildAgentProfiles(config);
+    expect(result.count).toBe(0);
+  });
+
+  it('returns 0 when no profiles defined', () => {
+    const result = buildAgentProfiles(makeConfig());
+    expect(result.count).toBe(0);
+  });
+
+  it('reports warnings for missing template variables', () => {
+    const profilesDir = path.join(tmpDir, 'prompts', 'agent-profiles');
+    fs.mkdirSync(profilesDir, { recursive: true });
+    fs.writeFileSync(path.join(profilesDir, 'Base.md'), 'Hello {{unknownVar}}');
+    fs.writeFileSync(path.join(profilesDir, 'Agent.md'), 'OK');
+
+    const config = makeConfig({
+      agentProfiles: [{ name: 'Test', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+    });
+
+    const result = buildAgentProfiles(config);
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings[0]).toContain('unknownVar');
+  });
+});
+
+describe('buildSkillTemplates', () => {
+  it('builds SKILL.md with preamble and scenario references', () => {
+    const skillDir = path.join(tmpDir, 'prompts', 'skills-tpl', 'my-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, '.preamble.md'), 'Preamble for port {{connectPort}}');
+    fs.writeFileSync(path.join(skillDir, '00.check-prereqs.md'), 'Step 0: check {{workspaceDir}}');
+    fs.writeFileSync(path.join(skillDir, '01.implement.md'), 'Step 1: implement');
+
+    const config = makeConfig({
+      skillDescriptions: { 'my-skill': 'My awesome skill' },
+    });
+
+    const result = buildSkillTemplates(config);
+    expect(result.count).toBe(1);
+
+    const skillMd = fs.readFileSync(path.join(tmpDir, 'skills', 'my-skill', 'SKILL.md'), 'utf-8');
+    expect(skillMd).toContain('name: my-skill');
+    expect(skillMd).toContain('My awesome skill');
+    expect(skillMd).toContain('Preamble for port 3000');
+    expect(skillMd).toContain('references/00.check-prereqs.md');
+    expect(skillMd).toContain('references/01.implement.md');
+
+    const ref0 = fs.readFileSync(path.join(tmpDir, 'skills', 'my-skill', 'references', '00.check-prereqs.md'), 'utf-8');
+    expect(ref0).toContain('/test/workspace');
+  });
+
+  it('handles .result.md as expected-outcome reference', () => {
+    const skillDir = path.join(tmpDir, 'prompts', 'skills-tpl', 'with-result');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, '.preamble.md'), 'Preamble');
+    fs.writeFileSync(path.join(skillDir, '.result.md'), 'Expected: success');
+
+    const result = buildSkillTemplates(makeConfig());
+    expect(result.count).toBe(1);
+
+    const skillMd = fs.readFileSync(path.join(tmpDir, 'skills', 'with-result', 'SKILL.md'), 'utf-8');
+    expect(skillMd).toContain('Expected Outcome');
+    expect(fs.existsSync(path.join(tmpDir, 'skills', 'with-result', 'references', 'expected-outcome.md'))).toBe(true);
+  });
+
+  it('skips skills with no content files', () => {
+    const skillDir = path.join(tmpDir, 'prompts', 'skills-tpl', 'empty-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+
+    const result = buildSkillTemplates(makeConfig());
+    expect(result.count).toBe(0);
+  });
+
+  it('returns 0 when skills-tpl directory missing', () => {
+    const result = buildSkillTemplates(makeConfig());
+    expect(result.count).toBe(0);
+  });
+
+  it('uses slugToTitle fallback when no skill description provided', () => {
+    const skillDir = path.join(tmpDir, 'prompts', 'skills-tpl', 'my-cool-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, '.preamble.md'), 'Content');
+
+    buildSkillTemplates(makeConfig());
+    const skillMd = fs.readFileSync(path.join(tmpDir, 'skills', 'my-cool-skill', 'SKILL.md'), 'utf-8');
+    expect(skillMd).toContain('My Cool Skill tasks');
+  });
+});
+
+describe('copyExternalSkills', () => {
+  it('copies external skill directories as-is', () => {
+    const extDir = path.join(tmpDir, 'prompts', 'skills-ext', 'ext-skill');
+    fs.mkdirSync(extDir, { recursive: true });
+    fs.writeFileSync(path.join(extDir, 'SKILL.md'), '# External');
+    fs.writeFileSync(path.join(extDir, 'extra.txt'), 'extra content');
+
+    const count = copyExternalSkills(makeConfig());
+    expect(count).toBe(1);
+
+    const destDir = path.join(tmpDir, 'skills', 'ext-skill');
+    expect(fs.existsSync(path.join(destDir, 'SKILL.md'))).toBe(true);
+    expect(fs.readFileSync(path.join(destDir, 'extra.txt'), 'utf-8')).toBe('extra content');
+  });
+
+  it('returns 0 when no skills-ext directory', () => {
+    const count = copyExternalSkills(makeConfig());
+    expect(count).toBe(0);
+  });
+});
+
+describe('buildSkills (orchestrator)', () => {
+  it('runs all three steps and returns combined result', () => {
+    // Set up agent profile
+    const profilesDir = path.join(tmpDir, 'prompts', 'agent-profiles');
+    fs.mkdirSync(profilesDir, { recursive: true });
+    fs.writeFileSync(path.join(profilesDir, 'Base.md'), 'Base');
+    fs.writeFileSync(path.join(profilesDir, 'Agent.md'), 'Agent');
+
+    // Set up skill template
+    const skillDir = path.join(tmpDir, 'prompts', 'skills-tpl', 'test-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, '.preamble.md'), 'Preamble');
+
+    // Set up external skill
+    const extDir = path.join(tmpDir, 'prompts', 'skills-ext', 'ext-skill');
+    fs.mkdirSync(extDir, { recursive: true });
+    fs.writeFileSync(path.join(extDir, 'SKILL.md'), '# Ext');
+
+    const result = buildSkills(makeConfig({
+      agentProfiles: [{ name: 'Test', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+    }));
+
+    expect(result.agentProfilesBuilt).toBe(1);
+    expect(result.skillsBuilt).toBe(1);
+    expect(result.skillsCopied).toBe(1);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('collects warnings from all steps', () => {
+    const profilesDir = path.join(tmpDir, 'prompts', 'agent-profiles');
+    fs.mkdirSync(profilesDir, { recursive: true });
+    fs.writeFileSync(path.join(profilesDir, 'Base.md'), '{{missing}}');
+    fs.writeFileSync(path.join(profilesDir, 'Agent.md'), 'OK');
+
+    const skillDir = path.join(tmpDir, 'prompts', 'skills-tpl', 'test-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, '.preamble.md'), '{{alsoMissing}}');
+
+    const result = buildSkills(makeConfig({
+      agentProfiles: [{ name: 'Test', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+    }));
+
+    expect(result.warnings.length).toBe(2);
+    expect(result.warnings.some(w => w.includes('missing'))).toBe(true);
+    expect(result.warnings.some(w => w.includes('alsoMissing'))).toBe(true);
+  });
+});

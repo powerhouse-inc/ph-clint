@@ -7,6 +7,7 @@ import { getSchemaFields } from '../core/schema.js';
 import { renderMarkdown } from './markdown.js';
 import { renderStream } from '../core/stream.js';
 import { formatZodError } from '../core/errors.js';
+import { isSkillInvocation } from '../core/skill-commands.js';
 
 /**
  * Format a command result for display.
@@ -153,6 +154,10 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       try {
         const args = cli.parseArgs(commandId, argsToArgv(collectedArgs));
         const result = await cli.execute(commandId, args, context);
+        if (isSkillInvocation(result)) {
+          const prompt = `Use your ${result.skillName} skill for the following instructions: ${result.userMessage ?? ''}`.trim();
+          return handleAgentPrompt(prompt);
+        }
         const text = formatResult(result);
         return { text: renderMarkdown(text), type: 'result' };
       } catch (err: unknown) {
@@ -267,6 +272,10 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
 
           // No prompting needed — execute directly
           const result = await cli.execute(parsed.commandId!, args, context);
+          if (isSkillInvocation(result)) {
+            const prompt = `Use your ${result.skillName} skill for the following instructions: ${result.userMessage ?? ''}`.trim();
+            return handleAgentPrompt(prompt);
+          }
           const text = formatResult(result);
           return { text: renderMarkdown(text), type: 'result' };
         } catch (err: unknown) {

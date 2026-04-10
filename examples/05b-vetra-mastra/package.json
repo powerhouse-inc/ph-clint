@@ -22,7 +22,6 @@
     "@mastra/loggers": "^1.1.0",
     "@mastra/mcp": "^1.4.1",
     "@mastra/memory": "^1.13.1",
-    "handlebars": "^4.7.8",
     "ph-clint": "file:../../packages/ph-clint",
     "zod": "^4.3.6"
   },
@@ -37,6 +36,7 @@
     "jest": "^30.2.0",
     "mastra": "1.3.20",
     "ts-jest": "^29.4.6",
+    "ph-clint-dev": "file:../../packages/ph-clint-dev",
     "tsx": "^4.19.0",
     "typescript": "^6.0.2"
   }

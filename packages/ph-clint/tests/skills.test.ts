@@ -30,10 +30,12 @@ describe('readSkillsFromSources', () => {
     createSkill(source, 'fusion-development', 'Build Fusion UI pages');
 
     const skills = readSkillsFromSources([source]);
-    expect(skills).toEqual([
+    expect(skills).toMatchObject([
       { name: 'document-modeling', description: 'Design document model schemas' },
       { name: 'fusion-development', description: 'Build Fusion UI pages' },
     ]);
+    expect(skills[0]!.skillMdPath).toBe(path.join(source, 'document-modeling', 'SKILL.md'));
+    expect(skills[1]!.skillMdPath).toBe(path.join(source, 'fusion-development', 'SKILL.md'));
   });
 
   it('returns sorted results', () => {
@@ -100,7 +102,7 @@ describe('readSkillsFromSources', () => {
     );
 
     const skills = readSkillsFromSources([source]);
-    expect(skills).toEqual([{ name: 'plain', description: 'Unquoted description' }]);
+    expect(skills).toMatchObject([{ name: 'plain', description: 'Unquoted description' }]);
   });
 
   it('handles name without description', () => {
@@ -113,6 +115,6 @@ describe('readSkillsFromSources', () => {
     );
 
     const skills = readSkillsFromSources([source]);
-    expect(skills).toEqual([{ name: 'name-only', description: '' }]);
+    expect(skills).toMatchObject([{ name: 'name-only', description: '' }]);
   });
 });

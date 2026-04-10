@@ -66,6 +66,7 @@ describeWithKey('Mastra integration E2E', () => {
       cliVersion: '1.0.0',
       context: { workdir: testWorkspace, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} },
       commands: [echoCommand],
+      skills: [],
     };
     const m = createMastraHelpers(ctx);
     const { Agent } = await import('@mastra/core/agent');

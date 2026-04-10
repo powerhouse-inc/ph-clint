@@ -16,6 +16,10 @@ export { checkWorkdir, checkCommand, checkPort, isPortFree } from './core/prefli
 export { createHelpCommand } from './core/help-command.js';
 export { installSkills } from './core/init.js';
 export { readSkillsFromSources } from './core/skills.js';
+export { createSkillCommands, isSkillInvocation } from './core/skill-commands.js';
+export type { SkillInvocation } from './core/skill-commands.js';
+export { registerDefaultHelpers, extractTemplateVars, renderSkillTemplate } from './core/templates.js';
+export type { RenderOptions, RenderResult } from './core/templates.js';
 export { createRoutine } from './core/routine.js';
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export { createReplSession } from './interactive/session.js';
@@ -79,4 +83,5 @@ export type {
   ServiceInstanceStatus,
   ServiceStatus,
   ServiceManager,
+  SkillsConfig,
 } from './core/types.js';

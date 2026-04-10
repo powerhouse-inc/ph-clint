@@ -472,6 +472,8 @@ export interface AgentContext<TConfig = Record<string, unknown>> {
   cliVersion: string;
   context: CommandContext;
   commands: Command<any, any, any>[];
+  /** Skill metadata from SkillsConfig, filtered by agent assignment if configured. */
+  skills: import('./skills.js').SkillInfo[];
 }
 
 // ── Agent Loader ──────────────────────────────────────────────────
@@ -483,6 +485,18 @@ export interface AgentContext<TConfig = Record<string, unknown>> {
  */
 export type AgentLoader<TConfig = Record<string, unknown>> =
   (ctx: AgentContext<TConfig>) => Promise<AgentProvider>;
+
+// ── Skills ────────────────────────────────────────────────────────
+
+/**
+ * Configuration for agent skills.
+ */
+export interface SkillsConfig {
+  /** Candidate directories containing built skill folders. First existing wins. */
+  sources: string[];
+  /** Per-agent skill assignments. Key = agent ID, value = skill names. */
+  agents?: Record<string, string[]>;
+}
 
 // ── CLI ───────────────────────────────────────────────────────────
 
@@ -519,12 +533,10 @@ export interface CliOptions<TSchema extends z.ZodType = z.ZodType<Record<string,
    */
   configDefaults?: Record<string, unknown>;
   /**
-   * Candidate directories containing built skill folders.
-   * The first existing directory wins.
-   *
-   * When set, skills are auto-installed on first run (when the store directory is created).
+   * Skills configuration.
+   * When set, skills are available as CLI commands and auto-installed on first run.
    */
-  skillSources?: string[];
+  skills?: SkillsConfig;
 }
 
 /**
