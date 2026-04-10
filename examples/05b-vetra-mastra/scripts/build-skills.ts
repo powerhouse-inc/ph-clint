@@ -76,6 +76,80 @@ Handlebars.registerHelper('default', (value: unknown, defaultValue: unknown) =>
 );
 
 // ---------------------------------------------------------------------------
+// Missing-variable detection
+// ---------------------------------------------------------------------------
+const KNOWN_HELPERS = new Set([
+  // registered helpers
+  'formatDate', 'join', 'exists', 'eq', 'uppercase', 'lowercase', 'hasItems', 'default',
+  // built-in block helpers
+  'if', 'unless', 'each', 'with', 'lookup', 'log',
+]);
+
+let totalWarnings = 0;
+
+/** Walk a Handlebars AST and return all top-level variable names referenced. */
+function extractTemplateVars(template: string): Set<string> {
+  const ast = Handlebars.parse(template);
+  const vars = new Set<string>();
+
+  const visitor = new Handlebars.Visitor();
+
+  function collectParams(params?: hbs.AST.Expression[]) {
+    if (!params) return;
+    for (const p of params) {
+      if (p.type === 'PathExpression') {
+        const expr = p as hbs.AST.PathExpression;
+        if (!KNOWN_HELPERS.has(expr.original) && !expr.data && expr.depth === 0) {
+          vars.add(expr.parts[0] as string);
+        }
+      }
+    }
+  }
+
+  visitor.MustacheStatement = function (stmt: hbs.AST.MustacheStatement) {
+    const p = stmt.path;
+    if (p.type === 'PathExpression') {
+      const expr = p as hbs.AST.PathExpression;
+      if (!KNOWN_HELPERS.has(expr.original) && !expr.data && expr.depth === 0) {
+        vars.add(expr.parts[0] as string);
+      }
+    }
+    collectParams(stmt.params);
+    Handlebars.Visitor.prototype.MustacheStatement.call(this, stmt);
+  };
+
+  visitor.SubExpression = function (sexpr: hbs.AST.SubExpression) {
+    collectParams(sexpr.params);
+    Handlebars.Visitor.prototype.SubExpression.call(this, sexpr);
+  };
+
+  visitor.BlockStatement = function (block: hbs.AST.BlockStatement) {
+    collectParams(block.params);
+    Handlebars.Visitor.prototype.BlockStatement.call(this, block);
+  };
+
+  visitor.accept(ast);
+  return vars;
+}
+
+/** Log warnings for template variables not present in context. Returns count. */
+function warnMissingVars(
+  vars: Set<string>,
+  context: Record<string, unknown>,
+  label: string,
+): number {
+  const contextKeys = new Set(Object.keys(context));
+  let count = 0;
+  for (const v of [...vars].sort()) {
+    if (!contextKeys.has(v)) {
+      console.warn(`  WARN [${label}]: template references "{{${v}}}" but context has no value for it`);
+      count++;
+    }
+  }
+  return count;
+}
+
+// ---------------------------------------------------------------------------
 // Utility
 // ---------------------------------------------------------------------------
 function readFile(p: string): string {
@@ -87,7 +161,9 @@ function writeOutput(p: string, content: string) {
   fs.writeFileSync(p, content, 'utf-8');
 }
 
-function renderTemplate(template: string, context: Record<string, unknown>): string {
+function renderTemplate(template: string, context: Record<string, unknown>, label = '<template>'): string {
+  const vars = extractTemplateVars(template);
+  totalWarnings += warnMissingVars(vars, context, label);
   const compiled = Handlebars.compile(template, { noEscape: true });
   return compiled(context);
 }
@@ -158,8 +234,8 @@ function buildAgentInstructions(context: Record<string, unknown>) {
 
     // Render with agent-specific context
     const agentContext = { ...context, agentName: profile.name };
-    const baseRendered = renderTemplate(baseRaw, agentContext);
-    const specRendered = renderTemplate(specRaw, agentContext);
+    const baseRendered = renderTemplate(baseRaw, agentContext, `${profile.name}/${profile.baseTemplate}`);
+    const specRendered = renderTemplate(specRaw, agentContext, `${profile.name}/${profile.specializedTemplate}`);
 
     // Combine: base + blank line + specialized
     const combined = baseRendered.trim() + '\n\n' + specRendered.trim() + '\n';
@@ -206,7 +282,7 @@ function buildSkills(context: Record<string, unknown>) {
     // --- Preamble (the main SKILL.md body) ---
     const preamblePath = path.join(skillDir, '.preamble.md');
     const preambleRaw = fs.existsSync(preamblePath) ? readFile(preamblePath).trim() : '';
-    const preamble = preambleRaw ? renderTemplate(preambleRaw, context) : '';
+    const preamble = preambleRaw ? renderTemplate(preambleRaw, context, `${skillName}/.preamble.md`) : '';
 
     // --- Scenario files (NN.name.md) → rendered as references ---
     const scenarioFiles = fs
@@ -231,7 +307,7 @@ function buildSkills(context: Record<string, unknown>) {
 
     for (const scenarioFile of scenarioFiles) {
       const content = readFile(path.join(skillDir, scenarioFile)).trim();
-      const rendered = renderTemplate(content, context);
+      const rendered = renderTemplate(content, context, `${skillName}/${scenarioFile}`);
       writeOutput(path.join(refsDir, scenarioFile), rendered + '\n');
       // Extract a human-readable title from the filename (e.g. "00.check-prerequisites.md" → "Check Prerequisites")
       const label = slugToTitle(scenarioFile.replace(/^\d+\./, '').replace(/\.md$/, ''));
@@ -240,7 +316,7 @@ function buildSkills(context: Record<string, unknown>) {
 
     if (hasResult) {
       const content = readFile(resultPath).trim();
-      const rendered = renderTemplate(content, context);
+      const rendered = renderTemplate(content, context, `${skillName}/.result.md`);
       writeOutput(path.join(refsDir, 'expected-outcome.md'), rendered + '\n');
       refLinks.push(`* **Expected Outcome** [references/expected-outcome.md](references/expected-outcome.md)`);
     }
@@ -309,7 +385,11 @@ function main() {
   buildSkills(context);
   copyExternalSkills();
 
-  console.log('\nDone.');
+  if (totalWarnings > 0) {
+    console.warn(`\nDone with ${totalWarnings} template variable warning(s).`);
+  } else {
+    console.log('\nDone.');
+  }
 }
 
 main();
