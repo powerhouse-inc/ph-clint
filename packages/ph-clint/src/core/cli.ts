@@ -440,6 +440,7 @@ export function defineCli<
     }
 
     program.option('--verbose', 'Enable debug-level logging');
+    program.option('--meta', 'Output CLI metadata as JSON');
 
     if (agentLoader) {
       program.option('--resume <thread-id>', 'Resume a previous conversation');
@@ -582,6 +583,7 @@ export function defineCli<
     let resumeId: string | undefined = opts.resume;
     let interactiveFlag = false;
     let verboseFlag = false;
+    let metaFlag = false;
     const frameworkFlags = new Set(['--resume', '--workdir', '-w', '--config', '-c']);
     for (let i = 0; i < preCommandArgs.length; i++) {
       const arg = preCommandArgs[i]!;
@@ -589,6 +591,8 @@ export function defineCli<
         interactiveFlag = true;
       } else if (arg === '--verbose') {
         verboseFlag = true;
+      } else if (arg === '--meta') {
+        metaFlag = true;
       } else if (frameworkFlags.has(arg) && i + 1 < preCommandArgs.length) {
         const value = preCommandArgs[i + 1]!;
         if (arg === '--workdir' || arg === '-w') workdirFlag = value;
@@ -686,6 +690,13 @@ export function defineCli<
       };
       cachedProvider = await agentLoader(agentCtx);
       return cachedProvider;
+    }
+
+    // Handle --meta: output metadata JSON and exit (ignoring all other args)
+    if (metaFlag) {
+      stdout(JSON.stringify(getMetadata(), null, 2));
+      exit(0);
+      return;
     }
 
     // Check for interactive mode (-i or --interactive)

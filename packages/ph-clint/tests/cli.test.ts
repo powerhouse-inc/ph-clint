@@ -734,6 +734,24 @@ describe('defineCli', () => {
       expect(cap.exitCode).toBe(0);
     });
 
+    it('exits 0 on --meta and outputs metadata JSON', async () => {
+      const cap = capture();
+      await cli.run(['node', 'test', '--meta'], cap.options);
+      expect(cap.exitCode).toBe(0);
+      const json = JSON.parse(cap.output.join('\n'));
+      expect(json.name).toBe('test-cli');
+      expect(json.version).toBe('0.0.1');
+      expect(json.commands).toBeDefined();
+    });
+
+    it('--meta ignores other arguments', async () => {
+      const cap = capture();
+      await cli.run(['node', 'test', '--meta', 'echo', '--message', 'hi'], cap.options);
+      expect(cap.exitCode).toBe(0);
+      const json = JSON.parse(cap.output.join('\n'));
+      expect(json.name).toBe('test-cli');
+    });
+
     it('exits non-zero on missing required arg', async () => {
       const cap = capture();
       await cli.run(['node', 'test', 'echo'], cap.options);
