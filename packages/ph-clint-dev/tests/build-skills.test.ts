@@ -32,7 +32,7 @@ describe('buildAgentProfiles', () => {
     fs.writeFileSync(path.join(profilesDir, 'Agent.md'), 'Specialized: port {{connectPort}}');
 
     const config = makeConfig({
-      agentProfiles: [{ name: 'TestAgent', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+      agentProfiles: [{ name: 'TestAgent', sections: ['Base.md', 'Agent.md'] }],
     });
 
     const result = buildAgentProfiles(config);
@@ -50,7 +50,7 @@ describe('buildAgentProfiles', () => {
 
   it('skips profiles with missing template files', () => {
     const config = makeConfig({
-      agentProfiles: [{ name: 'Missing', baseTemplate: 'nope.md', specializedTemplate: 'nope2.md' }],
+      agentProfiles: [{ name: 'Missing', sections: ['nope.md', 'nope2.md'] }],
     });
 
     const result = buildAgentProfiles(config);
@@ -62,6 +62,30 @@ describe('buildAgentProfiles', () => {
     expect(result.count).toBe(0);
   });
 
+  it('concatenates 3+ sections in order', () => {
+    const profilesDir = path.join(tmpDir, 'prompts', 'agent-profiles');
+    fs.mkdirSync(profilesDir, { recursive: true });
+    fs.writeFileSync(path.join(profilesDir, 'Base.md'), 'SECTION-1');
+    fs.writeFileSync(path.join(profilesDir, 'Domain.md'), 'SECTION-2');
+    fs.writeFileSync(path.join(profilesDir, 'Tools.md'), 'SECTION-3');
+
+    const config = makeConfig({
+      agentProfiles: [{ name: 'Multi', sections: ['Base.md', 'Domain.md', 'Tools.md'] }],
+    });
+
+    const result = buildAgentProfiles(config);
+    expect(result.count).toBe(1);
+
+    const outputPath = path.join(tmpDir, 'src', 'generated', 'agent-instructions.ts');
+    const content = fs.readFileSync(outputPath, 'utf-8');
+    // Verify all three sections present and in order
+    const idx1 = content.indexOf('SECTION-1');
+    const idx2 = content.indexOf('SECTION-2');
+    const idx3 = content.indexOf('SECTION-3');
+    expect(idx1).toBeLessThan(idx2);
+    expect(idx2).toBeLessThan(idx3);
+  });
+
   it('reports warnings for missing template variables', () => {
     const profilesDir = path.join(tmpDir, 'prompts', 'agent-profiles');
     fs.mkdirSync(profilesDir, { recursive: true });
@@ -69,7 +93,7 @@ describe('buildAgentProfiles', () => {
     fs.writeFileSync(path.join(profilesDir, 'Agent.md'), 'OK');
 
     const config = makeConfig({
-      agentProfiles: [{ name: 'Test', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+      agentProfiles: [{ name: 'Test', sections: ['Base.md', 'Agent.md'] }],
     });
 
     const result = buildAgentProfiles(config);
@@ -182,7 +206,7 @@ describe('buildSkills (orchestrator)', () => {
     fs.writeFileSync(path.join(extDir, 'SKILL.md'), '# Ext');
 
     const result = buildSkills(makeConfig({
-      agentProfiles: [{ name: 'Test', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+      agentProfiles: [{ name: 'Test', sections: ['Base.md', 'Agent.md'] }],
     }));
 
     expect(result.agentProfilesBuilt).toBe(1);
@@ -202,7 +226,7 @@ describe('buildSkills (orchestrator)', () => {
     fs.writeFileSync(path.join(skillDir, '.preamble.md'), '{{alsoMissing}}');
 
     const result = buildSkills(makeConfig({
-      agentProfiles: [{ name: 'Test', baseTemplate: 'Base.md', specializedTemplate: 'Agent.md' }],
+      agentProfiles: [{ name: 'Test', sections: ['Base.md', 'Agent.md'] }],
     }));
 
     expect(result.warnings.length).toBe(2);

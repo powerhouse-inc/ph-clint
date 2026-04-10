@@ -29,15 +29,13 @@ export interface BuildConfig {
 }
 
 /**
- * An agent profile — combines a base template with a specialized template.
+ * An agent profile — concatenates one or more template sections into a single instruction string.
  */
 export interface AgentProfile {
   /** Agent name (used as variable name prefix in generated TS). */
   name: string;
-  /** Filename of the base template within the profiles directory. */
-  baseTemplate: string;
-  /** Filename of the specialized template within the profiles directory. */
-  specializedTemplate: string;
+  /** Template filenames within the profiles directory, concatenated in order. */
+  sections: string[];
 }
 
 /**

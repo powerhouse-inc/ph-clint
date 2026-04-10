@@ -36,13 +36,11 @@ const result = buildSkills({
   agentProfiles: [
     {
       name: 'RupertDevAgent',
-      baseTemplate: 'AgentBase.md',
-      specializedTemplate: 'ReactorPackageDevAgent.md',
+      sections: ['AgentBase.md', 'ReactorPackageDevAgent.md'],
     },
     {
       name: 'PowerhouseArchitectAgent',
-      baseTemplate: 'AgentBase.md',
-      specializedTemplate: 'PowerhouseArchitectAgent.md',
+      sections: ['AgentBase.md', 'PowerhouseArchitectAgent.md'],
     },
   ],
   skillDescriptions: {

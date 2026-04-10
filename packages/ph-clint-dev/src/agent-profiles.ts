@@ -27,35 +27,33 @@ export function buildAgentProfiles(config: BuildConfig): { count: number; warnin
   let count = 0;
 
   for (const profile of profiles) {
-    const basePath = path.join(profilesDir, profile.baseTemplate);
-    const specPath = path.join(profilesDir, profile.specializedTemplate);
-
-    if (!fs.existsSync(basePath) || !fs.existsSync(specPath)) {
-      log(`  SKIP ${profile.name}: missing template files`);
-      continue;
+    // Check all section files exist before rendering
+    let missing = false;
+    for (const section of profile.sections) {
+      if (!fs.existsSync(path.join(profilesDir, section))) {
+        log(`  SKIP ${profile.name}: missing section ${section}`);
+        missing = true;
+        break;
+      }
     }
-
-    const baseRaw = fs.readFileSync(basePath, 'utf-8');
-    const specRaw = fs.readFileSync(specPath, 'utf-8');
+    if (missing) continue;
 
     const agentContext = { ...config.context, agentName: profile.name };
     const renderOpts = config.customHelpers ? { helpers: config.customHelpers } : undefined;
 
-    const baseResult = renderSkillTemplate(baseRaw, agentContext, renderOpts);
-    const specResult = renderSkillTemplate(specRaw, agentContext, renderOpts);
-
-    for (const w of baseResult.warnings) {
-      const msg = `${profile.name}/${profile.baseTemplate}: ${w}`;
-      allWarnings.push(msg);
-      log(`  WARN ${msg}`);
-    }
-    for (const w of specResult.warnings) {
-      const msg = `${profile.name}/${profile.specializedTemplate}: ${w}`;
-      allWarnings.push(msg);
-      log(`  WARN ${msg}`);
+    const renderedSections: string[] = [];
+    for (const section of profile.sections) {
+      const raw = fs.readFileSync(path.join(profilesDir, section), 'utf-8');
+      const result = renderSkillTemplate(raw, agentContext, renderOpts);
+      for (const w of result.warnings) {
+        const msg = `${profile.name}/${section}: ${w}`;
+        allWarnings.push(msg);
+        log(`  WARN ${msg}`);
+      }
+      renderedSections.push(result.rendered.trim());
     }
 
-    const combined = baseResult.rendered.trim() + '\n\n' + specResult.rendered.trim() + '\n';
+    const combined = renderedSections.join('\n\n') + '\n';
 
     const varName = profile.name.charAt(0).toLowerCase() + profile.name.slice(1) + 'Instructions';
     exports.push(`export const ${varName} = ${JSON.stringify(combined)};\n`);
