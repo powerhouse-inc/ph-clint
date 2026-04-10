@@ -497,7 +497,7 @@ export function defineCli<
 
       // Override help for the built-in config command with a rich help page
       if (isBuiltinConfig) {
-        sub.helpInformation = () => generateConfigCommandHelp(options.name, options.configSchema!, activeWorkdir) + '\n';
+        sub.helpInformation = () => generateConfigCommandHelp(options.name, options.configSchema!, activeWorkdir, sensitiveKeys) + '\n';
       }
 
       sub.action(async (opts) => {
