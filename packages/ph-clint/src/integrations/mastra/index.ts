@@ -5,14 +5,17 @@ import { mapMastraStream } from './stream.js';
 import { commandsToMastraTools } from './tools.js';
 import { getMastraPaths } from './paths.js';
 import { discoverMcpTools, disconnectAllMcp } from './mcp.js';
+import { MarkdownConversationLogger, loggedStream } from './logging.js';
 import type { GetToolsOptions, MastraHelpers, WrapAgentOptions } from './types.js';
 
 export type { MastraHelpers, GetToolsOptions, WrapAgentOptions } from './types.js';
 export type { MastraPaths, MastraPathOptions } from './paths.js';
+export type { IConversationLogger, ConversationLoggerOptions } from './logging.js';
 export { getMastraPaths } from './paths.js';
 export { mapMastraStream } from './stream.js';
 export { commandsToMastraTools } from './tools.js';
 export { discoverMcpTools, disconnectAllMcp } from './mcp.js';
+export { MarkdownConversationLogger, loggedStream } from './logging.js';
 
 /**
  * Create convenience helpers for building Mastra agents.
@@ -79,8 +82,16 @@ export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
 
     wrapAgent(agent: any, options?: WrapAgentOptions): AgentProvider {
       const maxSteps = options?.maxSteps ?? 30;
+      const agentId = agent.id ?? 'default';
+      const agentName = agent.name ?? agentId;
+
+      // Create logger if enabled
+      const logger = options?.enableLogging && options.logDirectory
+        ? new MarkdownConversationLogger({ directory: options.logDirectory })
+        : undefined;
+
       return {
-        id: agent.id ?? 'default',
+        id: agentId,
         async *stream(prompt: string, opts?) {
           const streamOpts: Record<string, unknown> = { maxSteps };
 
@@ -91,8 +102,37 @@ export function createMastraHelpers(ctx: AgentContext): MastraHelpers {
             };
           }
 
+          const sessionId = opts?.threadId ?? agentId;
+
+          if (logger) {
+            // Resolve instructions from the Mastra Agent if available
+            let instructions: string | undefined;
+            try {
+              instructions = typeof agent.getInstructions === 'function'
+                ? await agent.getInstructions()
+                : agent.instructions;
+            } catch { /* ignore — instructions are optional */ }
+            if (typeof instructions !== 'string') instructions = undefined;
+
+            logger.startSession(sessionId, agentId, agentName, instructions);
+            logger.logUserMessage(sessionId, prompt);
+          }
+
           const streamResult = await agent.stream(prompt, streamOpts);
-          yield* mapMastraStream(streamResult.fullStream as any);
+          const rawStream = mapMastraStream(streamResult.fullStream as any);
+
+          try {
+            if (logger) {
+              yield* loggedStream(rawStream, logger, sessionId);
+            } else {
+              yield* rawStream;
+            }
+          } catch (err) {
+            if (logger) {
+              logger.logError(sessionId, err instanceof Error ? err.message : String(err));
+            }
+            throw err;
+          }
         },
       };
     },

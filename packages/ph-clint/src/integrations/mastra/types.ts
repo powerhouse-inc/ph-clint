@@ -24,6 +24,10 @@ export interface GetToolsOptions {
 export interface WrapAgentOptions {
   /** Maximum number of tool-call steps per stream() invocation. Default: 30 */
   maxSteps?: number;
+  /** Enable conversation logging to disk. Default: false */
+  enableLogging?: boolean;
+  /** Directory to write log files. Required when enableLogging is true. */
+  logDirectory?: string;
 }
 
 export interface MastraHelpers {

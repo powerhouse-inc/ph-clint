@@ -7,6 +7,7 @@ import { MCPClient } from '@mastra/mcp';
 import { createWorkdirStore } from 'ph-clint';
 import { createMastraHelpers, getMastraPaths } from 'ph-clint/mastra';
 import type { AgentContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
+import type { WrapAgentOptions } from 'ph-clint/mastra';
 import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
 import { rupertDevAgentInstructions } from './instructions.js';
 import { createDemoAgent } from './demo-agent.js';
@@ -113,5 +114,12 @@ export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvi
   const { createMastraHelpers } = await import('ph-clint/mastra');
   const m = createMastraHelpers(ctx);
   const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.context.log);
-  return m.wrapAgent(agent, { maxSteps: 80 });
+
+  const store = createWorkdirStore(ctx.workdir, CLI_NAME);
+  const wrapOpts: WrapAgentOptions = {
+    maxSteps: 80,
+    enableLogging: ctx.config.agentLogging,
+    logDirectory: store.getStoreFolder('logs'),
+  };
+  return m.wrapAgent(agent, wrapOpts);
 }

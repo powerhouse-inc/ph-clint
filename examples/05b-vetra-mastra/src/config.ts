@@ -17,6 +17,7 @@ export const configSchema = z.object({
   connectPort: z.number().default(3000).describe('Connect Studio port'),
   switchboardPort: z.number().default(4001).describe('Vetra Switchboard port'),
   phVersion: z.string().default('staging').describe('Powerhouse version'),
+  agentLogging: z.boolean().default(false).describe('Enable agent conversation logging to disk'),
 });
 
 export type Config = z.infer<typeof configSchema>;
