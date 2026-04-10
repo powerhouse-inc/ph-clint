@@ -184,7 +184,7 @@ function buildAgentInstructions(context: Record<string, unknown>) {
 // ---------------------------------------------------------------------------
 // 2. Build SKILL.md files
 // ---------------------------------------------------------------------------
-function buildSkills() {
+function buildSkills(context: Record<string, unknown>) {
   console.log('\n--- Building SKILL.md files (templates) ---');
 
   if (!fs.existsSync(SKILLS_TPL_DIR)) {
@@ -200,37 +200,52 @@ function buildSkills() {
 
   for (const skillName of skillDirs) {
     const skillDir = path.join(SKILLS_TPL_DIR, skillName);
-    const sections: string[] = [];
+    const outputDir = path.join(OUTPUT_SKILLS, skillName);
+    const refsDir = path.join(outputDir, 'references');
 
-    // --- Preamble (optional) ---
+    // --- Preamble (the main SKILL.md body) ---
     const preamblePath = path.join(skillDir, '.preamble.md');
-    if (fs.existsSync(preamblePath)) {
-      sections.push(readFile(preamblePath).trim());
-    }
+    const preambleRaw = fs.existsSync(preamblePath) ? readFile(preamblePath).trim() : '';
+    const preamble = preambleRaw ? renderTemplate(preambleRaw, context) : '';
 
-    // --- Scenario files (NN.name.md), sorted by filename ---
+    // --- Scenario files (NN.name.md) → rendered as references ---
     const scenarioFiles = fs
       .readdirSync(skillDir)
       .filter((f) => /^\d+\..*\.md$/.test(f))
       .sort();
 
-    for (const scenarioFile of scenarioFiles) {
-      const content = readFile(path.join(skillDir, scenarioFile)).trim();
-      sections.push(content);
-    }
-
-    // --- Result (optional) ---
+    // --- Result (.result.md) → also a reference ---
     const resultPath = path.join(skillDir, '.result.md');
-    if (fs.existsSync(resultPath)) {
-      sections.push('## Expected Skill Outcome\n\n' + readFile(resultPath).trim());
-    }
+    const hasResult = fs.existsSync(resultPath);
 
-    if (sections.length === 0) {
+    if (!preamble && scenarioFiles.length === 0 && !hasResult) {
       console.warn(`  SKIP ${skillName}: no content files found`);
       continue;
     }
 
-    // --- Build SKILL.md ---
+    // Render and write scenario references
+    const refLinks: string[] = [];
+    if (scenarioFiles.length > 0 || hasResult) {
+      fs.mkdirSync(refsDir, { recursive: true });
+    }
+
+    for (const scenarioFile of scenarioFiles) {
+      const content = readFile(path.join(skillDir, scenarioFile)).trim();
+      const rendered = renderTemplate(content, context);
+      writeOutput(path.join(refsDir, scenarioFile), rendered + '\n');
+      // Extract a human-readable title from the filename (e.g. "00.check-prerequisites.md" → "Check Prerequisites")
+      const label = slugToTitle(scenarioFile.replace(/^\d+\./, '').replace(/\.md$/, ''));
+      refLinks.push(`* **${label}** [references/${scenarioFile}](references/${scenarioFile})`);
+    }
+
+    if (hasResult) {
+      const content = readFile(resultPath).trim();
+      const rendered = renderTemplate(content, context);
+      writeOutput(path.join(refsDir, 'expected-outcome.md'), rendered + '\n');
+      refLinks.push(`* **Expected Outcome** [references/expected-outcome.md](references/expected-outcome.md)`);
+    }
+
+    // --- Build SKILL.md (preamble + reference links) ---
     const description = slugToDescription(skillName);
 
     const frontmatter = [
@@ -243,14 +258,16 @@ function buildSkills() {
       '---',
     ].join('\n');
 
-    const body = sections.join('\n\n');
+    const sections = [preamble];
+    if (refLinks.length > 0) {
+      sections.push('## Specific tasks\n\n' + refLinks.join('\n'));
+    }
 
-    const skillMd = frontmatter + '\n\n' + body + '\n';
+    const skillMd = frontmatter + '\n\n' + sections.filter(Boolean).join('\n\n') + '\n';
 
-    const outputPath = path.join(OUTPUT_SKILLS, skillName, 'SKILL.md');
-    writeOutput(outputPath, skillMd);
+    writeOutput(path.join(outputDir, 'SKILL.md'), skillMd);
     console.log(
-      `  OK ${skillName} → SKILL.md (${scenarioFiles.length} scenarios, ${skillMd.length} chars)`,
+      `  OK ${skillName} → SKILL.md + ${scenarioFiles.length + (hasResult ? 1 : 0)} references (${skillMd.length} chars)`,
     );
   }
 }
@@ -289,7 +306,7 @@ function main() {
   const context = loadBuildContext();
 
   buildAgentInstructions(context);
-  buildSkills();
+  buildSkills(context);
   copyExternalSkills();
 
   console.log('\nDone.');

@@ -113,5 +113,5 @@ export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvi
   const { createMastraHelpers } = await import('ph-clint/mastra');
   const m = createMastraHelpers(ctx);
   const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.context.log);
-  return m.wrapAgent(agent);
+  return m.wrapAgent(agent, { maxSteps: 80 });
 }
