@@ -17,6 +17,7 @@ const SKILL_NAMES = [
   'fusion-development',
   'fusion-project-management',
   'handle-stakeholder-message',
+  'playwright-cli',
   'reactor-package-project-management',
 ];
 

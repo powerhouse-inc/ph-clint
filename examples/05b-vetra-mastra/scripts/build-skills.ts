@@ -1,7 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Build script that compiles Handlebars templates in skills-src/ into
- * static SKILL.md files in skills/ and compiled agent instruction strings
+ * Build script that compiles Handlebars templates in prompts/skills-tpl/ into
+ * static SKILL.md files in skills/, copies external skills from
+ * prompts/skills-ext/ as-is, and compiles agent instruction strings
  * exported from src/mastra/generated/.
  *
  * Run: pnpm build:skills
@@ -15,9 +16,10 @@ import Handlebars from 'handlebars';
 // Paths
 // ---------------------------------------------------------------------------
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '..');
-const SKILLS_SRC = path.join(PROJECT_ROOT, 'skills-src');
-const PROFILES_DIR = path.join(SKILLS_SRC, 'agent-profiles');
-const SKILLS_DIR = path.join(SKILLS_SRC, 'skills');
+const PROMPTS_DIR = path.join(PROJECT_ROOT, 'prompts');
+const PROFILES_DIR = path.join(PROMPTS_DIR, 'agent-profiles');
+const SKILLS_TPL_DIR = path.join(PROMPTS_DIR, 'skills-tpl');
+const SKILLS_EXT_DIR = path.join(PROMPTS_DIR, 'skills-ext');
 const OUTPUT_SKILLS = path.join(PROJECT_ROOT, 'skills');
 const OUTPUT_GENERATED = path.join(PROJECT_ROOT, 'src', 'mastra', 'generated');
 
@@ -183,21 +185,21 @@ function buildAgentInstructions(context: Record<string, unknown>) {
 // 2. Build SKILL.md files
 // ---------------------------------------------------------------------------
 function buildSkills() {
-  console.log('\n--- Building SKILL.md files ---');
+  console.log('\n--- Building SKILL.md files (templates) ---');
 
-  if (!fs.existsSync(SKILLS_DIR)) {
-    console.log('  No skills-src/skills/ directory — skipping.');
+  if (!fs.existsSync(SKILLS_TPL_DIR)) {
+    console.log('  No prompts/skills-tpl/ directory — skipping.');
     return;
   }
 
   const skillDirs = fs
-    .readdirSync(SKILLS_DIR, { withFileTypes: true })
+    .readdirSync(SKILLS_TPL_DIR, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
 
   for (const skillName of skillDirs) {
-    const skillDir = path.join(SKILLS_DIR, skillName);
+    const skillDir = path.join(SKILLS_TPL_DIR, skillName);
     const sections: string[] = [];
 
     // --- Preamble (optional) ---
@@ -254,15 +256,41 @@ function buildSkills() {
 }
 
 // ---------------------------------------------------------------------------
+// 3. Copy external skills (no Handlebars processing)
+// ---------------------------------------------------------------------------
+function copyExternalSkills() {
+  console.log('\n--- Copying external skills ---');
+
+  if (!fs.existsSync(SKILLS_EXT_DIR)) {
+    console.log('  No prompts/skills-ext/ directory — skipping.');
+    return;
+  }
+
+  const skillDirs = fs
+    .readdirSync(SKILLS_EXT_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+
+  for (const skillName of skillDirs) {
+    const srcDir = path.join(SKILLS_EXT_DIR, skillName);
+    const destDir = path.join(OUTPUT_SKILLS, skillName);
+    fs.cpSync(srcDir, destDir, { recursive: true });
+    console.log(`  OK ${skillName} → copied as-is`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 function main() {
-  console.log('Building skills from', path.relative(process.cwd(), SKILLS_SRC));
+  console.log('Building skills from', path.relative(process.cwd(), PROMPTS_DIR));
 
   const context = loadBuildContext();
 
   buildAgentInstructions(context);
   buildSkills();
+  copyExternalSkills();
 
   console.log('\nDone.');
 }
