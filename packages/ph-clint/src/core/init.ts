@@ -3,6 +3,25 @@ import path from 'node:path';
 import type { WorkdirStore } from './types.js';
 
 /**
+ * Recursively copy a directory tree, returning the number of files copied.
+ */
+function copyDirRecursive(src: string, dest: string): number {
+  fs.mkdirSync(dest, { recursive: true });
+  let count = 0;
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      count += copyDirRecursive(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
  * Options for installSkills.
  */
 export interface InstallSkillsOptions {
@@ -36,9 +55,9 @@ export function installSkills(options: InstallSkillsOptions): number {
 
   stdout(`[init] Installing skills from ${source}`);
 
-  // Read skill subdirectories
+  // Read skill subdirectories (skip hidden dirs like .ph to avoid cycles)
   const skillDirs = fs.readdirSync(source, { withFileTypes: true })
-    .filter(d => d.isDirectory())
+    .filter(d => d.isDirectory() && !d.name.startsWith('.'))
     .map(d => d.name);
 
   if (skillDirs.length === 0) {
@@ -56,15 +75,7 @@ export function installSkills(options: InstallSkillsOptions): number {
   for (const skillName of skillDirs) {
     const src = path.join(source, skillName);
     const dest = path.join(targetDir, skillName);
-    fs.mkdirSync(dest, { recursive: true });
-
-    const files = fs.readdirSync(src).filter(f =>
-      fs.statSync(path.join(src, f)).isFile(),
-    );
-    for (const file of files) {
-      fs.copyFileSync(path.join(src, file), path.join(dest, file));
-    }
-    totalFiles += files.length;
+    totalFiles += copyDirRecursive(src, dest);
   }
 
   stdout(`[init] Installed ${skillDirs.length} skills (${totalFiles} files)`);

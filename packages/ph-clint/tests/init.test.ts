@@ -47,6 +47,28 @@ describe('installSkills', () => {
     expect(fs.readFileSync(path.join(targetDir, 'skill-a', 'SKILL.md'), 'utf8')).toBe('# Skill A');
   });
 
+  it('copies subdirectories recursively (e.g. references/)', () => {
+    const store = createWorkdirStore(tmpDir, 'testcli');
+    const skillsDir = path.join(tmpDir, 'skills');
+
+    // Create a skill with a references/ subdirectory
+    fs.mkdirSync(path.join(skillsDir, 'my-skill', 'references'), { recursive: true });
+    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'SKILL.md'), '# My Skill');
+    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'references', 'prereqs.md'), '# Prerequisites');
+    fs.writeFileSync(path.join(skillsDir, 'my-skill', 'references', 'steps.md'), '# Steps');
+
+    installSkills({
+      store,
+      skillSources: [skillsDir],
+      stdout: () => {},
+    });
+
+    const targetDir = store.getStoreFolder('.mastra/skills');
+    expect(fs.existsSync(path.join(targetDir, 'my-skill', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, 'my-skill', 'references', 'prereqs.md'))).toBe(true);
+    expect(fs.readFileSync(path.join(targetDir, 'my-skill', 'references', 'steps.md'), 'utf8')).toBe('# Steps');
+  });
+
   it('returns 0 when no source directories exist', () => {
     const store = createWorkdirStore(tmpDir, 'testcli');
     const logs: string[] = [];
