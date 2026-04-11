@@ -2,6 +2,7 @@ import { defineCommand } from 'ph-clint';
 import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
+import { findProjects } from './find-projects.js';
 
 const inputSchema = z.object({});
 
@@ -14,49 +15,52 @@ const projectSchema = z.object({
 
 type ProjectInfo = z.infer<typeof projectSchema>;
 
+function isReactorPackage(folderPath: string): boolean {
+  try {
+    fs.accessSync(path.join(folderPath, 'powerhouse.config.json'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const reactorPackagesList = defineCommand({
   id: 'reactor-packages-list',
   description: 'List Reactor package projects in the working directory',
   inputSchema,
   execute: async (_input, { workdir }) => {
-    const projects: ProjectInfo[] = [];
+    const found = findProjects(workdir, isReactorPackage);
 
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(workdir, { withFileTypes: true });
-    } catch {
-      return { text: 'Working directory does not exist', data: [] };
-    }
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const projectPath = path.join(workdir, entry.name);
-      const configPath = path.join(projectPath, 'powerhouse.config.json');
-
+    const projects: ProjectInfo[] = found.map((f) => {
       try {
-        const raw = fs.readFileSync(configPath, 'utf-8');
+        const raw = fs.readFileSync(
+          path.join(f.path, 'powerhouse.config.json'),
+          'utf-8',
+        );
         const config = JSON.parse(raw);
-        projects.push({
-          name: entry.name,
-          path: projectPath,
+        return {
+          name: f.name,
+          path: f.path,
           connectPort: config.studio?.port ?? config.connect?.port,
           switchboardPort: config.reactor?.port ?? config.switchboard?.port,
-        });
+        };
       } catch {
-        // Not a Reactor package project, skip
+        return { name: f.name, path: f.path };
       }
-    }
+    });
 
     if (projects.length === 0) {
       return { text: 'No Reactor package projects found', data: [] };
     }
 
     const lines = projects.map((p) => {
+      const rel = path.relative(workdir, p.path);
+      const display = rel ? './' + rel : '.';
       const ports = [
         p.connectPort ? `connect:${p.connectPort}` : null,
         p.switchboardPort ? `switchboard:${p.switchboardPort}` : null,
       ].filter(Boolean);
-      return `  ${p.name}${ports.length ? `  (${ports.join(', ')})` : ''}`;
+      return `  ${p.name}  ${display}${ports.length ? `  (${ports.join(', ')})` : ''}`;
     });
 
     return {
