@@ -17,6 +17,9 @@ Build CLI tools that work as command-line programs, interactive REPLs, and AI ag
 - [AI Agent Integration (Mastra)](#ai-agent-integration-mastra)
 - [Streaming Output](#streaming-output)
 - [Events](#events)
+- [CLI Metadata](#cli-metadata)
+- [Handlebars Templates](#handlebars-templates)
+- [Conversation Logging](#conversation-logging)
 - [Testing](#testing)
 - [API Reference](#api-reference)
 
@@ -235,7 +238,11 @@ const cli = defineCli({
   routine: { tickInterval: 2000 },            // Routine loop timing
   services: [myService],                      // Managed background services
   events: { 'service:ready': handler },       // Event handlers
-  skillSources: ['./skills'],                 // Agent skill directories
+  secretsSchema: mySecretsSchema,             // Zod schema for sensitive config (censored)
+  skills: {                                    // Agent skill management
+    sources: ['./skills', './dist/skills'],    // Candidate dirs (first existing wins)
+    agents: { 'my-agent': ['skill-a'] },      // Per-agent skill assignments
+  },
   workdir: '/custom/default/path',            // Implementation-level workdir override
   configDefaults: { key: 'value' },           // Default config values
 });
@@ -278,6 +285,7 @@ cli.generateHelp()               // Generate help text
 cli.generateCommandHelp(id)      // Help for a specific command
 cli.generateCompletion(shell)    // Shell completion script ('bash'|'zsh'|'fish')
 cli.configEnvVars()              // List config env var mappings
+cli.getMetadata()                // JSON-serializable CLI metadata
 cli.setAgentLoader(loader)       // Set lazy agent loader (for Mastra)
 ```
 
@@ -379,6 +387,31 @@ const myCmd = defineCommand<typeof inputSchema, string, Config>({
   },
 });
 ```
+
+### Secrets Schema
+
+Use `secretsSchema` for sensitive config values (API keys, tokens). These values are merged into the config object but automatically censored in help output, `config` command display, and metadata:
+
+```typescript
+const cli = defineCli({
+  name: 'assist',
+  configSchema: z.object({
+    model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model'),
+  }),
+  secretsSchema: z.object({
+    apiKey: z.string().optional().describe('Anthropic API key'),
+  }),
+  // ...
+});
+
+// In commands, secrets are available on config like normal fields:
+execute: async (input, { config }) => {
+  config.apiKey;  // string | undefined — accessible in code
+  config.model;   // string — normal config field
+}
+```
+
+Secret fields are marked `sensitive: true` in CLI metadata and censored as `***` in `config` command output.
 
 ### Config Commands
 
@@ -718,6 +751,13 @@ const devServer = defineService<Config>({
 
   // Max concurrent instances
   maxInstances: 1,
+
+  // Project scanner — auto-discovers projects in a directory tree
+  projectScanner: {
+    isProjectFolder: (dir) => fs.existsSync(path.join(dir, 'powerhouse.config.ts')),
+    getProjectName: (dir) => path.basename(dir),
+    getProjectConfig: (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')),
+  },
 });
 ```
 
@@ -837,6 +877,13 @@ const unwatch = services.watchLogs('dev-server', instanceId, (line) => {
   console.log(line);
 });
 // Later: unwatch() to stop
+
+// Scan for projects using the service's projectScanner
+const projects = services.scanProjects('dev-server', '/path/to/search');
+// Returns: [{ name, path, config? }]
+
+// Clean up stopped instance state files
+services.purgeStoppedInstances('dev-server');
 ```
 
 ---
@@ -898,6 +945,7 @@ interface AgentContext<TConfig> {
   cliVersion: string;      // CLI version
   context: CommandContext;  // Full command context (services, processes, etc.)
   commands: Command[];     // All registered commands
+  skills: SkillInfo[];     // Skills assigned to this agent (from SkillsConfig)
 }
 ```
 
@@ -1024,6 +1072,98 @@ Events can be emitted from:
 | `service:failed` | `{ serviceId, label, error }` |
 | `service:restarting` | `{ serviceId, label, attempt, maxRetries }` |
 | `service:stopped` | `{ serviceId, label }` |
+
+---
+
+## CLI Metadata
+
+Every CLI exposes machine-readable metadata via `getMetadata()` and the `--meta` flag:
+
+```bash
+mycli --meta          # Outputs JSON metadata to stdout
+```
+
+```typescript
+const meta = cli.getMetadata();
+// Returns CliMetadata with:
+//   name, version, description
+//   hasInteractive, hasAgent, hasReactor
+//   config — field metadata with env var names and sensitive flags
+//   commands — with param metadata
+//   services — with MCP prefix, shutdown, restart config
+//   skills — sources, agent assignments, resolved skill info
+```
+
+The metadata is designed for build-time tooling (e.g., generating agent skill templates that reference CLI commands by name). Config fields from `secretsSchema` are marked `sensitive: true`. Service metadata includes `mcpPrefix` derived from readiness captures with `type: 'api-mcp'`.
+
+---
+
+## Handlebars Templates
+
+ph-clint includes a Handlebars template engine for agent skill rendering with missing-variable detection:
+
+```typescript
+import { renderSkillTemplate } from 'ph-clint';
+
+const { rendered, warnings } = renderSkillTemplate(
+  'Hello {{name}}, you have {{count}} tasks. {{missing}}',
+  { name: 'Alice', count: 5 },
+);
+// rendered: 'Hello Alice, you have 5 tasks. '
+// warnings: ['Template references "{{missing}}" but context has no value for it']
+```
+
+### Built-in Helpers
+
+Eight default helpers are registered automatically:
+
+| Helper | Description |
+|--------|-------------|
+| `{{formatDate date "time"}}` | Format a date (formats: `time`, `date`, or ISO) |
+| `{{join array ", "}}` | Join array with separator |
+| `{{exists value}}` | True if value is not null/undefined/empty |
+| `{{eq a b}}` | Strict equality check |
+| `{{uppercase str}}` | Convert to uppercase |
+| `{{lowercase str}}` | Convert to lowercase |
+| `{{hasItems array}}` | True if array is non-empty |
+| `{{default value fallback}}` | Use fallback when value is empty |
+
+### Template Variable Extraction
+
+```typescript
+import { extractTemplateVars } from 'ph-clint';
+
+const vars = extractTemplateVars('{{name}} uses {{#each tools}}{{this}}{{/each}}');
+// Set { 'name', 'tools' }
+```
+
+---
+
+## Conversation Logging
+
+The Mastra integration includes an append-only markdown logger for agent conversations:
+
+```typescript
+import { MarkdownConversationLogger, loggedStream } from 'ph-clint/mastra';
+
+const logger = new MarkdownConversationLogger({
+  directory: '/path/to/logs',
+});
+
+// Start a session
+logger.startSession('session-1', 'assistant', 'My Assistant', 'System prompt...');
+
+// Wrap an agent stream to log all chunks automatically
+const logged = loggedStream(agentStream, logger, 'session-1');
+for await (const chunk of logged) {
+  // chunks pass through unchanged, but are also logged
+}
+
+// End session (writes summary with duration and counts)
+logger.endSession('session-1');
+```
+
+Log files are written as markdown at `{directory}/{agentName}/{YYYYMMDD_HHMM_NNN}.md` with full conversation transcripts including tool calls and results.
 
 ---
 
@@ -1199,12 +1339,24 @@ Coverage target: 95% (statements, branches, functions, lines).
 | `checkPort(port, label?)` | Verify a port is available |
 | `isPortFree(port)` | Check if a port is free (returns boolean) |
 
-### Skills
+### Skills & Templates
 
 | Function | Description |
 |----------|-------------|
 | `readSkillsFromSources(dirs)` | Scan directories for SKILL.md files |
 | `installSkills(options)` | Copy skill folders into the workspace store |
+| `createSkillCommands(skills)` | Create CLI commands from skill metadata |
+| `isSkillInvocation(value)` | Type guard for `SkillInvocation` results |
+| `renderSkillTemplate(template, context, opts?)` | Render a Handlebars template with default helpers |
+| `extractTemplateVars(template)` | Extract referenced variable names from a template |
+| `registerDefaultHelpers(hbs)` | Register the 8 standard helpers on a Handlebars instance |
+
+### Project Scanner
+
+| Function | Description |
+|----------|-------------|
+| `scanProjects(rootDir, scanner)` | Breadth-first search for project folders |
+| `PROJECT_INDICATORS` | Array of common project indicator files (package.json, Cargo.toml, etc.) |
 
 ### Mastra Integration (`ph-clint/mastra`)
 
@@ -1216,6 +1368,8 @@ Coverage target: 95% (statements, branches, functions, lines).
 | `getMastraPaths(store, options?)` | Compute Mastra paths (DB, workspace, skills) |
 | `discoverMcpTools(services, log?, MCPClient?)` | Discover MCP tools from running services |
 | `disconnectAllMcp()` | Disconnect all cached MCP clients |
+| `MarkdownConversationLogger` | Append-only markdown logger for agent conversations |
+| `loggedStream(stream, logger, sessionId)` | Wrap an agent stream to log all chunks |
 
 ### Key Types
 
@@ -1258,3 +1412,13 @@ Coverage target: 95% (statements, branches, functions, lines).
 | `PromptConfig` | Parameter prompting configuration |
 | `FieldInfo` | Zod schema field metadata |
 | `SkillInfo` | Agent skill metadata (name, description) |
+| `SkillsConfig` | Skills configuration (sources, agent assignments) |
+| `SkillInvocation` | Result of a skill command (routes to agent) |
+| `CliMetadata` | JSON-serializable CLI metadata (from `getMetadata()`) |
+| `MetadataField` | Field metadata in CLI metadata output |
+| `ConfigMetadataField` | Config field metadata with env var name |
+| `ProjectScanner` | Pluggable project detection interface |
+| `ProjectScanResult` | Result of project scanning (`{ name, path, config? }`) |
+| `RenderOptions` | Options for `renderSkillTemplate()` |
+| `RenderResult` | Result of template rendering (`{ rendered, warnings }`) |
+| `IConversationLogger` | Interface for agent conversation loggers |
