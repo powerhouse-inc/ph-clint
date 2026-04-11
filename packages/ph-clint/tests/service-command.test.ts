@@ -112,6 +112,27 @@ describe('formatStatus', () => {
     });
     expect(result).toContain('restart #2');
   });
+
+  it('includes project name and workdir path for stopped instances', () => {
+    const result = formatStatus({
+      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'stopped',
+      workdir: '/home/user/projects/my-project',
+    });
+    expect(result).toContain('my-project');
+    expect(result).toContain('/home/user/projects/my-project');
+  });
+
+  it('includes project name and workdir for running instances', () => {
+    const result = formatStatus({
+      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready',
+      pid: 456, workdir: '/home/user/projects/todo-app',
+      endpoints: { url: 'http://localhost:3000' },
+    });
+    expect(result).toContain('todo-app');
+    expect(result).toContain('/home/user/projects/todo-app');
+    expect(result).toContain('pid 456');
+    expect(result).toContain('url=http://localhost:3000');
+  });
 });
 
 describe('createServiceCommands', () => {

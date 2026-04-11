@@ -15,11 +15,13 @@ export function formatStatus(s: ServiceInstanceStatus): string {
     s.status === 'stopped' ? '■' :
     '○';
   const parts = [`${icon} ${s.label} [${s.status}]`];
+  if (s.workdir) parts.push(path.basename(s.workdir));
   if (s.pid) parts.push(`pid ${s.pid}`);
   if (s.endpoints) {
     const ep = Object.entries(s.endpoints).map(([k, v]) => `${k}=${v}`);
     if (ep.length) parts.push(ep.join(' '));
   }
+  if (s.workdir) parts.push(s.workdir);
   if (s.error) parts.push(`error: ${s.error}`);
   if (s.restartAttempt) parts.push(`restart #${s.restartAttempt}`);
   return parts.join('  ');

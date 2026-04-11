@@ -420,9 +420,10 @@ export function ServicePanel({ services, onExit, serviceId, workdir }: ServicePa
                 {svc.label.padEnd(24)}
               </Text>
               <Text dimColor> [{svc.status}]</Text>
+              {svc.workdir && <Text dimColor> {path.basename(svc.workdir)}</Text>}
               {svc.pid != null && svc.pid > 0 && <Text dimColor> pid {String(svc.pid)}</Text>}
               {epParts.length > 0 && <Text dimColor> {epParts.join(' ')}</Text>}
-              {svc.workdir && <Text dimColor> {path.basename(svc.workdir)}</Text>}
+              {svc.workdir && <Text dimColor> {svc.workdir}</Text>}
               {svc.error && <Text color="red"> {svc.error}</Text>}
             </Box>
           );
