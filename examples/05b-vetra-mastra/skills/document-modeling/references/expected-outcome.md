@@ -1,4 +1,0 @@
-# Expected Skill Outcome
-
-A new document model has been specified, implemented and tested. It is ready for use 
-in a document editor component in Connect, or through a Switchboard API endpoint.

@@ -849,7 +849,7 @@ describe('session edge cases', () => {
         version: '1.0.0',
         description: 'Test',
         commands: [],
-        skills: { sources: [tmp] },
+        prompts: { sources: [tmp] },
         interactive: { welcome: 'hi' },
       });
 

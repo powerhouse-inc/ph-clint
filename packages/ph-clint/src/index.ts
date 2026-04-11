@@ -88,5 +88,6 @@ export type {
   ProjectScanner,
   ProjectScanResult,
   CliMetadata,
-  SkillsConfig,
+  PromptsConfig,
+  AgentProfileConfig,
 } from './core/types.js';

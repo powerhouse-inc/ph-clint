@@ -2,32 +2,51 @@
  * Configuration for the build-skills pipeline.
  */
 export interface BuildConfig {
-  /** Absolute path to the project root. */
-  projectRoot: string;
-  /** Directory containing prompts (agent-profiles, skills-tpl, skills-ext). Default: {projectRoot}/prompts */
-  promptsDir?: string;
-  /** Output directory for built skills. Default: {projectRoot}/skills */
-  outputSkillsDir?: string;
-  /** Output directory for generated TS files. Default: {projectRoot}/src/generated */
-  outputGeneratedDir?: string;
+  /** CLI instance — source of truth for agent profiles, skill descriptions. */
+  cli: { getMetadata(): object };
   /** Build-time context — variables available in Handlebars templates. */
   context: Record<string, unknown>;
-  /** Agent profile definitions. */
-  agentProfiles?: AgentProfile[];
-  /** Per-skill description overrides. Key = skill folder name, value = description text. */
-  skillDescriptions?: Record<string, string>;
+  /** Directories containing prompt templates (agent-profiles/, skills-tpl/, skills-ext/). */
+  include: string[];
+  /** Output directories for both built skills and generated agent instruction files. Written to all paths. */
+  output: string[];
   /** Additional Handlebars helpers to register. */
   customHelpers?: Record<string, (...args: unknown[]) => unknown>;
-  /** Override subdirectory names within promptsDir. */
+  /** Override subdirectory names within include dirs. */
   subdirs?: {
     profiles?: string;     // default: 'agent-profiles'
     skillsTpl?: string;    // default: 'skills-tpl'
     skillsExt?: string;    // default: 'skills-ext'
   };
-  /** Optional CLI instance. When provided, cli metadata is auto-injected into context as `cli`. */
-  cli?: { getMetadata(): Record<string, unknown> };
   /** Logger function. Default: console.log */
   logger?: (msg: string) => void;
+}
+
+/**
+ * Internal resolved config used by build sub-functions.
+ * Derived from BuildConfig + CLI metadata.
+ */
+export interface ResolvedBuildConfig {
+  /** All include directories (prompt template sources). */
+  include: string[];
+  /** Output directories for skills and agent instructions. */
+  output: string[];
+  /** Build-time context (merged with CLI metadata). */
+  context: Record<string, unknown>;
+  /** Agent profiles from CLI prompts.agents. */
+  agentProfiles: AgentProfile[];
+  /** Skill descriptions from CLI prompts.skills. */
+  skillDescriptions: Record<string, string>;
+  /** Subdirectory name overrides. */
+  subdirs?: {
+    profiles?: string;
+    skillsTpl?: string;
+    skillsExt?: string;
+  };
+  /** Additional Handlebars helpers. */
+  customHelpers?: Record<string, (...args: unknown[]) => unknown>;
+  /** Logger function. */
+  logger: (msg: string) => void;
 }
 
 /**

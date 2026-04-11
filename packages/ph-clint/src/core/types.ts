@@ -510,7 +510,7 @@ export interface AgentContext<TConfig = Record<string, unknown>> {
   cliVersion: string;
   context: CommandContext;
   commands: Command<any, any, any>[];
-  /** Skill metadata from SkillsConfig, filtered by agent assignment if configured. */
+  /** Skill metadata from PromptsConfig, filtered by agent assignment if configured. */
   skills: import('./skills.js').SkillInfo[];
 }
 
@@ -524,16 +524,30 @@ export interface AgentContext<TConfig = Record<string, unknown>> {
 export type AgentLoader<TConfig = Record<string, unknown>> =
   (ctx: AgentContext<TConfig>) => Promise<AgentProvider>;
 
-// ── Skills ────────────────────────────────────────────────────────
+// ── Prompts ──────────────────────────────────────────────────────
 
 /**
- * Configuration for agent skills.
+ * Agent profile definition for build-time instruction generation.
  */
-export interface SkillsConfig {
+export interface AgentProfileConfig {
+  /** Export name prefix in generated TS (e.g. 'RupertDevAgent' → rupertDevAgentInstructions). */
+  name: string;
+  /** Template filenames within the profiles directory, concatenated in order. */
+  sections: string[];
+  /** Skill IDs assigned to this agent. */
+  skills: string[];
+}
+
+/**
+ * Configuration for agent prompts, profiles, and skills.
+ */
+export interface PromptsConfig {
   /** Candidate directories containing built skill folders. First existing wins. */
   sources: string[];
-  /** Per-agent skill assignments. Key = agent ID, value = skill names. */
-  agents?: Record<string, string[]>;
+  /** Agent profiles: build-time instruction sections + runtime skill assignments. Key = agent ID. */
+  agents?: Record<string, AgentProfileConfig>;
+  /** Skill descriptions for build-time SKILL.md frontmatter. Key = skill folder name. */
+  skills?: Record<string, string>;
 }
 
 // ── CLI Metadata ──────────────────────────────────────────────
@@ -581,9 +595,10 @@ export interface CliMetadata {
      *  undefined = no MCP, string = single MCP endpoint, Record = multiple (keyed by capture name). */
     mcpPrefix?: string | Record<string, string>;
   }> | null;
-  skills: {
+  prompts: {
     sources: string[];
-    agents: Record<string, string[]>;
+    agents: Record<string, { name: string; sections: string[]; skills: string[] }>;
+    skills: Record<string, string>;
     resolved: Record<string, { id: string; description: string }>;
   } | null;
 }
@@ -628,10 +643,10 @@ export interface CliOptions<
    */
   configDefaults?: Record<string, unknown>;
   /**
-   * Skills configuration.
+   * Prompts configuration: agent profiles, skill descriptions, and skill sources.
    * When set, skills are available as CLI commands and auto-installed on first run.
    */
-  skills?: SkillsConfig;
+  prompts?: PromptsConfig;
 }
 
 /**

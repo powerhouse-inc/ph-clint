@@ -143,7 +143,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skills: { sources: [skillsDir] },
+      prompts: { sources: [skillsDir] },
     });
 
     const output: string[] = [];
@@ -175,7 +175,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skills: { sources: [skillsDir] },
+      prompts: { sources: [skillsDir] },
     });
 
     const output: string[] = [];
@@ -202,7 +202,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skills: { sources: [skillsDir] },
+      prompts: { sources: [skillsDir] },
     });
 
     const runOpts = {
@@ -232,7 +232,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      skills: { sources: ['/some/path'] },
+      prompts: { sources: ['/some/path'] },
     });
 
     expect(cli.getCommand('init')).toBeUndefined();

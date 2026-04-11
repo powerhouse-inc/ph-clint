@@ -1,39 +1,61 @@
-import type { BuildConfig, BuildResult } from './types.js';
+import type { BuildConfig, BuildResult, ResolvedBuildConfig } from './types.js';
 import { buildAgentProfiles } from './agent-profiles.js';
 import { buildSkillTemplates } from './skill-builder.js';
 import { copyExternalSkills } from './skill-copier.js';
 
 /**
+ * Resolve a BuildConfig into the internal ResolvedBuildConfig by
+ * extracting agent profiles and skill descriptions from CLI metadata.
+ */
+function resolve(config: BuildConfig): ResolvedBuildConfig {
+  const meta = config.cli.getMetadata() as Record<string, unknown>;
+  const prompts = (meta.prompts ?? {}) as {
+    agents?: Record<string, { name: string; sections: string[]; skills: string[] }>;
+    skills?: Record<string, string>;
+  };
+
+  // Extract agent profiles from CLI prompts.agents
+  const agentProfiles = Object.values(prompts.agents ?? {}).map((a) => ({
+    name: a.name,
+    sections: a.sections,
+  }));
+
+  return {
+    include: config.include,
+    output: config.output,
+    context: { ...config.context, ...meta },
+    agentProfiles,
+    skillDescriptions: prompts.skills ?? {},
+    subdirs: config.subdirs,
+    customHelpers: config.customHelpers,
+    logger: config.logger ?? console.log,
+  };
+}
+
+/**
  * Build skills from Handlebars templates.
  * Orchestrates three steps:
- * 1. Build agent profile instructions (base + specialized templates → TS export)
+ * 1. Build agent profile instructions (base + specialized templates → Markdown)
  * 2. Build SKILL.md files from template directories
  * 3. Copy external skills as-is
  */
 export function buildSkills(config: BuildConfig): BuildResult {
-  // Auto-inject CLI metadata into template context when cli is provided.
-  // Metadata properties (commands, services, skills, config, etc.) are spread
-  // at the top level so templates can use e.g. {{commands.vetra-start.id}}.
-  if (config.cli) {
-    const meta = config.cli.getMetadata();
-    config = { ...config, context: { ...config.context, ...meta } };
-  }
-
-  const log = config.logger ?? console.log;
+  const resolved = resolve(config);
+  const log = resolved.logger;
   const allWarnings: string[] = [];
 
-  log(`Building skills from ${config.promptsDir ?? config.projectRoot + '/prompts'}`);
+  log(`Building skills from ${resolved.include.join(', ')}`);
 
   // 1. Agent profiles
-  const profiles = buildAgentProfiles(config);
+  const profiles = buildAgentProfiles(resolved);
   allWarnings.push(...profiles.warnings);
 
   // 2. Skill templates
-  const templates = buildSkillTemplates(config);
+  const templates = buildSkillTemplates(resolved);
   allWarnings.push(...templates.warnings);
 
   // 3. External skills
-  const copied = copyExternalSkills(config);
+  const copied = copyExternalSkills(resolved);
 
   if (allWarnings.length > 0) {
     log(`\nDone with ${allWarnings.length} template variable warning(s).`);

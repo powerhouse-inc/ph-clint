@@ -153,8 +153,8 @@ export function defineCli<
 
   // Read skill metadata and register skill commands
   let resolvedSkills: SkillInfo[] = [];
-  if (options.skills && options.skills.sources.length > 0) {
-    resolvedSkills = readSkillsFromSources(options.skills.sources);
+  if (options.prompts && options.prompts.sources.length > 0) {
+    resolvedSkills = readSkillsFromSources(options.prompts.sources);
     const skillCmds = createSkillCommands(resolvedSkills);
     for (const cmd of skillCmds) {
       if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
@@ -690,7 +690,7 @@ export function defineCli<
     const workspace = createWorkdirStore(workdir, options.name);
 
     // Auto-initialize store and install skills on first use
-    if (options.skills && options.skills.sources.length > 0) {
+    if (options.prompts && options.prompts.sources.length > 0) {
       const storeRoot = workspace.getStoreFolder();
       if (!fs.existsSync(storeRoot)) {
         fs.mkdirSync(storeRoot, { recursive: true });
@@ -698,7 +698,7 @@ export function defineCli<
         fs.mkdirSync(dbFolder, { recursive: true });
         installSkills({
           store: workspace,
-          skillSources: options.skills.sources,
+          skillSources: options.prompts.sources,
           stdout: verboseFlag ? stderr : () => {},
         });
       }
@@ -1051,16 +1051,17 @@ export function defineCli<
       }
     }
 
-    // Skills metadata
-    let skillsMeta: CliMetadata['skills'] = null;
-    if (options.skills) {
+    // Prompts metadata
+    let promptsMeta: CliMetadata['prompts'] = null;
+    if (options.prompts) {
       const resolvedMap: Record<string, { id: string; description: string }> = {};
       for (const s of resolvedSkills) {
         resolvedMap[s.name] = { id: s.name, description: s.description };
       }
-      skillsMeta = {
-        sources: options.skills.sources,
-        agents: options.skills.agents ?? {},
+      promptsMeta = {
+        sources: options.prompts.sources,
+        agents: options.prompts.agents ?? {},
+        skills: options.prompts.skills ?? {},
         resolved: resolvedMap,
       };
     }
@@ -1075,7 +1076,7 @@ export function defineCli<
       config: configMeta,
       commands: commandsMeta,
       services: servicesMeta,
-      skills: skillsMeta,
+      prompts: promptsMeta,
     };
   }
 

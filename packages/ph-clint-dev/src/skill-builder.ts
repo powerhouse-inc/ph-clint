@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { renderSkillTemplate } from 'ph-clint';
-import type { BuildConfig } from './types.js';
+import type { ResolvedBuildConfig } from './types.js';
 
 function slugToTitle(slug: string): string {
   return slug
@@ -11,22 +11,30 @@ function slugToTitle(slug: string): string {
 }
 
 /**
+ * Find the first existing directory across multiple include paths.
+ */
+function findSubdir(includes: string[], subdir: string): string | undefined {
+  for (const dir of includes) {
+    const p = path.join(dir, subdir);
+    if (fs.existsSync(p)) return p;
+  }
+  return undefined;
+}
+
+/**
  * Build SKILL.md files from Handlebars templates in skills-tpl/.
  * Each skill directory produces a SKILL.md + references/ folder.
  *
  * @returns Number of skills built and any warnings.
  */
-export function buildSkillTemplates(config: BuildConfig): { count: number; warnings: string[] } {
-  const log = config.logger ?? console.log;
-  const skillsTplDir = path.join(
-    config.promptsDir ?? path.join(config.projectRoot, 'prompts'),
-    config.subdirs?.skillsTpl ?? 'skills-tpl',
-  );
-  const outputSkillsDir = config.outputSkillsDir ?? path.join(config.projectRoot, 'skills');
+export function buildSkillTemplates(config: ResolvedBuildConfig): { count: number; warnings: string[] } {
+  const log = config.logger;
+  const skillsTplSubdir = config.subdirs?.skillsTpl ?? 'skills-tpl';
+  const skillsTplDir = findSubdir(config.include, skillsTplSubdir);
 
   log('\n--- Building SKILL.md files (templates) ---');
 
-  if (!fs.existsSync(skillsTplDir)) {
+  if (!skillsTplDir) {
     log('  No skills-tpl/ directory — skipping.');
     return { count: 0, warnings: [] };
   }
@@ -43,8 +51,6 @@ export function buildSkillTemplates(config: BuildConfig): { count: number; warni
 
   for (const skillName of skillDirs) {
     const skillDir = path.join(skillsTplDir, skillName);
-    const outputDir = path.join(outputSkillsDir, skillName);
-    const refsDir = path.join(outputDir, 'references');
 
     // Preamble
     const preamblePath = path.join(skillDir, '.preamble.md');
@@ -75,11 +81,9 @@ export function buildSkillTemplates(config: BuildConfig): { count: number; warni
       continue;
     }
 
-    // Render and write references
+    // Render references into memory
+    const files: Map<string, string> = new Map();
     const refLinks: string[] = [];
-    if (scenarioFiles.length > 0 || hasResult) {
-      fs.mkdirSync(refsDir, { recursive: true });
-    }
 
     for (const scenarioFile of scenarioFiles) {
       const content = fs.readFileSync(path.join(skillDir, scenarioFile), 'utf-8').trim();
@@ -89,8 +93,7 @@ export function buildSkillTemplates(config: BuildConfig): { count: number; warni
         allWarnings.push(msg);
         log(`  WARN ${msg}`);
       }
-      fs.mkdirSync(path.dirname(path.join(refsDir, scenarioFile)), { recursive: true });
-      fs.writeFileSync(path.join(refsDir, scenarioFile), r.rendered + '\n', 'utf-8');
+      files.set(path.join('references', scenarioFile), r.rendered + '\n');
       const label = slugToTitle(scenarioFile.replace(/^\d+\./, '').replace(/\.md$/, ''));
       refLinks.push(`* **${label}** [references/${scenarioFile}](references/${scenarioFile})`);
     }
@@ -103,12 +106,12 @@ export function buildSkillTemplates(config: BuildConfig): { count: number; warni
         allWarnings.push(msg);
         log(`  WARN ${msg}`);
       }
-      fs.writeFileSync(path.join(refsDir, 'expected-outcome.md'), r.rendered + '\n', 'utf-8');
+      files.set(path.join('references', 'expected-outcome.md'), r.rendered + '\n');
       refLinks.push(`* **Expected Outcome** [references/expected-outcome.md](references/expected-outcome.md)`);
     }
 
     // Build SKILL.md
-    const description = config.skillDescriptions?.[skillName] ?? `${slugToTitle(skillName)} tasks`;
+    const description = config.skillDescriptions[skillName] ?? `${slugToTitle(skillName)} tasks`;
 
     const frontmatter = [
       '---',
@@ -126,9 +129,18 @@ export function buildSkillTemplates(config: BuildConfig): { count: number; warni
     }
 
     const skillMd = frontmatter + '\n\n' + sections.filter(Boolean).join('\n\n') + '\n';
+    files.set('SKILL.md', skillMd);
 
-    fs.mkdirSync(outputDir, { recursive: true });
-    fs.writeFileSync(path.join(outputDir, 'SKILL.md'), skillMd, 'utf-8');
+    // Write to all output directories
+    for (const out of config.output) {
+      const outputDir = path.join(out, 'skills', skillName);
+      for (const [relPath, content] of files) {
+        const fullPath = path.join(outputDir, relPath);
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        fs.writeFileSync(fullPath, content, 'utf-8');
+      }
+    }
+
     log(`  OK ${skillName} → SKILL.md + ${scenarioFiles.length + (hasResult ? 1 : 0)} references (${skillMd.length} chars)`);
     count++;
   }

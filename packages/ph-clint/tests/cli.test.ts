@@ -196,7 +196,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills test',
           commands: [echo],
-          skills: { sources: [tmp] },
+          prompts: { sources: [tmp] },
         });
 
         const help = skillCli.generateHelp();
@@ -214,7 +214,7 @@ describe('defineCli', () => {
         version: '1.0.0',
         description: 'No skills',
         commands: [echo],
-        skills: { sources: ['/nonexistent/path'] },
+        prompts: { sources: ['/nonexistent/path'] },
       });
       const help = skillCli.generateHelp();
       expect(help).not.toContain('Skills:');
@@ -235,7 +235,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills commands test',
           commands: [echo],
-          skills: { sources: [tmp] },
+          prompts: { sources: [tmp] },
         });
 
         expect(skillCli.getCommand('my-skill')).toBeDefined();
@@ -260,7 +260,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills exec test',
           commands: [echo],
-          skills: { sources: [tmp] },
+          prompts: { sources: [tmp] },
         });
 
         const result = await skillCli.execute('my-skill', {});
@@ -289,7 +289,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills agent test',
           commands: [echo],
-          skills: { sources: [tmp] },
+          prompts: { sources: [tmp] },
         });
         skillCli.setAgentLoader(async () => ({
           id: 'test-agent',
@@ -331,7 +331,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'No agent',
           commands: [echo],
-          skills: { sources: [tmp] },
+          prompts: { sources: [tmp] },
         });
 
         const output: string[] = [];
