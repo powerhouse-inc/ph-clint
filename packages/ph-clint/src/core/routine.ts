@@ -147,6 +147,17 @@ export function createRoutine(options: RoutineOptions): Routine {
       await new Promise((r) => setTimeout(r, idle));
     }
 
+    // Teardown triggers
+    for (const trigger of options.triggers) {
+      if (trigger.teardown) {
+        try {
+          await trigger.teardown(triggerContexts.get(trigger.id)!);
+        } catch {
+          // Swallow teardown errors to ensure all triggers get torn down
+        }
+      }
+    }
+
     status = 'ready';
     stopRequested = false;
   }
@@ -155,6 +166,12 @@ export function createRoutine(options: RoutineOptions): Routine {
     onOutput: undefined,
     get status() {
       return status;
+    },
+    get triggerIds() {
+      return options.triggers.map(t => t.id);
+    },
+    get queueLength() {
+      return queue.length;
     },
     start() {
       if (status === 'running') return;

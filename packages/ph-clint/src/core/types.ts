@@ -212,6 +212,7 @@ export interface TriggerOptions {
   id: string;
   type: 'condition';
   setup?: (context: TriggerContext) => Promise<void>;
+  teardown?: (context: TriggerContext) => Promise<void>;
   poll: (context: TriggerContext) => Promise<WorkItem | null>;
 }
 
@@ -222,6 +223,7 @@ export interface Trigger {
   id: string;
   type: string;
   setup?: (context: TriggerContext) => Promise<void>;
+  teardown?: (context: TriggerContext) => Promise<void>;
   poll: (context: TriggerContext) => Promise<WorkItem | null>;
 }
 
@@ -237,6 +239,8 @@ export type RoutineStatus = 'init' | 'ready' | 'running' | 'stopping';
  */
 export interface Routine {
   readonly status: RoutineStatus;
+  readonly triggerIds: string[];
+  readonly queueLength: number;
   start(): void;
   stop(): Promise<void>;
   /** Optional callback for work item output. Set before start() to capture results. */
@@ -473,8 +477,14 @@ export interface EventBus {
  * Configuration for the routine loop.
  */
 export interface RoutineConfig {
+  /** Service identity — when set, auto-injects service commands for the routine. */
+  id?: string;
+  /** Display name for auto-injected service commands. Required when `id` is set. */
+  label?: string;
   tickInterval?: number;
   idleInterval?: number;
+  /** Project scanner for auto-discovery. Enables `{id}-ls` command when `id` is set. */
+  projectScanner?: ProjectScanner;
 }
 
 // ── Resolvable ────────────────────────────────────────────────────

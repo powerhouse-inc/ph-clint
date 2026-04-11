@@ -22,6 +22,7 @@ export type { SkillInvocation } from './core/skill-commands.js';
 export { registerDefaultHelpers, extractTemplateVars, renderSkillTemplate } from './core/templates.js';
 export type { RenderOptions, RenderResult } from './core/templates.js';
 export { createRoutine } from './core/routine.js';
+export { createRoutineServiceAdapter, createCompositeServiceManager } from './core/routine-service.js';
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';

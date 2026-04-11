@@ -567,6 +567,107 @@ describe('createRoutine', () => {
     });
   });
 
+  describe('trigger teardown', () => {
+    it('calls teardown on all triggers when routine stops', async () => {
+      const teardownOrder: string[] = [];
+
+      const t1 = defineTrigger({
+        id: 'td-1',
+        type: 'condition',
+        poll: async () => null,
+        teardown: async () => { teardownOrder.push('td-1'); },
+      });
+
+      const t2 = defineTrigger({
+        id: 'td-2',
+        type: 'condition',
+        poll: async () => null,
+        teardown: async () => { teardownOrder.push('td-2'); },
+      });
+
+      routine = makeRoutine({ triggers: [t1, t2] });
+      routine.start();
+      await new Promise(r => setTimeout(r, TEST_IDLE_INTERVAL));
+      await routine.stop();
+
+      expect(teardownOrder).toEqual(['td-1', 'td-2']);
+    });
+
+    it('passes trigger context to teardown', async () => {
+      let teardownState: unknown;
+
+      const trigger = defineTrigger({
+        id: 'td-ctx',
+        type: 'condition',
+        setup: async (ctx) => { ctx.state.key = 'value'; },
+        poll: async () => null,
+        teardown: async (ctx) => { teardownState = ctx.state.key; },
+      });
+
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+
+      expect(teardownState).toBe('value');
+    });
+
+    it('swallows teardown errors and continues with remaining triggers', async () => {
+      const teardownOrder: string[] = [];
+
+      const t1 = defineTrigger({
+        id: 'td-err-1',
+        type: 'condition',
+        poll: async () => null,
+        teardown: async () => { throw new Error('boom'); },
+      });
+
+      const t2 = defineTrigger({
+        id: 'td-err-2',
+        type: 'condition',
+        poll: async () => null,
+        teardown: async () => { teardownOrder.push('td-err-2'); },
+      });
+
+      routine = makeRoutine({ triggers: [t1, t2] });
+      routine.start();
+      await new Promise(r => setTimeout(r, TEST_IDLE_INTERVAL));
+      await routine.stop();
+
+      // t2 teardown still called despite t1 error
+      expect(teardownOrder).toEqual(['td-err-2']);
+    });
+
+    it('does not call teardown for triggers without it', async () => {
+      const trigger = defineTrigger({
+        id: 'no-td',
+        type: 'condition',
+        poll: async () => null,
+      });
+
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.start();
+      await new Promise(r => setTimeout(r, TEST_IDLE_INTERVAL));
+      // Should not throw
+      await routine.stop();
+      expect(routine.status).toBe('ready');
+    });
+  });
+
+  describe('triggerIds and queueLength', () => {
+    it('exposes trigger IDs', () => {
+      const t1 = defineTrigger({ id: 'a', type: 'condition', poll: async () => null });
+      const t2 = defineTrigger({ id: 'b', type: 'condition', poll: async () => null });
+      routine = makeRoutine({ triggers: [t1, t2] });
+      expect(routine.triggerIds).toEqual(['a', 'b']);
+    });
+
+    it('exposes queue length (starts at 0)', () => {
+      routine = makeRoutine();
+      expect(routine.queueLength).toBe(0);
+    });
+  });
+
   describe('setContext', () => {
     it('updates the context used by command execution', async () => {
       let receivedConfig: Record<string, unknown> = {};

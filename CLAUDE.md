@@ -31,6 +31,8 @@ ph-clint/
 
 **Important**: After changing `packages/ph-clint/` source, run `pnpm build` there before the examples can see the updated code.
 
+**Critical**: When `pnpm build` produces **new files** in `dist/` (not just changes to existing ones), you must also run `pnpm install` inside the example directory. pnpm's `file:` protocol copies dist at install time — new files won't appear in the example's `node_modules` until reinstalled. Symptoms: "Cannot find module" errors for files that clearly exist in the library's `dist/`. This does NOT apply to changes to existing dist files (pnpm hardlinks those).
+
 ## Key Concepts
 
 **Commands** are the atomic unit. Defined with Zod input/output schemas + execute function. Compatible with Mastra `createTool()` shape. Usable as CLI subcommands, REPL commands, MCP tools, and agent tools — all from one definition.

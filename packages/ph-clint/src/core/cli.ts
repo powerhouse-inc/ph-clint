@@ -32,6 +32,7 @@ import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
 import { createServiceManager } from './services.js';
+import { createRoutineServiceAdapter, createCompositeServiceManager } from './routine-service.js';
 import { createReplSession } from '../interactive/session.js';
 import { formatZodError } from './errors.js';
 import { createLogger } from './logger.js';
@@ -165,6 +166,9 @@ export function defineCli<
   const processManager = hasTriggers ? createProcessManager() : undefined;
   let routine: Routine | undefined;
 
+  // RoutineServiceAdapter for auto-injected service commands
+  let routineServiceAdapter: import('./types.js').ServiceManager | undefined;
+
   if (hasTriggers) {
     routine = createRoutine({
       triggers: options.triggers!,
@@ -174,6 +178,27 @@ export function defineCli<
       eventBus,
       processManager,
     });
+
+    // Auto-inject service commands for the routine when id/label are configured
+    if (options.routine?.id && options.routine?.label) {
+      const routineConfig = options.routine;
+      // Build a synthetic ServiceDefinition for createServiceCommands
+      const syntheticDef: import('./types.js').ServiceDefinition = {
+        id: routineConfig.id!,
+        label: routineConfig.label!,
+        command: '',
+        maxInstances: 1,
+        ...(routineConfig.projectScanner && { projectScanner: routineConfig.projectScanner }),
+      };
+      const cmds = createServiceCommands(syntheticDef);
+      for (const cmd of cmds) {
+        if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
+        serviceGroups.set(cmd.id, routineConfig.label!);
+      }
+
+      // Create the adapter (used later when wiring up context.services)
+      routineServiceAdapter = createRoutineServiceAdapter(routine, routineConfig, eventBus);
+    }
   }
 
   // Mutable agent loader — set via setAgentLoader()
@@ -694,18 +719,38 @@ export function defineCli<
     const log = createLogger(logLevel, stderr);
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
 
-    // Create ServiceManager when services are defined
-    if (hasServices && options.services && eventBus) {
-      const svcDir = userStoreFolder(options.name, 'services');
-      const serviceManager = createServiceManager(options.services as any[], {
-        config,
-        servicesDir: svcDir,
-        eventBus,
-      });
-      context.services = serviceManager;
+    // Create ServiceManager when services and/or routine-as-service are defined
+    {
+      let processServiceManager: import('./types.js').ServiceManager | undefined;
+      if (hasServices && options.services && eventBus) {
+        const svcDir = userStoreFolder(options.name, 'services');
+        processServiceManager = createServiceManager(options.services as any[], {
+          config,
+          servicesDir: svcDir,
+          eventBus,
+        });
+      }
+
+      // Wire up composite or single ServiceManager
+      if (processServiceManager && routineServiceAdapter) {
+        // Both process services and routine — create composite
+        const routeMap = new Map<string, import('./types.js').ServiceManager>();
+        for (const svc of options.services!) {
+          routeMap.set(svc.id, processServiceManager);
+        }
+        routeMap.set(options.routine!.id!, routineServiceAdapter);
+        context.services = createCompositeServiceManager(
+          [processServiceManager, routineServiceAdapter],
+          routeMap,
+        );
+      } else if (processServiceManager) {
+        context.services = processServiceManager;
+      } else if (routineServiceAdapter) {
+        context.services = routineServiceAdapter;
+      }
 
       // Register event handlers on the event bus
-      if (options.events) {
+      if (eventBus && options.events) {
         for (const [event, handler] of Object.entries(options.events)) {
           eventBus.on(event, handler);
         }

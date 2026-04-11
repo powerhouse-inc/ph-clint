@@ -23,6 +23,9 @@ export const fileChangeTrigger = defineTrigger({
   setup: async (context) => {
     context.state.lastModified = Date.now();
   },
+  teardown: async (context) => {
+    context.state.lastModified = 0;
+  },
   poll: async (context) => {
     const { watchDir } = context.config;
     const current = await getLatestMtime(watchDir as string);
