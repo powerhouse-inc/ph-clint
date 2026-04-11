@@ -317,6 +317,28 @@ export interface ReadinessConfig {
   wait?: boolean;
 }
 
+// ── Project Scanner ──────────────────────────────────────────────
+
+/**
+ * Pluggable project detection for a service.
+ * When attached to a ServiceDefinition, enables auto-discovery of projects
+ * and generation of a `{id}-ls` command.
+ */
+export interface ProjectScanner {
+  isProjectFolder(folderPath: string): boolean;
+  getProjectName?(folderPath: string): string;
+  getProjectConfig?(folderPath: string): Record<string, unknown>;
+}
+
+/**
+ * Result of scanning for projects in a directory tree.
+ */
+export interface ProjectScanResult {
+  name: string;
+  path: string;
+  config?: Record<string, unknown>;
+}
+
 // ── Preflight checks ─────────────────────────────────────────────
 
 /**
@@ -370,6 +392,8 @@ export interface ServiceDefinition<TConfig = Record<string, unknown>> {
   readiness?: ReadinessConfig;
   shutdown?: { signal: NodeJS.Signals; timeout: number };
   restart?: { enabled: boolean; maxRetries: number; delay: number };
+  /** Project scanner for auto-discovery. Enables `{id}-ls` command and panel integration. */
+  projectScanner?: ProjectScanner;
 }
 
 /**
@@ -391,7 +415,7 @@ export interface ServiceInstanceStatus {
   serviceId: string;
   instanceId: string;
   label: string;
-  status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping';
+  status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping' | 'stopped';
   pid?: number;
   endpoints?: Record<string, string>;
   endpointTypes?: Record<string, EndpointType>;
@@ -407,7 +431,7 @@ export interface ServiceInstanceStatus {
 export interface ServiceStatus {
   id: string;
   label: string;
-  status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping';
+  status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping' | 'stopped';
   pid?: number;
   endpoints?: Record<string, string>;
   error?: string;
@@ -426,6 +450,10 @@ export interface ServiceManager {
   logs(id: string, instanceId?: string, lines?: number): string;
   /** Watch a service's log file for new lines. Returns cleanup function. */
   watchLogs(id: string, instanceId: string, onLine: (line: string) => void): () => void;
+  /** Scan for projects using the service's projectScanner. */
+  scanProjects(id: string, rootDir: string): import('./project-scanner.js').ProjectScanResult[];
+  /** Remove all stopped instance state files (and their log files) for a service. */
+  purgeStoppedInstances(id: string): void;
 }
 
 // ── Event Bus ─────────────────────────────────────────────────────

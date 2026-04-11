@@ -150,6 +150,8 @@ describe('getTools with MCP discovery', () => {
       getDefinition: () => undefined,
       logs: () => '',
       watchLogs: () => () => {},
+      scanProjects: () => [],
+      purgeStoppedInstances: () => {},
     };
   }
 

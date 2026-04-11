@@ -350,7 +350,7 @@ describe('createServiceManager', () => {
       await mgr.stop('test-svc');
 
       const statuses = mgr.list();
-      expect(statuses[0]!.status).toBe('idle');
+      expect(statuses[0]!.status).toBe('stopped');
 
       // PID should be dead
       let alive = false;
@@ -372,7 +372,7 @@ describe('createServiceManager', () => {
       expect(events[0].id).toBe('test-svc');
     });
 
-    it('removes state file after stop', async () => {
+    it('persists stopped state file after stop', async () => {
       const mgr = createManager([readyDef]);
       await mgr.start('test-svc');
       trackedPids.push(mgr.list()[0]!.pid!);
@@ -380,10 +380,14 @@ describe('createServiceManager', () => {
       await mgr.stop('test-svc');
 
       const statePath = path.join(servicesDir, 'test-svc', 'test-svc.json');
-      expect(fs.existsSync(statePath)).toBe(false);
+      expect(fs.existsSync(statePath)).toBe(true);
+      const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+      expect(state.status).toBe('stopped');
+      expect(state.pid).toBe(0);
+      expect(state.stoppedAt).toBeDefined();
     });
 
-    it('throws for not-running service', async () => {
+    it('throws for service with no instances', async () => {
       const mgr = createManager([readyDef]);
       await expect(mgr.stop('test-svc')).rejects.toThrow(/not running/);
     });
@@ -401,7 +405,7 @@ describe('createServiceManager', () => {
       await mgr.stop('test-svc', instanceId);
 
       const statuses = mgr.list();
-      expect(statuses[0]!.status).toBe('idle');
+      expect(statuses[0]!.status).toBe('stopped');
     });
   });
 
@@ -427,7 +431,7 @@ describe('createServiceManager', () => {
       expect(statuses[0]!.pid).toBe(pid);
     });
 
-    it('detects dead process and marks as failed', async () => {
+    it('detects dead process and marks as stopped', async () => {
       const mgr = createManager([{
         ...readyDef,
         id: 'crash-svc',
@@ -440,7 +444,7 @@ describe('createServiceManager', () => {
       await new Promise((r) => setTimeout(r, SERVICE_CRASH_WAIT));
 
       const statuses = mgr.list();
-      expect(statuses[0]!.status).toBe('failed');
+      expect(statuses[0]!.status).toBe('stopped');
     }, PROCESS_TEST_TIMEOUT);
 
     it('can filter by serviceId', async () => {
@@ -682,7 +686,7 @@ describe('createServiceManager', () => {
   });
 
   describe('stop() edge cases', () => {
-    it('cleans up state file when process is already dead', async () => {
+    it('persists stopped state when process is already dead', async () => {
       const mgr = createManager([readyDef]);
       await mgr.start('test-svc');
 
@@ -695,11 +699,11 @@ describe('createServiceManager', () => {
       // Wait for it to die
       await new Promise((r) => setTimeout(r, PROCESS_CLEANUP_WAIT));
 
-      // stop() should detect dead PID, remove state file, and return cleanly
+      // stop() should detect dead PID and persist stopped state
       await mgr.stop('test-svc');
 
       const statuses = mgr.list();
-      expect(statuses[0]!.status).toBe('idle');
+      expect(statuses[0]!.status).toBe('stopped');
     });
 
     it('force-kills a service that ignores SIGTERM', async () => {
@@ -730,7 +734,7 @@ describe('createServiceManager', () => {
       expect(alive).toBe(false);
 
       const statuses = mgr.list();
-      expect(statuses[0]!.status).toBe('idle');
+      expect(statuses[0]!.status).toBe('stopped');
     }, SERVICE_TEST_TIMEOUT);
   });
 
@@ -900,6 +904,102 @@ describe('createServiceManager', () => {
       const statuses = mgr.list();
       expect(statuses[0]!.endpoints?.port).toBe('9999');
       trackedPids.push(statuses[0]!.pid!);
+    });
+  });
+
+  describe('stopped instance persistence', () => {
+    it('can restart a stopped instance', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      await mgr.stop('test-svc');
+      expect(mgr.list()[0]!.status).toBe('stopped');
+
+      // Restart from stopped
+      await mgr.start('test-svc');
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('ready');
+      trackedPids.push(statuses[0]!.pid!);
+    });
+
+    it('purgeStoppedInstances removes stopped state and log files', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      await mgr.stop('test-svc');
+      expect(mgr.list()[0]!.status).toBe('stopped');
+
+      mgr.purgeStoppedInstances('test-svc');
+
+      const statuses = mgr.list();
+      expect(statuses[0]!.status).toBe('idle');
+    });
+
+    it('stop on already-stopped instance is a no-op', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      await mgr.stop('test-svc');
+      // Calling stop again should not throw
+      await mgr.stop('test-svc');
+      expect(mgr.list()[0]!.status).toBe('stopped');
+    });
+
+    it('stopped instances do not count toward maxInstances', async () => {
+      const multiDef: ServiceDefinition = {
+        ...readyDef,
+        id: 'multi-stop',
+        label: 'Multi Stop',
+        maxInstances: 2,
+      };
+      const mgr = createManager([multiDef]);
+
+      // Start two instances
+      const id1 = await mgr.start('multi-stop', { name: 'a' });
+      trackedPids.push(mgr.list().find((s) => s.instanceId === id1)!.pid!);
+      const id2 = await mgr.start('multi-stop', { name: 'b' });
+      trackedPids.push(mgr.list().find((s) => s.instanceId === id2)!.pid!);
+
+      // Stop one
+      await mgr.stop('multi-stop', id1);
+
+      // Should be able to start a new one (stopped doesn't count)
+      const id3 = await mgr.start('multi-stop', { name: 'c' });
+      trackedPids.push(mgr.list().find((s) => s.instanceId === id3)!.pid!);
+    });
+  });
+
+  describe('scanProjects', () => {
+    it('returns empty when no projectScanner defined', () => {
+      const mgr = createManager([readyDef]);
+      expect(mgr.scanProjects('test-svc', tmpDir)).toEqual([]);
+    });
+
+    it('scans using projectScanner when defined', () => {
+      const scanDir = path.join(tmpDir, 'scan-root');
+      fs.mkdirSync(path.join(scanDir, 'proj'), { recursive: true });
+      fs.writeFileSync(path.join(scanDir, 'proj', 'match.txt'), '');
+
+      const scanDef: ServiceDefinition = {
+        ...readyDef,
+        id: 'scan-svc',
+        label: 'Scan Service',
+        projectScanner: {
+          isProjectFolder: (p) => fs.existsSync(path.join(p, 'match.txt')),
+        },
+      };
+      const mgr = createManager([scanDef]);
+      const results = mgr.scanProjects('scan-svc', scanDir);
+      expect(results).toHaveLength(1);
+      expect(results[0]!.name).toBe('proj');
+    });
+
+    it('throws for unknown service', () => {
+      const mgr = createManager([readyDef]);
+      expect(() => mgr.scanProjects('nonexistent', '/tmp')).toThrow(/Unknown service/);
     });
   });
 });

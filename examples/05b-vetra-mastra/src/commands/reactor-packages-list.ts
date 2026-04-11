@@ -1,8 +1,7 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand, scanProjects } from 'ph-clint';
 import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
-import { findProjects } from './find-projects.js';
 
 const inputSchema = z.object({});
 
@@ -29,7 +28,7 @@ export const reactorPackagesList = defineCommand({
   description: 'List Reactor package projects in the working directory',
   inputSchema,
   execute: async (_input, { workdir }) => {
-    const found = findProjects(workdir, isReactorPackage);
+    const found = scanProjects(workdir, { isProjectFolder: isReactorPackage });
 
     const projects: ProjectInfo[] = found.map((f) => {
       try {

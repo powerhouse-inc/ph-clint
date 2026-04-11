@@ -806,7 +806,7 @@ export function defineCli<
         /* istanbul ignore next -- Ink REPL requires a real terminal */
         const { startInkRepl } = await import('../interactive/start.js');
         /* istanbul ignore next */
-        await startInkRepl(session, { services: context.services });
+        await startInkRepl(session, { services: context.services, workdir: context.workdir });
         /* istanbul ignore next */
         exit(0);
       }

@@ -12,6 +12,7 @@ export function formatStatus(s: ServiceInstanceStatus): string {
     s.status === 'starting' ? '◐' :
     s.status === 'failed' ? '✗' :
     s.status === 'stopping' ? '◑' :
+    s.status === 'stopped' ? '■' :
     '○';
   const parts = [`${icon} ${s.label} [${s.status}]`];
   if (s.pid) parts.push(`pid ${s.pid}`);
@@ -208,6 +209,32 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
       return { text: all.map(formatStatus).join('\n') };
     },
   });
+
+  // ── ls (project scanner) ──
+  if (def.projectScanner) {
+    commands.push({
+      id: `${id}-ls`,
+      description: `List ${def.label} projects in the working directory`,
+      inputSchema: z.object({}),
+      execute: async (_input, context: CommandContext) => {
+        const services = context.services;
+        if (!services) throw new Error('No services configured');
+        const projects = services.scanProjects(id, context.workdir);
+        if (projects.length === 0) {
+          return { text: `No ${def.label} projects found`, data: [] };
+        }
+        const lines = projects.map((p) => {
+          const rel = path.relative(context.workdir, p.path);
+          const display = rel ? './' + rel : '.';
+          return `  ${p.name}  ${display}`;
+        });
+        return {
+          text: `Found ${projects.length} project(s):\n${lines.join('\n')}`,
+          data: projects,
+        };
+      },
+    });
+  }
 
   return commands;
 }

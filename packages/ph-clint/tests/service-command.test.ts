@@ -74,6 +74,12 @@ describe('formatStatus', () => {
     expect(result).toContain('idle');
   });
 
+  it('shows ■ icon for stopped status', () => {
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'stopped' });
+    expect(result).toContain('■');
+    expect(result).toContain('stopped');
+  });
+
   it('includes endpoints in output', () => {
     const result = formatStatus({
       serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready',
@@ -190,6 +196,8 @@ describe('createServiceCommands — no services', () => {
       getDefinition: () => undefined,
       logs: () => '',
       watchLogs: () => () => {},
+      scanProjects: () => [],
+      purgeStoppedInstances: () => {},
     };
     const def: ServiceDefinition = {
       id: 'test-svc',
@@ -667,5 +675,99 @@ describe('auto-injected service commands in CLI', () => {
     // In headless mode, panel type outputs empty text (panel is visual-only)
     // The command should not error
     expect(output[0]).toBe('Hello');
+  });
+});
+
+describe('createServiceCommands — {id}-ls', () => {
+  it('generates ls command when projectScanner is set', () => {
+    const def: ServiceDefinition = {
+      id: 'scan-svc',
+      label: 'Scan Service',
+      command: 'echo start',
+      projectScanner: {
+        isProjectFolder: () => true,
+      },
+    };
+    const cmds = createServiceCommands(def);
+    const lsCmd = cmds.find((c) => c.id === 'scan-svc-ls');
+    expect(lsCmd).toBeDefined();
+    expect(lsCmd!.description).toContain('Scan Service');
+  });
+
+  it('does not generate ls command without projectScanner', () => {
+    const def: ServiceDefinition = {
+      id: 'no-scan',
+      label: 'No Scanner',
+      command: 'echo start',
+    };
+    const cmds = createServiceCommands(def);
+    expect(cmds.find((c) => c.id === 'no-scan-ls')).toBeUndefined();
+  });
+
+  it('ls command lists discovered projects', async () => {
+    const def: ServiceDefinition = {
+      id: 'scan-svc',
+      label: 'Scan Service',
+      command: 'echo start',
+      projectScanner: {
+        isProjectFolder: () => true,
+      },
+    };
+    const cmds = createServiceCommands(def);
+    const lsCmd = cmds.find((c) => c.id === 'scan-svc-ls')!;
+    const scanResults = [{ name: 'proj-a', path: '/tmp/proj-a' }];
+    const mockMgr: ServiceManager = {
+      start: async () => '',
+      stop: async () => {},
+      list: () => [],
+      getDefinition: () => undefined,
+      logs: () => '',
+      watchLogs: () => () => {},
+      scanProjects: () => scanResults,
+      purgeStoppedInstances: () => {},
+    };
+    const ctx: CommandContext = {
+      workdir: '/tmp',
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      stdout: () => {},
+      services: mockMgr,
+    };
+    const result = await lsCmd.execute({}, ctx) as any;
+    expect(result.text).toContain('1 project');
+    expect(result.text).toContain('proj-a');
+    expect(result.data).toEqual(scanResults);
+  });
+
+  it('ls command shows message when no projects found', async () => {
+    const def: ServiceDefinition = {
+      id: 'scan-svc',
+      label: 'Scan Service',
+      command: 'echo start',
+      projectScanner: {
+        isProjectFolder: () => false,
+      },
+    };
+    const cmds = createServiceCommands(def);
+    const lsCmd = cmds.find((c) => c.id === 'scan-svc-ls')!;
+    const mockMgr: ServiceManager = {
+      start: async () => '',
+      stop: async () => {},
+      list: () => [],
+      getDefinition: () => undefined,
+      logs: () => '',
+      watchLogs: () => () => {},
+      scanProjects: () => [],
+      purgeStoppedInstances: () => {},
+    };
+    const ctx: CommandContext = {
+      workdir: '/tmp',
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      stdout: () => {},
+      services: mockMgr,
+    };
+    const result = await lsCmd.execute({}, ctx) as any;
+    expect(result.text).toContain('No Scan Service projects found');
   });
 });

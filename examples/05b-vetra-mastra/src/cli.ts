@@ -71,6 +71,10 @@ const vetra = defineService<Config>({
   ],
   shutdown: { signal: 'SIGTERM', timeout: 10_000 },
   restart: { enabled: true, maxRetries: 3, delay: 5_000 },
+  projectScanner: {
+    isProjectFolder: (p) => fs.existsSync(path.join(p, 'powerhouse.config.json'))
+                         || fs.existsSync(path.join(p, 'powerhouse.config.ts')),
+  },
 });
 
 const fusionProjectParams = z.object({

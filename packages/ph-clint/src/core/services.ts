@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type { CaptureDefinition, EndpointType, EventBus, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
 import { isPortFree } from './preflight.js';
+import { scanProjects as scanProjectsImpl } from './project-scanner.js';
 
 /**
  * Identity wrapper for service definitions — provides type checking and IDE support.
@@ -22,11 +23,12 @@ interface ServiceStateFile {
   instanceId: string;
   label: string;
   pid: number;
-  status: 'starting' | 'ready' | 'failed';
+  status: 'starting' | 'ready' | 'failed' | 'stopped';
   endpoints?: Record<string, string>;
   endpointTypes?: Record<string, EndpointType>;
   error?: string;
   startedAt: string;
+  stoppedAt?: string;
   command: string;
   restartAttempt?: number;
   workdir?: string;
@@ -206,15 +208,18 @@ export function createServiceManager(
 
     // Check if this specific instance is already running
     const existingState = readStateFile(stateFilePath(servicesDir, id, instanceId));
-    if (existingState && existingState.pid && isPidAlive(existingState.pid)) {
+    if (existingState && existingState.status === 'stopped') {
+      // Clean up stopped state — we're restarting this instance
+      removeStateFile(stateFilePath(servicesDir, id, instanceId));
+    } else if (existingState && existingState.pid && isPidAlive(existingState.pid)) {
       if (existingState.status === 'ready' || existingState.status === 'starting') {
         throw new Error(`Service ${id} is already running (pid ${existingState.pid})`);
       }
     }
 
-    // Check maxInstances limit
+    // Check maxInstances limit (exclude stopped instances)
     const running = scanInstances(servicesDir, id)
-      .filter((s) => s.instanceId !== instanceId && s.pid && isPidAlive(s.pid));
+      .filter((s) => s.instanceId !== instanceId && s.status !== 'stopped' && s.pid && isPidAlive(s.pid));
     if (running.length >= maxInstances) {
       throw new Error(`Service ${id} has reached max instances (${maxInstances})`);
     }
@@ -457,11 +462,17 @@ export function createServiceManager(
     const statePath = stateFilePath(servicesDir, serviceId, instanceId);
     const state = readStateFile(statePath);
     if (!state || !state.pid) {
+      // If it's a stopped state file, it's already stopped
+      if (state?.status === 'stopped') return;
       throw new Error(`Service ${serviceId} is not running`);
     }
 
     if (!isPidAlive(state.pid)) {
-      removeStateFile(statePath);
+      // Process already dead — persist as stopped
+      state.status = 'stopped';
+      state.pid = 0;
+      state.stoppedAt = new Date().toISOString();
+      writeStateFile(statePath, state);
       return;
     }
 
@@ -490,7 +501,11 @@ export function createServiceManager(
       }
     }
 
-    removeStateFile(statePath);
+    // Persist stopped state instead of removing
+    state.status = 'stopped';
+    state.pid = 0;
+    state.stoppedAt = new Date().toISOString();
+    writeStateFile(statePath, state);
     eventBus?.emit('service:stopped', { id: serviceId, instanceId, label: def.label });
   }
 
@@ -536,6 +551,19 @@ export function createServiceManager(
       }
 
       for (const state of instances) {
+        // Stopped instances are shown as-is
+        if (state.status === 'stopped') {
+          results.push({
+            serviceId: def.id,
+            instanceId: state.instanceId,
+            label: state.label,
+            status: 'stopped',
+            workdir: state.workdir,
+            params: state.params,
+          });
+          continue;
+        }
+
         // Verify PID is alive (pid <= 0 means not yet spawned — treat as dead)
         if (!state.pid || !isPidAlive(state.pid)) {
           const statePath = stateFilePath(servicesDir, def.id, state.instanceId);
@@ -601,18 +629,14 @@ export function createServiceManager(
             });
           } else {
             // No restart or max retries exceeded
-            const status: ServiceInstanceStatus = {
-              serviceId: def.id,
-              instanceId: state.instanceId,
-              label: def.label,
-              status: 'failed',
-              error: 'Process exited unexpectedly',
-            };
+            const isFailed = state.status === 'failed' || (
+              def.restart?.enabled &&
+              (state.restartAttempt ?? 0) >= def.restart.maxRetries
+            );
             if (
               def.restart?.enabled &&
               (state.restartAttempt ?? 0) >= def.restart.maxRetries
             ) {
-              status.restartAttempt = state.restartAttempt;
               eventBus?.emit('service:failed', {
                 id: def.id,
                 instanceId: state.instanceId,
@@ -620,8 +644,33 @@ export function createServiceManager(
                 error: 'Max restart retries exceeded',
               });
             }
-            removeStateFile(statePath);
-            results.push(status);
+
+            if (isFailed) {
+              // Keep as failed (readiness error or max retries) — remove state file
+              removeStateFile(statePath);
+              results.push({
+                serviceId: def.id,
+                instanceId: state.instanceId,
+                label: def.label,
+                status: 'failed',
+                error: state.error ?? 'Process exited unexpectedly',
+                restartAttempt: state.restartAttempt,
+              });
+            } else {
+              // Was running/starting but died — persist as stopped for re-launch
+              state.status = 'stopped';
+              state.pid = 0;
+              state.stoppedAt = new Date().toISOString();
+              writeStateFile(statePath, state);
+              results.push({
+                serviceId: def.id,
+                instanceId: state.instanceId,
+                label: state.label,
+                status: 'stopped',
+                workdir: state.workdir,
+                params: state.params,
+              });
+            }
           }
           continue;
         }
@@ -716,5 +765,27 @@ export function createServiceManager(
     return defMap.get(id);
   }
 
-  return { start, stop, list, getDefinition, logs, watchLogs };
+  function scanProjectsForService(id: string, rootDir: string) {
+    const def = defMap.get(id);
+    if (!def) throw new Error(`Unknown service: ${id}`);
+    if (!def.projectScanner) return [];
+    return scanProjectsImpl(rootDir, def.projectScanner);
+  }
+
+  function purgeStoppedInstances(id: string): void {
+    const def = defMap.get(id);
+    if (!def) throw new Error(`Unknown service: ${id}`);
+    const instances = scanInstances(servicesDir, id);
+    for (const state of instances) {
+      if (state.status === 'stopped') {
+        const statePath = stateFilePath(servicesDir, id, state.instanceId);
+        removeStateFile(statePath);
+        // Also remove the log file
+        const logPath = logFilePath(servicesDir, id, state.instanceId);
+        try { fs.unlinkSync(logPath); } catch { /* Already gone */ }
+      }
+    }
+  }
+
+  return { start, stop, list, getDefinition, logs, watchLogs, scanProjects: scanProjectsForService, purgeStoppedInstances };
 }

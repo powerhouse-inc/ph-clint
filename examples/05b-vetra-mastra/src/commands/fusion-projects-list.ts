@@ -1,8 +1,7 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand, scanProjects } from 'ph-clint';
 import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
-import { findProjects } from './find-projects.js';
 
 const inputSchema = z.object({});
 
@@ -15,7 +14,7 @@ export const fusionProjectsList = defineCommand({
   description: 'List Fusion projects in the working directory',
   inputSchema,
   execute: async (_input, { workdir }) => {
-    const projects = findProjects(workdir, isFusionProject);
+    const projects = scanProjects(workdir, { isProjectFolder: isFusionProject });
 
     if (projects.length === 0) {
       return { text: 'No Fusion projects found', data: [] };

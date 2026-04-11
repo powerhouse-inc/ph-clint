@@ -11,6 +11,7 @@ import { ServicePanel } from './service-panel.js';
 interface ReplProps {
   session: ReplSession;
   services?: ServiceManager;
+  workdir?: string;
 }
 
 /**
@@ -25,7 +26,7 @@ type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
 /**
  * Main REPL component for interactive mode.
  */
-export function Repl({ session, services }: ReplProps) {
+export function Repl({ session, services, workdir }: ReplProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const columns = stdout?.columns || 80;
@@ -372,6 +373,7 @@ export function Repl({ session, services }: ReplProps) {
         <ServicePanel
           services={services}
           serviceId={activePanelId.split(':')[1]}
+          workdir={workdir}
           onExit={() => {
             setActivePanelId(null);
             setPhase('idle');

@@ -12,6 +12,7 @@ export { createEventBus } from './core/events.js';
 export { createProcessManager } from './core/processes.js';
 export { defineService, createServiceManager } from './core/services.js';
 export { createServiceCommands, formatStatus } from './core/service-command.js';
+export { scanProjects, PROJECT_INDICATORS } from './core/project-scanner.js';
 export { checkWorkdir, checkCommand, checkPort, isPortFree } from './core/preflight.js';
 export { createHelpCommand } from './core/help-command.js';
 export { installSkills } from './core/init.js';
@@ -83,6 +84,8 @@ export type {
   ServiceInstanceStatus,
   ServiceStatus,
   ServiceManager,
+  ProjectScanner,
+  ProjectScanResult,
   CliMetadata,
   SkillsConfig,
 } from './core/types.js';

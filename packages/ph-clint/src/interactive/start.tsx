@@ -6,6 +6,7 @@ import type { ServiceManager } from '../core/types.js';
 
 export interface StartInkReplOptions {
   services?: ServiceManager;
+  workdir?: string;
 }
 
 /**
@@ -14,7 +15,7 @@ export interface StartInkReplOptions {
  */
 export async function startInkRepl(session: ReplSession, opts?: StartInkReplOptions): Promise<void> {
   const app = render(
-    <Repl session={session} services={opts?.services} />,
+    <Repl session={session} services={opts?.services} workdir={opts?.workdir} />,
     { exitOnCtrlC: false },
   );
   await app.waitUntilExit();
