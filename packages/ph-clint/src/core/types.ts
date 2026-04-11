@@ -528,6 +528,9 @@ export interface CliMetadata {
     shutdown?: { signal: string; timeout: number };
     restart?: { enabled: boolean; maxRetries: number; delay: number };
     readinessTimeout?: number;
+    /** MCP tool prefix(es) derived from readiness captures with type 'api-mcp'.
+     *  undefined = no MCP, string = single MCP endpoint, Record = multiple (keyed by capture name). */
+    mcpPrefix?: string | Record<string, string>;
   }> | null;
   skills: {
     sources: string[];

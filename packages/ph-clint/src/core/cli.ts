@@ -129,11 +129,14 @@ export function defineCli<
   const hasServices = options.services && options.services.length > 0;
 
   // Auto-inject per-service commands when services are defined
+  // serviceGroups maps command ID → service label for help grouping
+  const serviceGroups = new Map<string, string>();
   if (hasServices) {
     for (const svcDef of options.services!) {
       const cmds = createServiceCommands(svcDef);
       for (const cmd of cmds) {
         if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
+        serviceGroups.set(cmd.id, svcDef.label);
       }
     }
   }
@@ -156,6 +159,7 @@ export function defineCli<
       if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
     }
   }
+  const skillIds = new Set(resolvedSkills.map(s => s.name));
 
   const eventBus = (hasTriggers || hasServices) ? createEventBus() : undefined;
   const processManager = hasTriggers ? createProcessManager() : undefined;
@@ -284,24 +288,45 @@ export function defineCli<
       lines.push('  -i, --interactive    Start interactive REPL mode');
       lines.push('');
     }
-    // Separate skill commands from regular commands
-    const skillIds = new Set(resolvedSkills.map(s => s.name));
-    const regularCmds = [...commandMap.values()].filter(c => !skillIds.has(c.id));
-    const skillCmds = [...commandMap.values()].filter(c => skillIds.has(c.id));
+    // Group commands: regular, per-service, skills
+    const allCmds = [...commandMap.values()];
+    const regularCmds = allCmds.filter(c => !skillIds.has(c.id) && !serviceGroups.has(c.id));
+    const skillCmds = allCmds.filter(c => skillIds.has(c.id));
+
+    // Collect service groups preserving definition order
+    const svcLabelOrder: string[] = [];
+    const svcCmdsByLabel = new Map<string, Command[]>();
+    for (const cmd of allCmds) {
+      const label = serviceGroups.get(cmd.id);
+      if (!label) continue;
+      if (!svcCmdsByLabel.has(label)) {
+        svcLabelOrder.push(label);
+        svcCmdsByLabel.set(label, []);
+      }
+      svcCmdsByLabel.get(label)!.push(cmd);
+    }
 
     lines.push('Commands:');
     for (const cmd of regularCmds) {
-      lines.push(`  ${cmd.id.padEnd(20)} ${cmd.description}`);
+      lines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
     }
-    lines.push('');
+
+    for (const label of svcLabelOrder) {
+      lines.push('');
+      lines.push(`${label}:`);
+      for (const cmd of svcCmdsByLabel.get(label)!) {
+        lines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
+      }
+    }
 
     if (skillCmds.length > 0) {
+      lines.push('');
       lines.push('Skills:');
       for (const cmd of skillCmds) {
         lines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
       }
-      lines.push('');
     }
+    lines.push('');
 
     const configHelp = generateConfigHelp();
     if (configHelp) {
@@ -327,18 +352,6 @@ export function defineCli<
       if (field?.hasDefault) parts.push(`(default: ${JSON.stringify(field.defaultValue)})`);
       if (field && !field.isOptional && !field.hasDefault) parts.push('(required)');
       lines.push(parts.join('  '));
-    }
-    lines.push('');
-    return lines.join('\n');
-  }
-
-  function generateSkillsHelp(): string | undefined {
-    if (resolvedSkills.length === 0) return undefined;
-
-    const lines: string[] = [];
-    lines.push('Skills:');
-    for (const skill of resolvedSkills) {
-      lines.push(`  ${skill.name.padEnd(36)} ${skill.description}`);
     }
     lines.push('');
     return lines.join('\n');
@@ -469,7 +482,9 @@ export function defineCli<
       // Commander's built-in `help` handles CLI users.
       if (cmd.id === 'cli-docs') continue;
 
-      const sub = program.command(cmd.id).description(cmd.description);
+      const isSkill = skillIds.has(cmd.id);
+      const isHidden = isSkill || serviceGroups.has(cmd.id);
+      const sub = program.command(cmd.id, { hidden: isHidden }).description(cmd.description);
       const isBuiltinConfig = cmd.id === 'config' && options.configSchema;
 
       const fields = getSchemaFields(cmd.inputSchema);
@@ -524,9 +539,42 @@ export function defineCli<
       });
     }
 
-    const skillsHelp = generateSkillsHelp();
-    if (skillsHelp) {
-      program.addHelpText('after', '\n' + skillsHelp);
+    // Append grouped service + skills sections to Commander's --help
+    const groupedLines: string[] = [];
+
+    // Service groups
+    const allCmds = [...commandMap.values()];
+    const svcLabelOrder: string[] = [];
+    const svcCmdsByLabel = new Map<string, Command[]>();
+    for (const cmd of allCmds) {
+      const label = serviceGroups.get(cmd.id);
+      if (!label) continue;
+      if (!svcCmdsByLabel.has(label)) {
+        svcLabelOrder.push(label);
+        svcCmdsByLabel.set(label, []);
+      }
+      svcCmdsByLabel.get(label)!.push(cmd);
+    }
+    for (const label of svcLabelOrder) {
+      groupedLines.push('');
+      groupedLines.push(`${label}:`);
+      for (const cmd of svcCmdsByLabel.get(label)!) {
+        groupedLines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
+      }
+    }
+
+    // Skills
+    const skillCmds = allCmds.filter(c => skillIds.has(c.id));
+    if (skillCmds.length > 0) {
+      groupedLines.push('');
+      groupedLines.push('Skills:');
+      for (const cmd of skillCmds) {
+        groupedLines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
+      }
+    }
+
+    if (groupedLines.length > 0) {
+      program.addHelpText('after', groupedLines.join('\n'));
     }
 
     const configHelp = generateConfigHelp();
@@ -898,6 +946,39 @@ export function defineCli<
     if (options.services && options.services.length > 0) {
       servicesMeta = {};
       for (const svc of options.services) {
+        // Collect MCP capture names from readiness patterns
+        const mcpCaptures: string[] = [];
+        if (svc.readiness) {
+          if (svc.readiness.patterns) {
+            for (const pat of svc.readiness.patterns) {
+              if (pat.captures) {
+                for (const [capName, def] of Object.entries(pat.captures)) {
+                  if (typeof def === 'object' && def.type === 'api-mcp') {
+                    mcpCaptures.push(capName);
+                  }
+                }
+              }
+            }
+          } else if (svc.readiness.captures) {
+            for (const [capName, def] of Object.entries(svc.readiness.captures)) {
+              if (typeof def === 'object' && def.type === 'api-mcp') {
+                mcpCaptures.push(capName);
+              }
+            }
+          }
+        }
+
+        // Build mcpPrefix: undefined | string | Record<string, string>
+        let mcpPrefix: string | Record<string, string> | undefined;
+        if (mcpCaptures.length === 1) {
+          mcpPrefix = `${svc.id}-mcp__`;
+        } else if (mcpCaptures.length > 1) {
+          mcpPrefix = {};
+          for (const capName of mcpCaptures) {
+            mcpPrefix[capName] = `${svc.id}-${capName}-mcp__`;
+          }
+        }
+
         servicesMeta[svc.id] = {
           label: svc.label,
           ...(svc.maxInstances !== undefined && { maxInstances: svc.maxInstances }),
@@ -905,6 +986,7 @@ export function defineCli<
           ...(svc.shutdown && { shutdown: { signal: String(svc.shutdown.signal), timeout: svc.shutdown.timeout } }),
           ...(svc.restart && { restart: { enabled: svc.restart.enabled, maxRetries: svc.restart.maxRetries, delay: svc.restart.delay } }),
           ...(svc.readiness?.timeout !== undefined && { readinessTimeout: svc.readiness.timeout }),
+          ...(mcpPrefix !== undefined && { mcpPrefix }),
         };
       }
     }

@@ -116,7 +116,7 @@ const fusionProject = defineService<Config>({
 export const cli = defineCli({
   name: CLI_NAME,
   version: CLI_VERSION,
-  description: 'Vetra Mastra — Reactor development with AI agent',
+  description: `Vetra CLI v${CLI_VERSION} — Local-first Application Development with Agent Rupert`,
   configSchema,
   secretsSchema,
   commands: [reactorPackageInit, reactorPackagesList, fusionProjectInit, fusionProjectsList],
@@ -130,7 +130,7 @@ export const cli = defineCli({
       'rupert-dev-agent': [
         'document-modeling', 'document-editor-creation',
         'fusion-development', 'fusion-project-management',
-        'handle-stakeholder-message', 'playwright-cli',
+        'playwright-cli',
         'reactor-package-project-management',
       ],
     },
@@ -164,7 +164,7 @@ export const cli = defineCli({
   interactive: {
     welcome: ({ config, workdir }) => {
       const mode = config.apiKey
-        ? `Mastra + ${config.model}`
+        ? config.model
         : 'demo mode \u2014 set VETRA_MASTRA_API_KEY for real LLM responses';
       const G = '\x1b[32m';
       const W = '\x1b[97m';
@@ -173,22 +173,16 @@ export const cli = defineCli({
       return [
         '',
         `  ${G}\u2556HHHHHHH  \u2565HHHHHH\u2556`,
-        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592h'\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Vetra Mastra`,
-        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592  \u2559\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Reactor + AI Agent`,
+        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592h'\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Vetra CLI v${CLI_VERSION}`,
+        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592  \u2559\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Agent Rupert`,
         `  ${G}\u2560\u2592\u2592\u2592\u2592\u255C"     \u2559\u2592\u2592\u2592\u2592\u2592${R}`,
-        `  ${G},\u2556\u2556,         ,,\u2556\u2556,${R}`,
-        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2565    \u2565\u2592\u2592\u2592\u2592\u2592\u2592${R}`,
+        `  ${G},\u2556\u2556,         ,,\u2556\u2556,${R}    Type a message to talk to the agent.`,
+        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2565    \u2565\u2592\u2592\u2592\u2592\u2592\u2592${R}    ${D}Try:${R} "Create a document model for invoices"`,
         `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592  \u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${R}`,
-        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592hj\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${R}`,
+        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592hj\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${R}    Type ${D}/${R} for commands. ${D}/cli-docs${R} for documentation.`,
         '',
-        `  ${D}Agent:${R} ${mode}`,
+        `  ${D}Model:${R} ${mode}`,
         `  ${D}Workdir:${R} ${workdir}`,
-        `  ${D}/reactor-package-init${R} new project   ${D}/reactor-packages-list${R} browse`,
-        `  ${D}/fusion-project-init${R} new fusion    ${D}/fusion-projects-list${R} browse`,
-        `  ${D}/vetra-start${R} dev server  ${D}/fusion-project-start${R} fusion server`,
-        '',
-        `  Type a message to talk to the agent`,
-        `  ${D}Try:${R} "Create a document model for invoices"`,
         '',
       ].join('\n');
     },

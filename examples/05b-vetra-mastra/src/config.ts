@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 /** CLI name — used for config resolution, env var prefixing, and .ph/ paths. */
-export const CLI_NAME = 'vetra-mastra';
+export const CLI_NAME = 'vetra';
 export const CLI_VERSION = '1.0.0';
 
 /** Project root — resolved from this file's location. */

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
 import { defineCli } from '../src/core/cli.js';
 import { defineTrigger } from '../src/core/trigger.js';
+import { defineService } from '../src/core/services.js';
 import type { AgentProvider, StreamChunk } from '../src/core/types.js';
 
 const echo = defineCommand({
@@ -750,6 +751,91 @@ describe('defineCli', () => {
       expect(cap.exitCode).toBe(0);
       const json = JSON.parse(cap.output.join('\n'));
       expect(json.name).toBe('test-cli');
+    });
+
+    it('--meta includes mcpPrefix for services with api-mcp captures', async () => {
+      const svcCli = defineCli({
+        name: 'mcp-test',
+        version: '1.0.0',
+        description: 'MCP prefix test',
+        commands: [echo],
+        services: [
+          defineService({
+            id: 'my-svc',
+            label: 'My Service',
+            command: 'echo hi',
+            readiness: {
+              patterns: [
+                {
+                  name: 'http',
+                  pattern: /http:\/\/localhost:(\d+)/,
+                  captures: { port: 1 },
+                },
+                {
+                  name: 'mcp',
+                  pattern: /MCP at (https?:\/\/\S+)/,
+                  captures: { 'mcp-url': { group: 1, type: 'api-mcp' } },
+                },
+              ],
+              timeout: 5000,
+            },
+          }),
+          defineService({
+            id: 'no-mcp',
+            label: 'No MCP Service',
+            command: 'echo bye',
+            readiness: {
+              pattern: /ready/,
+              timeout: 5000,
+            },
+          }),
+        ],
+      });
+      const cap = capture();
+      await svcCli.run(['node', 'test', '--meta'], cap.options);
+      expect(cap.exitCode).toBe(0);
+      const json = JSON.parse(cap.output.join('\n'));
+      expect(json.services['my-svc'].mcpPrefix).toBe('my-svc-mcp__');
+      expect(json.services['no-mcp'].mcpPrefix).toBeUndefined();
+    });
+
+    it('--meta includes mcpPrefix map for services with multiple api-mcp captures', async () => {
+      const svcCli = defineCli({
+        name: 'multi-mcp',
+        version: '1.0.0',
+        description: 'Multi MCP test',
+        commands: [echo],
+        services: [
+          defineService({
+            id: 'multi',
+            label: 'Multi MCP',
+            command: 'echo hi',
+            readiness: {
+              patterns: [
+                {
+                  name: 'mcp1',
+                  pattern: /MCP-A at (https?:\/\/\S+)/,
+                  captures: { 'mcp-a': { group: 1, type: 'api-mcp' } },
+                },
+                {
+                  name: 'mcp2',
+                  pattern: /MCP-B at (https?:\/\/\S+)/,
+                  captures: { 'mcp-b': { group: 1, type: 'api-mcp' } },
+                },
+              ],
+              timeout: 5000,
+            },
+          }),
+        ],
+      });
+      const cap = capture();
+      await svcCli.run(['node', 'test', '--meta'], cap.options);
+      expect(cap.exitCode).toBe(0);
+      const json = JSON.parse(cap.output.join('\n'));
+      expect(json.services.multi.mcpPrefix).toEqual({
+        'mcp-a': 'multi-mcp-a-mcp__',
+        'mcp-b': 'multi-mcp-b-mcp__',
+      });
     });
 
     it('exits non-zero on missing required arg', async () => {

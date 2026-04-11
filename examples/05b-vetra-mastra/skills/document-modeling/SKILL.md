@@ -6,15 +6,27 @@ metadata:
   version: "1.0.0"
 ---
 
-=== BEGIN SKILL BRIEFING === 
+=== BEGIN SKILL BRIEFING ===
 
 IMPORTANT:  Don't take any action yet. You will be guided through your tasks after the briefing(s). Just process and confirm your understanding.
 
 # Document Modeling - Skill Preamble
 
-With this skill, you can design and implement new Reactor 'document model' modules for the Powerhouse ecosystem. Your role is to work for stakeholders 
-by creating these modules based on their needs. This briefing teaches you about general document modeling practices. Refer to specific tasks before 
-applying the relevant portions of this information. 
+With this skill, you can design and implement new Reactor 'document model' modules for the Powerhouse ecosystem. Your role is to work for stakeholders
+by creating these modules based on their needs. This briefing teaches you about general document modeling practices. Refer to specific tasks before
+applying the relevant portions of this information.
+
+## ⛔ MANDATORY: All Document Models Are Created Through the MCP
+
+**NEVER create document model files manually.** You do NOT write document-models/ files yourself.
+
+The Vetra system generates all document model code (types, schemas, reducers boilerplate, creators, controllers) automatically when you define the model through the MCP tools. Your workflow is:
+
+1. **Define** the model via `vetra-mcp__createDocument` + `vetra-mcp__addActions`
+2. **Wait** for Vetra's code generator to produce files in `document-models/`
+3. **Only then** edit the generated `src/reducers/*.ts` files to implement business logic
+
+If you skip the MCP and write files directly, you will produce code that is incompatible with the Powerhouse runtime, missing generated types, and broken on the next codegen pass. **There are no exceptions to this rule.**
 
 ## Document Model Creation Principles
 
@@ -27,24 +39,31 @@ applying the relevant portions of this information.
 - When in doubt, ask for clarification
 - Break complex models into logical modules and operations
 
-### 2. Pre-Implementation Requirements
+### 2. Pre-Implementation: MCP Schema Check
 
-**MANDATORY**: Check document model schema before making any MCP tool calls.
+**MANDATORY**: Before ANY implementation, you must run these MCP calls in order:
 
-- **ALWAYS** use `mcp__active-project-vetra__getDocumentModelSchema` with `type: "powerhouse/document-model"` first
-- Review input schema requirements for operations like `ADD_MODULE`, `ADD_OPERATION`, etc.
-- Ensure all required parameters (like `id` or `scope` fields) are included in action inputs
-- This prevents failed tool calls and reduces iteration
+1. `vetra-mcp__getDrives` — confirm which drives are available
+2. `vetra-mcp__getDocumentModelSchema` with `type: "powerhouse/document-model"` — learn the exact input schemas for `ADD_MODULE`, `ADD_OPERATION`, `SET_STATE_SCHEMA`, etc.
+3. Only then proceed to create documents and add actions
 
-### 3. Implementation Requirements
+This is not optional. Skipping this step leads to failed tool calls and wasted iterations.
 
-- Document model reducers must be **pure synchronous functions**
-- Reducers receive current state and operation, always returning the same result
-- Values like dates/IDs must come from operation input, not generated in reducer
-- Reducer code goes into SET_OPERATION_REDUCER action (no function header needed)
-- Reducers are wrapped with Mutative - you can mutate the state object directly
-- External imports go at the beginning of the actual reducer file in `src/`
-- Ensure that the reducer code of each operation in the document model schema is applied in `document-models/<document-model-name>/src/reducers/<module-name>.ts`
+### 3. Implementation: MCP-First, Then Source Edits
+
+The implementation sequence is always:
+
+1. **`vetra-mcp__createDocument`** — create the document model on the vetra drive (ID is auto-generated, NEVER set it manually)
+2. **`vetra-mcp__addActions`** — define the model: `SET_MODEL_ID`, `SET_STATE_SCHEMA`, `ADD_MODULE`, `ADD_OPERATION`, `ADD_OPERATION_ERROR`, etc.
+3. **Check `vetra-logs`** — confirm the code generator ran and produced files
+4. **Read the generated files** — understand the types, creators, and boilerplate reducers
+5. **Edit `src/reducers/*.ts`** — implement business logic in the generated reducer stubs
+
+Reducer requirements:
+- Reducers must be **pure synchronous functions** (no crypto, Date, Math.random)
+- Values like dates/IDs must come from `action.input`, not generated in reducer
+- Reducers are wrapped with Mutative — you can mutate the state object directly
+- Reducer code also goes into `SET_OPERATION_REDUCER` action (no function header needed)
 
 ### 4. Quality assurance
 
@@ -272,7 +291,7 @@ For ANY document model changes, follow this **mandatory** two-step process:
 
 #### Step 1: Update Document Model via MCP
 
-Use `mcp__active-project-vetra__addActions` with operations like:
+Use `vetra-mcp__addActions` with operations like:
 
 - `SET_OPERATION_SCHEMA` - update input/output schemas
 - `SET_OPERATION_REDUCER` - update reducer code

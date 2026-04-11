@@ -30,7 +30,30 @@ function loadBuildContext() {
   };
 }
 
-console.log('\nCLI Metadata:\n' + JSON.stringify(cli.getMetadata(), null, 2) + '\n');
+function truncate(value: unknown, max = 40): string {
+  if (Array.isArray(value)) return `[${value.length} items]`;
+  if (typeof value === 'string') {
+    const inner = value.length > max ? value.slice(0, max) + '…' : value;
+    return `"${inner}"`;
+  }
+  const s = String(value);
+  return s.length > max ? s.slice(0, max) + '…' : s;
+}
+function printPaths(obj: unknown, prefix = '') {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return;
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      console.log(path);
+      printPaths(value, path);
+    } else {
+      console.log(`${path} = ${truncate(value)}`);
+    }
+  }
+}
+console.log('\nCLI Metadata properties:');
+printPaths(cli.getMetadata());
+console.log();
 
 const result = buildSkills({
   projectRoot: PROJECT_ROOT,
