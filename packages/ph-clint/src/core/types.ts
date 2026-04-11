@@ -504,6 +504,19 @@ export interface SkillsConfig {
  * Static, JSON-serializable metadata about a CLI instance.
  * Returned by `Cli.getMetadata()` for use in build-time template contexts.
  */
+/** Field metadata for config/command/service parameters in CLI metadata output. */
+export interface MetadataField {
+  id: string;
+  description: string | undefined;
+  optional: boolean;
+  default?: unknown;
+  type: string;
+  sensitive: boolean;
+}
+
+/** Config field metadata — includes env var name. */
+export type ConfigMetadataField = MetadataField & { env: string };
+
 export interface CliMetadata {
   name: string;
   version: string;
@@ -512,19 +525,17 @@ export interface CliMetadata {
   hasAgent: boolean;
   /** Whether a Powerhouse reactor integration is configured. */
   hasReactor: boolean;
-  config: {
-    fields: Record<string, Omit<import('./schema.js').FieldInfo, 'key'>>;
-    envVars: Record<string, Omit<ConfigEnvVar, 'field'>>;
-    defaults: Record<string, unknown>;
-  } | null;
+  config: Record<string, ConfigMetadataField> | null;
   commands: Record<string, {
+    id: string;
     description: string;
-    parameters: Record<string, Omit<import('./schema.js').FieldInfo, 'key'>>;
+    params: Record<string, MetadataField>;
   }>;
   services: Record<string, {
+    id: string;
     label: string;
     maxInstances?: number;
-    parameters: Record<string, Omit<import('./schema.js').FieldInfo, 'key'>>;
+    params: Record<string, MetadataField>;
     shutdown?: { signal: string; timeout: number };
     restart?: { enabled: boolean; maxRetries: number; delay: number };
     readinessTimeout?: number;
@@ -535,7 +546,7 @@ export interface CliMetadata {
   skills: {
     sources: string[];
     agents: Record<string, string[]>;
-    resolved: Record<string, { description: string }>;
+    resolved: Record<string, { id: string; description: string }>;
   } | null;
 }
 

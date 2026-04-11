@@ -11,9 +11,12 @@ import { copyExternalSkills } from './skill-copier.js';
  * 3. Copy external skills as-is
  */
 export function buildSkills(config: BuildConfig): BuildResult {
-  // Auto-inject CLI metadata into template context when cli is provided
+  // Auto-inject CLI metadata into template context when cli is provided.
+  // Metadata properties (commands, services, skills, config, etc.) are spread
+  // at the top level so templates can use e.g. {{commands.vetra-start.id}}.
   if (config.cli) {
-    config = { ...config, context: { ...config.context, cli: config.cli.getMetadata() } };
+    const meta = config.cli.getMetadata();
+    config = { ...config, context: { ...config.context, ...meta } };
   }
 
   const log = config.logger ?? console.log;

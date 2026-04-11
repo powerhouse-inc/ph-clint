@@ -902,10 +902,18 @@ export function defineCli<
     }
   }
 
-  function fieldsToMap(fields: FieldInfo[]): Record<string, Omit<FieldInfo, 'key'>> {
-    const map: Record<string, Omit<FieldInfo, 'key'>> = {};
-    for (const { key, ...rest } of fields) {
-      map[key] = rest;
+  function fieldsToMap(fields: FieldInfo[]): Record<string, import('./types.js').MetadataField> {
+    const map: Record<string, import('./types.js').MetadataField> = {};
+    for (const f of fields) {
+      const entry: import('./types.js').MetadataField = {
+        id: f.key,
+        description: f.description,
+        optional: f.isOptional,
+        type: f.baseType,
+        sensitive: f.sensitive,
+      };
+      if (f.hasDefault) entry.default = f.defaultValue;
+      map[f.key] = entry;
     }
     return map;
   }
@@ -913,31 +921,37 @@ export function defineCli<
   function getMetadata(): CliMetadata {
     const desc = resolveValue(options.description, { workdir: activeWorkdir, config: {} as TMerged});
 
-    // Config metadata
+    // Config metadata — flat map with env var names inlined
     let configMeta: CliMetadata['config'] = null;
     if (options.configSchema) {
       const fields = getSchemaFields(options.configSchema, sensitiveKeys);
-      const defaults: Record<string, unknown> = {};
+      const envVarsByField = new Map<string, string>();
+      for (const ev of configEnvVars()) {
+        envVarsByField.set(ev.field, ev.name);
+      }
+      configMeta = {};
       for (const f of fields) {
-        if (f.hasDefault) defaults[f.key] = f.sensitive ? '***' : f.defaultValue;
+        const entry: import('./types.js').ConfigMetadataField = {
+          id: f.key,
+          description: f.description,
+          optional: f.isOptional,
+          type: f.baseType,
+          sensitive: f.sensitive,
+          env: envVarsByField.get(f.key) ?? '',
+        };
+        if (f.hasDefault) entry.default = f.defaultValue;
+        configMeta[f.key] = entry;
       }
-      const envVarsMap: Record<string, Omit<ConfigEnvVar, 'field'>> = {};
-      for (const { field, ...rest } of configEnvVars()) {
-        envVarsMap[field] = rest;
-      }
-      configMeta = {
-        fields: fieldsToMap(fields),
-        envVars: envVarsMap,
-        defaults,
-      };
     }
 
-    // Commands metadata (keyed by id)
+    // Commands metadata (keyed by id) — exclude skill-wrapper commands (listed in skills.resolved)
     const commandsMeta: CliMetadata['commands'] = {};
     for (const cmd of commandMap.values()) {
+      if (skillIds.has(cmd.id)) continue; // skip skill-wrapper commands
       commandsMeta[cmd.id] = {
+        id: cmd.id,
         description: cmd.description,
-        parameters: fieldsToMap(getSchemaFields(cmd.inputSchema)),
+        params: fieldsToMap(getSchemaFields(cmd.inputSchema)),
       };
     }
 
@@ -980,9 +994,10 @@ export function defineCli<
         }
 
         servicesMeta[svc.id] = {
+          id: svc.id,
           label: svc.label,
           ...(svc.maxInstances !== undefined && { maxInstances: svc.maxInstances }),
-          parameters: svc.paramsSchema ? fieldsToMap(getSchemaFields(svc.paramsSchema)) : {},
+          params: svc.paramsSchema ? fieldsToMap(getSchemaFields(svc.paramsSchema)) : {},
           ...(svc.shutdown && { shutdown: { signal: String(svc.shutdown.signal), timeout: svc.shutdown.timeout } }),
           ...(svc.restart && { restart: { enabled: svc.restart.enabled, maxRetries: svc.restart.maxRetries, delay: svc.restart.delay } }),
           ...(svc.readiness?.timeout !== undefined && { readinessTimeout: svc.readiness.timeout }),
@@ -994,9 +1009,9 @@ export function defineCli<
     // Skills metadata
     let skillsMeta: CliMetadata['skills'] = null;
     if (options.skills) {
-      const resolvedMap: Record<string, { description: string }> = {};
+      const resolvedMap: Record<string, { id: string; description: string }> = {};
       for (const s of resolvedSkills) {
-        resolvedMap[s.name] = { description: s.description };
+        resolvedMap[s.name] = { id: s.name, description: s.description };
       }
       skillsMeta = {
         sources: options.skills.sources,
