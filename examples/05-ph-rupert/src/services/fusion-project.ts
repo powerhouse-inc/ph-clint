@@ -14,7 +14,7 @@ const fusionProjectParams = z.object({
 
 export const fusionProject = defineService<Config>({
   id: 'fusion-project',
-  label: 'Fusion Dev Server',
+  name: 'Fusion Dev Server',
   command: (params) => `pnpm dev -p ${params?.fusionPort ?? 8000}`,
   paramsSchema: fusionProjectParams,
   env: (_config, params) => ({

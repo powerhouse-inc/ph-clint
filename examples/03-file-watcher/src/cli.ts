@@ -19,7 +19,7 @@ const cli = defineCli({
   triggers: [fileChangeTrigger],
   routine: {
     id: 'watcher',
-    label: 'File Watcher',
+    name: 'File Watcher',
     tickInterval: 1000,
     idleInterval: 500,
     projectScanner: {

@@ -309,7 +309,7 @@ describe('CLI integration — routine as service', () => {
       triggers: [fileChangeTrigger],
       routine: {
         id: 'watcher',
-        label: 'File Watcher',
+        name: 'File Watcher',
         tickInterval: 1000,
         idleInterval: 500,
         projectScanner: {
@@ -354,7 +354,7 @@ describe('CLI integration — routine as service', () => {
       triggers: [fileChangeTrigger],
       routine: {
         id: 'watcher',
-        label: 'File Watcher',
+        name: 'File Watcher',
         tickInterval: 100,
         idleInterval: 50,
       },
@@ -380,7 +380,7 @@ describe('CLI integration — routine as service', () => {
       triggers: [fileChangeTrigger],
       routine: {
         id: 'watcher',
-        label: 'File Watcher',
+        name: 'File Watcher',
         tickInterval: 100,
         idleInterval: 50,
       },
@@ -408,7 +408,7 @@ describe('CLI integration — routine as service', () => {
       triggers: [fileChangeTrigger],
       routine: {
         id: 'watcher',
-        label: 'File Watcher',
+        name: 'File Watcher',
         tickInterval: 1000,
         idleInterval: 500,
         projectScanner: {
@@ -438,7 +438,7 @@ describe('CLI integration — routine as service', () => {
       triggers: [fileChangeTrigger],
       routine: {
         id: 'watcher',
-        label: 'File Watcher',
+        name: 'File Watcher',
         tickInterval: 1000,
         idleInterval: 500,
       },
@@ -470,7 +470,7 @@ describe('CLI integration — routine as service', () => {
     });
   });
 
-  it('help output groups routine commands under service label', () => {
+  it('help output groups routine commands under service name', () => {
     const cli = defineCli({
       name: 'watcher',
       version: '1.0.0',
@@ -480,7 +480,7 @@ describe('CLI integration — routine as service', () => {
       triggers: [fileChangeTrigger],
       routine: {
         id: 'watcher',
-        label: 'File Watcher',
+        name: 'File Watcher',
         tickInterval: 1000,
         idleInterval: 500,
       },

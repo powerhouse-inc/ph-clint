@@ -43,7 +43,8 @@ function collectPids(servicesDir: string): number[] {
 
 const reactorProjectsDef: ServiceDefinition = defineService({
   id: 'reactor-project',
-  label: 'Vetra Studio server for reactor project development',
+  name: 'Reactor Project',
+  description: 'Vetra Studio server for reactor project development',
   command: `node ${FIXTURE}`,
   env: (config: any) => ({
     PORT: String(config.switchboardPort ?? 4001),

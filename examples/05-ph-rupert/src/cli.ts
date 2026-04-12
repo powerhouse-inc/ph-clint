@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { defineCli } from 'ph-clint';
+import { defineCli, type SkillConfig } from 'ph-clint';
 import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, secretsSchema } from './config.js';
 import { reactorProjectInit } from './commands/reactor-project-init.js';
 import { fusionProjectInit } from './commands/fusion-project-init.js';
@@ -40,37 +40,55 @@ export const cli = defineCli({
       },
     },
     skills: {
-      'document-modeling': 'Design Powerhouse document models with state schemas, operations, and reducers',
-      'document-editor-creation': 'Build React editor components for Powerhouse document types',
-      'fusion-development': 'Build local-first platforms based on Next.js with document drives as the backend',
-      'fusion-project-management': 'Initialize, configure, and run Fusion project instances',
-      'handle-stakeholder-message': 'Triage stakeholder messages, update WBS documents, and draft replies',
-      'reactor-project-management': 'Initialize and run Reactor Package projects with Vetra services',
+      'document-modeling': {
+        description: 'Design Powerhouse document models with state schemas, operations, and reducers',
+        mode: 'conversational',
+      } as SkillConfig & { mode: string },
+      'document-editor-creation': {
+        description: 'Build React editor components for Powerhouse document types',
+        mode: 'conversational',
+      } as SkillConfig & { mode: string },
+      'fusion-development': {
+        description: 'Build local-first platforms based on Next.js with document drives as the backend',
+        mode: 'conversational',
+      } as SkillConfig & { mode: string },
+      'fusion-project-management': {
+        description: 'Initialize, configure, and run Fusion project instances',
+        mode: 'one-shot',
+      } as SkillConfig & { mode: string },
+      'handle-stakeholder-message': {
+        description: 'Triage stakeholder messages, update WBS documents, and draft replies',
+        mode: 'one-shot',
+      } as SkillConfig & { mode: string },
+      'reactor-project-management': {
+        description: 'Initialize and run Reactor Package projects with Vetra services',
+        mode: 'one-shot',
+      } as SkillConfig & { mode: string },
     },
   },
 
   events: {
     'service:pattern-matched': (event) => {
-      console.log(`  \u2713 ${event.name} matched (${event.remaining} remaining)`);
+      console.log(`  \u2713 ${event.patternName} matched (${event.remaining} remaining)`);
     },
     'service:ready': (event) => {
       const ep = event.endpoints ?? {};
       console.log(
-        `\u2713 ${event.label} is ready` +
+        `\u2713 ${event.name} is ready` +
           (ep['vetra-studio'] ? ` \u2014 Vetra Studio at ${ep['vetra-studio']}` : ''),
       );
     },
     'service:failed': (event) => {
-      console.log(`\u2717 ${event.label} failed: ${event.error}`);
+      console.log(`\u2717 ${event.name} failed: ${event.error}`);
       if (event.id === 'reactor-project' && /exited before becoming ready/.test(event.error ?? '')) {
         console.log('  Hint: Is the working directory a Reactor package project? Try: reactor-project-start --workdir <project-name>');
       }
     },
     'service:restarting': (event) => {
-      console.log(`\u21BB ${event.label} restarting (attempt ${event.attempt}/${event.maxRetries})`);
+      console.log(`\u21BB ${event.name} restarting (attempt ${event.attempt}/${event.maxRetries})`);
     },
     'service:stopped': (event) => {
-      console.log(`\u25A0 ${event.label} stopped`);
+      console.log(`\u25A0 ${event.name} stopped`);
     },
   },
 

@@ -12,7 +12,8 @@ const reactorProjectParams = z.object({
 
 export const reactorProject = defineService<Config>({
   id: 'reactor-project',
-  label: 'Vetra Studio server for reactor project development',
+  name: 'Reactor Project',
+  description: 'Vetra Studio server for reactor project development',
   command: (params) => {
     const parts = ['ph', 'vetra'];
     if (params?.watch !== false) parts.push('--watch');
