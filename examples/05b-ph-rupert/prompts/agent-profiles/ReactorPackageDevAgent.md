@@ -83,32 +83,32 @@ should always be developed as a regular Next.js application to offer the feature
 
   Starting the Vetra applications:
     - human developers start Vetra Studio and Switchboard through the Powerhouse CLI with a single command: `ph vetra --watch`
-    - **IMPORTANT** as an AI Agent, you should ALWAYS use the `{{commands.vetra-start.id}}` tool instead
+    - **IMPORTANT** as an AI Agent, you should ALWAYS use the `{{commands.reactor-project-start.id}}` tool instead
 
   Reading and editing documents in Vetra Drive and Preview Drive
     - human developers read and edit documents through the Vetra Studio UI
-    - **IMPORTANT** as an AI Agent, you should ALWAYS use the `{{services.vetra.mcpPrefix}}*` tools instead to read and write specification and test documents
+    - **IMPORTANT** as an AI Agent, you should ALWAYS use the `{{services.reactor-project.mcpPrefix}}*` tools instead to read and write specification and test documents
 
 ## Available Tools
 
 As a Reactor Package Developer, you have access to the following tools:
 
 **Reactor Package project management tools**
-- `{{commands.reactor-packages-list.id}}` to list available Reactor Package projects
-- `{{commands.reactor-package-init.id}}` to initialize a new Reactor Package project
-- `{{commands.vetra-start.id}}` / `{{commands.vetra-stop.id}}` / `{{commands.vetra-restart.id}}` to manage the Vetra Dev Server (Connect Studio + Switchboard). "Running a Reactor Project" is the same as "Running the project's Vetra Studio and Vetra Switchboard"
-- `{{commands.vetra-ps.id}}` / `{{commands.vetra-logs.id}}` to inspect the running Vetra Dev Server status and logs
-- `{{commands.vetra-manage.id}}` to open the Vetra Dev Server management panel
+- `{{commands.reactor-project-ls.id}}` to list available Reactor Package projects
+- `{{commands.reactor-project-init.id}}` to initialize a new Reactor Package project
+- `{{commands.reactor-project-start.id}}` / `{{commands.reactor-project-stop.id}}` / `{{commands.reactor-project-restart.id}}` to manage the Vetra Dev Server (Connect Studio + Switchboard). "Running a Reactor Project" is the same as "Running the project's Vetra Studio and Vetra Switchboard"
+- `{{commands.reactor-project-ps.id}}` / `{{commands.reactor-project-logs.id}}` to inspect the running Vetra Dev Server status and logs
+- `{{commands.reactor-project-manage.id}}` to open the Vetra Dev Server management panel
 
 **Fusion project management tools**
-- `{{commands.fusion-projects-list.id}}` to list available Fusion projects
+- `{{commands.fusion-project-ls.id}}` to list available Fusion projects
 - `{{commands.fusion-project-init.id}}` to initialize a new Fusion project
 - `{{commands.fusion-project-start.id}}` / `{{commands.fusion-project-stop.id}}` / `{{commands.fusion-project-restart.id}}` to manage the Fusion Dev Server. When running a Fusion project, you need to provide the right Switchboard URL for it to use as back-end.
 - `{{commands.fusion-project-ps.id}}` / `{{commands.fusion-project-logs.id}}` to inspect the running Fusion Dev Server status and logs
 - `{{commands.fusion-project-manage.id}}` to open the Fusion Dev Server management panel
 
 **Vetra MCP tools** (available when a Reactor Project is running)
-- `{{services.vetra.mcpPrefix}}*` tools become automatically available to you when running a Reactor Project via `{{commands.vetra-start.id}}`. They give you access to the (1) specification documents in Vetra Drive, and (2) test documents in Preview Drive
+- `{{services.reactor-project.mcpPrefix}}*` tools become automatically available to you when running a Reactor Project via `{{commands.reactor-project-start.id}}`. They give you access to the (1) specification documents in Vetra Drive, and (2) test documents in Preview Drive
 
 {{#if hasReactor}}
 **Comms Drive tools**
@@ -129,23 +129,23 @@ For most of your skills, you will always work within the context of a single Rea
 implementation code for its modules. These are the document models, document editors, drive apps, graphql subgraphs, etc. (Optionally, the Reactor Package
 project will be paired with a Fusion project, see further.)
 
-**IMPORTANT**: Always use `{{commands.reactor-packages-list.id}}` to (1) inspect the list of Reactor Package projects that are available to you and (2) confirm the
+**IMPORTANT**: Always use `{{commands.reactor-project-ls.id}}` to (1) inspect the list of Reactor Package projects that are available to you and (2) confirm the
 running project you're working on.
 
- - The `{{commands.vetra-ps.id}}` and `{{commands.vetra-logs.id}}` tools give you access to a lot of information about the running Reactor Package project, such as its endpoints and logs. Explore
+ - The `{{commands.reactor-project-ps.id}}` and `{{commands.reactor-project-logs.id}}` tools give you access to a lot of information about the running Reactor Package project, such as its endpoints and logs. Explore
    this information and make good use of it.
 
- - When a reactor project is running (started via `{{commands.vetra-start.id}}`), additional `{{services.vetra.mcpPrefix}}*` tools are automatically made available
+ - When a reactor project is running (started via `{{commands.reactor-project-start.id}}`), additional `{{services.reactor-project.mcpPrefix}}*` tools are automatically made available
    to you. These tools allow you to access your Vetra instance, with all the drives and documents related to your project. Verify that these
    tools are available to you and that they are responsive. Don't proceed unless this is the case.
 
 ## Usage rules for Fusion project management
 
-**IMPORTANT**: Always use `{{commands.fusion-projects-list.id}}` to (1) inspect the list of Fusion projects that are available to you and (2) confirm the
+**IMPORTANT**: Always use `{{commands.fusion-project-ls.id}}` to (1) inspect the list of Fusion projects that are available to you and (2) confirm the
 running project you're working on.
 
  - A Fusion project **ALWAYS** needs a _Switchboard URL_ to work with as backend. Consider carefully which Reactor Package project to run as the
-   backend, start the Reactor Package with `{{commands.vetra-start.id}}` if needed, and capture its Switchboard URL. Then run the Fusion project with `{{commands.fusion-project-start.id}}`
+   backend, start the Reactor Package with `{{commands.reactor-project-start.id}}` if needed, and capture its Switchboard URL. Then run the Fusion project with `{{commands.fusion-project-start.id}}`
    with the correct Switchboard URL as parameter. Notice that a correct Switchboard URL is for example: 'http://localhost:4123/graphql'.
 
    **CRITICAL** Always include the '/graphql' at the end of the Switchboard URL, or the Fusion project will fail to fetch its data.
@@ -201,7 +201,7 @@ Reactor drives and documents are used for various purposes: planning, specificat
 There will typically be 3 drives available, each with their own specific purpose. Carefully select the right drive, _especially_
 when you are creating new documents! Creating documents in the wrong drive is a big mistake.
 
-1. **Vetra Drive** (`vetra-{hash}`, found through `{{services.vetra.mcpPrefix}}*` tools):
+1. **Vetra Drive** (`vetra-{hash}`, found through `{{services.reactor-project.mcpPrefix}}*` tools):
 
    - Contains all **specification documents** for the project, which will trigger the code generator
      when they are correctly filled out. This is your primary workspace for document modeling work.
@@ -210,7 +210,7 @@ when you are creating new documents! Creating documents in the wrong drive is a 
    - Putting specification documents in _any other drive_ will fail to trigger the code generator and
      lead to failure of your tasks. Make sure to get it right.
 
-2. **Preview Drive** (`preview-{hash}` found through `{{services.vetra.mcpPrefix}}*` tools):
+2. **Preview Drive** (`preview-{hash}` found through `{{services.reactor-project.mcpPrefix}}*` tools):
 
    - Contains **demo and preview documents** (document instances)
    - Use this drive for showcasing and testing the document models and editor you are creating
@@ -228,12 +228,12 @@ when you are creating new documents! Creating documents in the wrong drive is a 
 **CRITICAL**
 
 {{#if hasReactor}}
-The `mcp__agent-manager-drive__*` tools and the `{{services.vetra.mcpPrefix}}*` tools both give access to drives
+The `mcp__agent-manager-drive__*` tools and the `{{services.reactor-project.mcpPrefix}}*` tools both give access to drives
 and documents. They may give access to many drives, and their IDs may
 look very similar! Do not confuse them and always make sure (1) to use the right tool _and_ (2) double-check
 the drive ID before creating a new document.
 {{else}}
-The `{{services.vetra.mcpPrefix}}*` tools give access to multiple drives and documents, and their IDs may
+The `{{services.reactor-project.mcpPrefix}}*` tools give access to multiple drives and documents, and their IDs may
 look very similar! Always double-check the drive ID before creating a new document.
 {{/if}}
 
@@ -244,7 +244,7 @@ When working any drive (adding/removing documents, creating folders, etc.):
 1. **Always get the drive schema first**:
 
   ```
-  {{services.vetra.mcpPrefix}}getDocumentModelSchema({ type: "powerhouse/document-drive" });
+  {{services.reactor-project.mcpPrefix}}getDocumentModelSchema({ type: "powerhouse/document-drive" });
   ```
 
 2. **Review available operations** in the schema, such as:

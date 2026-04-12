@@ -39,27 +39,32 @@ function collectPids(servicesDir: string): number[] {
   return pids;
 }
 
-// ── Vetra service definition using test fixture ─────────────────
+// ── Reactor Projects service definition using test fixture ──────
 
-const vetraDef: ServiceDefinition = defineService({
-  id: 'vetra',
-  label: 'Vetra Dev Server',
+const reactorProjectsDef: ServiceDefinition = defineService({
+  id: 'reactor-project',
+  label: 'Vetra Studio server for reactor project development',
   command: `node ${FIXTURE}`,
   env: (config: any) => ({
     PORT: String(config.switchboardPort ?? 4001),
-    TEST_SERVICE_MODE: 'vetra',
+    TEST_SERVICE_MODE: 'reactor-project',
   }),
   readiness: {
     patterns: [
       {
-        name: 'connect-port',
-        pattern: /Local:\s*http:\/\/localhost:(\d+)/,
-        captures: { 'connect-studio': 1 },
+        name: 'vetra-studio',
+        pattern: /Local:\s*(http:\/\/localhost:\d+)/,
+        captures: { 'vetra-studio': { group: 1, type: 'website' as const } },
       },
       {
-        name: 'drive-url',
+        name: 'vetra-drive-url',
         pattern: /Drive URL:\s*(https?:\/\/[^\s]+)/,
-        captures: { 'drive-url': 1 },
+        captures: { 'vetra-drive-url': { group: 1, type: 'other' as const } },
+      },
+      {
+        name: 'vetra-switchboard',
+        pattern: /Switchboard:\s*(https?:\/\/[^\s]+)/,
+        captures: { 'vetra-switchboard': { group: 1, type: 'api-graphql' as const } },
       },
       {
         name: 'mcp-server',
@@ -155,7 +160,7 @@ describe('CLI integration', () => {
       switchboardPort: z.number().default(4001),
     }),
     commands: [],
-    services: [vetraDef],
+    services: [reactorProjectsDef],
     interactive: {
       welcome: 'Vetra Mastra — demo mode',
     },
@@ -215,7 +220,7 @@ describe('CLI integration', () => {
       version: '1.0.0',
       description: 'test',
       commands: [checkCmd],
-      services: [vetraDef],
+      services: [reactorProjectsDef],
     });
 
     await testCli.run(['node', 'vetra-mastra', 'check'], {
@@ -237,23 +242,24 @@ describe('CLI integration', () => {
     eventBus.on('service:stopped', () => events.push('stopped'));
     eventBus.on('service:pattern-matched', (e) => events.push(`matched:${(e as any).name}`));
 
-    const mgr = createServiceManager([vetraDef], {
+    const mgr = createServiceManager([reactorProjectsDef], {
       config: { switchboardPort: 4001 },
       servicesDir: svcDir,
       eventBus,
     });
 
-    await mgr.start('vetra');
+    await mgr.start('reactor-project');
 
     expect(events).toContain('ready');
-    expect(events).toContain('matched:connect-port');
-    expect(events).toContain('matched:drive-url');
+    expect(events).toContain('matched:vetra-studio');
+    expect(events).toContain('matched:vetra-drive-url');
+    expect(events).toContain('matched:vetra-switchboard');
     expect(events).toContain('matched:mcp-server');
 
     // Collect PIDs for cleanup
     trackedPids.push(...collectPids(svcDir));
 
-    await mgr.stop('vetra');
+    await mgr.stop('reactor-project');
 
     expect(events).toContain('stopped');
   });

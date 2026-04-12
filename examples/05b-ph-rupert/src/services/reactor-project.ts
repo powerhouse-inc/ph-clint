@@ -4,15 +4,15 @@ import { z } from 'zod';
 import { defineService, checkWorkdir, checkCommand, checkPort } from 'ph-clint';
 import type { Config } from '../config.js';
 
-const vetraParams = z.object({
+const reactorProjectParams = z.object({
   watch: z.boolean().default(true).describe('Enable file watching'),
   connectPort: z.coerce.number().optional().describe('Connect Studio port (overrides config)'),
   switchboardPort: z.coerce.number().optional().describe('Vetra Switchboard port (overrides config)'),
 });
 
-export const vetra = defineService<Config>({
-  id: 'vetra',
-  label: 'Vetra Dev Server',
+export const reactorProject = defineService<Config>({
+  id: 'reactor-project',
+  label: 'Vetra Studio server for reactor project development',
   command: (params) => {
     const parts = ['ph', 'vetra'];
     if (params?.watch !== false) parts.push('--watch');
@@ -20,7 +20,7 @@ export const vetra = defineService<Config>({
     if (params?.switchboardPort) parts.push('--switchboard-port', String(params.switchboardPort));
     return parts.join(' ');
   },
-  paramsSchema: vetraParams,
+  paramsSchema: reactorProjectParams,
   env: (config, params) => ({
     // PORT workaround: https://github.com/powerhouse-inc/powerhouse/commit/9830c16b
     PORT: String(params?.switchboardPort ?? config.switchboardPort),
@@ -31,14 +31,19 @@ export const vetra = defineService<Config>({
   readiness: {
     patterns: [
       {
-        name: 'connect-port',
-        pattern: /Local:\s*http:\/\/localhost:(\d+)/,
-        captures: { 'connect-studio': 1 },
+        name: 'vetra-studio',
+        pattern: /Local:\s*(http:\/\/localhost:\d+)/,
+        captures: { 'vetra-studio': { group: 1, type: 'website' } },
       },
       {
-        name: 'drive-url',
+        name: 'vetra-drive-url',
         pattern: /Drive URL:\s*(https?:\/\/[^\s]+)/,
-        captures: { 'drive-url': 1 },
+        captures: { 'vetra-drive-url': { group: 1, type: 'other' } },
+      },
+      {
+        name: 'vetra-switchboard',
+        pattern: /Switchboard:\s*(https?:\/\/[^\s]+)/,
+        captures: { 'vetra-switchboard': { group: 1, type: 'api-graphql' } },
       },
       {
         name: 'mcp-server',
@@ -53,7 +58,7 @@ export const vetra = defineService<Config>({
       (cwd) => fs.existsSync(path.join(cwd, 'powerhouse.config.ts'))
              || fs.existsSync(path.join(cwd, 'powerhouse.config.json')),
       'Not a Reactor Package project',
-      'Run vetra-start --workdir <project>, or create one with /reactor-package-init',
+      'Run reactor-project-start --workdir <project>, or create one with /reactor-project-init',
     ),
     checkCommand('ph', {
       hint: 'Install the Powerhouse CLI: npm install -g ph-cli',

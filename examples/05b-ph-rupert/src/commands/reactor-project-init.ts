@@ -46,8 +46,8 @@ interface Config {
   phVersion?: string;
 }
 
-export const reactorPackageInit = defineCommand<typeof inputSchema, { text: string }, Config>({
-  id: 'reactor-package-init',
+export const reactorProjectInit = defineCommand<typeof inputSchema, { text: string }, Config>({
+  id: 'reactor-project-init',
   description: 'Initialize a new Reactor package project',
   inputSchema,
   execute: async ({ name, version }, { workdir, config, stdout }) => {

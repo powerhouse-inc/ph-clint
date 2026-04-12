@@ -1,12 +1,10 @@
 import path from 'node:path';
 import { defineCli } from 'ph-clint';
 import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, secretsSchema } from './config.js';
-import { reactorPackageInit } from './commands/reactor-package-init.js';
-import { reactorPackagesList } from './commands/reactor-packages-list.js';
+import { reactorProjectInit } from './commands/reactor-project-init.js';
 import { fusionProjectInit } from './commands/fusion-project-init.js';
-import { fusionProjectsList } from './commands/fusion-projects-list.js';
 import { createAgent } from './agents/agent-rupert.js';
-import { vetra } from './services/vetra.js';
+import { reactorProject } from './services/reactor-project.js';
 import { fusionProject } from './services/fusion-project.js';
 
 // ── CLI ──────────────────────────────────────────────────────────
@@ -14,11 +12,11 @@ import { fusionProject } from './services/fusion-project.js';
 export const cli = defineCli({
   name: CLI_NAME,
   version: CLI_VERSION,
-  description: `Vetra CLI v${CLI_VERSION} — Local-first Application Development with Agent Rupert`,
+  description: `Powerhouse Rupert CLI v${CLI_VERSION}\nFull-stack Development of Local-first Apps and Platforms`,
   configSchema,
   secretsSchema,
-  commands: [reactorPackageInit, reactorPackagesList, fusionProjectInit, fusionProjectsList],
-  services: [vetra, fusionProject],
+  commands: [reactorProjectInit, fusionProjectInit],
+  services: [reactorProject, fusionProject],
   prompts: {
     sources: [
       path.join(PROJECT_ROOT, 'gen', 'skills'),
@@ -32,7 +30,7 @@ export const cli = defineCli({
           'document-modeling', 'document-editor-creation',
           'fusion-development', 'fusion-project-management',
           'playwright-cli',
-          'reactor-package-project-management',
+          'reactor-project-management',
         ],
       },
       'powerhouse-architect-agent': {
@@ -47,7 +45,7 @@ export const cli = defineCli({
       'fusion-development': 'Build local-first platforms based on Next.js with document drives as the backend',
       'fusion-project-management': 'Initialize, configure, and run Fusion project instances',
       'handle-stakeholder-message': 'Triage stakeholder messages, update WBS documents, and draft replies',
-      'reactor-package-project-management': 'Initialize and run Reactor Package projects with Vetra services',
+      'reactor-project-management': 'Initialize and run Reactor Package projects with Vetra services',
     },
   },
 
@@ -59,13 +57,13 @@ export const cli = defineCli({
       const ep = event.endpoints ?? {};
       console.log(
         `\u2713 ${event.label} is ready` +
-          (ep['connect-studio'] ? ` \u2014 Connect Studio on port ${ep['connect-studio']}` : ''),
+          (ep['vetra-studio'] ? ` \u2014 Vetra Studio at ${ep['vetra-studio']}` : ''),
       );
     },
     'service:failed': (event) => {
       console.log(`\u2717 ${event.label} failed: ${event.error}`);
-      if (event.id === 'vetra' && /exited before becoming ready/.test(event.error ?? '')) {
-        console.log('  Hint: Is the working directory a Reactor package project? Try: vetra-start --workdir <project-name>');
+      if (event.id === 'reactor-project' && /exited before becoming ready/.test(event.error ?? '')) {
+        console.log('  Hint: Is the working directory a Reactor package project? Try: reactor-project-start --workdir <project-name>');
       }
     },
     'service:restarting': (event) => {
@@ -88,11 +86,11 @@ export const cli = defineCli({
       return [
         '',
         `  ${G}\u2556HHHHHHH  \u2565HHHHHH\u2556`,
-        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592h'\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Vetra CLI v${CLI_VERSION}`,
-        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592  \u2559\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Agent Rupert`,
+        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592h'\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Powerhouse Rupert CLI v${CLI_VERSION}`,
+        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592  \u2559\u2592\u2592\u2592\u2592\u2592\u2592\u2592${W}    Full-stack Development of Local-first Apps and Platforms`,
         `  ${G}\u2560\u2592\u2592\u2592\u2592\u255C"     \u2559\u2592\u2592\u2592\u2592\u2592${R}`,
         `  ${G},\u2556\u2556,         ,,\u2556\u2556,${R}    Type a message to talk to the agent.`,
-        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2565    \u2565\u2592\u2592\u2592\u2592\u2592\u2592${R}    ${D}Try:${R} "Create a document model for invoices"`,
+        `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2565    \u2565\u2592\u2592\u2592\u2592\u2592\u2592${R}    ${D}Try:${R} "Create a Reactor package with invoice document model and editor`,
         `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592  \u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${R}`,
         `  ${G}\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592hj\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592${R}    Type ${D}/${R} for commands. ${D}/cli-docs${R} for documentation.`,
         '',

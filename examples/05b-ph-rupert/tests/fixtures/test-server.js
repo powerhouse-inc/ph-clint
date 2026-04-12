@@ -1,39 +1,41 @@
 #!/usr/bin/env node
 /**
- * Test fixture that simulates Powerhouse Vetra startup output.
+ * Test fixture that simulates Reactor Projects (Vetra) startup output.
  *
- * Prints the three readiness patterns that Vetra produces:
- *   1. "Local: http://localhost:PORT"       (Connect Studio)
- *   2. "Drive URL: http://..."               (Drive URL)
- *   3. "MCP server available at http://..."  (MCP server)
+ * Prints the four readiness patterns that Vetra produces:
+ *   1. "Local: http://localhost:PORT"           (Vetra Studio)
+ *   2. "Drive URL: http://..."                  (Drive URL)
+ *   3. "Switchboard: http://..."                (Switchboard GraphQL)
+ *   4. "MCP server available at http://..."     (MCP server)
  *
  * Modes (TEST_SERVICE_MODE):
- *   vetra          — prints all three patterns with staggered timing (default)
- *   partial        — prints only connect-port and drive-url (never MCP)
- *   single         — prints only "Server listening on http://localhost:PORT"
+ *   reactor-project — prints all four patterns with staggered timing (default)
+ *   partial          — prints only vetra-studio and vetra-drive-url (never Switchboard/MCP)
+ *   single           — prints only "Server listening on http://localhost:PORT"
  *
  * Env vars:
  *   PORT                — port number (default: 3000)
- *   TEST_SERVICE_MODE   — mode (default: vetra)
+ *   TEST_SERVICE_MODE   — mode (default: reactor-project)
  */
 
 const port = process.env.PORT || '3000';
-const mode = process.env.TEST_SERVICE_MODE || 'vetra';
+const mode = process.env.TEST_SERVICE_MODE || 'reactor-project';
 
 switch (mode) {
-  case 'vetra':
-    console.log('Starting Vetra development server...');
+  case 'reactor-project':
+    console.log('Starting Reactor Projects dev server...');
     setTimeout(() => console.log(`  Local:   http://localhost:${port}`), 50);
     setTimeout(() => console.log(`  Drive URL: http://localhost:${port}/drives/main`), 100);
-    setTimeout(() => console.log(`  MCP server available at http://localhost:${port}/mcp`), 150);
+    setTimeout(() => console.log(`  Switchboard: http://localhost:${port}/graphql`), 150);
+    setTimeout(() => console.log(`  MCP server available at http://localhost:${port}/mcp`), 200);
     setInterval(() => {}, 60_000);
     break;
 
   case 'partial':
-    console.log('Starting Vetra development server...');
+    console.log('Starting Reactor Projects dev server...');
     setTimeout(() => console.log(`  Local:   http://localhost:${port}`), 50);
     setTimeout(() => console.log(`  Drive URL: http://localhost:${port}/drives/main`), 100);
-    // MCP pattern never printed
+    // Switchboard and MCP patterns never printed
     setInterval(() => {}, 60_000);
     break;
 

@@ -40,4 +40,7 @@ export const fusionProject = defineService<Config>({
     timeout: 60_000,
   },
   shutdown: { signal: 'SIGTERM', timeout: 10_000 },
+  projectScanner: {
+    isProjectFolder: (p) => fs.existsSync(path.join(p, 'next.config.ts')),
+  },
 });

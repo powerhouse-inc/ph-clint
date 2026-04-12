@@ -1,4 +1,4 @@
-# 05b — Vetra Mastra
+# 05b — Powerhouse Rupert
 
 Reactor development CLI with Mastra AI agent and pre-packaged skills.
 
@@ -6,7 +6,7 @@ This example demonstrates:
 
 - **Mastra agent integration** with ph-clint — shared agent definition used by both the CLI and Mastra Dev Studio
 - **Pre-packaged skills** — Handlebars-compiled SKILL.md files copied into the store at `init`
-- **Service management** — Vetra dev server with multi-pattern readiness detection
+- **Service management** — Reactor Projects service (Vetra Studio + Switchboard) with multi-pattern readiness detection
 - **MCP client** — dynamic tool discovery via Model Context Protocol
 - **Demo mode** — fallback agent when no API key is configured
 
@@ -22,7 +22,7 @@ Copy `.env.example` to `.env` and set `VETRA_MASTRA_API_KEY` for real LLM respon
 ## Usage
 
 ```bash
-# Initialize workspace (creates .ph/vetra-mastra/, installs skills)
+# Initialize workspace (creates .ph/ph-rupert/, installs skills)
 pnpm dev init
 
 # Start interactive REPL
@@ -32,6 +32,27 @@ pnpm dev -i
 pnpm mastra:dev
 ```
 
+## Commands
+
+| Command | Source | Description |
+|---------|--------|-------------|
+| `reactor-project-init` | manual | Initialize a new Reactor package project via `ph init` |
+| `reactor-project-ls` | auto (service scanner) | List Reactor package projects in the working directory |
+| `reactor-project-start` | auto (service) | Start the Vetra Studio server for a Reactor project |
+| `reactor-project-stop` | auto (service) | Stop the Reactor Projects service |
+| `reactor-project-restart` | auto (service) | Restart the Reactor Projects service |
+| `reactor-project-ps` | auto (service) | Show Reactor Projects service status and endpoints |
+| `reactor-project-logs` | auto (service) | Tail Reactor Projects service logs |
+| `reactor-project-manage` | auto (service) | Open interactive management panel (REPL only) |
+| `fusion-project-init` | manual | Initialize a new Fusion project via git clone |
+| `fusion-project-ls` | auto (service scanner) | List Fusion projects in the working directory |
+| `fusion-project-start` | auto (service) | Start the Fusion Dev Server |
+| `fusion-project-stop` | auto (service) | Stop the Fusion Dev Server |
+| `fusion-project-restart` | auto (service) | Restart the Fusion Dev Server |
+| `fusion-project-ps` | auto (service) | Show Fusion Dev Server status |
+| `fusion-project-logs` | auto (service) | Tail Fusion Dev Server logs |
+| `fusion-project-manage` | auto (service) | Open interactive management panel (REPL only) |
+
 ## Project structure
 
 ```
@@ -40,7 +61,11 @@ src/
   cli.ts                   CLI definition (commands, services, events, skillSources)
   config.ts                Zod config schema (6 fields, env var mapping)
   commands/
-    init-project.ts        Initialize a Reactor project via `ph init`
+    reactor-package-init.ts  Initialize a Reactor project via `ph init`
+    fusion-project-init.ts   Initialize a Fusion project via git clone
+  services/
+    vetra.ts               Reactor Projects service (Vetra Studio + Switchboard)
+    fusion-project.ts      Fusion Dev Server service
   agents/
     agent-rupert.ts        Full Mastra agent with workspace, memory, skills
     demo-agent.ts          Fallback agent for demo mode (no API key)
@@ -50,18 +75,17 @@ src/
   mastra/
     index.ts               Mastra Dev Studio entry point (independent lifecycle)
     generated/             Auto-generated agent instructions (from build:skills)
-skills-src/                Skill source templates (Handlebars + markdown scenarios)
-skills/                    Built SKILL.md files (output of build:skills)
+prompts/                   Skill source templates (Handlebars + markdown scenarios)
 scripts/
   build-skills.ts          Compiles agent profiles + skill scenarios
 tests/
   vetra-mastra.test.ts     Unit + integration tests
-  fixtures/test-server.js  Mock Vetra server for service tests
+  fixtures/test-server.js  Mock Reactor Projects server for service tests
 ```
 
 ## Skills
 
-Seven pre-packaged skills are compiled from `skills-src/` during `pnpm build:skills`:
+Six pre-packaged skills are compiled from `prompts/skills-tpl/` during `pnpm build:skills`:
 
 | Skill | Purpose |
 |-------|---------|
@@ -70,9 +94,9 @@ Seven pre-packaged skills are compiled from `skills-src/` during `pnpm build:ski
 | `fusion-development` | Implement Fusion UI pages |
 | `fusion-project-management` | Initialize and manage Fusion projects |
 | `handle-stakeholder-message` | Triage stakeholder messages and update WBS docs |
-| `reactor-package-project-management` | Initialize and manage Reactor packages |
+| `reactor-project-management` | Initialize and manage Reactor packages |
 
-Skills are installed into `.ph/vetra-mastra/.mastra/skills/` by the built-in `init` command (auto-injected by ph-clint when `skillSources` is set).
+Skills are installed into `.ph/ph-rupert/.mastra/skills/` by the built-in `init` command (auto-injected by ph-clint when `skillSources` is set).
 
 ## Testing
 
