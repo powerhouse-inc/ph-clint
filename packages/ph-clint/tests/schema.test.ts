@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
-import { getSchemaFields } from '../src/core/schema.js';
+import { getSchemaFields, slugToTitle } from '../src/core/schema.js';
 
 describe('getSchemaFields', () => {
   it('extracts fields from a ZodObject', () => {
@@ -75,5 +75,19 @@ describe('getSchemaFields', () => {
     expect(field!.baseType).toBe('boolean');
     expect(field!.hasDefault).toBe(true);
     expect(field!.defaultValue).toBe(true);
+  });
+});
+
+describe('slugToTitle', () => {
+  it('converts kebab-case to Title Case', () => {
+    expect(slugToTitle('document-modeling')).toBe('Document Modeling');
+  });
+
+  it('handles single word', () => {
+    expect(slugToTitle('hello')).toBe('Hello');
+  });
+
+  it('handles multi-word slug', () => {
+    expect(slugToTitle('fusion-project-management')).toBe('Fusion Project Management');
   });
 });

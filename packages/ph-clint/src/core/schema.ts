@@ -56,3 +56,14 @@ function resolveBaseType(schema: z.ZodType): string {
   }
   return current.type;
 }
+
+/**
+ * Convert a kebab-case slug to a Title Case string.
+ * E.g. 'document-modeling' → 'Document Modeling'
+ */
+export function slugToTitle(slug: string): string {
+  return slug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
