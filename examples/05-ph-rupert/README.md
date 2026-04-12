@@ -1,4 +1,4 @@
-# 05b — Powerhouse Rupert
+# 05 — Powerhouse Rupert
 
 Reactor development CLI with Mastra AI agent and pre-packaged skills.
 
