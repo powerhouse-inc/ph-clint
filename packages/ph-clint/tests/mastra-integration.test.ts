@@ -161,7 +161,7 @@ describe('getTools with MCP discovery', () => {
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
-      label: 'Test',
+      name: 'Test',
       status: 'ready',
       endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
       endpointTypes: { 'mcp-server': 'api-mcp' },
@@ -184,7 +184,7 @@ describe('getTools with MCP discovery', () => {
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
-      label: 'Test',
+      name: 'Test',
       status: 'ready',
       endpoints: { 'web': 'http://localhost:3000' },
       endpointTypes: { 'web': 'website' },
@@ -200,7 +200,7 @@ describe('getTools with MCP discovery', () => {
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
-      label: 'Test',
+      name: 'Test',
       status: 'ready',
       endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
       endpointTypes: { 'mcp-server': 'api-mcp' },
@@ -215,7 +215,7 @@ describe('getTools with MCP discovery', () => {
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
-      label: 'Test',
+      name: 'Test',
       status: 'ready',
       endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
       endpointTypes: { 'mcp-server': 'api-mcp' },
@@ -231,7 +231,7 @@ describe('getTools with MCP discovery', () => {
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
-      label: 'Test',
+      name: 'Test',
       status: 'starting',
       endpoints: { 'mcp-server': 'http://localhost:4567/mcp' },
       endpointTypes: { 'mcp-server': 'api-mcp' },

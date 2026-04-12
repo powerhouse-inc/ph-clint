@@ -3,21 +3,21 @@ export { formatZodError } from './core/errors.js';
 export { createLogger } from './core/logger.js';
 export { defineCli } from './core/cli.js';
 export { defineTrigger } from './core/trigger.js';
-export { getSchemaFields } from './core/schema.js';
+export { getSchemaFields, slugToTitle } from './core/schema.js';
 export { createWorkdirStore, createMemoryWorkdirStore } from './core/store.js';
 export { toUpperSnake, configKeyToEnvVar, resolveConfig, localConfigPath, userConfigPath, userStoreFolder, getMissingRequiredFields } from './core/config.js';
 export { createConfigCommand, generateConfigCommandHelp } from './core/config-command.js';
 export { resolveWorkdir } from './core/workdir.js';
 export { createEventBus } from './core/events.js';
 export { createProcessManager } from './core/processes.js';
-export { defineService, createServiceManager } from './core/services.js';
+export { defineService, createServiceManager, resolveServiceName } from './core/services.js';
 export { createServiceCommands, formatStatus } from './core/service-command.js';
 export { scanProjects, PROJECT_INDICATORS } from './core/project-scanner.js';
 export { checkWorkdir, checkCommand, checkPort, isPortFree } from './core/preflight.js';
 export { createHelpCommand } from './core/help-command.js';
 export { installSkills } from './core/init.js';
 export { readSkillsFromSources } from './core/skills.js';
-export { createSkillCommands, isSkillInvocation } from './core/skill-commands.js';
+export { createSkillCommands, isSkillInvocation, DEFAULT_SKILL_INSTRUCTION } from './core/skill-commands.js';
 export type { SkillInvocation } from './core/skill-commands.js';
 export { registerDefaultHelpers, extractTemplateVars, renderSkillTemplate } from './core/templates.js';
 export type { RenderOptions, RenderResult } from './core/templates.js';
@@ -90,4 +90,5 @@ export type {
   CliMetadata,
   PromptsConfig,
   AgentProfileConfig,
+  SkillConfig,
 } from './core/types.js';

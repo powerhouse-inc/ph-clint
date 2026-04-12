@@ -105,6 +105,28 @@ describe('readSkillsFromSources', () => {
     expect(skills).toMatchObject([{ name: 'plain', description: 'Unquoted description' }]);
   });
 
+  it('detects .cli-docs.md alongside SKILL.md', () => {
+    const source = path.join(tmpDir, 'skills');
+    createSkill(source, 'documented-skill', 'Has CLI docs');
+    fs.writeFileSync(
+      path.join(source, 'documented-skill', '.cli-docs.md'),
+      '# Usage\n\nRun this skill to do things.\n',
+    );
+
+    const skills = readSkillsFromSources([source]);
+    expect(skills).toHaveLength(1);
+    expect(skills[0]!.cliDocsPath).toBe(path.join(source, 'documented-skill', '.cli-docs.md'));
+  });
+
+  it('omits cliDocsPath when .cli-docs.md is absent', () => {
+    const source = path.join(tmpDir, 'skills');
+    createSkill(source, 'no-docs-skill', 'No CLI docs');
+
+    const skills = readSkillsFromSources([source]);
+    expect(skills).toHaveLength(1);
+    expect(skills[0]!.cliDocsPath).toBeUndefined();
+  });
+
   it('handles name without description', () => {
     const source = path.join(tmpDir, 'skills');
     const skillDir = path.join(source, 'name-only');

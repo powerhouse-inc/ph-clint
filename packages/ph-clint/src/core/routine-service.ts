@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type {
   EventBus,
   Routine,
@@ -9,6 +8,7 @@ import type {
   ServiceStartOptions,
 } from './types.js';
 import { scanProjects as scanProjectsImpl } from './project-scanner.js';
+import { slugToTitle } from './schema.js';
 
 const DEFAULT_LOG_BUFFER_SIZE = 500;
 
@@ -22,7 +22,7 @@ export function createRoutineServiceAdapter(
   eventBus?: EventBus,
 ): ServiceManager {
   const id = config.id!;
-  const label = config.label!;
+  const name = config.name ?? slugToTitle(id);
   const logBuffer: string[] = [];
   let instanceWorkdir: string | undefined;
 
@@ -53,7 +53,7 @@ export function createRoutineServiceAdapter(
     return {
       serviceId: id,
       instanceId: id,
-      label,
+      name,
       status: mapStatus(),
       ...(instanceWorkdir && { workdir: instanceWorkdir }),
     };
@@ -61,7 +61,7 @@ export function createRoutineServiceAdapter(
 
   const syntheticDef: ServiceDefinition = {
     id,
-    label,
+    name,
     command: '', // in-process, no shell command
     maxInstances: 1,
     ...(config.projectScanner && { projectScanner: config.projectScanner }),
@@ -76,7 +76,7 @@ export function createRoutineServiceAdapter(
       instanceWorkdir = opts.workdir;
     }
     routine.start();
-    eventBus?.emit('service:ready', { id, instanceId: id, label });
+    eventBus?.emit('service:ready', { id, instanceId: id, name });
     return id;
   }
 
@@ -86,7 +86,7 @@ export function createRoutineServiceAdapter(
       throw new Error(`Service ${id} is not running`);
     }
     await routine.stop();
-    eventBus?.emit('service:stopped', { id, instanceId: id, label });
+    eventBus?.emit('service:stopped', { id, instanceId: id, name });
   }
 
   function list(serviceId?: string): ServiceInstanceStatus[] {

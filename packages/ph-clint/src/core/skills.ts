@@ -9,6 +9,8 @@ export interface SkillInfo {
   description: string;
   /** Absolute path to the SKILL.md file. */
   skillMdPath: string;
+  /** Absolute path to the .cli-docs.md file, if present. */
+  cliDocsPath?: string;
 }
 
 /**
@@ -63,7 +65,9 @@ export function readSkillsFromSources(skillSources: string[]): SkillInfo[] {
         const info = parseFrontmatter(content);
         if (info) {
           seen.add(entry.name);
-          skills.push({ ...info, skillMdPath });
+          const cliDocsPath = path.join(source, entry.name, '.cli-docs.md');
+          const hasDocs = fs.existsSync(cliDocsPath);
+          skills.push({ ...info, skillMdPath, ...(hasDocs && { cliDocsPath }) });
         }
       } catch {
         // Skip unreadable files

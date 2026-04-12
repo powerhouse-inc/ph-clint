@@ -17,17 +17,20 @@ import type {
 } from './types.js';
 import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
-import { getSchemaFields, type FieldInfo } from './schema.js';
+import { getSchemaFields, slugToTitle, type FieldInfo } from './schema.js';
 import { createMemoryWorkdirStore, createWorkdirStore } from './store.js';
 import { getConfigEnvVars, resolveConfig, userStoreFolder } from './config.js';
 import { resolveWorkdir } from './workdir.js';
 import { createConfigCommand, generateConfigCommandHelp } from './config-command.js';
 import { createServiceCommands } from './service-command.js';
+import { resolveServiceName } from './services.js';
 import { createHelpCommand } from './help-command.js';
 import { installSkills } from './init.js';
 import { readSkillsFromSources } from './skills.js';
 import type { SkillInfo } from './skills.js';
-import { createSkillCommands, isSkillInvocation } from './skill-commands.js';
+import { createSkillCommands, isSkillInvocation, DEFAULT_SKILL_INSTRUCTION } from './skill-commands.js';
+import type { SkillInvocation } from './skill-commands.js';
+import { renderSkillTemplate } from './templates.js';
 import { createRoutine } from './routine.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
@@ -130,14 +133,15 @@ export function defineCli<
   const hasServices = options.services && options.services.length > 0;
 
   // Auto-inject per-service commands when services are defined
-  // serviceGroups maps command ID → service label for help grouping
-  const serviceGroups = new Map<string, string>();
+  // serviceGroups maps command ID → { name, description } for help grouping
+  const serviceGroups = new Map<string, { name: string; description?: string }>();
   if (hasServices) {
     for (const svcDef of options.services!) {
       const cmds = createServiceCommands(svcDef);
+      const svcGroup = { name: resolveServiceName(svcDef), description: svcDef.description };
       for (const cmd of cmds) {
         if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
-        serviceGroups.set(cmd.id, svcDef.label);
+        serviceGroups.set(cmd.id, svcGroup);
       }
     }
   }
@@ -155,7 +159,7 @@ export function defineCli<
   let resolvedSkills: SkillInfo[] = [];
   if (options.prompts && options.prompts.sources.length > 0) {
     resolvedSkills = readSkillsFromSources(options.prompts.sources);
-    const skillCmds = createSkillCommands(resolvedSkills);
+    const skillCmds = createSkillCommands(resolvedSkills, options.prompts.skills);
     for (const cmd of skillCmds) {
       if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
     }
@@ -179,21 +183,23 @@ export function defineCli<
       processManager,
     });
 
-    // Auto-inject service commands for the routine when id/label are configured
-    if (options.routine?.id && options.routine?.label) {
+    // Auto-inject service commands for the routine when id is configured
+    if (options.routine?.id) {
       const routineConfig = options.routine;
       // Build a synthetic ServiceDefinition for createServiceCommands
+      const routineName = routineConfig.name ?? slugToTitle(routineConfig.id!);
       const syntheticDef: import('./types.js').ServiceDefinition = {
         id: routineConfig.id!,
-        label: routineConfig.label!,
+        name: routineName,
         command: '',
         maxInstances: 1,
         ...(routineConfig.projectScanner && { projectScanner: routineConfig.projectScanner }),
       };
       const cmds = createServiceCommands(syntheticDef);
+      const svcGroup = { name: routineName };
       for (const cmd of cmds) {
         if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
-        serviceGroups.set(cmd.id, routineConfig.label!);
+        serviceGroups.set(cmd.id, svcGroup);
       }
 
       // Create the adapter (used later when wiring up context.services)
@@ -319,16 +325,16 @@ export function defineCli<
     const skillCmds = allCmds.filter(c => skillIds.has(c.id));
 
     // Collect service groups preserving definition order
-    const svcLabelOrder: string[] = [];
-    const svcCmdsByLabel = new Map<string, Command[]>();
+    const svcNameOrder: string[] = [];
+    const svcCmdsByName = new Map<string, { group: { name: string; description?: string }; cmds: Command[] }>();
     for (const cmd of allCmds) {
-      const label = serviceGroups.get(cmd.id);
-      if (!label) continue;
-      if (!svcCmdsByLabel.has(label)) {
-        svcLabelOrder.push(label);
-        svcCmdsByLabel.set(label, []);
+      const group = serviceGroups.get(cmd.id);
+      if (!group) continue;
+      if (!svcCmdsByName.has(group.name)) {
+        svcNameOrder.push(group.name);
+        svcCmdsByName.set(group.name, { group, cmds: [] });
       }
-      svcCmdsByLabel.get(label)!.push(cmd);
+      svcCmdsByName.get(group.name)!.cmds.push(cmd);
     }
 
     lines.push('Commands:');
@@ -336,10 +342,15 @@ export function defineCli<
       lines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
     }
 
-    for (const label of svcLabelOrder) {
+    for (const name of svcNameOrder) {
+      const entry = svcCmdsByName.get(name)!;
       lines.push('');
-      lines.push(`${label}:`);
-      for (const cmd of svcCmdsByLabel.get(label)!) {
+      lines.push(`${entry.group.name}:`);
+      if (entry.group.description) {
+        lines.push(`  ${entry.group.description}`);
+        lines.push('');
+      }
+      for (const cmd of entry.cmds) {
         lines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
       }
     }
@@ -391,6 +402,44 @@ export function defineCli<
     // Rich help page for the built-in config command
     if (commandId === 'config' && options.configSchema) {
       return generateConfigCommandHelp(options.name, options.configSchema, activeWorkdir, sensitiveKeys);
+    }
+
+    // Rich help page for skill commands
+    if (skillIds.has(commandId)) {
+      const skill = resolvedSkills.find(s => s.name === commandId);
+      const lines: string[] = [];
+      lines.push(`Skill: ${commandId}`);
+      lines.push('');
+      lines.push(cmd.description);
+      lines.push('');
+
+      const fields = getSchemaFields(cmd.inputSchema);
+      if (fields.length > 0) {
+        lines.push('Parameters:');
+        for (const field of fields) {
+          const parts: string[] = [`  --${field.key}`];
+          parts.push(field.description ?? '');
+          if (field.hasDefault) parts.push(`(default: ${JSON.stringify(field.defaultValue)})`);
+          if (!field.isOptional) parts.push('(required)');
+          lines.push(parts.join('  '));
+        }
+        lines.push('');
+      }
+
+      // Append .cli-docs.md content if available
+      if (skill?.cliDocsPath) {
+        try {
+          const docsContent = fs.readFileSync(skill.cliDocsPath, 'utf-8').trim();
+          if (docsContent) {
+            lines.push(docsContent);
+            lines.push('');
+          }
+        } catch {
+          // Skip unreadable docs
+        }
+      }
+
+      return lines.join('\n');
     }
 
     const lines: string[] = [];
@@ -459,7 +508,7 @@ export function defineCli<
     stdout: (msg: string) => void,
     context: CommandContext,
     resolvedDescription: string,
-    onSkillInvocation?: (skillName: string, userMessage?: string) => Promise<void>,
+    onSkillInvocation?: (invocation: SkillInvocation) => Promise<void>,
   ): Commander {
     const program = new Commander();
     program
@@ -551,7 +600,7 @@ export function defineCli<
         const result = await cmd.execute(parsed, context);
         if (isSkillInvocation(result)) {
           if (onSkillInvocation) {
-            await onSkillInvocation(result.skillName, result.userMessage);
+            await onSkillInvocation(result);
           } else {
             stdout(`Skill: ${result.skillName}` + (result.userMessage ? ` — ${result.userMessage}` : ''));
           }
@@ -569,21 +618,26 @@ export function defineCli<
 
     // Service groups
     const allCmds = [...commandMap.values()];
-    const svcLabelOrder: string[] = [];
-    const svcCmdsByLabel = new Map<string, Command[]>();
+    const svcNameOrder: string[] = [];
+    const svcCmdsByName = new Map<string, { group: { name: string; description?: string }; cmds: Command[] }>();
     for (const cmd of allCmds) {
-      const label = serviceGroups.get(cmd.id);
-      if (!label) continue;
-      if (!svcCmdsByLabel.has(label)) {
-        svcLabelOrder.push(label);
-        svcCmdsByLabel.set(label, []);
+      const group = serviceGroups.get(cmd.id);
+      if (!group) continue;
+      if (!svcCmdsByName.has(group.name)) {
+        svcNameOrder.push(group.name);
+        svcCmdsByName.set(group.name, { group, cmds: [] });
       }
-      svcCmdsByLabel.get(label)!.push(cmd);
+      svcCmdsByName.get(group.name)!.cmds.push(cmd);
     }
-    for (const label of svcLabelOrder) {
+    for (const name of svcNameOrder) {
+      const entry = svcCmdsByName.get(name)!;
       groupedLines.push('');
-      groupedLines.push(`${label}:`);
-      for (const cmd of svcCmdsByLabel.get(label)!) {
+      groupedLines.push(`${entry.group.name}:`);
+      if (entry.group.description) {
+        groupedLines.push(`  ${entry.group.description}`);
+        groupedLines.push('');
+      }
+      for (const cmd of entry.cmds) {
         groupedLines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
       }
     }
@@ -897,15 +951,30 @@ export function defineCli<
       }
     }
 
+    /**
+     * Render an agent prompt from a SkillInvocation using its template.
+     */
+    function renderSkillPrompt(invocation: SkillInvocation): string {
+      const template = invocation.instructionTemplate ?? DEFAULT_SKILL_INSTRUCTION;
+      const skill = resolvedSkills.find(s => s.name === invocation.skillName);
+      const context: Record<string, unknown> = {
+        skillId: invocation.skillName,
+        description: skill?.description ?? '',
+        prompt: invocation.userMessage ?? '',
+        ...(invocation.inputValues ?? {}),
+      };
+      return renderSkillTemplate(template, context).rendered.trim();
+    }
+
     // Skill invocation handler for command mode — routes to agent with skill prefix
-    async function handleSkillInvocation(skillName: string, userMessage?: string) {
+    async function handleSkillInvocation(invocation: SkillInvocation) {
       const agentProvider = await getAgentProvider();
       if (!agentProvider) {
         stderr('Agent not available — cannot invoke skill');
         exit(1);
         return;
       }
-      const prompt = `Use your ${skillName} skill for the following instructions: ${userMessage ?? ''}`.trim();
+      const prompt = renderSkillPrompt(invocation);
       const threadId = resumeId ?? randomUUID();
       for await (const chunk of agentProvider.stream(prompt, { threadId, tools: commandMap })) {
         const text = formatStreamChunk(chunk);
@@ -1040,7 +1109,8 @@ export function defineCli<
 
         servicesMeta[svc.id] = {
           id: svc.id,
-          label: svc.label,
+          name: resolveServiceName(svc),
+          ...(svc.description && { description: svc.description }),
           ...(svc.maxInstances !== undefined && { maxInstances: svc.maxInstances }),
           params: svc.paramsSchema ? fieldsToMap(getSchemaFields(svc.paramsSchema)) : {},
           ...(svc.shutdown && { shutdown: { signal: String(svc.shutdown.signal), timeout: svc.shutdown.timeout } }),

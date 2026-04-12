@@ -380,7 +380,10 @@ export type PreflightCheck<TConfig = Record<string, unknown>> =
  */
 export interface ServiceDefinition<TConfig = Record<string, unknown>> {
   id: string;
-  label: string;
+  /** Display name for this service. Defaults to slugToTitle(id) when omitted. */
+  name?: string;
+  /** Human-readable description of the service. */
+  description?: string;
   command: string | ((params?: Record<string, unknown>) => string);
   env?: (config: TConfig, params?: Record<string, unknown>) => Record<string, string>;
   /** Zod schema for typed start parameters (merged into start command flags). */
@@ -418,7 +421,7 @@ export interface ServiceStartOptions {
 export interface ServiceInstanceStatus {
   serviceId: string;
   instanceId: string;
-  label: string;
+  name: string;
   status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping' | 'stopped';
   pid?: number;
   endpoints?: Record<string, string>;
@@ -434,7 +437,7 @@ export interface ServiceInstanceStatus {
  */
 export interface ServiceStatus {
   id: string;
-  label: string;
+  name: string;
   status: 'idle' | 'starting' | 'ready' | 'failed' | 'stopping' | 'stopped';
   pid?: number;
   endpoints?: Record<string, string>;
@@ -479,8 +482,8 @@ export interface EventBus {
 export interface RoutineConfig {
   /** Service identity — when set, auto-injects service commands for the routine. */
   id?: string;
-  /** Display name for auto-injected service commands. Required when `id` is set. */
-  label?: string;
+  /** Display name for auto-injected service commands. Defaults to slugToTitle(id) when omitted. */
+  name?: string;
   tickInterval?: number;
   idleInterval?: number;
   /** Project scanner for auto-discovery. Enables `{id}-ls` command when `id` is set. */
@@ -539,6 +542,17 @@ export interface AgentProfileConfig {
 }
 
 /**
+ * Configuration for an individual skill.
+ */
+export interface SkillConfig {
+  description: string;
+  /** Zod schema for additional input fields beyond the base `prompt` field. */
+  inputSchema?: import('zod').ZodType;
+  /** Handlebars instruction template. Receives { skillId, description, prompt, ...extraInputFields }. */
+  instructionTemplate?: string;
+}
+
+/**
  * Configuration for agent prompts, profiles, and skills.
  */
 export interface PromptsConfig {
@@ -546,8 +560,9 @@ export interface PromptsConfig {
   sources: string[];
   /** Agent profiles: build-time instruction sections + runtime skill assignments. Key = agent ID. */
   agents?: Record<string, AgentProfileConfig>;
-  /** Skill descriptions for build-time SKILL.md frontmatter. Key = skill folder name. */
-  skills?: Record<string, string>;
+  /** Skill configs: description + optional inputSchema + instructionTemplate. Key = skill folder name.
+   *  A plain string is accepted as shorthand for `{ description: string }`. */
+  skills?: Record<string, string | SkillConfig>;
 }
 
 // ── CLI Metadata ──────────────────────────────────────────────
@@ -585,7 +600,8 @@ export interface CliMetadata {
   }>;
   services: Record<string, {
     id: string;
-    label: string;
+    name: string;
+    description?: string;
     maxInstances?: number;
     params: Record<string, MetadataField>;
     shutdown?: { signal: string; timeout: number };
@@ -598,7 +614,7 @@ export interface CliMetadata {
   prompts: {
     sources: string[];
     agents: Record<string, { name: string; sections: string[]; skills: string[] }>;
-    skills: Record<string, string>;
+    skills: Record<string, string | SkillConfig>;
     resolved: Record<string, { id: string; description: string }>;
   } | null;
 }

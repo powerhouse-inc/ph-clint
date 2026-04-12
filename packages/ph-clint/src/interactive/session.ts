@@ -7,7 +7,9 @@ import { getSchemaFields } from '../core/schema.js';
 import { renderMarkdown } from './markdown.js';
 import { renderStream } from '../core/stream.js';
 import { formatZodError } from '../core/errors.js';
-import { isSkillInvocation } from '../core/skill-commands.js';
+import { isSkillInvocation, DEFAULT_SKILL_INSTRUCTION } from '../core/skill-commands.js';
+import type { SkillInvocation } from '../core/skill-commands.js';
+import { renderSkillTemplate } from '../core/templates.js';
 
 /**
  * Format a command result for display.
@@ -137,6 +139,17 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   // Forward reference — set after session is created, used by handleAgentPrompt
   let sessionRef: ReplSession | null = null;
 
+  /** Render an agent prompt from a SkillInvocation using its template. */
+  function renderSkillPromptFromInvocation(invocation: SkillInvocation): string {
+    const template = invocation.instructionTemplate ?? DEFAULT_SKILL_INSTRUCTION;
+    const context: Record<string, unknown> = {
+      skillId: invocation.skillName,
+      prompt: invocation.userMessage ?? '',
+      ...(invocation.inputValues ?? {}),
+    };
+    return renderSkillTemplate(template, context).rendered.trim();
+  }
+
   const exitMessage = threadId
     ? `Goodbye! \x1b[2mTo resume, run: ${cli.name} -i --resume ${threadId}\x1b[0m`
     : 'Goodbye!';
@@ -155,8 +168,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         const args = cli.parseArgs(commandId, argsToArgv(collectedArgs));
         const result = await cli.execute(commandId, args, context);
         if (isSkillInvocation(result)) {
-          const prompt = `Use your ${result.skillName} skill for the following instructions: ${result.userMessage ?? ''}`.trim();
-          return handleAgentPrompt(prompt);
+          return handleAgentPrompt(renderSkillPromptFromInvocation(result));
         }
         const text = formatResult(result);
         return { text: renderMarkdown(text), type: 'result' };
@@ -273,8 +285,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
           // No prompting needed — execute directly
           const result = await cli.execute(parsed.commandId!, args, context);
           if (isSkillInvocation(result)) {
-            const prompt = `Use your ${result.skillName} skill for the following instructions: ${result.userMessage ?? ''}`.trim();
-            return handleAgentPrompt(prompt);
+            return handleAgentPrompt(renderSkillPromptFromInvocation(result));
           }
           const text = formatResult(result);
           return { text: renderMarkdown(text), type: 'result' };

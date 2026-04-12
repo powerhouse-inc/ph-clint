@@ -43,7 +43,7 @@ function collectPids(servicesDir: string): number[] {
 
 describe('formatStatus', () => {
   it('shows ● icon for ready status', () => {
-    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready', pid: 123 });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'ready', pid: 123 });
     expect(result).toContain('●');
     expect(result).toContain('My Svc');
     expect(result).toContain('ready');
@@ -51,38 +51,38 @@ describe('formatStatus', () => {
   });
 
   it('shows ◐ icon for starting status', () => {
-    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'starting' });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'starting' });
     expect(result).toContain('◐');
     expect(result).toContain('starting');
   });
 
   it('shows ✗ icon for failed status', () => {
-    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'failed' });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'failed' });
     expect(result).toContain('✗');
     expect(result).toContain('failed');
   });
 
   it('shows ◑ icon for stopping status', () => {
-    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'stopping' as ServiceInstanceStatus['status'] });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'stopping' as ServiceInstanceStatus['status'] });
     expect(result).toContain('◑');
     expect(result).toContain('stopping');
   });
 
   it('shows ○ icon for idle status', () => {
-    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'idle' });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'idle' });
     expect(result).toContain('○');
     expect(result).toContain('idle');
   });
 
   it('shows ■ icon for stopped status', () => {
-    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'stopped' });
+    const result = formatStatus({ serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'stopped' });
     expect(result).toContain('■');
     expect(result).toContain('stopped');
   });
 
   it('includes endpoints in output', () => {
     const result = formatStatus({
-      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready',
+      serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'ready',
       endpoints: { port: '3000', url: 'http://localhost:3000' },
     });
     expect(result).toContain('port=3000');
@@ -91,7 +91,7 @@ describe('formatStatus', () => {
 
   it('does not show endpoints section when endpoints object is empty', () => {
     const result = formatStatus({
-      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready',
+      serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'ready',
       endpoints: {},
     });
     expect(result).not.toContain('=');
@@ -99,7 +99,7 @@ describe('formatStatus', () => {
 
   it('includes error in output', () => {
     const result = formatStatus({
-      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'failed',
+      serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'failed',
       error: 'Process crashed',
     });
     expect(result).toContain('error: Process crashed');
@@ -107,7 +107,7 @@ describe('formatStatus', () => {
 
   it('includes restart attempt in output', () => {
     const result = formatStatus({
-      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'starting',
+      serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'starting',
       restartAttempt: 2,
     });
     expect(result).toContain('restart #2');
@@ -115,7 +115,7 @@ describe('formatStatus', () => {
 
   it('includes project name and workdir path for stopped instances', () => {
     const result = formatStatus({
-      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'stopped',
+      serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'stopped',
       workdir: '/home/user/projects/my-project',
     });
     expect(result).toContain('my-project');
@@ -124,7 +124,7 @@ describe('formatStatus', () => {
 
   it('includes project name and workdir for running instances', () => {
     const result = formatStatus({
-      serviceId: 'svc', instanceId: 'svc', label: 'My Svc', status: 'ready',
+      serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'ready',
       pid: 456, workdir: '/home/user/projects/todo-app',
       endpoints: { url: 'http://localhost:3000' },
     });
@@ -139,7 +139,7 @@ describe('createServiceCommands', () => {
   it('generates 6 commands per service', () => {
     const def: ServiceDefinition = {
       id: 'vetra',
-      label: 'Vetra Server',
+      name: 'Vetra Server',
       command: 'echo start',
     };
     const cmds = createServiceCommands(def);
@@ -154,7 +154,7 @@ describe('createServiceCommands', () => {
   it('omits --instance flag when maxInstances is 1 (default)', () => {
     const def: ServiceDefinition = {
       id: 'vetra',
-      label: 'Vetra Server',
+      name: 'Vetra Server',
       command: 'echo start',
     };
     const cmds = createServiceCommands(def);
@@ -167,7 +167,7 @@ describe('createServiceCommands', () => {
   it('includes --instance flag when maxInstances > 1', () => {
     const def: ServiceDefinition = {
       id: 'vetra',
-      label: 'Vetra Server',
+      name: 'Vetra Server',
       command: 'echo start',
       maxInstances: 3,
     };
@@ -180,7 +180,7 @@ describe('createServiceCommands', () => {
   it('includes --name flag in start when maxInstances > 1', () => {
     const def: ServiceDefinition = {
       id: 'vetra',
-      label: 'Vetra Server',
+      name: 'Vetra Server',
       command: 'echo start',
       maxInstances: 3,
     };
@@ -193,7 +193,7 @@ describe('createServiceCommands', () => {
   it('merges paramsSchema fields into start command', () => {
     const def: ServiceDefinition = {
       id: 'vetra',
-      label: 'Vetra Server',
+      name: 'Vetra Server',
       command: 'echo start',
       paramsSchema: z.object({
         port: z.coerce.number().default(3000).describe('Port number'),
@@ -222,7 +222,7 @@ describe('createServiceCommands — no services', () => {
     };
     const def: ServiceDefinition = {
       id: 'test-svc',
-      label: 'Test Service',
+      name: 'Test Service',
       command: 'echo start',
     };
     const cmds = createServiceCommands(def);
@@ -248,7 +248,7 @@ describe('createServiceCommands — with real services', () => {
 
   const readyDef: ServiceDefinition = {
     id: 'test-svc',
-    label: 'Test Service',
+    name: 'Test Service',
     command: `node ${TEST_SERVICE}`,
     env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
     readiness: {
@@ -261,7 +261,7 @@ describe('createServiceCommands — with real services', () => {
 
   const secondDef: ServiceDefinition = {
     id: 'second-svc',
-    label: 'Second Service',
+    name: 'Second Service',
     command: `node ${TEST_SERVICE}`,
     env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4568' }),
     readiness: {
@@ -384,7 +384,7 @@ describe('createServiceCommands — with real services', () => {
     it('reports error when restart fails', async () => {
       const failDef: ServiceDefinition = {
         id: 'fail-svc',
-        label: 'Failing Service',
+        name: 'Failing Service',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'exit-fast' }),
         readiness: { pattern: /Server listening/, timeout: 500 },
@@ -436,7 +436,7 @@ describe('ServiceManager.getDefinition', () => {
 
   const readyDef: ServiceDefinition = {
     id: 'test-svc',
-    label: 'Test Service',
+    name: 'Test Service',
     command: `node ${TEST_SERVICE}`,
     readiness: {
       pattern: /Server listening/,
@@ -474,7 +474,7 @@ describe('auto-injected service commands in CLI', () => {
 
   const svcDef: ServiceDefinition = defineService({
     id: 'test-svc',
-    label: 'Test Service',
+    name: 'Test Service',
     command: `node ${path.resolve(import.meta.dirname, 'fixtures/test-service.js')}`,
     env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
     readiness: {
@@ -703,7 +703,7 @@ describe('createServiceCommands — {id}-ls', () => {
   it('generates ls command when projectScanner is set', () => {
     const def: ServiceDefinition = {
       id: 'scan-svc',
-      label: 'Scan Service',
+      name: 'Scan Service',
       command: 'echo start',
       projectScanner: {
         isProjectFolder: () => true,
@@ -718,7 +718,7 @@ describe('createServiceCommands — {id}-ls', () => {
   it('does not generate ls command without projectScanner', () => {
     const def: ServiceDefinition = {
       id: 'no-scan',
-      label: 'No Scanner',
+      name: 'No Scanner',
       command: 'echo start',
     };
     const cmds = createServiceCommands(def);
@@ -728,7 +728,7 @@ describe('createServiceCommands — {id}-ls', () => {
   it('ls command lists discovered projects', async () => {
     const def: ServiceDefinition = {
       id: 'scan-svc',
-      label: 'Scan Service',
+      name: 'Scan Service',
       command: 'echo start',
       projectScanner: {
         isProjectFolder: () => true,
@@ -763,7 +763,7 @@ describe('createServiceCommands — {id}-ls', () => {
   it('ls command shows message when no projects found', async () => {
     const def: ServiceDefinition = {
       id: 'scan-svc',
-      label: 'Scan Service',
+      name: 'Scan Service',
       command: 'echo start',
       projectScanner: {
         isProjectFolder: () => false,

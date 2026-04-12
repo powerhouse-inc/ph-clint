@@ -55,18 +55,18 @@ describe('defineService', () => {
   it('returns the definition unchanged', () => {
     const def = defineService({
       id: 'test',
-      label: 'Test',
+      name: 'Test',
       command: 'echo hello',
     });
     expect(def.id).toBe('test');
-    expect(def.label).toBe('Test');
+    expect(def.name).toBe('Test');
     expect(def.command).toBe('echo hello');
   });
 
   it('preserves readiness config', () => {
     const def = defineService({
       id: 'test',
-      label: 'Test',
+      name: 'Test',
       command: 'node server.js',
       readiness: {
         pattern: /listening on port (\d+)/,
@@ -108,7 +108,7 @@ describe('createServiceManager', () => {
 
   const readyDef: ServiceDefinition = {
     id: 'test-svc',
-    label: 'Test Service',
+    name: 'Test Service',
     command: `node ${TEST_SERVICE}`,
     env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
     readiness: {
@@ -171,7 +171,7 @@ describe('createServiceManager', () => {
     it('throws "already running" when status is starting', async () => {
       const slowDef: ServiceDefinition = {
         id: 'slow-svc',
-        label: 'Slow Service',
+        name: 'Slow Service',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'slow', READY_DELAY: '10000' }),
         readiness: {
@@ -198,7 +198,7 @@ describe('createServiceManager', () => {
     it('marks ready immediately when readiness.wait is false', async () => {
       const noWaitDef: ServiceDefinition = {
         id: 'no-wait',
-        label: 'No Wait',
+        name: 'No Wait',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'slow', READY_DELAY: '5000' }),
         readiness: {
@@ -218,7 +218,7 @@ describe('createServiceManager', () => {
     it('marks ready immediately when no readiness config', async () => {
       const noReadinessDef: ServiceDefinition = {
         id: 'no-check',
-        label: 'No Check',
+        name: 'No Check',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'no-ready' }),
       };
@@ -233,7 +233,7 @@ describe('createServiceManager', () => {
     it('fails on readiness timeout', async () => {
       const timeoutDef: ServiceDefinition = {
         id: 'timeout',
-        label: 'Timeout',
+        name: 'Timeout',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'no-ready' }),
         readiness: {
@@ -259,7 +259,7 @@ describe('createServiceManager', () => {
       expect(events).toHaveLength(1);
       expect(events[0].id).toBe('test-svc');
       expect(events[0].instanceId).toBe('test-svc');
-      expect(events[0].label).toBe('Test Service');
+      expect(events[0].name).toBe('Test Service');
       expect(events[0].endpoints?.port).toBe('4567');
     });
 
@@ -269,7 +269,7 @@ describe('createServiceManager', () => {
 
       const timeoutDef: ServiceDefinition = {
         id: 'fail-svc',
-        label: 'Fail',
+        name: 'Fail',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'no-ready' }),
         readiness: { pattern: /nope/, timeout: 500 },
@@ -298,7 +298,7 @@ describe('createServiceManager', () => {
     it('passes params to env function', async () => {
       const paramsDef: ServiceDefinition<{ apiPort: number }> = defineService({
         id: 'params-svc',
-        label: 'Params Service',
+        name: 'Params Service',
         command: `node ${TEST_SERVICE}`,
         env: (_config, params) => ({
           TEST_SERVICE_MODE: 'ready',
@@ -322,7 +322,7 @@ describe('createServiceManager', () => {
     it('supports dynamic command function', async () => {
       const dynDef: ServiceDefinition = {
         id: 'dyn-svc',
-        label: 'Dynamic Service',
+        name: 'Dynamic Service',
         command: (params) => `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
         readiness: {
@@ -435,7 +435,7 @@ describe('createServiceManager', () => {
       const mgr = createManager([{
         ...readyDef,
         id: 'crash-svc',
-        label: 'Crash Service',
+        name: 'Crash Service',
         env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: String(SERVICE_CRASH_DELAY), TEST_SERVICE_PORT: '4567' }),
       }]);
 
@@ -450,7 +450,7 @@ describe('createServiceManager', () => {
     it('can filter by serviceId', async () => {
       const secondDef: ServiceDefinition = {
         id: 'other-svc',
-        label: 'Other Service',
+        name: 'Other Service',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4568' }),
         readiness: {
@@ -537,7 +537,7 @@ describe('createServiceManager', () => {
       const crashDef: ServiceDefinition = {
         ...readyDef,
         id: 'restart-svc',
-        label: 'Restart Service',
+        name: 'Restart Service',
         env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: String(SERVICE_CRASH_DELAY), TEST_SERVICE_PORT: '4567' }),
         restart: { enabled: true, maxRetries: 2, delay: SERVICE_CRASH_DELAY },
       };
@@ -568,7 +568,7 @@ describe('createServiceManager', () => {
   describe('multiple readiness patterns', () => {
     const vetraDef: ServiceDefinition = {
       id: 'vetra',
-      label: 'Vetra Server',
+      name: 'Vetra Server',
       command: `node ${TEST_SERVICE}`,
       env: () => ({ TEST_SERVICE_MODE: 'vetra', TEST_SERVICE_PORT: '4567' }),
       readiness: {
@@ -615,8 +615,8 @@ describe('createServiceManager', () => {
       trackedPids.push(mgr.list()[0]!.pid!);
 
       expect(events.length).toBe(3);
-      const names = events.map((e) => e.name).sort();
-      expect(names).toEqual(['connect-port', 'drive-url', 'mcp-server']);
+      const patternNames = events.map((e) => e.patternName).sort();
+      expect(patternNames).toEqual(['connect-port', 'drive-url', 'mcp-server']);
       // Last event should have remaining === 0
       expect(events[events.length - 1].remaining).toBe(0);
     });
@@ -625,7 +625,7 @@ describe('createServiceManager', () => {
       const partialDef: ServiceDefinition = {
         ...vetraDef,
         id: 'partial',
-        label: 'Partial',
+        name: 'Partial',
         env: () => ({ TEST_SERVICE_MODE: 'multi-partial', TEST_SERVICE_PORT: '4567' }),
         readiness: {
           ...vetraDef.readiness!,
@@ -665,7 +665,7 @@ describe('createServiceManager', () => {
 
       const exitFastDef: ServiceDefinition = {
         id: 'exit-fast',
-        label: 'Exit Fast',
+        name: 'Exit Fast',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'exit-fast' }),
         readiness: {
@@ -709,7 +709,7 @@ describe('createServiceManager', () => {
     it('force-kills a service that ignores SIGTERM', async () => {
       const stubbornDef: ServiceDefinition = {
         id: 'stubborn',
-        label: 'Stubborn Service',
+        name: 'Stubborn Service',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'ignore-sigterm', TEST_SERVICE_PORT: '4567' }),
         readiness: {
@@ -756,7 +756,7 @@ describe('createServiceManager', () => {
 
       const crashDef: ServiceDefinition = {
         id: 'max-retry',
-        label: 'Max Retry Service',
+        name: 'Max Retry Service',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'crash', CRASH_DELAY: String(SERVICE_CRASH_DELAY) }),
         // No readiness → marked ready immediately
@@ -782,7 +782,7 @@ describe('createServiceManager', () => {
   describe('typed captures (CaptureDefinition)', () => {
     const typedCaptureDef: ServiceDefinition = {
       id: 'typed-svc',
-      label: 'Typed Service',
+      name: 'Typed Service',
       command: `node ${TEST_SERVICE}`,
       env: () => ({ TEST_SERVICE_MODE: 'vetra', TEST_SERVICE_PORT: '4567' }),
       readiness: {
@@ -861,7 +861,7 @@ describe('createServiceManager', () => {
     it('backward compat: plain number captures still work without endpointTypes', async () => {
       const plainDef: ServiceDefinition = {
         id: 'plain-cap',
-        label: 'Plain Captures',
+        name: 'Plain Captures',
         command: `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
         readiness: {
@@ -885,7 +885,7 @@ describe('createServiceManager', () => {
     it('passes config to env function', async () => {
       const envDef: ServiceDefinition<{ apiPort: number }> = defineService({
         id: 'env-svc',
-        label: 'Env Service',
+        name: 'Env Service',
         command: `node ${TEST_SERVICE}`,
         env: (config) => ({
           TEST_SERVICE_MODE: 'ready',
@@ -952,7 +952,7 @@ describe('createServiceManager', () => {
       const multiDef: ServiceDefinition = {
         ...readyDef,
         id: 'multi-stop',
-        label: 'Multi Stop',
+        name: 'Multi Stop',
         maxInstances: 2,
       };
       const mgr = createManager([multiDef]);
@@ -986,7 +986,7 @@ describe('createServiceManager', () => {
       const scanDef: ServiceDefinition = {
         ...readyDef,
         id: 'scan-svc',
-        label: 'Scan Service',
+        name: 'Scan Service',
         projectScanner: {
           isProjectFolder: (p) => fs.existsSync(path.join(p, 'match.txt')),
         },

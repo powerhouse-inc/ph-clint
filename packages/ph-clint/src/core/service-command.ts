@@ -2,6 +2,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { Command, CommandContext, ServiceDefinition, ServiceInstanceStatus } from './types.js';
 import { getSchemaFields } from './schema.js';
+import { resolveServiceName } from './services.js';
 
 /**
  * Format a service instance status line for display.
@@ -14,7 +15,7 @@ export function formatStatus(s: ServiceInstanceStatus): string {
     s.status === 'stopping' ? '◑' :
     s.status === 'stopped' ? '■' :
     '○';
-  const parts = [`${icon} ${s.label} [${s.status}]`];
+  const parts = [`${icon} ${s.name} [${s.status}]`];
   if (s.workdir) parts.push(path.basename(s.workdir));
   if (s.pid) parts.push(`pid ${s.pid}`);
   if (s.endpoints) {
@@ -77,7 +78,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
   // ── start ──
   commands.push({
     id: `${id}-start`,
-    description: `Start ${def.label}`,
+    description: `Start ${resolveServiceName(def)}`,
     inputSchema: startSchema,
     execute: async (rawInput, context: CommandContext) => {
       const input = rawInput as Record<string, unknown>;
@@ -119,7 +120,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
   // ── stop ──
   commands.push({
     id: `${id}-stop`,
-    description: `Stop ${def.label}`,
+    description: `Stop ${resolveServiceName(def)}`,
     inputSchema: z.object(instanceFields),
     execute: async (rawInput, context: CommandContext) => {
       const input = rawInput as Record<string, unknown>;
@@ -138,7 +139,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
   // ── restart ──
   commands.push({
     id: `${id}-restart`,
-    description: `Restart ${def.label}`,
+    description: `Restart ${resolveServiceName(def)}`,
     inputSchema: z.object(instanceFields),
     execute: async (rawInput, context: CommandContext) => {
       const input = rawInput as Record<string, unknown>;
@@ -166,7 +167,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
   // ── ps ──
   commands.push({
     id: `${id}-ps`,
-    description: `Show ${def.label} status`,
+    description: `Show ${resolveServiceName(def)} status`,
     inputSchema: z.object({}),
     execute: async (_input, context: CommandContext) => {
       const services = context.services;
@@ -187,7 +188,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
 
   commands.push({
     id: `${id}-logs`,
-    description: `Show ${def.label} logs`,
+    description: `Show ${resolveServiceName(def)} logs`,
     inputSchema: z.object(logsFields),
     execute: async (rawInput, context: CommandContext) => {
       const input = rawInput as Record<string, unknown>;
@@ -200,7 +201,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
   // ── manage ──
   commands.push({
     id: `${id}-manage`,
-    description: `Open ${def.label} management panel (REPL only)`,
+    description: `Open ${resolveServiceName(def)} management panel (REPL only)`,
     inputSchema: z.object({}),
     execute: async (_input, context: CommandContext) => {
       // This is intercepted by the session before execute() runs
@@ -216,14 +217,14 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
   if (def.projectScanner) {
     commands.push({
       id: `${id}-ls`,
-      description: `List ${def.label} projects in the working directory`,
+      description: `List ${resolveServiceName(def)} projects in the working directory`,
       inputSchema: z.object({}),
       execute: async (_input, context: CommandContext) => {
         const services = context.services;
         if (!services) throw new Error('No services configured');
         const projects = services.scanProjects(id, context.workdir);
         if (projects.length === 0) {
-          return { text: `No ${def.label} projects found`, data: [] };
+          return { text: `No ${resolveServiceName(def)} projects found`, data: [] };
         }
         const lines = projects.map((p) => {
           const rel = path.relative(context.workdir, p.path);

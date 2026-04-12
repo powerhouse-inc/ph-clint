@@ -32,7 +32,7 @@ function makeRoutine(overrides: Partial<Parameters<typeof createRoutine>[0]> = {
 function makeConfig(overrides: Partial<RoutineConfig> = {}): RoutineConfig {
   return {
     id: 'watcher',
-    label: 'File Watcher',
+    name: 'File Watcher',
     tickInterval: TEST_TICK_INTERVAL,
     idleInterval: TEST_IDLE_INTERVAL,
     ...overrides,
@@ -48,7 +48,7 @@ describe('createRoutineServiceAdapter', () => {
       expect(statuses).toHaveLength(1);
       expect(statuses[0]!.status).toBe('idle');
       expect(statuses[0]!.serviceId).toBe('watcher');
-      expect(statuses[0]!.label).toBe('File Watcher');
+      expect(statuses[0]!.name).toBe('File Watcher');
     });
 
     it('returns ready status when routine is running', async () => {
@@ -113,7 +113,7 @@ describe('createRoutineServiceAdapter', () => {
       routine = makeRoutine();
       const adapter = createRoutineServiceAdapter(routine, makeConfig(), bus);
       await adapter.start('watcher');
-      expect(readyEvent).toEqual({ id: 'watcher', instanceId: 'watcher', label: 'File Watcher' });
+      expect(readyEvent).toEqual({ id: 'watcher', instanceId: 'watcher', name: 'File Watcher' });
     });
   });
 
@@ -149,7 +149,7 @@ describe('createRoutineServiceAdapter', () => {
       await adapter.start('watcher');
       await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
       await adapter.stop('watcher');
-      expect(stoppedEvent).toEqual({ id: 'watcher', instanceId: 'watcher', label: 'File Watcher' });
+      expect(stoppedEvent).toEqual({ id: 'watcher', instanceId: 'watcher', name: 'File Watcher' });
     });
   });
 
@@ -196,7 +196,7 @@ describe('createRoutineServiceAdapter', () => {
       const def = adapter.getDefinition('watcher');
       expect(def).toBeDefined();
       expect(def!.id).toBe('watcher');
-      expect(def!.label).toBe('File Watcher');
+      expect(def!.name).toBe('File Watcher');
       expect(def!.maxInstances).toBe(1);
     });
 
@@ -317,13 +317,13 @@ describe('createCompositeServiceManager', () => {
         return [{
           serviceId,
           instanceId: serviceId,
-          label: serviceId,
+          name: serviceId,
           status: started.get(serviceId) ? 'ready' as const : 'idle' as const,
         }];
       },
       getDefinition(id) {
         if (id !== serviceId) return undefined;
-        return { id: serviceId, label: serviceId, command: 'echo', maxInstances: 1 };
+        return { id: serviceId, name: serviceId, command: 'echo', maxInstances: 1 };
       },
       logs(id) {
         if (id !== serviceId) throw new Error(`Unknown service: ${id}`);

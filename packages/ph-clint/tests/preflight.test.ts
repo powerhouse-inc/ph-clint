@@ -216,7 +216,7 @@ describe('preflight in service start()', () => {
   it('throws before spawning when a preflight check fails', async () => {
     const svc = defineService({
       id: 'test-preflight-fail',
-      label: 'Test Preflight Fail',
+      name: 'Test Preflight Fail',
       command: `node ${TEST_SERVICE}`,
       preflight: [
         () => ({ ok: false, message: 'Port 9999 in use', hint: 'Stop it' }),
@@ -242,7 +242,7 @@ describe('preflight in service start()', () => {
   it('includes hint in the error message', async () => {
     const svc = defineService({
       id: 'test-preflight-hint',
-      label: 'Test Hint',
+      name: 'Test Hint',
       command: `node ${TEST_SERVICE}`,
       preflight: [
         () => ({ ok: false, message: 'Bad dir', hint: 'Use --workdir' }),
@@ -261,7 +261,7 @@ describe('preflight in service start()', () => {
 
     const svc = defineService({
       id: 'test-preflight-order',
-      label: 'Test Order',
+      name: 'Test Order',
       command: `node ${TEST_SERVICE}`,
       preflight: [
         () => { callOrder.push('a'); return { ok: true }; },
@@ -278,7 +278,7 @@ describe('preflight in service start()', () => {
   it('supports async preflight checks', async () => {
     const svc = defineService({
       id: 'test-preflight-async',
-      label: 'Test Async',
+      name: 'Test Async',
       command: `node ${TEST_SERVICE}`,
       preflight: [
         async () => {
@@ -295,7 +295,7 @@ describe('preflight in service start()', () => {
   it('starts normally when all preflight checks pass', async () => {
     const svc = defineService({
       id: 'test-preflight-pass',
-      label: 'Test Pass',
+      name: 'Test Pass',
       command: `node ${TEST_SERVICE}`,
       preflight: [
         () => ({ ok: true }),
@@ -318,7 +318,7 @@ describe('preflight in service start()', () => {
   it('services without preflight still work', async () => {
     const svc = defineService({
       id: 'test-no-preflight',
-      label: 'Test No Preflight',
+      name: 'Test No Preflight',
       command: `node ${TEST_SERVICE}`,
       readiness: { pattern: /Server listening/, timeout: 5_000 },
     });

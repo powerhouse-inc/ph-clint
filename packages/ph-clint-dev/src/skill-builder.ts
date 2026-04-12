@@ -1,14 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { renderSkillTemplate } from 'ph-clint';
+import { renderSkillTemplate, slugToTitle } from 'ph-clint';
 import type { ResolvedBuildConfig } from './types.js';
-
-function slugToTitle(slug: string): string {
-  return slug
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-}
 
 /**
  * Find the first existing directory across multiple include paths.
@@ -130,6 +123,21 @@ export function buildSkillTemplates(config: ResolvedBuildConfig): { count: numbe
 
     const skillMd = frontmatter + '\n\n' + sections.filter(Boolean).join('\n\n') + '\n';
     files.set('SKILL.md', skillMd);
+
+    // Copy .cli-docs.md if present (render through Handlebars)
+    const cliDocsPath = path.join(skillDir, '.cli-docs.md');
+    if (fs.existsSync(cliDocsPath)) {
+      const cliDocsRaw = fs.readFileSync(cliDocsPath, 'utf-8').trim();
+      if (cliDocsRaw) {
+        const r = renderSkillTemplate(cliDocsRaw, config.context, renderOpts);
+        for (const w of r.warnings) {
+          const msg = `${skillName}/.cli-docs.md: ${w}`;
+          allWarnings.push(msg);
+          log(`  WARN ${msg}`);
+        }
+        files.set('.cli-docs.md', r.rendered + '\n');
+      }
+    }
 
     // Write to all output directories
     for (const out of config.output) {

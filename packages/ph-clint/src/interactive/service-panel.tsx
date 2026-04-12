@@ -4,6 +4,7 @@ import { Box, Text, useInput, useStdout } from 'ink';
 import Spinner from 'ink-spinner';
 import type { ServiceManager, ServiceInstanceStatus } from '../core/types.js';
 import type { ProjectScanResult } from '../core/project-scanner.js';
+import { resolveServiceName } from '../core/services.js';
 
 interface ServicePanelProps {
   services: ServiceManager;
@@ -160,10 +161,10 @@ export function ServicePanel({ services, onExit, serviceId, workdir }: ServicePa
       if (maxInstances === 1 && running.length === 1) {
         // Offer to kill and restart
         setConfirm({
-          message: `${def.label} is already running. Kill and start in ${path.basename(projPath)}? (y/n)`,
+          message: `${resolveServiceName(def)} is already running. Kill and start in ${path.basename(projPath)}? (y/n)`,
           onConfirm: async () => {
             setConfirm(null);
-            setBusy(`Restarting ${def.label}...`);
+            setBusy(`Restarting ${resolveServiceName(def)}...`);
             try {
               await services.stop(projServiceId);
               await services.start(projServiceId, { workdir: projPath, cwd: projPath });
@@ -180,7 +181,7 @@ export function ServicePanel({ services, onExit, serviceId, workdir }: ServicePa
       return;
     }
 
-    setBusy(`Starting ${def.label} in ${path.basename(projPath)}...`);
+    setBusy(`Starting ${resolveServiceName(def)} in ${path.basename(projPath)}...`);
     try {
       await services.start(projServiceId, { workdir: projPath, cwd: projPath });
     } catch { /* ignore */ }
@@ -190,10 +191,10 @@ export function ServicePanel({ services, onExit, serviceId, workdir }: ServicePa
 
   const toggleInstance = useCallback(async (svc: ServiceInstanceStatus) => {
     if (svc.status === 'ready' || svc.status === 'starting') {
-      setBusy(`Stopping ${svc.label}...`);
+      setBusy(`Stopping ${svc.name}...`);
       try { await services.stop(svc.serviceId, svc.instanceId); } catch { /* ignore */ }
     } else {
-      setBusy(`Starting ${svc.label}...`);
+      setBusy(`Starting ${svc.name}...`);
       try {
         await services.start(svc.serviceId, {
           workdir: svc.workdir,
@@ -297,7 +298,7 @@ export function ServicePanel({ services, onExit, serviceId, workdir }: ServicePa
       <Box flexDirection="column">
         {hr}
         <Box justifyContent="space-between">
-          <Text bold color="cyan"> {svc?.label ?? detailServiceId} </Text>
+          <Text bold color="cyan"> {svc?.name ?? detailServiceId} </Text>
           <Text dimColor> l logs  q/Esc back </Text>
         </Box>
         {hr}
@@ -355,7 +356,7 @@ export function ServicePanel({ services, onExit, serviceId, workdir }: ServicePa
       <Box flexDirection="column">
         {hr}
         <Box justifyContent="space-between">
-          <Text bold color="cyan"> Logs: {svc?.label ?? detailServiceId} </Text>
+          <Text bold color="cyan"> Logs: {svc?.name ?? detailServiceId} </Text>
           <Text dimColor> q/Esc back </Text>
         </Box>
         {hr}
@@ -417,7 +418,7 @@ export function ServicePanel({ services, onExit, serviceId, workdir }: ServicePa
               </Text>
               <Text color={color}>{icon} </Text>
               <Text bold={isSelected}>
-                {svc.label.padEnd(24)}
+                {svc.name.padEnd(24)}
               </Text>
               <Text dimColor> [{svc.status}]</Text>
               {svc.workdir && <Text dimColor> {path.basename(svc.workdir)}</Text>}

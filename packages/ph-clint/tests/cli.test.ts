@@ -348,6 +348,66 @@ describe('defineCli', () => {
       }
     });
 
+    it('generateCommandHelp returns skill-specific help with docs content', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-help-page-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+        await writeFile(
+          join(skillDir, '.cli-docs.md'),
+          '## When to use\n\nUse this skill when you need to test things.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'skill-docs',
+          version: '1.0.0',
+          description: 'Skill docs test',
+          commands: [echo],
+          prompts: { sources: [tmp] },
+        });
+
+        const help = skillCli.generateCommandHelp('my-skill');
+        expect(help).toContain('Skill: my-skill');
+        expect(help).toContain('A test skill');
+        expect(help).toContain('--prompt');
+        expect(help).toContain('When to use');
+        expect(help).toContain('test things');
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('generateCommandHelp for skill works without .cli-docs.md', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-help-nodocs-'));
+      try {
+        const skillDir = join(tmp, 'plain-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: plain-skill\ndescription: "Plain skill"\n---\n\nContent.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'skill-nodocs',
+          version: '1.0.0',
+          description: 'No docs test',
+          commands: [echo],
+          prompts: { sources: [tmp] },
+        });
+
+        const help = skillCli.generateCommandHelp('plain-skill');
+        expect(help).toContain('Skill: plain-skill');
+        expect(help).toContain('Plain skill');
+        expect(help).toContain('--prompt');
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
     it('includes -i option in help when interactive is configured', () => {
       const interactiveCli = defineCli({
         name: 'test',
@@ -762,7 +822,7 @@ describe('defineCli', () => {
         services: [
           defineService({
             id: 'my-svc',
-            label: 'My Service',
+            name: 'My Service',
             command: 'echo hi',
             readiness: {
               patterns: [
@@ -782,7 +842,7 @@ describe('defineCli', () => {
           }),
           defineService({
             id: 'no-mcp',
-            label: 'No MCP Service',
+            name: 'No MCP Service',
             command: 'echo bye',
             readiness: {
               pattern: /ready/,
@@ -808,7 +868,7 @@ describe('defineCli', () => {
         services: [
           defineService({
             id: 'multi',
-            label: 'Multi MCP',
+            name: 'Multi MCP',
             command: 'echo hi',
             readiness: {
               patterns: [

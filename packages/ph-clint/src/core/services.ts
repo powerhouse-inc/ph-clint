@@ -5,6 +5,15 @@ import crypto from 'node:crypto';
 import type { CaptureDefinition, EndpointType, EventBus, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
 import { isPortFree } from './preflight.js';
 import { scanProjects as scanProjectsImpl } from './project-scanner.js';
+import { slugToTitle } from './schema.js';
+
+/**
+ * Resolve the display name for a service definition.
+ * Uses `def.name` if provided, otherwise auto-generates from `def.id`.
+ */
+export function resolveServiceName(def: ServiceDefinition<any>): string {
+  return def.name ?? slugToTitle(def.id);
+}
 
 /**
  * Identity wrapper for service definitions — provides type checking and IDE support.
@@ -21,7 +30,7 @@ export function defineService<TConfig = Record<string, unknown>>(
 interface ServiceStateFile {
   serviceId: string;
   instanceId: string;
-  label: string;
+  name: string;
   pid: number;
   status: 'starting' | 'ready' | 'failed' | 'stopped';
   endpoints?: Record<string, string>;
@@ -241,7 +250,7 @@ export function createServiceManager(
       for (const check of def.preflight) {
         const result = await check(preflightCtx);
         if (!result.ok) {
-          const parts = [`${def.label}: ${result.message}`];
+          const parts = [`${resolveServiceName(def)}: ${result.message}`];
           if (result.hint) parts.push(`  Hint: ${result.hint}`);
           throw new Error(parts.join('\n'));
         }
@@ -271,7 +280,7 @@ export function createServiceManager(
     const state: ServiceStateFile = {
       serviceId: id,
       instanceId,
-      label: def.label,
+      name: resolveServiceName(def),
       pid,
       status: 'starting',
       startedAt: new Date().toISOString(),
@@ -288,14 +297,14 @@ export function createServiceManager(
       state.status = 'failed';
       state.error = 'Failed to spawn process';
       writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
-      eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
+      eventBus?.emit('service:failed', { id, instanceId, name: resolveServiceName(def), error: state.error });
     });
 
     // If no readiness or wait === false, mark ready immediately
     if (!def.readiness || def.readiness.wait === false) {
       state.status = 'ready';
       writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
-      eventBus?.emit('service:ready', { id, instanceId, label: def.label, endpoints: state.endpoints });
+      eventBus?.emit('service:ready', { id, instanceId, name: resolveServiceName(def), endpoints: state.endpoints });
       return instanceId;
     }
 
@@ -319,7 +328,7 @@ export function createServiceManager(
           state.status = 'failed';
           state.error = 'Process exited before becoming ready';
           writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
-          eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
+          eventBus?.emit('service:failed', { id, instanceId, name: resolveServiceName(def), error: state.error });
           const tail = tailLogFile(logPath);
           const hint = `Check the workdir and run '${id}-logs' for the full log.`;
           const lines = [state.error];
@@ -365,8 +374,8 @@ export function createServiceManager(
                 eventBus?.emit('service:pattern-matched', {
                   id,
                   instanceId,
-                  label: def.label,
-                  name: rp.name,
+                  name: resolveServiceName(def),
+                  patternName: rp.name,
                   endpoints: state.endpoints,
                   endpointTypes: state.endpointTypes,
                   remaining: readinessPatterns.length - matched.size,
@@ -383,7 +392,7 @@ export function createServiceManager(
               eventBus?.emit('service:ready', {
                 id,
                 instanceId,
-                label: def.label,
+                name: resolveServiceName(def),
                 endpoints: state.endpoints,
                 endpointTypes: state.endpointTypes,
               });
@@ -410,7 +419,7 @@ export function createServiceManager(
           state.status = 'failed';
           state.error = `Readiness timeout exceeded (unmatched: ${unmatched.join(', ')})`;
           writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
-          eventBus?.emit('service:failed', { id, instanceId, label: def.label, error: state.error });
+          eventBus?.emit('service:failed', { id, instanceId, name: resolveServiceName(def), error: state.error });
           const tail = tailLogFile(logPath);
           const hint = `Check the workdir and run '${id}-logs' for the full log.`;
           const tLines = [state.error];
@@ -506,7 +515,7 @@ export function createServiceManager(
     state.pid = 0;
     state.stoppedAt = new Date().toISOString();
     writeStateFile(statePath, state);
-    eventBus?.emit('service:stopped', { id: serviceId, instanceId, label: def.label });
+    eventBus?.emit('service:stopped', { id: serviceId, instanceId, name: resolveServiceName(def) });
   }
 
   async function stop(id: string, instanceId?: string): Promise<void> {
@@ -544,7 +553,7 @@ export function createServiceManager(
         results.push({
           serviceId: def.id,
           instanceId: def.id,
-          label: def.label,
+          name: resolveServiceName(def),
           status: 'idle',
         });
         continue;
@@ -556,7 +565,7 @@ export function createServiceManager(
           results.push({
             serviceId: def.id,
             instanceId: state.instanceId,
-            label: state.label,
+            name: state.name,
             status: 'stopped',
             workdir: state.workdir,
             params: state.params,
@@ -579,7 +588,7 @@ export function createServiceManager(
             eventBus?.emit('service:restarting', {
               id: def.id,
               instanceId: state.instanceId,
-              label: def.label,
+              name: resolveServiceName(def),
               attempt,
               maxRetries: def.restart.maxRetries,
             });
@@ -602,7 +611,7 @@ export function createServiceManager(
                 const tempState: ServiceStateFile = {
                   serviceId: def.id,
                   instanceId: state.instanceId,
-                  label: def.label,
+                  name: resolveServiceName(def),
                   pid: 0,
                   status: 'failed',
                   startedAt: new Date().toISOString(),
@@ -621,7 +630,7 @@ export function createServiceManager(
             results.push({
               serviceId: def.id,
               instanceId: state.instanceId,
-              label: def.label,
+              name: resolveServiceName(def),
               status: 'starting',
               restartAttempt: attempt,
               params: state.params,
@@ -640,7 +649,7 @@ export function createServiceManager(
               eventBus?.emit('service:failed', {
                 id: def.id,
                 instanceId: state.instanceId,
-                label: def.label,
+                name: resolveServiceName(def),
                 error: 'Max restart retries exceeded',
               });
             }
@@ -651,7 +660,7 @@ export function createServiceManager(
               results.push({
                 serviceId: def.id,
                 instanceId: state.instanceId,
-                label: def.label,
+                name: resolveServiceName(def),
                 status: 'failed',
                 error: state.error ?? 'Process exited unexpectedly',
                 restartAttempt: state.restartAttempt,
@@ -665,7 +674,7 @@ export function createServiceManager(
               results.push({
                 serviceId: def.id,
                 instanceId: state.instanceId,
-                label: state.label,
+                name: state.name,
                 status: 'stopped',
                 workdir: state.workdir,
                 params: state.params,
@@ -678,7 +687,7 @@ export function createServiceManager(
         results.push({
           serviceId: def.id,
           instanceId: state.instanceId,
-          label: def.label,
+          name: resolveServiceName(def),
           status: state.status as ServiceInstanceStatus['status'],
           pid: state.pid,
           endpoints: state.endpoints,
