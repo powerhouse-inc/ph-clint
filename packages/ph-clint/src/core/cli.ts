@@ -590,6 +590,11 @@ export function defineCli<
         sub.helpInformation = () => generateConfigCommandHelp(options.name, options.configSchema!, activeWorkdir, sensitiveKeys) + '\n';
       }
 
+      // Override help for skill commands with rich help page (includes .cli-docs.md)
+      if (isSkill) {
+        sub.helpInformation = () => generateCommandHelp(cmd.id) + '\n';
+      }
+
       sub.action(async (opts) => {
         let parsed;
         try {

@@ -408,6 +408,42 @@ describe('defineCli', () => {
       }
     });
 
+    it('skill -h flag uses rich help with .cli-docs.md content', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'skills-h-flag-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+        await writeFile(
+          join(skillDir, '.cli-docs.md'),
+          '## When to use\n\nUse this for testing.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'skill-hflag',
+          version: '1.0.0',
+          description: 'Skill -h test',
+          commands: [echo],
+          prompts: { sources: [tmp] },
+        });
+
+        let output = '';
+        await skillCli.run(['node', 'skill-hflag', 'my-skill', '-h'], {
+          stdout: (msg: string) => { output += msg + '\n'; },
+          stderr: () => {},
+          exit: () => {},
+        });
+        expect(output).toContain('Skill: my-skill');
+        expect(output).toContain('When to use');
+        expect(output).toContain('testing');
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
     it('includes -i option in help when interactive is configured', () => {
       const interactiveCli = defineCli({
         name: 'test',
