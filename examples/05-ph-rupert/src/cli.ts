@@ -118,6 +118,9 @@ export const cli = defineCli({
       if (event.id === 'reactor-project' && /exited before becoming ready/.test(event.error ?? '')) {
         console.log('  Hint: Is the working directory a Reactor package project? Try: reactor-project-start --workdir <project-name>');
       }
+      if (/max instances/.test(event.error ?? '')) {
+        console.log(`  Hint: ${event.name} is already running. Stop it first with ${event.id}-stop, or use ${event.id}-restart.`);
+      }
     },
     'service:restarting': (event) => {
       console.log(`\u21BB ${event.name} restarting (attempt ${event.attempt}/${event.maxRetries})`);
