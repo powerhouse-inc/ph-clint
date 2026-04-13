@@ -200,7 +200,7 @@ describe('defineCli', () => {
         });
 
         const help = skillCli.generateHelp();
-        expect(help).toContain('Skills:');
+        expect(help).toContain('Skills (run "skill-test help <skill>" for details):');
         expect(help).toContain('my-skill');
         expect(help).toContain('A test skill');
       } finally {

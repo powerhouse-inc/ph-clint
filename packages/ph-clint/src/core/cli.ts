@@ -357,7 +357,7 @@ export function defineCli<
 
     if (skillCmds.length > 0) {
       lines.push('');
-      lines.push('Skills:');
+      lines.push(`Skills (run "${options.name} help <skill>" for details):`);
       for (const cmd of skillCmds) {
         lines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
       }
@@ -651,7 +651,7 @@ export function defineCli<
     const skillCmds = allCmds.filter(c => skillIds.has(c.id));
     if (skillCmds.length > 0) {
       groupedLines.push('');
-      groupedLines.push('Skills:');
+      groupedLines.push(`Skills (run "${options.name} help <skill>" for details):`);
       for (const cmd of skillCmds) {
         groupedLines.push(`  ${cmd.id.padEnd(36)} ${cmd.description}`);
       }

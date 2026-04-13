@@ -11,7 +11,7 @@ function resolve(config: BuildConfig): ResolvedBuildConfig {
   const meta = config.cli.getMetadata() as Record<string, unknown>;
   const prompts = (meta.prompts ?? {}) as {
     agents?: Record<string, { name: string; sections: string[]; skills: string[] }>;
-    skills?: Record<string, string>;
+    skills?: Record<string, { description: string }>;
   };
 
   // Extract agent profiles from CLI prompts.agents
@@ -20,12 +20,18 @@ function resolve(config: BuildConfig): ResolvedBuildConfig {
     sections: a.sections,
   }));
 
+  // Extract description strings from skill configs
+  const skillDescriptions: Record<string, string> = {};
+  for (const [id, skill] of Object.entries(prompts.skills ?? {})) {
+    skillDescriptions[id] = skill.description;
+  }
+
   return {
     include: config.include,
     output: config.output,
     context: { ...config.context, ...meta },
     agentProfiles,
-    skillDescriptions: prompts.skills ?? {},
+    skillDescriptions,
     subdirs: config.subdirs,
     customHelpers: config.customHelpers,
     logger: config.logger ?? console.log,

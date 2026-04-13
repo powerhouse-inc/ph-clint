@@ -241,7 +241,7 @@ describe('CLI integration', () => {
     const eventBus = createEventBus();
     eventBus.on('service:ready', () => events.push('ready'));
     eventBus.on('service:stopped', () => events.push('stopped'));
-    eventBus.on('service:pattern-matched', (e) => events.push(`matched:${(e as any).name}`));
+    eventBus.on('service:pattern-matched', (e) => events.push(`matched:${(e as any).patternName}`));
 
     const mgr = createServiceManager([reactorProjectsDef], {
       config: { switchboardPort: 4001 },
