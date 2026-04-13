@@ -373,6 +373,25 @@ describe('createServiceCommands — with real services', () => {
       trackedPids.push(...collectPids(servicesDir));
     });
 
+    it('preserves workdir from stopped instance', async () => {
+      // Start with explicit workdir
+      await mgr.start('test-svc', { workdir: tmpDir, cwd: tmpDir });
+      trackedPids.push(...collectPids(servicesDir));
+
+      const cmds = createServiceCommands(readyDef);
+      const restartCmd = cmds.find((c) => c.id === 'test-svc-restart')!;
+      // Restart from a different context.workdir
+      const differentDir = path.join(tmpDir, '..');
+      const ctx = { ...makeContext(), workdir: differentDir };
+      const result = await restartCmd.execute({}, ctx) as any;
+      expect(result.text).toContain('ready');
+      // Verify the restarted instance uses the original workdir, not differentDir
+      const statuses = mgr.list('test-svc');
+      const running = statuses.find((s) => s.status === 'ready');
+      expect(running!.workdir).toBe(tmpDir);
+      trackedPids.push(...collectPids(servicesDir));
+    });
+
     it('starts a non-running service', async () => {
       const cmds = createServiceCommands(readyDef);
       const restartCmd = cmds.find((c) => c.id === 'test-svc-restart')!;

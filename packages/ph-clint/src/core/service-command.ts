@@ -146,15 +146,33 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
       const services = context.services;
       if (!services) throw new Error('No services configured');
       try {
-        // Stop if running
+        // Stop if running, capturing its workdir/params for the restart
         const statuses = services.list(id);
         const running = statuses.filter(
           (s) => s.status === 'ready' || s.status === 'starting',
         );
+
+        let prevWorkdir: string | undefined;
+        let prevParams: Record<string, unknown> | undefined;
+        let prevName: string | undefined;
+
         if (running.length > 0) {
+          const instance = running[0]!;
+          prevWorkdir = instance.workdir;
+          prevParams = instance.params;
+          if (instance.instanceId?.includes(':')) {
+            prevName = instance.instanceId.split(':')[1];
+          }
           await services.stop(id, input.instance as string | undefined);
         }
-        const instanceId = await services.start(id);
+
+        const cwd = prevWorkdir ?? context.workdir;
+        const instanceId = await services.start(id, {
+          workdir: cwd,
+          cwd,
+          params: prevParams,
+          name: prevName,
+        });
         const status = services.list(id).find((s) => s.instanceId === instanceId);
         return { text: formatStatus(status!) };
       } catch (err: unknown) {
