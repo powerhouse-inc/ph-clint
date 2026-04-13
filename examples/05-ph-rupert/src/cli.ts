@@ -54,8 +54,10 @@ export const cli = defineCli({
         inputSchema: z.object({
           mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
             .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
+          useBrowser: z.enum(['chromium', 'chrome', 'firefox', 'webkit', 'msedge']).default('chromium')
+            .describe('Browser engine for Playwright visual verification of the editor'),
         }),
-        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode with browser {{useBrowser}} for: {{prompt}}',
       },
       'fusion-development': {
         description: 'Build local-first platforms based on Next.js with document drives as the backend',
