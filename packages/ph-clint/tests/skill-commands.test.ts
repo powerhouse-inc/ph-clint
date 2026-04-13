@@ -112,6 +112,42 @@ describe('createSkillCommands', () => {
     const result = await cmds[0]!.execute({ prompt: 'test', mode: 'one-shot' }, ctx);
     expect(result.inputValues).toEqual({ prompt: 'test', mode: 'one-shot' });
   });
+
+  it('warns when instructionTemplate omits {{prompt}}', () => {
+    const warnings: string[] = [];
+    const origWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(String(args[0]));
+    try {
+      createSkillCommands(mockSkills, {
+        'document-modeling': {
+          description: 'Custom',
+          instructionTemplate: 'Use {{skillId}} in {{mode}} mode',
+        },
+      });
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('document-modeling');
+      expect(warnings[0]).toContain('{{prompt}}');
+    } finally {
+      console.warn = origWarn;
+    }
+  });
+
+  it('does not warn when instructionTemplate includes {{prompt}}', () => {
+    const warnings: string[] = [];
+    const origWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(String(args[0]));
+    try {
+      createSkillCommands(mockSkills, {
+        'document-modeling': {
+          description: 'Custom',
+          instructionTemplate: 'Use {{skillId}} for: {{prompt}}',
+        },
+      });
+      expect(warnings).toHaveLength(0);
+    } finally {
+      console.warn = origWarn;
+    }
+  });
 });
 
 describe('isSkillInvocation', () => {

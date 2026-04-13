@@ -147,7 +147,11 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       prompt: invocation.userMessage ?? '',
       ...(invocation.inputValues ?? {}),
     };
-    return renderSkillTemplate(template, context).rendered.trim();
+    const { rendered, warnings } = renderSkillTemplate(template, context);
+    for (const w of warnings) {
+      console.warn(`[ph-clint] Skill "${invocation.skillName}": ${w}`);
+    }
+    return rendered.trim();
   }
 
   const exitMessage = threadId

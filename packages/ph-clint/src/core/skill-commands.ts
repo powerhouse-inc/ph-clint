@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Command, SkillConfig } from './types.js';
 import type { SkillInfo } from './skills.js';
 import { getSchemaFields } from './schema.js';
+import { extractTemplateVars } from './templates.js';
 
 /**
  * Default Handlebars template for skill instructions.
@@ -49,8 +50,22 @@ const skillInputSchema = z.object({
 });
 
 /**
+ * Validate that an instructionTemplate includes the {{prompt}} variable.
+ * Returns a warning string if missing, or undefined if ok.
+ */
+function validateInstructionTemplate(skillName: string, template: string): string | undefined {
+  const vars = extractTemplateVars(template);
+  if (!vars.has('prompt')) {
+    return `Skill "${skillName}": instructionTemplate does not include {{prompt}} — the user's message will not be forwarded to the agent`;
+  }
+  return undefined;
+}
+
+/**
  * Create CLI commands from skill metadata and optional skill configs.
  * Each skill becomes a thin command with a --prompt flag that returns a SkillInvocation.
+ *
+ * Emits warnings to stderr when a custom instructionTemplate omits {{prompt}}.
  */
 export function createSkillCommands(
   skills: SkillInfo[],
@@ -60,6 +75,14 @@ export function createSkillCommands(
     const rawConfig = skillConfigs?.[skill.name];
     const config = rawConfig ? normalizeSkillConfig(rawConfig) : undefined;
     const description = config?.description || skill.description || `Use the ${skill.name} skill`;
+
+    // Warn at registration time if instructionTemplate omits {{prompt}}
+    if (config?.instructionTemplate) {
+      const warning = validateInstructionTemplate(skill.name, config.instructionTemplate);
+      if (warning) {
+        console.warn(`[ph-clint] ${warning}`);
+      }
+    }
 
     // Merge custom inputSchema fields with the base prompt field
     let inputSchema: z.ZodType = skillInputSchema;

@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { defineCli, type SkillConfig } from 'ph-clint';
+import { z } from 'zod';
+import { defineCli } from 'ph-clint';
 import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, secretsSchema } from './config.js';
 import { reactorProjectInit } from './commands/reactor-project-init.js';
 import { fusionProjectInit } from './commands/fusion-project-init.js';
@@ -42,28 +43,60 @@ export const cli = defineCli({
     skills: {
       'document-modeling': {
         description: 'Design Powerhouse document models with state schemas, operations, and reducers',
-        mode: 'conversational',
-      } as SkillConfig & { mode: string },
+        inputSchema: z.object({
+          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+            .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
       'document-editor-creation': {
         description: 'Build React editor components for Powerhouse document types',
-        mode: 'conversational',
-      } as SkillConfig & { mode: string },
+        inputSchema: z.object({
+          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+            .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
       'fusion-development': {
         description: 'Build local-first platforms based on Next.js with document drives as the backend',
-        mode: 'conversational',
-      } as SkillConfig & { mode: string },
+        inputSchema: z.object({
+          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+            .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
       'fusion-project-management': {
         description: 'Initialize, configure, and run Fusion project instances',
-        mode: 'one-shot',
-      } as SkillConfig & { mode: string },
+        inputSchema: z.object({
+          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+            .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
       'handle-stakeholder-message': {
         description: 'Triage stakeholder messages, update WBS documents, and draft replies',
-        mode: 'one-shot',
-      } as SkillConfig & { mode: string },
+        inputSchema: z.object({
+          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+            .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
       'reactor-project-management': {
         description: 'Initialize and run Reactor Package projects with Vetra services',
-        mode: 'one-shot',
-      } as SkillConfig & { mode: string },
+        inputSchema: z.object({
+          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+            .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
+      'playwright-cli': {
+        description: 'Automate browser interactions, test web pages and work with Playwright tests',
+        inputSchema: z.object({
+          useBrowser: z.enum(['chromium', 'chrome', 'firefox', 'webkit', 'msedge']).default('chromium')
+            .describe('Browser engine to use for Playwright sessions'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill with browser {{useBrowser}} for: {{prompt}}',
+      },
     },
   },
 
