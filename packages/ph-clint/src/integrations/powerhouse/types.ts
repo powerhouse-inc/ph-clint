@@ -64,6 +64,8 @@ export interface ConnectConfig {
   enabled: boolean;
   /** HTTP port. Default: 3000. */
   port?: number;
+  /** Working directory for `ph connect` (must be a Reactor Package project). */
+  workdir?: string;
 }
 
 /**

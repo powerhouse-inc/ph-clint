@@ -9,6 +9,8 @@
  * - Connect: web UI for browser-based chat
  */
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineCli, definePowerhouseIntegration } from 'ph-clint';
 import type { WorkItem } from 'ph-clint';
 import { documentModels } from 'agent-app';
@@ -18,12 +20,16 @@ import { createDocumentChangeTrigger } from './trigger.js';
 
 // ── Powerhouse Integration ─────────────────────────────────────────
 
+// Connect (ph connect) must run inside the agent-app Reactor Package.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const agentAppDir = path.resolve(__dirname, '../../agent-app');
+
 const { integration, services } = definePowerhouseIntegration({
   documentModels,
   drive: { name: 'Agent Chat' },
   subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
   switchboard: { enabled: true, port: 4801 },
-  connect: { enabled: true, port: 3000 },
+  connect: { enabled: true, port: 3000, workdir: agentAppDir },
 });
 
 // ── Document Change Trigger ─────────────────────────────────────────

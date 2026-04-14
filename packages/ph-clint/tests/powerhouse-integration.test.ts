@@ -229,60 +229,79 @@ describe('bridgeSubscriptions', () => {
 
 describe('ensureDrive', () => {
   it('returns existing drive ID when drives exist', async () => {
-    const mockClient = {
-      getDrives: async () => ['existing-drive-id'],
+    const mockModule = {
+      client: {},
+      reactor: {
+        findByType: async () => ({
+          results: [{ header: { id: 'existing-drive-id' } }],
+        }),
+      },
     };
 
-    const driveId = await ensureDrive(mockClient);
+    const driveId = await ensureDrive(mockModule);
     expect(driveId).toBe('existing-drive-id');
   });
 
   it('creates a new drive when none exist', async () => {
-    const mockClient = {
-      getDrives: async () => [],
-      addDrive: async (options: any) => 'new-drive-id',
+    const mockModule = {
+      client: {
+        createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
+        rename: async () => {},
+      },
+      reactor: {
+        findByType: async () => ({ results: [] }),
+      },
     };
 
-    const driveId = await ensureDrive(mockClient, { name: 'Test Drive' });
+    const driveId = await ensureDrive(mockModule, { name: 'Test Drive' });
     expect(driveId).toBe('new-drive-id');
   });
 
-  it('passes drive config to addDrive', async () => {
-    let receivedOptions: any;
-    const mockClient = {
-      getDrives: async () => [],
-      addDrive: async (options: any) => {
-        receivedOptions = options;
-        return 'new-id';
+  it('renames drive with config name', async () => {
+    let renamedWith: { id: string; name: string } | undefined;
+    const mockModule = {
+      client: {
+        createEmpty: async () => ({ header: { id: 'new-id' } }),
+        rename: async (id: string, name: string) => { renamedWith = { id, name }; },
+      },
+      reactor: {
+        findByType: async () => ({ results: [] }),
       },
     };
 
-    await ensureDrive(mockClient, { name: 'My Agent', icon: 'https://icon.url' });
-    expect(receivedOptions.global.name).toBe('My Agent');
-    expect(receivedOptions.global.icon).toBe('https://icon.url');
+    await ensureDrive(mockModule, { name: 'My Agent' });
+    expect(renamedWith?.id).toBe('new-id');
+    expect(renamedWith?.name).toBe('My Agent');
   });
 
   it('uses default name when no config provided', async () => {
-    let receivedOptions: any;
-    const mockClient = {
-      getDrives: async () => [],
-      addDrive: async (options: any) => {
-        receivedOptions = options;
-        return 'new-id';
+    let renamedWith: { id: string; name: string } | undefined;
+    const mockModule = {
+      client: {
+        createEmpty: async () => ({ header: { id: 'new-id' } }),
+        rename: async (id: string, name: string) => { renamedWith = { id, name }; },
+      },
+      reactor: {
+        findByType: async () => ({ results: [] }),
       },
     };
 
-    await ensureDrive(mockClient);
-    expect(receivedOptions.global.name).toBe('default');
+    await ensureDrive(mockModule);
+    expect(renamedWith?.name).toBe('default');
   });
 
-  it('handles null drives list', async () => {
-    const mockClient = {
-      getDrives: async () => null,
-      addDrive: async () => 'new-drive-id',
+  it('handles empty results from findByType', async () => {
+    const mockModule = {
+      client: {
+        createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
+        rename: async () => {},
+      },
+      reactor: {
+        findByType: async () => ({ results: [] }),
+      },
     };
 
-    const driveId = await ensureDrive(mockClient);
+    const driveId = await ensureDrive(mockModule);
     expect(driveId).toBe('new-drive-id');
   });
 });

@@ -144,6 +144,7 @@ export function definePowerhouseIntegration(
         try {
           await context.services.start('connect', {
             params: { port: connectPort, driveUrl: phContext.driveUrl },
+            workdir: options.connect.workdir,
           });
         } catch {
           // Connect start failure is non-fatal — log but continue

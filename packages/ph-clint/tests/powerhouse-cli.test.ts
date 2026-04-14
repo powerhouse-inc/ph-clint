@@ -32,7 +32,7 @@ function captureOutput() {
 }
 
 describe('integration lifecycle in cli.ts', () => {
-  it('calls setup() on integration during run()', async () => {
+  it('does NOT call setup() for plain subcommands (lazy initialization)', async () => {
     const setupFn = jest.fn<(ctx: CommandContext) => Promise<void>>();
     const integration: Integration = {
       id: 'test',
@@ -43,13 +43,11 @@ describe('integration lifecycle in cli.ts', () => {
     const out = captureOutput();
     await cli.run(['node', 'test-ph', 'noop'], out);
 
-    expect(setupFn).toHaveBeenCalledTimes(1);
-    expect(setupFn.mock.calls[0][0]).toHaveProperty('workdir');
-    expect(setupFn.mock.calls[0][0]).toHaveProperty('workspace');
-    expect(setupFn.mock.calls[0][0]).toHaveProperty('config');
+    // Subcommands don't trigger integration setup — it's lazy
+    expect(setupFn).not.toHaveBeenCalled();
   });
 
-  it('calls teardown() on integration after command execution', async () => {
+  it('does NOT call teardown() for plain subcommands', async () => {
     const teardownFn = jest.fn<() => Promise<void>>();
     const integration: Integration = {
       id: 'test',
@@ -60,10 +58,10 @@ describe('integration lifecycle in cli.ts', () => {
     const out = captureOutput();
     await cli.run(['node', 'test-ph', 'noop'], out);
 
-    expect(teardownFn).toHaveBeenCalledTimes(1);
+    expect(teardownFn).not.toHaveBeenCalled();
   });
 
-  it('calls setup before command execution and teardown after', async () => {
+  it('calls setup in interactive mode and teardown on exit', async () => {
     const order: string[] = [];
     const integration: Integration = {
       id: 'test',
@@ -71,28 +69,28 @@ describe('integration lifecycle in cli.ts', () => {
       async teardown() { order.push('teardown'); },
     };
 
-    const cmd = defineCommand({
-      id: 'track',
-      description: 'Tracks order',
-      inputSchema: z.object({}),
-      execute: async () => { order.push('execute'); return undefined; },
-    });
-
     const cli = defineCli({
       name: 'test-ph',
       version: '0.0.1',
       description: 'Test CLI',
-      commands: [cmd],
+      commands: [noopCommand],
       integrations: [integration],
+      interactive: { welcome: 'hi' },
     });
 
     const out = captureOutput();
-    await cli.run(['node', 'test-ph', 'track'], out);
+    async function* inputGen() {
+      yield '/exit';
+    }
+    await cli.run(['node', 'test-ph', '-i'], {
+      ...out,
+      interactiveInput: inputGen(),
+    });
 
-    expect(order).toEqual(['setup', 'execute', 'teardown']);
+    expect(order).toEqual(['setup', 'teardown']);
   });
 
-  it('calls multiple integrations in order (setup) and reverse (teardown)', async () => {
+  it('calls multiple integrations in order (setup) and reverse (teardown) in interactive mode', async () => {
     const order: string[] = [];
     const int1: Integration = {
       id: 'first',
@@ -105,14 +103,28 @@ describe('integration lifecycle in cli.ts', () => {
       async teardown() { order.push('teardown-2'); },
     };
 
-    const cli = createTestCli([int1, int2]);
+    const cli = defineCli({
+      name: 'test-ph',
+      version: '0.0.1',
+      description: 'Test CLI',
+      commands: [noopCommand],
+      integrations: [int1, int2],
+      interactive: { welcome: 'hi' },
+    });
+
     const out = captureOutput();
-    await cli.run(['node', 'test-ph', 'noop'], out);
+    async function* inputGen() {
+      yield '/exit';
+    }
+    await cli.run(['node', 'test-ph', '-i'], {
+      ...out,
+      interactiveInput: inputGen(),
+    });
 
     expect(order).toEqual(['setup-1', 'setup-2', 'teardown-2', 'teardown-1']);
   });
 
-  it('integration can mutate context.powerhouse in setup()', async () => {
+  it('integration can mutate context.powerhouse in setup() (visible in interactive mode)', async () => {
     let capturedContext: CommandContext | undefined;
 
     const integration: Integration = {
@@ -138,10 +150,18 @@ describe('integration lifecycle in cli.ts', () => {
       description: 'Test CLI',
       commands: [cmd],
       integrations: [integration],
+      interactive: { welcome: 'hi' },
     });
 
     const out = captureOutput();
-    await cli.run(['node', 'test-ph', 'check'], out);
+    async function* inputGen() {
+      yield '/check';
+      yield '/exit';
+    }
+    await cli.run(['node', 'test-ph', '-i'], {
+      ...out,
+      interactiveInput: inputGen(),
+    });
 
     expect(capturedContext?.powerhouse).toBeDefined();
     expect(capturedContext?.powerhouse?.driveId).toBe('test-drive');
@@ -174,33 +194,5 @@ describe('integration lifecycle in cli.ts', () => {
     const out = captureOutput();
     // Should not throw
     await cli.run(['node', 'test-ph', 'noop'], out);
-  });
-
-  it('teardown runs in interactive mode exit path', async () => {
-    const teardownFn = jest.fn<() => Promise<void>>();
-    const integration: Integration = {
-      id: 'test',
-      teardown: teardownFn,
-    };
-
-    const cli = defineCli({
-      name: 'test-ph',
-      version: '0.0.1',
-      description: 'Test CLI',
-      commands: [noopCommand],
-      integrations: [integration],
-      interactive: { welcome: 'hi' },
-    });
-
-    const out = captureOutput();
-    async function* inputGen() {
-      yield '/exit';
-    }
-    await cli.run(['node', 'test-ph', '-i'], {
-      ...out,
-      interactiveInput: inputGen(),
-    });
-
-    expect(teardownFn).toHaveBeenCalledTimes(1);
   });
 });

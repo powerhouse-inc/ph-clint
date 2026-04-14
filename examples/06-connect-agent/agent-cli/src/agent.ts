@@ -27,27 +27,29 @@ const instructions = `You are a helpful AI assistant in a Powerhouse Connect age
  * Otherwise, returns a simple demo echo agent.
  */
 export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvider> {
+  let inner: AgentProvider;
+
   if (!ctx.config.apiKey) {
-    return createDemoAgent(ctx);
+    inner = createDemoAgent();
+  } else {
+    const { createMastraHelpers } = await import('ph-clint/mastra');
+    const { Agent } = await import('@mastra/core/agent');
+    const m = createMastraHelpers(ctx);
+
+    const mastraAgent = new Agent({
+      id: AGENT_ID,
+      name: 'Connect Agent',
+      instructions,
+      model: ctx.config.model,
+      tools: await m.getTools(),
+      memory: await m.createMemory(),
+    });
+
+    inner = m.wrapAgent(mastraAgent, { maxSteps: 40 });
   }
 
-  const { createMastraHelpers } = await import('ph-clint/mastra');
-  const { Agent } = await import('@mastra/core/agent');
-  const m = createMastraHelpers(ctx);
-
-  const mastraAgent = new Agent({
-    id: AGENT_ID,
-    name: 'Connect Agent',
-    instructions,
-    model: ctx.config.model,
-    tools: await m.getTools(),
-    memory: await m.createMemory(),
-  });
-
-  const wrapped = m.wrapAgent(mastraAgent, { maxSteps: 40 });
-
-  // Return a provider that bridges to the document
-  return createDocumentBridgedProvider(wrapped, ctx);
+  // Wrap with document bridge so all agent output is written to the chat document
+  return createDocumentBridgedProvider(inner, ctx);
 }
 
 /**
@@ -94,7 +96,7 @@ function createDocumentBridgedProvider(
 /**
  * Simple demo agent that echoes input when no API key is configured.
  */
-function createDemoAgent(ctx: AgentContext<Config>): AgentProvider {
+function createDemoAgent(): AgentProvider {
   return {
     id: 'connect-agent-demo',
     async *stream(prompt: string): AsyncGenerator<StreamChunk> {

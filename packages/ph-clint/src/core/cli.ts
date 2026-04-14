@@ -816,10 +816,18 @@ export function defineCli<
       }
     }
 
-    // Initialize integrations (setup runs after context is fully built)
-    if (options.integrations) {
-      for (const integration of options.integrations) {
-        await integration.setup?.(context);
+    // Lazy integration setup — only runs when the routine starts or
+    // an agent provider is created.  Service commands, help, config,
+    // and any other subcommand that doesn't touch agent/routine skip
+    // integration initialization entirely.
+    let integrationsReady = false;
+    async function ensureIntegrationsReady(): Promise<void> {
+      if (integrationsReady) return;
+      integrationsReady = true;
+      if (options.integrations) {
+        for (const integration of options.integrations) {
+          await integration.setup?.(context);
+        }
       }
     }
 
@@ -838,6 +846,7 @@ export function defineCli<
     async function getAgentProvider(): Promise<AgentProvider | undefined> {
       if (cachedProvider) return cachedProvider;
       if (!agentLoader) return undefined;
+      await ensureIntegrationsReady();
       const agentCtx: AgentContext<TConfig> = {
         workdir,
         config: typedConfig,
@@ -860,6 +869,7 @@ export function defineCli<
 
     // Check for interactive mode (-i or --interactive)
     if (interactiveFlag) {
+      await ensureIntegrationsReady();
       if (!options.interactive) {
         stderr('Interactive mode is not configured for this CLI');
         exit(1);
@@ -908,7 +918,7 @@ export function defineCli<
           if (result.text) stdout(result.text);
         }
         // Teardown integrations before exiting interactive mode
-        if (options.integrations) {
+        if (integrationsReady && options.integrations) {
           for (const integration of [...options.integrations].reverse()) {
             await integration.teardown?.();
           }
@@ -1002,6 +1012,31 @@ export function defineCli<
       stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
     }
 
+    // If no subcommand and no agent prompt but a routine is configured,
+    // start the routine and wait indefinitely (like a long-running server).
+    if (!isSubcommand && routine) {
+      await ensureIntegrationsReady();
+      routine.start();
+      stdout(`Routine running. Press Ctrl+C to stop.`);
+      await new Promise<void>((resolve) => {
+        const onSignal = async () => {
+          process.removeListener('SIGINT', onSignal);
+          process.removeListener('SIGTERM', onSignal);
+          await routine!.stop();
+          // Teardown integrations (reverse order)
+          if (integrationsReady && options.integrations) {
+            for (const integration of [...options.integrations].reverse()) {
+              await integration.teardown?.();
+            }
+          }
+          resolve();
+        };
+        process.on('SIGINT', onSignal);
+        process.on('SIGTERM', onSignal);
+      });
+      return;
+    }
+
     const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
 
     try {
@@ -1027,8 +1062,8 @@ export function defineCli<
       await routine.stop();
     }
 
-    // Teardown integrations (reverse order)
-    if (options.integrations) {
+    // Teardown integrations (reverse order) — only if they were initialized
+    if (integrationsReady && options.integrations) {
       for (const integration of [...options.integrations].reverse()) {
         await integration.teardown?.();
       }
