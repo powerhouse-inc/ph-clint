@@ -183,8 +183,10 @@ export class MarkdownConversationLogger implements IConversationLogger {
 /**
  * Wrap an agent stream generator to log every chunk to a conversation logger.
  *
- * Accumulates text-delta chunks into a full assistant message and logs it
- * when the stream ends. Tool-call and tool-result chunks are logged inline.
+ * Text-delta chunks are accumulated and flushed as an assistant message
+ * whenever a non-text chunk arrives (tool-call, tool-result, error), and
+ * again when the stream ends. This preserves the interleaved order of
+ * text and tool activity in the log, matching the interactive output.
  */
 export async function* loggedStream(
   stream: AsyncGenerator<StreamChunk>,
@@ -193,6 +195,13 @@ export async function* loggedStream(
 ): AsyncGenerator<StreamChunk> {
   const textParts: string[] = [];
 
+  function flushText(): void {
+    if (textParts.length > 0) {
+      logger.logAssistantMessage(sessionId, textParts.join(''));
+      textParts.length = 0;
+    }
+  }
+
   try {
     for await (const chunk of stream) {
       switch (chunk.type) {
@@ -200,22 +209,23 @@ export async function* loggedStream(
           textParts.push(chunk.text);
           break;
         case 'tool-call':
+          flushText();
           logger.logToolUse(sessionId, chunk.toolName, chunk.args);
           break;
         case 'tool-result':
+          flushText();
           logger.logToolResult(sessionId, chunk.toolName, chunk.result, chunk.isError);
           break;
         case 'error':
+          flushText();
           logger.logError(sessionId, chunk.error);
           break;
       }
       yield chunk;
     }
   } finally {
-    // Log accumulated text as assistant message
-    if (textParts.length > 0) {
-      logger.logAssistantMessage(sessionId, textParts.join(''));
-    }
+    // Flush any remaining text (final assistant message or interrupted stream)
+    flushText();
   }
 }
 

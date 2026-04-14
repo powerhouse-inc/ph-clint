@@ -252,12 +252,23 @@ describe('loggedStream', () => {
     // All chunks passed through
     expect(collected).toEqual(chunks);
 
-    // Check log content
+    // Check log content — text is flushed before tool activity and at the end,
+    // so 'Hello world' and '!' are logged as separate assistant messages.
     const content = readLogContent(dir);
     expect(content).toContain('## Assistant Message');
-    expect(content).toContain('Hello world!');
+    expect(content).toContain('Hello world');
+    expect(content).toContain('!');
     expect(content).toContain('## Tool Use: greet');
     expect(content).toContain('## Tool Result: greet');
+
+    // Verify interleaved order: text before tool use, tool use before tool result, text after
+    const textIdx = content.indexOf('Hello world');
+    const toolUseIdx = content.indexOf('## Tool Use: greet');
+    const toolResultIdx = content.indexOf('## Tool Result: greet');
+    const trailingTextIdx = content.indexOf('!', toolResultIdx);
+    expect(textIdx).toBeLessThan(toolUseIdx);
+    expect(toolUseIdx).toBeLessThan(toolResultIdx);
+    expect(toolResultIdx).toBeLessThan(trailingTextIdx);
   });
 
   it('logs error chunks', async () => {

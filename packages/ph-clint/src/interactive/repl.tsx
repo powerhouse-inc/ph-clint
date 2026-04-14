@@ -50,6 +50,7 @@ export function Repl({ session, services, workdir }: ReplProps) {
   const [streamingText, setStreamingText] = useState('');
   const [currentInput, setCurrentInput] = useState('');
   const nextId = useRef(0);
+  const interruptedRef = useRef(false);
 
   // Interaction mode tracking
   const [mode, setMode] = useState<InteractionMode>('typing');
@@ -92,6 +93,7 @@ export function Repl({ session, services, workdir }: ReplProps) {
       setPhase('executing');
       setStreamingText('');
       setCurrentInput(trimmed);
+      interruptedRef.current = false;
 
       // Wire up streaming callback so chunks appear incrementally
       session.onStreamChunk = (text) => setStreamingText(text);
@@ -101,6 +103,13 @@ export function Repl({ session, services, workdir }: ReplProps) {
       // Clear streaming callback
       session.onStreamChunk = undefined;
       setStreamingText('');
+
+      // If the user pressed Escape during execution, the partial output
+      // was already captured into history — skip adding a duplicate.
+      if (interruptedRef.current) {
+        interruptedRef.current = false;
+        return;
+      }
 
       if (result.type === 'exit') {
         setHistory((h) => [
@@ -179,6 +188,20 @@ export function Repl({ session, services, workdir }: ReplProps) {
 
       if (phase !== 'idle') {
         if (key.escape) {
+          // Preserve any accumulated streaming output in history
+          if (phase === 'executing') {
+            interruptedRef.current = true;
+            setHistory((h) => [
+              ...h,
+              {
+                id: nextId.current++,
+                input: currentInput,
+                output: streamingText || '(interrupted)',
+                type: 'result' as const,
+              },
+            ]);
+            setStreamingText('');
+          }
           setPhase('idle');
         }
         return;
