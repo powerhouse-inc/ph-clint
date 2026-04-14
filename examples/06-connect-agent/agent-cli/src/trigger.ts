@@ -30,9 +30,11 @@ export function createDocumentChangeTrigger(
       ctx.state.pendingChanges = [] as Array<{ documents: unknown }>;
 
       ctx.on('powerhouse:document:changed', (data) => {
+        console.log('[trigger] Document change event received');
         const pending = ctx.state.pendingChanges as Array<unknown>;
         pending.push(data);
       });
+
     },
 
     async poll(ctx: TriggerContext): Promise<WorkItem | null> {

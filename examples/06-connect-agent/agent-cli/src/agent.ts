@@ -21,33 +21,38 @@ const instructions = `You are a helpful AI assistant in a Powerhouse Connect age
 - Keep responses focused and practical.`;
 
 /**
+ * Create the raw (unwrapped) agent — no document bridging.
+ * Used by the trigger to stream responses directly via writeStreamToDocument.
+ */
+export async function createInnerAgent(ctx: AgentContext<Config>): Promise<AgentProvider> {
+  if (!ctx.config.apiKey) {
+    return createDemoAgent();
+  }
+
+  const { createMastraHelpers } = await import('ph-clint/mastra');
+  const { Agent } = await import('@mastra/core/agent');
+  const m = createMastraHelpers(ctx);
+
+  const mastraAgent = new Agent({
+    id: AGENT_ID,
+    name: 'Connect Agent',
+    instructions,
+    model: ctx.config.model,
+    tools: await m.getTools(),
+    memory: await m.createMemory(),
+  });
+
+  return m.wrapAgent(mastraAgent, { maxSteps: 40 });
+}
+
+/**
  * Create the agent for the connect-agent CLI.
  *
  * When an API key is configured, creates a full Mastra agent with memory and tools.
  * Otherwise, returns a simple demo echo agent.
  */
 export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvider> {
-  let inner: AgentProvider;
-
-  if (!ctx.config.apiKey) {
-    inner = createDemoAgent();
-  } else {
-    const { createMastraHelpers } = await import('ph-clint/mastra');
-    const { Agent } = await import('@mastra/core/agent');
-    const m = createMastraHelpers(ctx);
-
-    const mastraAgent = new Agent({
-      id: AGENT_ID,
-      name: 'Connect Agent',
-      instructions,
-      model: ctx.config.model,
-      tools: await m.getTools(),
-      memory: await m.createMemory(),
-    });
-
-    inner = m.wrapAgent(mastraAgent, { maxSteps: 40 });
-  }
-
+  const inner = await createInnerAgent(ctx);
   // Wrap with document bridge so all agent output is written to the chat document
   return createDocumentBridgedProvider(inner, ctx);
 }
