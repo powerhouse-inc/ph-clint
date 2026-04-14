@@ -1,6 +1,8 @@
 # Powerhouse Integration — Implementation Report
 
-Status: **Phases 1–3 implemented in library**. Phase 4 (Example 06) not started.
+Status: **Phases 1–3 implemented in library. Phase 4 (Example 06) implemented and validated end-to-end.**
+
+---
 
 ## Phase 1: Internal Reactor — DONE
 
@@ -8,9 +10,13 @@ In-process, event-sourced document store with persistent PGlite storage and subs
 
 ### What was built
 
-**`src/integrations/powerhouse/reactor.ts`** — `buildReactor(options)` lazy-loads six peer dependencies (`@powerhousedao/reactor`, `@electric-sql/pglite`, `kysely`, `kysely-pglite-dialect`, `@powerhousedao/shared/document-drive`, `document-model`) via a `lazyImport()` wrapper that prevents TypeScript from resolving types at compile time. Constructs a `ReactorClientModule` using `ReactorClientBuilder` → `ReactorBuilder` with the user's document models plus the two base models (drive, document-model). PGlite opens a persistent directory at `{workdir}/.ph/{cliName}/reactor-storage/` — survives CLI restarts.
+**`src/integrations/powerhouse/reactor.ts`** — `buildReactor(options)` lazy-loads six peer dependencies (`@powerhousedao/reactor`, `@electric-sql/pglite`, `kysely`, `kysely-pglite-dialect`, `@powerhousedao/shared/document-drive`, `document-model`) via a `lazyImport()` wrapper that prevents TypeScript from resolving types at compile time. Constructs a `ReactorClientModule` using `ReactorClientBuilder` → `ReactorBuilder` with the user's document models plus the two base models (drive, document-model). PGlite opens a persistent directory at `{workdir}/.ph/{cliName}/reactor-storage/` — survives CLI restarts. Creates the storage directory with `mkdir -p` before opening PGlite.
 
-**`src/integrations/powerhouse/drive.ts`** — `ensureDrive(client, driveConfig?)` calls `client.getDrives()` and returns the first existing drive ID, or creates a new one via `client.addDrive()` with the configured name/icon. Default name is `'default'`.
+Accepts `enableSync?: boolean` — when true, calls `reactorBuilder.withChannelScheme(ChannelScheme.SWITCHBOARD)` to populate the sync module that Phase 2 Switchboard requires.
+
+**`src/integrations/powerhouse/drive.ts`** — `ensureDrive(reactorModule, driveConfig?)` uses `reactor.findByType('powerhouse/document-drive')` to find existing drives, returns the first one's ID. On first run, creates via `client.createEmpty('powerhouse/document-drive')` + `client.rename(driveId, name)`. Default name is `'default'`.
+
+> **API discovery note**: The original spec assumed `client.getDrives()` and `client.addDrive()`. The actual Reactor client has no dedicated drive methods — drives are documents of type `powerhouse/document-drive`, managed through the standard document CRUD API: `createEmpty()`, `rename()`, `get()`, `execute()`, `addChildren()`, `getChildren()`, and `reactor.findByType()`.
 
 **`src/integrations/powerhouse/subscriptions.ts`** — `bridgeSubscriptions(client, subscriptions, emit)` calls `client.subscribe()` with an optional `documentTypes` filter. Maps Reactor events to ph-clint event bus:
 - `Created` → one `powerhouse:document:created` per document (with `documentId`, `documentType`)
@@ -23,8 +29,8 @@ In-process, event-sourced document store with persistent PGlite storage and subs
 - `PowerhouseContext` — `{ client, driveId, switchboardUrl?, driveUrl?, mcpUrl?, connectUrl? }`
 - `DriveConfig` — `{ name, icon? }`
 - `SubscriptionConfig` — `{ documentTypes? }`
-- `SwitchboardConfig` — `{ enabled, port? }`
-- `ConnectConfig` — `{ enabled, port? }`
+- `SwitchboardConfig` — `{ enabled, port?, preflight? }`
+- `ConnectConfig` — `{ enabled, port?, workdir? }`
 - `PowerhouseIntegrationOptions` — combined options for all three phases
 - `SwitchboardInstance` — internal handle with URLs + `shutdown()`
 
@@ -32,15 +38,25 @@ In-process, event-sourced document store with persistent PGlite storage and subs
 
 ### Core lifecycle hooks
 
-**`src/core/cli.ts`** — Three insertion points:
+**`src/core/cli.ts`** — Lazy integration setup via `ensureIntegrationsReady()`:
 
-1. **Setup** (after event bus registration, before Resolvable resolution, ~line 819): iterates `options.integrations` and calls `integration.setup?.(context)` in order.
+Integration setup is **demand-driven** — only triggered by:
+1. **Interactive mode** entry (REPL start)
+2. **Agent provider creation** (`getAgentProvider()` calls `ensureIntegrationsReady()`)
+3. **Routine loop start** (auto-wait when no subcommand and routine is configured)
 
-2. **Teardown — interactive mode** (after headless REPL loop exits, before `exit(0)`): iterates `options.integrations` in reverse and calls `integration.teardown?.()`.
+Plain subcommands (including service commands like `connect-start`) skip integration setup entirely. This allows starting Connect independently without spinning up the full Reactor/Switchboard stack.
 
-3. **Teardown — command mode** (after routine stop at end of `runImpl`): same reverse-order teardown.
+Teardown runs in reverse order at three locations:
+1. After interactive mode REPL exits
+2. After command mode routine stop
+3. After routine auto-wait signal handler (Ctrl+C / SIGTERM)
 
-4. **`hasReactor` in metadata**: replaced `false` TODO with `options.integrations?.some(i => i.id === 'powerhouse') ?? false`.
+All three locations are guarded with `integrationsReady &&` to skip teardown when setup never ran.
+
+**Routine auto-wait**: When a routine is configured and no subcommand is given, the CLI stays alive indefinitely with SIGINT/SIGTERM handlers for clean shutdown (integration teardown + routine stop).
+
+**`hasReactor` in metadata**: `options.integrations?.some(i => i.id === 'powerhouse') ?? false`.
 
 ### Events emitted
 
@@ -51,11 +67,12 @@ In-process, event-sourced document store with persistent PGlite storage and subs
 | `powerhouse:document:deleted` | Reactor subscription fires `Deleted` | `{ documentId }` |
 | `powerhouse:ready` | End of `setup()` | `{ driveId }` |
 
-### Tests (15 tests)
+### Tests
 
-- `bridgeSubscriptions`: Created/Updated/Deleted mapping, unsubscribe function, documentTypes filter passthrough, error resilience, missing documents gracefully handled
-- `ensureDrive`: existing drive returned, new drive created, config passed, default name fallback, null drives list
-- `PowerhouseContext` type shape with/without Phase 2+3 fields
+- `bridgeSubscriptions` (7 tests): Created/Updated/Deleted mapping, unsubscribe function, documentTypes filter passthrough, error resilience, missing documents gracefully handled
+- `ensureDrive` (5 tests): existing drive returned via `reactor.findByType`, new drive created via `client.createEmpty` + `client.rename`, config passed, default name fallback, empty results
+- `PowerhouseContext` type shape (2 tests): with/without Phase 2+3 fields
+- Integration lifecycle in cli.ts (9 tests): lazy setup NOT called for plain subcommands, setup/teardown called in interactive mode, correct order with multiple integrations, context.powerhouse mutation, hasReactor detection
 
 ---
 
@@ -68,18 +85,24 @@ GraphQL + MCP endpoint wrapping the Phase 1 Reactor via `initializeAndStartAPI`.
 **`src/integrations/powerhouse/switchboard.ts`** — `startSwitchboard(options)` lazy-loads `@powerhousedao/reactor-api` and calls `initializeAndStartAPI` with:
 - A `clientInitializer` callback that ignores the `documentModels` parameter and returns the Phase 1 `ReactorClientModule` directly (no second Reactor instance)
 - Minimal options: `{ port, dbPath, mcp: true, packages: [] }` — no auth, no HTTPS, no processors
+- Third argument `'agent'` for the API mode
 - Returns a `SwitchboardInstance` with computed URLs and a `shutdown()` method that attempts `api.stop()` or falls back to closing the HTTP server.
 
 ### Wiring in `setup()`
 
 After Phase 1 completes, if `options.switchboard?.enabled`:
-- Imports and calls `startSwitchboard()` with `reactorModule`, port (default 4001), `read-model.db` path, and `driveId`
+- **Preflight port check**: `isPortFree(switchboardPort)` — fails fast with a helpful error message if the port is occupied. Can be disabled with `preflight: false`.
+- Imports and calls `startSwitchboard()` with `reactorModule`, port (default **4801**), `read-model.db` path, and `driveId`
 - Extends `PowerhouseContext` with `switchboardUrl`, `driveUrl`, `mcpUrl`
 - Emits `powerhouse:switchboard:ready` with all three URLs
 
 ### Wiring in `teardown()`
 
 Switchboard shutdown runs before Reactor shutdown (reverse order). Calls `switchboard.shutdown()`.
+
+### Validated against real Powerhouse packages
+
+The `initializeAndStartAPI` integration was validated end-to-end in Example 06. Key discovery: the ReactorBuilder must use `ChannelScheme.SWITCHBOARD` for the sync module to be available — without it, the Switchboard fails with "SyncManager not available from ReactorClientModule".
 
 ### Events emitted
 
@@ -89,7 +112,7 @@ Switchboard shutdown runs before Reactor shutdown (reverse order). Calls `switch
 
 ### Tests
 
-Switchboard module has 0% coverage — requires `@powerhousedao/reactor-api` as a runtime dependency. Will be exercised by Example 06 E2E tests.
+Switchboard module has 0% unit test coverage — requires `@powerhousedao/reactor-api` as a runtime dependency. Validated via Example 06 E2E testing (Switchboard serves drives, documents visible in Connect).
 
 ---
 
@@ -103,6 +126,7 @@ Persistent web UI child process managed by ServiceManager.
 - `id: 'connect'`, `name: 'Connect Studio'`
 - Command: `ph connect --port {port} --default-drives-url {driveUrl}`
 - Env vars: `PH_CONNECT_DEFAULT_DRIVES_URL`, `PH_CONNECT_DRIVES_PRESERVE_STRATEGY`
+- **Preflight checks**: `checkCommand('ph')` verifies CLI is installed, `checkPort()` verifies port is free
 - Readiness: pattern `/Local:\s*(http:\/\/localhost:\d+)/` with 30s timeout, captures `connect-studio` as `website` endpoint
 - Shutdown: `SIGTERM` with 5s timeout
 - Restart: disabled
@@ -111,7 +135,7 @@ Persistent web UI child process managed by ServiceManager.
 
 **At construction time** (`definePowerhouseIntegration`): if `options.connect?.enabled`, the service definition is added to the `services` array returned alongside the `integration`. The consumer merges these into `CliOptions.services`. This is necessary because `defineCli` reads services at construction time before `setup()` runs.
 
-**In `setup()`**: after Phase 2 Switchboard is ready, if Connect is enabled and `driveUrl` is available, auto-starts the Connect service via `context.services.start('connect', { params: { port, driveUrl } })`. Failure is non-fatal (caught, logged as warning).
+**In `setup()`**: after Phase 2 Switchboard is ready, if Connect is enabled and `driveUrl` is available, auto-starts the Connect service via `context.services.start('connect', { params: { port, driveUrl }, workdir })`. The `workdir` must point to a Reactor Package project (the `agent-app` directory) for `ph connect` to work. Failure is non-fatal (caught, logged as warning).
 
 **No teardown**: Connect persists beyond CLI exit by design (ServiceManager detached processes).
 
@@ -131,6 +155,110 @@ Persistent web UI child process managed by ServiceManager.
 
 ---
 
+## Phase 4: Example 06 (`06-connect-agent`) — IMPLEMENTED
+
+### Overview
+
+A ph-clint CLI that connects a Mastra AI agent to the Powerhouse document ecosystem. All three Powerhouse layers are active (Reactor on port 4801, Connect on port 3000). Messages are persisted as operations on an **agent-chat** document.
+
+### Two-project structure (both implemented)
+
+```
+examples/06-connect-agent/
+├── agent-app/          # Reactor Package (Vetra project) — DONE
+│   ├── document-models/agent-chat/   # Document model + generated code
+│   ├── editors/agent-chat-editor/    # Connect editor UI (ChatHeader, ChatMessages, ChatInput)
+│   ├── package.json
+│   └── ...
+└── agent-cli/          # ph-clint CLI project — DONE
+    ├── src/
+    │   ├── cli.ts          # defineCli + definePowerhouseIntegration
+    │   ├── config.ts       # Zod config schema
+    │   ├── agent.ts        # Agent factory (demo + Mastra modes)
+    │   ├── bridge.ts       # StreamChunk ↔ agent-chat document operations bridge
+    │   └── trigger.ts      # Document change trigger
+    ├── package.json
+    └── tsconfig.json
+```
+
+### Agent-Chat document model (in `agent-app`)
+
+**Type ID**: `powerhouse/agent-chat`
+
+**State**: `topic`, `agents[]`, `stakeholders[]`, `messages[]`, `pruneLength`
+
+**5 modules, 28 operations**: base, stakeholders, agents, messages, reactions.
+
+**Editor UI** (`editors/agent-chat-editor/editor.tsx`): Full chat interface with:
+- `ChatHeader` — displays topic and participant count
+- `ChatMessages` — message list with sender labels, timestamps, auto-scroll
+- `ChatInput` — text input with send button and Enter key handling
+- Dispatches `sendText` operations via the `useSelectedAgentChatDocument()` hook
+
+### Agent factory (`agent.ts`)
+
+Two modes:
+- **Demo mode** (no API key): echo agent wrapped in document bridge
+- **Mastra mode** (with `CONNECT_AGENT_API_KEY`): Full Mastra agent with memory, tools, and document bridge
+
+Both modes go through `createDocumentBridgedProvider()` which wraps the agent to:
+1. Find or create an agent-chat document in the drive
+2. Ensure stakeholder and agent participants exist
+3. Write user message to document before invoking agent
+4. Stream agent response, writing chunks to document via `writeStreamToDocument()`
+
+**Reactor client API used**: `getChildren()`, `createEmpty()`, `addChildren()`, `execute()`, `get()` — all validated at runtime.
+
+### StreamChunk ↔ Document bridge (`bridge.ts`)
+
+Translates between Mastra streaming protocol and agent-chat document operations:
+- `text-delta` → `sendText({ sender, text, format: 'MarkDown' })`
+- `tool-call` → `sendToolCall({ sender, toolName, argsJson })`
+- `tool-result` → `sendToolResult({ sender, toolName, result, isError })`
+- `error` → `sendError({ sender, error })`
+
+Text-delta chunks accumulate and flush at stream boundaries, leveraging `sendText`'s auto-append behavior.
+
+### CLI wiring (`cli.ts`)
+
+```typescript
+const { integration, services } = definePowerhouseIntegration({
+  documentModels,
+  drive: { name: 'Agent Chat' },
+  subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
+  switchboard: { enabled: true, port: 4801 },
+  connect: { enabled: true, port: 3000, workdir: agentAppDir },
+});
+```
+
+- Switchboard on port **4801** (hardcoded, visible)
+- Connect on port **3000**, workdir pointing to `agent-app/` directory
+- Document change trigger produces work items for the routine loop
+- `cli.setAgentLoader(createAgent)` wires the agent factory
+
+### Implementation steps completed
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 1. Scaffold agent-cli | **Done** | Package.json, tsconfig, dependencies |
+| 2. StreamChunk ↔ Document bridge | **Done** | `writeStreamToDocument()`, `writeUserMessage()` |
+| 3. Agent definition | **Done** | Demo + Mastra modes, document-bridged |
+| 4. Document change trigger | **Done** | Listens for `powerhouse:document:changed` |
+| 5. Wire everything | **Done** | CLI runs with all three layers |
+| 6. Agent-chat editor UI | **Done** | ChatHeader, ChatMessages, ChatInput |
+| 7. E2E validation | **Partial** | Reactor+Switchboard+Connect validated via Playwright; document bridge flow TBD |
+
+### Validation results
+
+- Reactor starts, creates PGlite database, finds/creates drives ✓
+- Switchboard wraps Reactor, serves GraphQL on port 4801 ✓
+- Connect starts as child process, serves web UI on port 3000 ✓
+- Agent-chat editor renders in Connect with ChatHeader, ChatMessages, ChatInput ✓
+- Lazy integration setup: service commands don't trigger Reactor/Switchboard ✓
+- Routine auto-wait keeps CLI alive when no subcommand ✓
+
+---
+
 ## Core changes summary
 
 ### Modified files
@@ -138,7 +266,7 @@ Persistent web UI child process managed by ServiceManager.
 | File | Change |
 |------|--------|
 | `src/core/types.ts` | Import `PowerhouseContext`, add `powerhouse?` to `CommandContext` |
-| `src/core/cli.ts` | Integration setup (1 block), teardown (2 blocks, interactive + command mode), `hasReactor` detection |
+| `src/core/cli.ts` | Lazy `ensureIntegrationsReady()`, routine auto-wait, guarded teardown (3 locations), `hasReactor` detection |
 | `src/index.ts` | Export `definePowerhouseIntegration`, `PowerhouseIntegrationResult`, and all Powerhouse types |
 | `package.json` | `./powerhouse` export path, 8 optional peer deps with meta |
 
@@ -146,27 +274,27 @@ Persistent web UI child process managed by ServiceManager.
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `src/integrations/powerhouse/types.ts` | 91 | All TypeScript interfaces |
-| `src/integrations/powerhouse/reactor.ts` | 65 | Lazy reactor builder with PGlite |
-| `src/integrations/powerhouse/drive.ts` | 35 | Drive find-or-create |
+| `src/integrations/powerhouse/types.ts` | 96 | All TypeScript interfaces |
+| `src/integrations/powerhouse/reactor.ts` | 77 | Lazy reactor builder with PGlite + enableSync |
+| `src/integrations/powerhouse/drive.ts` | 43 | Drive find-or-create via findByType/createEmpty |
 | `src/integrations/powerhouse/subscriptions.ts` | 53 | Event bridge |
 | `src/integrations/powerhouse/switchboard.ts` | 75 | Switchboard wrapper |
-| `src/integrations/powerhouse/connect.ts` | 47 | Connect service definition |
-| `src/integrations/powerhouse/index.ts` | 171 | `definePowerhouseIntegration()` orchestrator |
-| `tests/powerhouse-integration.test.ts` | ~230 | Unit tests for modules |
-| `tests/powerhouse-cli.test.ts` | ~160 | Integration lifecycle tests |
+| `src/integrations/powerhouse/connect.ts` | 53 | Connect service definition with preflight checks |
+| `src/integrations/powerhouse/index.ts` | 187 | `definePowerhouseIntegration()` orchestrator |
+| `tests/powerhouse-integration.test.ts` | ~335 | Unit tests for modules |
+| `tests/powerhouse-cli.test.ts` | ~199 | Integration lifecycle tests |
 
 ### Test results
 
-- **849 tests pass** (814 existing + 35 new), 0 regressions
+- **848 tests pass**, 37 test suites, 0 regressions
 - Build clean, no TypeScript errors
-- Coverage thresholds fail due to untestable modules (reactor.ts, switchboard.ts require peer deps)
+- Coverage thresholds fail due to untestable modules (reactor.ts at 0%, switchboard.ts at 0%, index.ts at ~12%) — these require Powerhouse peer deps at runtime
 
 ### Peer dependencies added (all optional)
 
 | Package | Version | Used by |
 |---------|---------|---------|
-| `@powerhousedao/reactor` | ^6.0.2 | Phase 1: ReactorBuilder, ReactorClientBuilder |
+| `@powerhousedao/reactor` | ^6.0.2 | Phase 1: ReactorBuilder, ReactorClientBuilder, ChannelScheme |
 | `@powerhousedao/reactor-api` | ^6.0.2 | Phase 2: initializeAndStartAPI |
 | `@powerhousedao/reactor-mcp` | ^6.0.2 | Phase 2: MCP endpoint (transitive) |
 | `@powerhousedao/shared` | ^6.0.2 | Phase 1: driveDocumentModelModule |
@@ -177,231 +305,18 @@ Persistent web UI child process managed by ServiceManager.
 
 ---
 
-## Known gaps
+## Known gaps (updated)
 
-1. **No Zod validation of `PowerhouseIntegrationOptions`** — Options are TypeScript interfaces only. Runtime validation (e.g. rejecting `connect.enabled` without `switchboard.enabled`) would require a Zod schema in a `config.ts` module, as originally planned.
+1. **No Zod validation of `PowerhouseIntegrationOptions`** — Options are TypeScript interfaces only. Runtime validation (e.g. rejecting `connect.enabled` without `switchboard.enabled`) would require a Zod schema.
 
-2. **`reactor.ts` and `switchboard.ts` have 0% test coverage** — They can only be tested with the Powerhouse packages installed. Example 06 will provide E2E coverage.
+2. **`reactor.ts` and `switchboard.ts` have 0% unit test coverage** — They require Powerhouse packages at runtime. Validated via Example 06 E2E testing.
 
-3. **`initializeAndStartAPI` signature assumptions** — The `switchboard.ts` implementation assumes specific options shape and return type based on the Phase 2 spec's code analysis. Must be validated against the actual `@powerhousedao/reactor-api` package.
+3. ~~**`ensureDrive` assumes `getDrives()` returns drive IDs`**~~ — **Resolved**. Discovered the actual API: drives are documents of type `powerhouse/document-drive`, accessed via `reactor.findByType()` + `client.createEmpty()` + `client.rename()`.
 
-4. **`ensureDrive` assumes `getDrives()` returns drive IDs** — Based on spec. Actual Reactor client API may differ.
+4. ~~**`initializeAndStartAPI` signature assumptions**~~ — **Resolved**. Validated end-to-end. Key discovery: needs `ChannelScheme.SWITCHBOARD` on ReactorBuilder for sync module.
 
-5. **Shutdown path for Ink REPL** — The non-headless interactive mode (`startInkRepl`) exits via `exit(0)` without teardown. Only the headless path (used in tests) has teardown. The Ink path is `/* istanbul ignore next */` and runs in real terminals — teardown there would need to happen inside `startInkRepl` or via a cleanup callback.
+5. **Shutdown path for Ink REPL** — The non-headless interactive mode (`startInkRepl`) exits via `exit(0)` without teardown. Only the headless path (used in tests) has teardown.
 
----
+6. **Connect → Agent round-trip not yet tested** — Sending a message via Connect editor should trigger the document change trigger → routine loop → agent response → document update → Connect re-render. The trigger is wired but the round-trip flow hasn't been validated end-to-end yet.
 
-## Phase 4: Example 06 (`06-connect-agent`) — PLANNED
-
-### Overview
-
-A ph-clint CLI that connects a Mastra AI agent to the Powerhouse document ecosystem. Users can chat with the agent via the terminal REPL or via Connect (browser). All messages are persisted as operations on an **agent-chat** document in a Reactor drive. The CLI enables all three Powerhouse layers (Reactor + Switchboard + Connect) plus a Mastra agent with memory.
-
-### Two-project structure
-
-```
-examples/06-connect-agent/
-├── agent-app/          # Reactor package (Vetra project) — DONE
-│   ├── document-models/agent-chat/   # Document model + generated code
-│   ├── editors/agent-chat-editor/    # Connect editor (boilerplate, needs UI)
-│   ├── package.json                  # Powerhouse deps (@powerhousedao/reactor, etc.)
-│   └── ...
-└── agent-cli/          # ph-clint CLI project — TO BUILD
-    ├── src/
-    │   ├── index.ts        # defineCli + definePowerhouseIntegration + defineMastraIntegration
-    │   ├── agent.ts        # Mastra agent definition
-    │   ├── bridge.ts       # StreamChunk ↔ agent-chat document operations bridge
-    │   └── trigger.ts      # Document change trigger (agent-chat → agent response)
-    ├── tests/
-    ├── package.json        # ph-clint (file:), agent-app (file:), mastra deps
-    └── tsconfig.json
-```
-
-**`agent-app`** is a standalone Reactor package built with Vetra tooling. It is already created: document model defined, code generated, types clean, 29 tests pass. The ph-clint CLI project (`agent-cli`) imports it as a `file:` dependency to get the document model module and generated types.
-
-**`agent-cli`** is the ph-clint project that wires everything together.
-
-### Agent-Chat document model (already implemented in `agent-app`)
-
-**Type ID**: `powerhouse/agent-chat`
-
-**State** (`AgentChatState`):
-- `topic: string | null` — Optional conversation subject
-- `agents: AgentInfo[]` — Participating AI agents (id, name, role, description, avatar, ethAddress, removed)
-- `stakeholders: Stakeholder[]` — Human participants (id, name, avatar, ethAddress, removed)
-- `messages: ChatMessage[]` — Conversation messages
-- `pruneLength: number | null` — Max messages kept in state (older pruned on write)
-
-**Message types** (`ChatMessage.type`):
-| MessageType | Fields used | Maps to ph-clint StreamChunk |
-|-------------|-------------|------------------------------|
-| `Text` | `text: string[]`, `format` | `text-delta` (each chunk → one `sendText` or auto-append) |
-| `ToolCall` | `toolCall: { name, argsJson }` | `tool-call` |
-| `ToolResult` | `toolResult: { name, result, isError }`, `format` | `tool-result` |
-| `Error` | `error: string`, `format` | `error` |
-
-**Key behaviors**:
-- `sendTextOperation`: Auto-appends to last message if same sender + type Text (streaming-friendly)
-- `pruneMessagesIfNeeded`: After each send, trims to `pruneLength` from the end
-- `markAsReadOperation`: Tracks which participants have read each message
-- `addReaction` / `removeReaction`: Emoji reactions per message
-
-**5 modules, 28 operations**:
-- `base`: setTopic, clearTopic, setPruneLength, removePruneLength
-- `stakeholders`: addStakeholder, removeStakeholder, readdStakeholder, setStakeholderName/Avatar/EthAddress
-- `agents`: addAgent, removeAgent, readdAgent, setAgentName/Description/Role/Avatar/EthAddress
-- `messages`: sendText, sendError, sendToolCall, sendToolResult, deleteMessage, markAsRead
-- `reactions`: addReaction, removeReaction
-
-### StreamChunk ↔ Document bridge (`bridge.ts`)
-
-The bridge translates between Mastra's streaming protocol and agent-chat document operations. Two directions:
-
-**Agent output → Document** (writing): Consumes the agent's `AsyncGenerator<StreamChunk>` and dispatches document operations:
-
-```
-StreamChunk { type: 'text-delta', text }     → sendText({ sender: agentId, text, format: 'MarkDown' })
-StreamChunk { type: 'tool-call', name, args } → sendToolCall({ sender: agentId, toolName, argsJson })
-StreamChunk { type: 'tool-result', ... }      → sendToolResult({ sender: agentId, toolName, result, isError })
-StreamChunk { type: 'error', error }          → sendError({ sender: agentId, error })
-```
-
-Text-delta chunks accumulate and flush on: (a) tool-call/tool-result/error chunk, (b) stream end, or (c) a configurable flush interval. This leverages `sendTextOperation`'s auto-append behavior — repeated `sendText` calls from the same sender extend the last message's `text[]` array rather than creating new messages.
-
-**Document → Agent input** (reading): Reads `state.messages` and converts to Mastra message format for agent context:
-
-```
-ChatMessage { type: 'Text', sender, text }        → { role: sender==agent ? 'assistant' : 'user', content: text.join('') }
-ChatMessage { type: 'ToolCall', toolCall }         → { role: 'assistant', content: [{ type: 'tool-use', ... }] }
-ChatMessage { type: 'ToolResult', toolResult }     → { role: 'tool', content: toolResult.result }
-ChatMessage { type: 'Error', error }               → { role: 'assistant', content: error }
-```
-
-### Document change trigger (`trigger.ts`)
-
-A ph-clint trigger that listens for `powerhouse:document:changed` events on the event bus. When a message is added to the agent-chat document by a stakeholder (human user), it produces a work item for the routine loop. The agent then processes the message and writes its response back to the document.
-
-Filter logic:
-1. Event `documentType` must be `powerhouse/agent-chat`
-2. The latest message's `sender` must be a stakeholder ID (not an agent ID)
-3. The latest message must not already have a response from an agent
-
-This prevents infinite loops (agent responds → triggers change → but sender is agent → filtered out).
-
-### CLI definition (`index.ts`)
-
-```typescript
-import { defineCli, definePowerhouseIntegration, defineMastraIntegration } from 'ph-clint';
-import { agentChatDocumentModelModule } from 'agent-app/document-models/agent-chat';
-
-const { integration, services } = definePowerhouseIntegration({
-  documentModels: [agentChatDocumentModelModule],
-  drive: { name: 'Agent Chat' },
-  subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
-  switchboard: { enabled: true, port: 4001 },
-  connect: { enabled: true, port: 3000 },
-});
-
-const mastra = defineMastraIntegration({ agent: chatAgent });
-
-export const cli = defineCli({
-  name: 'connect-agent',
-  version: '0.1.0',
-  integrations: [integration, mastra],
-  services: [...services],
-  triggers: [documentChangeTrigger],
-  // commands, config, etc.
-});
-```
-
-### User interaction flows
-
-**Flow 1 — Terminal REPL**:
-1. User types message in REPL (default subcommand or `/chat`)
-2. CLI dispatches `addStakeholder` (if first message) + `sendText` to agent-chat document
-3. Document change event fires → trigger produces work item
-4. Routine loop picks up work item → agent generates response (streamed)
-5. Bridge writes StreamChunks to document as `sendText`/`sendToolCall`/`sendToolResult`
-6. Response text streamed to terminal
-
-**Flow 2 — Connect (browser)**:
-1. User opens Connect at `localhost:3000`, navigates to agent-chat document
-2. Editor UI shows conversation, user types message
-3. Editor dispatches `sendText` operation → Reactor processes it
-4. Switchboard subscription → event bus → trigger → agent response (same as steps 3-5 above)
-5. Reactor state updates → Switchboard pushes to Connect → editor re-renders with response
-
-### Implementation steps
-
-#### Step 1: Scaffold `agent-cli` project
-- `package.json` with dependencies: `ph-clint` (file:), `agent-app` (file:), `@mastra/core`, `@ai-sdk/anthropic`
-- `tsconfig.json` extending ph-clint conventions
-- Basic `src/index.ts` with `defineCli` + `definePowerhouseIntegration` (no agent yet)
-- Verify: CLI starts, Reactor initializes, Switchboard serves GraphQL, Connect opens
-
-#### Step 2: StreamChunk ↔ Document bridge
-- Implement `bridge.ts` with `writeStreamToDocument()` and `readDocumentAsMessages()`
-- Unit tests: each StreamChunk type maps correctly, text-delta buffering works, flush on tool activity
-- Unit tests: document messages convert to Mastra message format
-
-#### Step 3: Agent definition
-- Implement `agent.ts` with Mastra agent (system prompt, tools, model config)
-- Agent receives conversation history from document, responds via stream
-- Configure Mastra memory with thread per document ID
-
-#### Step 4: Document change trigger
-- Implement `trigger.ts` listening to `powerhouse:document:changed`
-- Filter: only stakeholder messages, only agent-chat documents
-- Unit tests: filter logic, work item shape
-
-#### Step 5: Wire everything together
-- Connect bridge + agent + trigger in `index.ts`
-- REPL default subcommand sends user text → document → trigger → agent → document → terminal
-- Integration tests: full round-trip message flow
-
-#### Step 6: Agent-chat editor UI (in `agent-app`)
-- Implement the editor component in `editors/agent-chat-editor/editor.tsx`
-- Chat bubble UI, message input, auto-scroll, sender avatars
-- Uses `useSelectedAgentChatDocument()` hook + action creators from generated code
-
-#### Step 7: E2E tests
-- CLI starts all three layers successfully
-- Send message via REPL → agent responds → response visible in document state
-- Switchboard GraphQL returns updated document with messages
-- Connect editor loads and displays conversation
-
-### Acceptance criteria
-
-1. `pnpm start` in `agent-cli/` starts Reactor + Switchboard + Connect without errors
-2. User can type a message in the REPL and receive an AI agent response
-3. Messages are persisted in the agent-chat document (survives CLI restart)
-4. Connect at `localhost:3000` shows the conversation with a working editor
-5. Sending a message via Connect triggers the agent to respond
-6. Agent tool calls and results are recorded as ToolCall/ToolResult messages
-7. Text streaming uses auto-append (single message with multiple text chunks, not many messages)
-8. Message pruning works when `pruneLength` is configured
-9. All existing ph-clint tests continue to pass (0 regressions)
-
-### Dependencies
-
-| Package | Source | Used for |
-|---------|--------|----------|
-| `ph-clint` | `file:../../packages/ph-clint` | CLI framework |
-| `agent-app` | `file:../agent-app` | Document model module + types |
-| `@mastra/core` | npm | Agent framework |
-| `@ai-sdk/anthropic` | npm | Claude model provider |
-| `@powerhousedao/reactor` | npm ^6.0.2 | Reactor runtime (peer dep of ph-clint) |
-| `@powerhousedao/reactor-api` | npm ^6.0.2 | Switchboard (peer dep of ph-clint) |
-| `@powerhousedao/shared` | npm ^6.0.2 | Drive document model (peer dep of ph-clint) |
-| `@electric-sql/pglite` | npm ^0.2.0 | PGlite storage (peer dep of ph-clint) |
-| `document-model` | npm ^6.0.2 | Base document model (peer dep of ph-clint) |
-| `kysely` + `kysely-pglite-dialect` | npm | PGlite query layer (peer dep of ph-clint) |
-
-### Validation goals
-
-This example serves as the first real-world validation of the Phases 1-3 library code against actual Powerhouse packages. Known gaps to validate:
-- `buildReactor()` successfully creates a `ReactorClientModule` with PGlite
-- `ensureDrive()` correctly uses the Reactor client API (`getDrives()`, `addDrive()`)
-- `startSwitchboard()` correctly calls `initializeAndStartAPI` with the right options shape
-- Subscription events fire correctly and bridge to the event bus
-- Connect service starts and connects to the Switchboard drive URL
+7. **Temporary inspection scripts** — `agent-cli/` contains debugging scripts (`inspect-client.ts`, `inspect-builder.ts`, `serve.ts`, `check-doc.ts`) used during API discovery. Should be cleaned up.

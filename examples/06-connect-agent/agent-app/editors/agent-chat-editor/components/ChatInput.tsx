@@ -5,9 +5,10 @@ import type { Stakeholder } from "document-models/agent-chat";
 interface ChatInputProps {
   stakeholder: Stakeholder | undefined;
   onSend: (input: { id: string; sender: string; text: string; when: string }) => void;
+  onSwitchStakeholder?: () => void;
 }
 
-export function ChatInput({ stakeholder, onSend }: ChatInputProps) {
+export function ChatInput({ stakeholder, onSend, onSwitchStakeholder }: ChatInputProps) {
   const [message, setMessage] = useState("");
 
   if (!stakeholder || stakeholder.removed) {
@@ -53,11 +54,17 @@ export function ChatInput({ stakeholder, onSend }: ChatInputProps) {
   return (
     <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
       <div className="flex items-center space-x-3">
-        <img
-          src={avatarUrl}
-          alt={stakeholder.name}
-          className="w-12 h-12 rounded-full flex-shrink-0"
-        />
+        <button
+          onClick={onSwitchStakeholder}
+          className="flex-shrink-0 rounded-full hover:ring-2 hover:ring-blue-400 transition-all"
+          title={`Chatting as ${stakeholder.name} — click to switch`}
+        >
+          <img
+            src={avatarUrl}
+            alt={stakeholder.name}
+            className="w-12 h-12 rounded-full"
+          />
+        </button>
         <div className="flex-1 flex items-stretch space-x-3">
           <textarea
             value={message}
