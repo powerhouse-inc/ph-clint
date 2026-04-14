@@ -21,6 +21,7 @@ A black-box-first QA procedure for ph-clint CLI projects. You will build the CLI
 6. **Align with the user before testing.** After discovery, present your understanding and ask the user to confirm or correct it. Document what you got wrong — this is valuable signal about the CLI's self-documentation quality.
 7. **Capture actual output.** When you run a command, record the exact output (or a representative excerpt). "It works" is not evidence.
 8. **Test as a naive user.** Pretend you have never seen this CLI. Can you figure out what to do from the help text alone? Where do you get stuck?
+9. **Screenshot web UIs.** When a service exposes a web interface (website, studio, dashboard), use your `playwright-cli` skill with Chromium to take screenshots. Save them to the session folder and reference them in the evidence log and reports. Screenshots are concrete evidence that the service is working (or broken) — terminal output alone cannot verify a web UI.
 
 ## Evidence Log Format
 
@@ -39,7 +40,21 @@ actual output here
 
 Write to the evidence log after every step. The final report will reference these entries as justification for each grade.
 
-Save the evidence log to a file in the project directory: `cli-optimization-evidence.md`
+### Session folder
+
+At the start of every QA session, create a folder for all session artifacts:
+
+```
+./qa-sessions/<cli-name>-<YYYY-MM-DD>/
+```
+
+For example: `./qa-sessions/ph-rupert-2026-04-13/`. If a folder with that name already exists (multiple sessions in one day), append a counter: `-2`, `-3`, etc.
+
+All reports, evidence, and prompts produced during the session go into this folder:
+- `evidence.md` — the running evidence log
+- `discovery.md` — the preliminary discovery report (Phase 2)
+- `report.md` — the grading report or early-exit report (Phase 8)
+- `prompts/` — dev agent prompts produced during Phase 9 (one `.md` file per issue)
 
 ## Severity Tracking & Early Exit
 
@@ -66,7 +81,7 @@ When an early exit is triggered:
 
 1. **Stop testing.** Do not proceed to the next phase. Skip directly to producing the early-exit report.
 2. **Produce a partial grading report.** Grade only the principles you have evidence for. Mark untested principles as **Blocked** (not N/A — N/A means the feature doesn't exist, Blocked means you couldn't get to it).
-3. **Write the early-exit report** and save it as `cli-optimization-report.md`:
+3. **Write the early-exit report** and save it as `report.md` in the session folder:
 
 ```markdown
 # CLI Optimization Report (Early Exit)
@@ -97,7 +112,7 @@ When an early exit is triggered:
 [What the QA agent in the follow-up session needs to know — e.g., "Phase 3 was completed for commands X, Y, Z but not A, B. Phase 4+ was not started."]
 ```
 
-4. **Enter Phase 9** (if the user chose Mode B: Guided Improvement). The improvement cycle works the same way — present the severe issues as the top suggestions and produce dev agent prompts for them. After the user has dispatched fixes, they can start a new QA session to resume where this one left off.
+4. **Enter Phase 9.** The improvement cycle works the same way — present the severe issues as the top suggestions and produce dev agent prompts for them. After the user has dispatched fixes, they can start a new QA session to resume where this one left off.
 
 ---
 
@@ -209,21 +224,9 @@ Show the user your mental model from Step 1.4 and ask:
 
 **Wait for the user to respond.** Do not proceed until they confirm or correct your understanding.
 
-### Step 2.1b: Choose the delivery mode
-
-After the user confirms your understanding, ask:
-
-> "After I complete testing and grading, how would you like to proceed?
->
-> **A) Report only** — I produce the full grading report with prioritized issues and suggested fixes. You decide what to do with it.
->
-> **B) Guided improvement** — After the report, I walk you through the top issues one at a time. For each one, I present 3 high-impact suggestions, you pick one (or suggest an alternative), and I produce a ready-to-use prompt you can hand to a dev agent to make the change. We repeat until you're satisfied."
-
-Record the user's choice. It determines whether Phase 9 runs.
-
 ### Step 2.2: Write the Preliminary Discovery Report
 
-Save this to `cli-optimization-discovery.md` in the project directory. It should contain:
+Save this to `discovery.md` in the session folder. It should contain:
 
 ```markdown
 # Preliminary Discovery Report
@@ -426,6 +429,8 @@ node dist/main.js <service>-status
 
 If the service exposes an API or affects other commands, test that interaction. Run commands that depend on the service while it's running.
 
+If the service exposes a web UI (check the readiness output for website URLs), use `playwright-cli` with Chromium to navigate to it. Take a screenshot and save it to the session folder (e.g., `screenshots/service-name-ready.png`). Verify the page loads, shows expected content, and is not an error page. This is evidence for Principles 7 and 13.
+
 ### Step 5.4: Stop the service
 
 ```
@@ -588,13 +593,25 @@ Now read the system prompt and skills. Summarize in the evidence log:
 - Do skills reference actual commands by name?
 - Compare against the agent's actual behavior observed in Phase 6 — did it follow its instructions?
 
+### Step 7.7: Issue attribution
+
+Now that you have read the source, go back through every issue logged in Phases 3–6 and determine where the behavior originates. Classify each issue into one of these components:
+
+- **CLI project** — the issue is in the CLI's own code: its commands, config, event handlers, agent setup, or skill content. The fix belongs in this project's source tree.
+- **ph-clint framework** — the issue is in behavior produced by the ph-clint library: help rendering, command routing, service lifecycle, config resolution, REPL session handling, etc. The fix belongs in `packages/ph-clint/`.
+- **Integrated library** — the issue originates in a third-party dependency such as Powerhouse Reactor, Switchboard, Connect, or Mastra. The CLI project cannot fix it directly — it can only work around it or document it.
+
+For each issue, add a `**Component**:` line to the evidence log entry. If you are unsure, note the ambiguity — e.g., "Could be ph-clint (help renderer) or CLI project (missing description in defineCommand)".
+
+This attribution is only possible after reading the source. Do not guess component ownership during black-box phases — what looks like a CLI bug from the outside may turn out to be a framework limitation or a library defect.
+
 ---
 
 ## Phase 8: Grading
 
 **Only after completing phases 0-7** (or after reaching Phase 8 without triggering an early exit), grade each principle. Every grade must cite specific evidence log entries. The Preliminary Discovery Report from Phase 2 is primary evidence for Principles 3, 4, and 5.
 
-Read `references/design-principles.md` and `references/scoring-rubric.md` for the full criteria.
+Read `references/design-principles.md` and `references/scoring-rubric.md` for the full criteria. Save the grading report as `report.md` in the session folder.
 
 ### Test workspace
 
@@ -638,9 +655,12 @@ For principles where you skipped the relevant phase (e.g., no agent → skip 11)
 For each "Needs work" or "Poor" grade, list:
 
 1. **The specific issue** — with `file:line` reference and the evidence log entry that revealed it
-2. **What you observed** — the actual behavior (exact output or behavior you saw)
-3. **What you expected** — what a well-designed CLI would do instead
-4. **Suggested fix** — concrete, actionable change (not "improve the description")
+2. **Component** — where the fix belongs: `CLI project`, `ph-clint framework`, or `Integrated library: <name>` (from Step 7.7)
+3. **What you observed** — the actual behavior (exact output or behavior you saw)
+4. **What you expected** — what a well-designed CLI would do instead
+5. **Suggested fix** — concrete, actionable change (not "improve the description"). For framework and library issues, also note any workaround available in the CLI project.
+
+Group the issue list by component so the user can see at a glance how many issues are in their own code vs. upstream.
 
 ### Priority ranking
 
@@ -658,24 +678,14 @@ A CLI is **production-ready** when all 15 principles score Good or Needs Work wi
 
 ## Phase 9: Improvement Cycle
 
-This phase depends on the delivery mode chosen in Step 2.1b.
+After grading, present the **5 highest-impact issues** to the user and produce dev agent prompts for each. This always runs — it is the primary output of the QA session alongside the report.
 
-### Mode A: Report Only
+#### Step 9.1: Present the top 5 issues
 
-The procedure is complete. The grading report, evidence log, discovery report, and preserved test workspace are the deliverables. No further action unless the user asks.
-
----
-
-### Mode B: Guided Improvement
-
-An iterative cycle where you help the user fix the highest-impact issues one at a time by producing dev agent prompts they can copy/paste.
-
-#### Step 9.1: Select the top 3 suggestions
-
-From the issue list in Phase 8, pick the **3 highest-impact issues** that haven't been addressed yet. For each one, present:
+From the issue list in Phase 8, pick the **5 highest-impact issues**. For each one, present:
 
 ```markdown
-### Option [1/2/3]: [Short title]
+### [1–5]. [Short title]
 
 **Issue**: [What's wrong — cite the evidence log entry and principle]
 **Observed**: [The actual behavior or output you saw]
@@ -684,24 +694,17 @@ From the issue list in Phase 8, pick the **3 highest-impact issues** that haven'
 **Proposed fix**: [Concrete, specific change — not "improve the description" but exactly what to change and where]
 ```
 
-Order by impact: Blocking > High > Medium > Low (using the priority ranking from Phase 8).
+Order by impact: Blocking > High > Medium > Low (using the priority ranking from Phase 8). Include the component attribution from Step 7.7 so the user knows which codebase each fix targets.
 
-#### Step 9.2: User selects
+#### Step 9.2: Produce dev agent prompts
 
-Ask the user:
+For each of the 5 issues, write a **self-contained prompt** that a dev agent (a separate Claude Code session) can execute without additional context. Save each prompt to the session folder as `prompts/<nn>-<short-slug>.md` (e.g., `prompts/01-fix-error-messages.md`).
 
-> "Which of these 3 would you like to tackle first? Or suggest an alternative if you see a more pressing issue."
-
-**Wait for the user to respond.** They may:
-- Pick one of the 3 (e.g., "option 2")
-- Modify a suggestion (e.g., "option 1, but change the approach to...")
-- Propose something else entirely
-
-#### Step 9.3: Produce the dev agent prompt
-
-Based on the user's selection, write a **self-contained prompt** that a dev agent (a separate Claude Code session) can execute without additional context. The prompt must include:
+Each prompt must include:
 
 ```markdown
+# [Short title]
+
 ## Task
 
 [One-sentence summary of what needs to change]
@@ -731,31 +734,24 @@ Based on the user's selection, write a **self-contained prompt** that a dev agen
 - It must be **self-contained** — do not reference "the report" or "the evidence log" or anything the dev agent won't have access to
 - It must include **verification steps** — so the dev agent can confirm its own fix works
 - Keep it focused on **one change** — don't bundle multiple fixes into one prompt
+- If the issue involves a web UI, include the screenshot path from the session folder in the "Current behavior" section so the dev agent can see what the user sees. For verification, tell the dev agent to take a screenshot of the fixed state.
 
-Present the prompt to the user in a code block so they can copy it easily.
+Present each prompt to the user and tell them where it was saved.
 
-#### Step 9.4: Repeat
+#### Step 9.3: Continuation
 
-After the user has dispatched the prompt to a dev agent, ask:
-
-> "Ready for the next one? I'll pick the next 3 highest-impact suggestions from the remaining issues."
-
-If the user confirms, return to Step 9.1. Remove the addressed issue from the pool and select 3 new suggestions from what remains.
-
-The cycle continues until:
+After presenting all 5 prompts, ask the user if they want prompts for additional issues from the remaining list. If yes, produce the next batch. The cycle continues until:
 - The user says to stop
 - All "Poor" and "Needs work" issues have been addressed
-- The user is satisfied with the current state
 
-#### Step 9.5: Final summary (when the cycle ends)
+#### Step 9.4: Final summary
 
-When the user stops the cycle, produce a brief summary:
+When the session ends, append a summary to `report.md`:
 
 ```markdown
-## Improvement Cycle Summary
+## Improvement Summary
 
-**Issues addressed**: [count] of [total]
-**Prompts produced**: [list of one-line summaries]
+**Prompts produced**: [count] — saved to `prompts/`
 **Remaining issues**: [list of unaddressed issues, still in priority order]
-**Estimated grade impact**: [which principles would move from Poor→Needs work or Needs work→Good if the dev agent prompts are all executed successfully]
+**Estimated grade impact**: [which principles would move from Poor→Needs work or Needs work→Good if the prompts are all executed successfully]
 ```
