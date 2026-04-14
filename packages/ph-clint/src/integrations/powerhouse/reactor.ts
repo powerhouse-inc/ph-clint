@@ -8,6 +8,8 @@ export interface BuildReactorOptions {
   documentModels: any[];
   /** Absolute path to the persistent PGlite directory. */
   storagePath: string;
+  /** Enable Switchboard sync channel scheme (required for Phase 2). */
+  enableSync?: boolean;
 }
 
 /**
@@ -29,6 +31,10 @@ async function lazyImport(specifier: string): Promise<any> {
  * CLI restarts — same path, same data.
  */
 export async function buildReactor(options: BuildReactorOptions): Promise<any> {
+  // Ensure the storage directory exists
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(options.storagePath, { recursive: true });
+
   const reactor = await lazyImport('@powerhousedao/reactor');
   const pgliteMod = await lazyImport('@electric-sql/pglite');
   const kyselyMod = await lazyImport('kysely');
@@ -38,7 +44,7 @@ export async function buildReactor(options: BuildReactorOptions): Promise<any> {
   const sharedMod = await lazyImport('@powerhousedao/shared/document-drive');
   const docModelMod = await lazyImport('document-model');
 
-  const { ReactorBuilder, ReactorClientBuilder } = reactor;
+  const { ReactorBuilder, ReactorClientBuilder, ChannelScheme } = reactor;
   const { PGlite } = pgliteMod;
   const { Kysely } = kyselyMod;
   const { PGliteDialect } = dialectMod;
@@ -48,16 +54,22 @@ export async function buildReactor(options: BuildReactorOptions): Promise<any> {
   const pglite = new PGlite(options.storagePath);
   const kysely = new Kysely({ dialect: new PGliteDialect(pglite) });
 
+  const reactorBuilder = new ReactorBuilder()
+    .withDocumentModels([
+      documentModelDocumentModelModule,
+      driveDocumentModelModule,
+      ...options.documentModels,
+    ])
+    .withKysely(kysely);
+
+  // Enable sync channel scheme when Switchboard will wrap this Reactor.
+  // This populates reactorModule.syncModule.syncManager which Switchboard requires.
+  if (options.enableSync) {
+    reactorBuilder.withChannelScheme(ChannelScheme.SWITCHBOARD);
+  }
+
   const module = await new ReactorClientBuilder()
-    .withReactorBuilder(
-      new ReactorBuilder()
-        .withDocumentModels([
-          documentModelDocumentModelModule,
-          driveDocumentModelModule,
-          ...options.documentModels,
-        ])
-        .withKysely(kysely),
-    )
+    .withReactorBuilder(reactorBuilder)
     .buildModule();
 
   return module;

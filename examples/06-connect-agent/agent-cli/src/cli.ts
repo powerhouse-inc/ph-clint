@@ -22,8 +22,8 @@ const { integration, services } = definePowerhouseIntegration({
   documentModels,
   drive: { name: 'Agent Chat' },
   subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
-  switchboard: { enabled: true },
-  connect: { enabled: true },
+  switchboard: { enabled: true, port: 4801 },
+  connect: { enabled: true, port: 3000 },
 });
 
 // ── Document Change Trigger ─────────────────────────────────────────

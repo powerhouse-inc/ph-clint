@@ -15,6 +15,7 @@ import type {
   PowerhouseIntegrationOptions,
   SwitchboardInstance,
 } from './types.js';
+import { isPortFree } from '../../core/preflight.js';
 import { connectServiceDefinition } from './connect.js';
 
 export type {
@@ -80,11 +81,12 @@ export function definePowerhouseIntegration(
       reactorModule = await buildReactor({
         documentModels: options.documentModels,
         storagePath: context.workspace.getStoreFolder('reactor-storage'),
+        enableSync: !!options.switchboard?.enabled,
       });
 
       // Phase 1: Create/find default drive
       const { ensureDrive } = await import('./drive.js');
-      const driveId = await ensureDrive(reactorModule.client, options.drive);
+      const driveId = await ensureDrive(reactorModule, options.drive);
 
       // Phase 1: Bridge subscriptions to event bus
       if (options.subscriptions && context.emit) {
@@ -105,10 +107,23 @@ export function definePowerhouseIntegration(
 
       // Phase 2: Optionally start Switchboard
       if (options.switchboard?.enabled) {
+        const switchboardPort = options.switchboard.port ?? 4801;
+
+        // Preflight: check port is free (enabled by default)
+        if (options.switchboard.preflight !== false) {
+          const free = await isPortFree(switchboardPort);
+          if (!free) {
+            throw new Error(
+              `Switchboard port ${switchboardPort} is already in use.\n` +
+              `  Hint: Stop the process using port ${switchboardPort}, or set a different switchboardPort in config.`,
+            );
+          }
+        }
+
         const { startSwitchboard } = await import('./switchboard.js');
         switchboard = await startSwitchboard({
           reactorModule,
-          port: options.switchboard.port ?? 4001,
+          port: switchboardPort,
           dbPath: context.workspace.getStoreFolder('read-model.db'),
           driveId,
         });

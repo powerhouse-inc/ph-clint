@@ -50,8 +50,10 @@ export interface SubscriptionConfig {
 export interface SwitchboardConfig {
   /** Enable Switchboard. Default: false. */
   enabled: boolean;
-  /** HTTP port. Default: 4001. */
+  /** HTTP port. Default: 4801. */
   port?: number;
+  /** Run preflight port check before starting. Default: true. */
+  preflight?: boolean;
 }
 
 /**

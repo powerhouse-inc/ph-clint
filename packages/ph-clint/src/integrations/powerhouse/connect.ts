@@ -4,6 +4,7 @@
 
 import type { ServiceDefinition } from '../../core/types.js';
 import type { ConnectConfig } from './types.js';
+import { checkCommand, checkPort } from '../../core/preflight.js';
 
 /**
  * Create a ServiceDefinition for Connect.
@@ -15,14 +16,14 @@ import type { ConnectConfig } from './types.js';
 export function connectServiceDefinition(
   connectConfig: ConnectConfig,
 ): ServiceDefinition {
-  const port = connectConfig.port ?? 3000;
+  const defaultPort = connectConfig.port ?? 3000;
 
   return {
     id: 'connect',
     name: 'Connect Studio',
     description: 'Powerhouse Connect web interface',
     command: (params?: Record<string, unknown>) => {
-      const p = (params?.port as number) ?? port;
+      const p = (params?.port as number) ?? defaultPort;
       const driveUrl = (params?.driveUrl as string) ?? '';
       return `ph connect --port ${p} --default-drives-url ${driveUrl}`;
     },
@@ -30,6 +31,12 @@ export function connectServiceDefinition(
       PH_CONNECT_DEFAULT_DRIVES_URL: (params?.driveUrl as string) ?? '',
       PH_CONNECT_DRIVES_PRESERVE_STRATEGY: 'preserve-all',
     }),
+    preflight: [
+      checkCommand('ph', {
+        hint: 'Install the Powerhouse CLI: npm install -g ph-cli',
+      }),
+      checkPort((ctx) => (ctx.params?.port as number) ?? defaultPort, 'Connect Studio'),
+    ],
     readiness: {
       patterns: [
         {

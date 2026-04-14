@@ -8,27 +8,35 @@ import type { DriveConfig } from './types.js';
  * Ensure a drive exists. On first run, creates a new drive.
  * On subsequent runs, finds the existing one.
  *
- * @param client - IReactorClient from the built ReactorClientModule
+ * The Reactor client has no `getDrives()` — drives are documents of type
+ * `powerhouse/document-drive`. We use `reactor.findByType()` to locate
+ * existing ones and `client.createEmpty()` + `client.rename()` to create.
+ *
+ * @param reactorModule - The full ReactorClientModule (needs .client and .reactor)
  * @param driveConfig - Optional drive name/icon configuration
  * @returns The drive ID
  */
 export async function ensureDrive(
-  client: any,
+  reactorModule: any,
   driveConfig?: DriveConfig,
 ): Promise<string> {
-  // List existing drives
-  const drives = await client.getDrives();
+  const { client, reactor } = reactorModule;
 
-  if (drives && drives.length > 0) {
-    return drives[0];
+  // Find existing document-drive documents
+  const existing = await reactor.findByType('powerhouse/document-drive');
+  if (existing?.results?.length > 0) {
+    return existing.results[0].header.id;
   }
 
-  // Create a new drive
+  // Create a new drive document
+  const drive = await client.createEmpty('powerhouse/document-drive');
+  const driveId = drive.header.id;
+
+  // Set the drive name
   const driveName = driveConfig?.name ?? 'default';
-  const driveId = await client.addDrive({
-    global: { name: driveName, icon: driveConfig?.icon ?? null },
-    local: { availableOffline: false, sharingType: 'LOCAL', listeners: [] },
-  });
+  if (driveName) {
+    await client.rename(driveId, driveName);
+  }
 
   return driveId;
 }

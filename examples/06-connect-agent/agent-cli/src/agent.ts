@@ -107,6 +107,14 @@ function createDemoAgent(ctx: AgentContext<Config>): AgentProvider {
 }
 
 // ── Reactor client helpers ─────────────────────────────────────────
+//
+// Reactor client API:
+//   createEmpty(docType) → full document
+//   addChildren(parentId, [childId]) → link parent-child
+//   execute(docId, 'main', [action]) → dispatch operations
+//   get(id) → full document with state
+//   getChildren(parentId) → { results, options, nextCursor }
+//   rename(id, name) → rename a document
 
 /** Cache the chat document ID across calls. */
 let chatDocumentId: string | undefined;
@@ -122,78 +130,76 @@ async function ensureChatDocument(
 ): Promise<string> {
   if (chatDocumentId) return chatDocumentId;
 
-  // Try to find an existing agent-chat document in the drive
-  const documents = await ph.client.getDocuments(ph.driveId);
-  const existing = documents?.find?.((d: any) => d.documentType === 'powerhouse/agent-chat');
+  // Try to find an existing agent-chat document among drive children
+  const children = await ph.client.getChildren(ph.driveId);
+  const existing = children?.results?.find?.(
+    (d: any) => d.header?.documentType === 'powerhouse/agent-chat',
+  );
   if (existing) {
-    chatDocumentId = existing.id ?? existing.documentId;
+    chatDocumentId = existing.header.id;
     return chatDocumentId!;
   }
 
-  // Create a new agent-chat document
-  const result = await ph.client.createDocument(ph.driveId, {
-    documentType: 'powerhouse/agent-chat',
-  });
-  chatDocumentId = result?.id ?? result?.documentId ?? result;
+  // Create a new agent-chat document and add it to the drive
+  const chatDoc = await ph.client.createEmpty('powerhouse/agent-chat');
+  chatDocumentId = chatDoc.header.id;
+  await ph.client.addChildren(ph.driveId, [chatDocumentId]);
 
   // Set initial pruneLength
   if (ctx.config.pruneLength) {
     const { setPruneLength } = await import('agent-app/document-models/agent-chat');
-    await ph.client.addAction(chatDocumentId, setPruneLength({
-      pruneLength: ctx.config.pruneLength,
-    }));
+    await ph.client.execute(chatDocumentId, 'main', [
+      setPruneLength({ pruneLength: ctx.config.pruneLength }),
+    ]);
   }
 
   return chatDocumentId!;
 }
 
 async function ensureStakeholder(
-  ph: any,
+  ph: PowerhouseContext,
   documentId: string,
   id: string,
   name: string,
 ): Promise<void> {
   try {
-    const doc = await ph.client.getDocument(ph.driveId, documentId);
+    const doc = await ph.client.get(documentId);
     const state = doc?.state?.global ?? doc?.state;
     const exists = state?.stakeholders?.some?.((s: any) => s.id === id);
     if (exists) return;
 
     const { addStakeholder } = await import('agent-app/document-models/agent-chat');
-    await ph.client.addAction(documentId, addStakeholder({ id, name }));
+    await ph.client.execute(documentId, 'main', [addStakeholder({ id, name })]);
   } catch {
     // Best-effort — may fail if stakeholder already exists
   }
 }
 
 async function ensureAgent(
-  ph: any,
+  ph: PowerhouseContext,
   documentId: string,
   id: string,
   name: string,
 ): Promise<void> {
   try {
-    const doc = await ph.client.getDocument(ph.driveId, documentId);
+    const doc = await ph.client.get(documentId);
     const state = doc?.state?.global ?? doc?.state;
     const exists = state?.agents?.some?.((a: any) => a.id === id);
     if (exists) return;
 
     const { addAgent } = await import('agent-app/document-models/agent-chat');
-    await ph.client.addAction(documentId, addAgent({
-      id,
-      name,
-      role: 'AI Assistant',
-      description: 'Powerhouse Connect Agent',
-    }));
+    await ph.client.execute(documentId, 'main', [
+      addAgent({ id, name, role: 'AI Assistant', description: 'Powerhouse Connect Agent' }),
+    ]);
   } catch {
     // Best-effort — may fail if agent already exists
   }
 }
 
-function createDispatcher(ph: any): DocumentDispatcher {
+function createDispatcher(ph: PowerhouseContext): DocumentDispatcher {
   return {
     async addAction(documentId: string, action: any): Promise<void> {
-      await ph.client.addAction(documentId, action);
+      await ph.client.execute(documentId, 'main', [action]);
     },
   };
 }
