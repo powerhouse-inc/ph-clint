@@ -816,6 +816,13 @@ export function defineCli<
       }
     }
 
+    // Initialize integrations (setup runs after context is fully built)
+    if (options.integrations) {
+      for (const integration of options.integrations) {
+        await integration.setup?.(context);
+      }
+    }
+
     // Resolve Resolvable values now that workdir/config are known.
     // Cast config to the inferred type — at runtime it IS that type (Zod parsed it).
     type TConfig = TMerged;
@@ -899,6 +906,12 @@ export function defineCli<
             break;
           }
           if (result.text) stdout(result.text);
+        }
+        // Teardown integrations before exiting interactive mode
+        if (options.integrations) {
+          for (const integration of [...options.integrations].reverse()) {
+            await integration.teardown?.();
+          }
         }
         exit(0);
       } else if (!process.stdin.isTTY) {
@@ -1012,6 +1025,13 @@ export function defineCli<
     // If a command started the routine, stop it — command mode is one-shot
     if (routine && routine.status === 'running') {
       await routine.stop();
+    }
+
+    // Teardown integrations (reverse order)
+    if (options.integrations) {
+      for (const integration of [...options.integrations].reverse()) {
+        await integration.teardown?.();
+      }
     }
   }
 
@@ -1147,7 +1167,7 @@ export function defineCli<
       description: desc,
       hasInteractive: !!options.interactive,
       hasAgent: !!agentLoader,
-      hasReactor: false, // TODO: detect Powerhouse reactor integration when implemented
+      hasReactor: options.integrations?.some(i => i.id === 'powerhouse') ?? false,
       config: configMeta,
       commands: commandsMeta,
       services: servicesMeta,

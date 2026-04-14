@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { PowerhouseContext } from '../integrations/powerhouse/types.js';
 
 /**
  * Utility type: infer the TypeScript type from a Zod config schema.
@@ -63,6 +64,8 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   processes?: ProcessManager;
   services?: ServiceManager;
   emit?: (event: string, data?: unknown) => void;
+  /** Powerhouse integration context — populated when definePowerhouseIntegration() is used. */
+  powerhouse?: PowerhouseContext;
 }
 
 /**

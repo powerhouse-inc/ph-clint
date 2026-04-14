@@ -28,6 +28,16 @@ export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
 export { renderMarkdown } from './interactive/markdown.js';
+export { definePowerhouseIntegration } from './integrations/powerhouse/index.js';
+export type { PowerhouseIntegrationResult } from './integrations/powerhouse/index.js';
+export type {
+  PowerhouseContext,
+  PowerhouseIntegrationOptions,
+  DriveConfig,
+  SubscriptionConfig,
+  SwitchboardConfig,
+  ConnectConfig,
+} from './integrations/powerhouse/types.js';
 export type { FieldInfo } from './core/schema.js';
 export type { InstallSkillsOptions } from './core/init.js';
 export type { SkillInfo } from './core/skills.js';

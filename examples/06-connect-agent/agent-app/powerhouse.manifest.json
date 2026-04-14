@@ -1,0 +1,27 @@
+{
+    "name": "",
+    "description": "",
+    "category": "",
+    "publisher": {
+        "name": "",
+        "url": ""
+    },
+    "documentModels": [
+        {
+            "id": "powerhouse/agent-chat",
+            "name": "Agent Chat"
+        }
+    ],
+    "editors": [
+        {
+            "id": "agent-chat-editor",
+            "name": "Agent Chat Editor",
+            "documentTypes": [
+                "powerhouse/agent-chat"
+            ]
+        }
+    ],
+    "apps": [],
+    "subgraphs": [],
+    "importScripts": []
+}

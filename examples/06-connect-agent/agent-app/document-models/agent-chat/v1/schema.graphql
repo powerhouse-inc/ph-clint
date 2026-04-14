@@ -1,0 +1,314 @@
+scalar Unknown
+scalar DateTime
+scalar Attachment
+scalar Address
+scalar Amount_Tokens
+scalar EthereumAddress
+scalar EmailAddress
+scalar Amount_Percentage
+scalar Date
+scalar URL
+scalar Amount_Money
+scalar OLabel
+scalar Currency
+scalar PHID
+scalar OID
+scalar Amount_Fiat
+scalar Amount_Currency
+scalar Amount_Crypto
+scalar Amount
+scalar Upload
+
+type AgentChatState {
+  """Optional topic or subject line describing the chat's purpose"""
+  topic: String
+
+  """Participating agents"""
+  agents: [AgentInfo!]!
+
+  """Participating stakeholders"""
+  stakeholders: [Stakeholder!]!
+
+  """Messages in this chat"""
+  messages: [ChatMessage!]!
+
+  """Number of messages that are kept in the chat state"""
+  pruneLength: Int
+}
+
+"""Profile information for the agent who owns this inbox.
+Contains identity, role, and contact information."""
+type AgentInfo {
+  """Unique identifier for this agent"""
+  id: OID!
+  
+  """Display name of the agent for identification in conversations"""
+  name: String
+  
+  """Ethereum wallet address for on-chain identity verification and transactions"""
+  ethAddress: String
+  
+  """Professional role or title describing the agent's responsibilities"""
+  role: String
+  
+  """Detailed description of the agent's expertise, services, or background"""
+  description: String
+  
+  """URL to the agent's profile picture or avatar image"""
+  avatar: URL
+
+  """Soft deletion flag - true if stakeholder access has been revoked"""
+  removed: Boolean!
+}
+
+"""Authorized participant who can communicate with the agent.
+Contains identity information and removal status."""
+type Stakeholder {
+  """Unique identifier for this stakeholder"""
+  id: OID!
+  
+  """Display name of the stakeholder for identification"""
+  name: String!
+  
+  """Optional Ethereum wallet address for identity verification"""
+  ethAddress: String
+  
+  """URL to the stakeholder's profile picture or avatar"""
+  avatar: URL
+  
+  """Soft deletion flag - true if stakeholder access has been revoked"""
+  removed: Boolean!
+}
+
+"""Individual message within a conversation thread.
+Tracks content, timing, direction, and read status."""
+type ChatMessage {
+  """Unique identifier for this message"""
+  id: OID!
+  
+  """Sender Agent or Stakeholder"""
+  sender: OID!
+
+  """Recipient Agents or Stakeholders tagged in the message"""
+  mentioned: [OID!]!
+  
+  """Timestamp when the message was sent"""
+  when: DateTime!
+
+  """Optional timestamp when the last text chunk was appended"""
+  updated: DateTime
+
+  """Mandatory type indication"""
+  type: MessageType!
+
+  """Optional hint about the message format (only for types Text, ToolResult and Error.) Not set = unknown. It will switch to Mixed when appending multipe text message with different type
+  """
+  format: MessageFormat
+  
+  """Text chunks in the message (only for type Text)"""
+  text: [String!]
+
+  """Tool call information (only for type ToolCall)"""
+  toolCall: ToolCall
+
+  """Tool results in the message (only for type Text)"""
+  toolResult: ToolResult
+
+  """Error message (only for type Error)"""
+  error: String
+
+  """List with reactions, unique sender/emoji combinations"""
+  reactions: [Reaction!]
+  
+  """Which recipients have read the message"""
+  readBy: [OID!]
+}
+
+type Reaction {
+  sender: OID!
+  """Only :cldr-short-name: notation allowed"""
+  emoji: String!
+}
+
+enum MessageType {
+  Text
+  Error
+  ToolCall
+  ToolResult
+}
+
+type ToolCall {
+  name: String!
+  argsJson: String!
+}
+
+type ToolResult {
+  name: String!
+  result: String!
+  isError: Boolean!
+}
+
+enum MessageFormat {
+  Text
+  MarkDown
+  Json
+  Binary
+  Mixed
+}
+
+# base
+
+input SetTopicInput {
+  topic: String!
+}
+
+input ClearTopicInput {
+  _placeholder: String
+}
+
+input SetPruneLengthInput {
+  pruneLength: Int!
+}
+
+input RemovePruneLengthInput {
+  _placeholder: String
+}
+
+# stakeholders
+
+input AddStakeholderInput {
+  id: OID!
+  name: String!
+  ethAddress: String
+  avatar: URL
+}
+
+input SetStakeholderNameInput {
+  id: OID!
+  name: String!
+}
+
+input SetStakeholderEthAddressInput {
+  id: OID!
+  ethAddress: String
+}
+
+input SetStakeholderAvatarInput {
+  id: OID!
+  avatar: URL
+}
+
+input RemoveStakeholderInput {
+  id: OID!
+}
+
+input ReaddStakeholderInput {
+  id: OID!
+}
+
+# agents
+
+input AddAgentInput {
+  id: OID!
+  name: String
+  ethAddress: String
+  role: String
+  description: String
+  avatar: URL
+}
+
+input SetAgentNameInput {
+  id: OID!
+  name: String
+}
+
+input SetAgentEthAddressInput {
+  id: OID!
+  ethAddress: String
+}
+
+input SetAgentRoleInput {
+  id: OID!
+  role: String
+}
+
+input SetAgentDescriptionInput {
+  id: OID!
+  description: String
+}
+
+input SetAgentAvatarInput {
+  id: OID!
+  avatar: URL
+}
+
+input RemoveAgentInput {
+  id: OID!
+}
+
+input ReaddAgentInput {
+  id: OID!
+}
+
+# messages
+
+input SendTextInput {
+  id: OID!
+  sender: OID!
+  text: String!
+  format: MessageFormat
+  mentioned: [OID!]
+  when: DateTime!
+}
+
+input SendErrorInput {
+  id: OID!
+  sender: OID!
+  error: String!
+  format: MessageFormat
+  mentioned: [OID!]
+  when: DateTime!
+}
+
+input SendToolCallInput {
+  id: OID!
+  sender: OID!
+  toolName: String!
+  argsJson: String!
+  mentioned: [OID!]
+  when: DateTime!
+}
+
+input SendToolResultInput {
+  id: OID!
+  sender: OID!
+  toolName: String!
+  result: String!
+  isError: Boolean!
+  format: MessageFormat
+  mentioned: [OID!]
+  when: DateTime!
+}
+
+input DeleteMessageInput {
+  id: OID!
+}
+
+input MarkAsReadInput {
+  messageId: OID!
+  readBy: OID!
+}
+
+# reactions
+
+input AddReactionInput {
+  messageId: OID!
+  sender: OID!
+  emoji: String!
+}
+
+input RemoveReactionInput {
+  messageId: OID!
+  sender: OID!
+  emoji: String!
+}

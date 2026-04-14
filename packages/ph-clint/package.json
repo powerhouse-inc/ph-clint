@@ -12,6 +12,10 @@
     "./mastra": {
       "types": "./dist/integrations/mastra/index.d.ts",
       "import": "./dist/integrations/mastra/index.js"
+    },
+    "./powerhouse": {
+      "types": "./dist/integrations/powerhouse/index.d.ts",
+      "import": "./dist/integrations/powerhouse/index.js"
     }
   },
   "files": [
@@ -49,7 +53,15 @@
   "peerDependencies": {
     "@mastra/core": "^1.22.0",
     "@mastra/libsql": "^1.7.4",
-    "@mastra/memory": "^1.13.1"
+    "@mastra/memory": "^1.13.1",
+    "@powerhousedao/reactor": "^6.0.2",
+    "@powerhousedao/reactor-api": "^6.0.2",
+    "@powerhousedao/reactor-mcp": "^6.0.2",
+    "@powerhousedao/shared": "^6.0.2",
+    "@electric-sql/pglite": "^0.2.0",
+    "document-model": "^6.0.2",
+    "kysely": "^0.27.0",
+    "kysely-pglite-dialect": "^0.1.0"
   },
   "peerDependenciesMeta": {
     "@mastra/core": {
@@ -59,6 +71,30 @@
       "optional": true
     },
     "@mastra/libsql": {
+      "optional": true
+    },
+    "@powerhousedao/reactor": {
+      "optional": true
+    },
+    "@powerhousedao/reactor-api": {
+      "optional": true
+    },
+    "@powerhousedao/reactor-mcp": {
+      "optional": true
+    },
+    "@powerhousedao/shared": {
+      "optional": true
+    },
+    "@electric-sql/pglite": {
+      "optional": true
+    },
+    "document-model": {
+      "optional": true
+    },
+    "kysely": {
+      "optional": true
+    },
+    "kysely-pglite-dialect": {
       "optional": true
     }
   },
