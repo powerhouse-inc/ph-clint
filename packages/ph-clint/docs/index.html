@@ -455,9 +455,12 @@ td code { font-size: 0.82em; }
     <a href="#streaming">Streaming Output</a>
     <a href="#events">Events</a>
     <a href="#metadata">CLI Metadata</a>
-    <a href="#templates">Handlebars Templates</a>
-    <a href="#tpl-helpers" class="sub">Built-in Helpers</a>
-    <a href="#tpl-extract" class="sub">Variable Extraction</a>
+    <a href="#skills">Skill Templates</a>
+    <a href="#skill-config" class="sub">Configuration</a>
+    <a href="#skill-structure" class="sub">Folder Structure</a>
+    <a href="#skill-build" class="sub">Build Process</a>
+    <a href="#skill-helpers" class="sub">Template Helpers</a>
+    <a href="#skill-extract" class="sub">Variable Extraction</a>
     <a href="#logging">Conversation Logging</a>
     <a href="#testing">Testing</a>
   </div>
@@ -484,8 +487,8 @@ td code { font-size: 0.82em; }
     <a href="#ex-02">02 — Task Tracker</a>
     <a href="#ex-03">03 — File Watcher</a>
     <a href="#ex-04">04 — Chat Assistant</a>
-    <a href="#ex-05">05 — Vetra</a>
-    <a href="#ex-05b">05b — Vetra Mastra</a>
+    <a href="#ex-05">05 — ph-rupert</a>
+    <a href="#ex-06" class="sub">(06–08 planned)</a>
   </div>
 </nav>
 
@@ -1018,7 +1021,8 @@ handles.<span class="fn">forEach</span>(h =&gt; {
 
 <span class="kw">const</span> devServer = <span class="fn">defineService</span>&lt;<span class="tp">Config</span>&gt;({
   id: <span class="str">'dev-server'</span>,
-  label: <span class="str">'Dev Server'</span>,
+  name: <span class="str">'Dev Server'</span>,
+  description: <span class="str">'Local development server'</span>,
 
   <span class="cm">// Static string or dynamic function</span>
   command: <span class="str">'npm run dev'</span>,
@@ -1104,17 +1108,17 @@ instances[<span class="num">0</span>].endpointTypes  <span class="cm">// { 'mcp'
       console.<span class="fn">log</span>(<span class="str">`✓ ${event.name} matched (${event.remaining} remaining)`</span>);
     },
     <span class="str">'service:ready'</span>: (event) =&gt; {
-      console.<span class="fn">log</span>(<span class="str">`✓ ${event.label} is ready`</span>);
+      console.<span class="fn">log</span>(<span class="str">`✓ ${event.name} is ready`</span>);
       console.<span class="fn">log</span>(<span class="str">'Endpoints:'</span>, event.endpoints);
     },
     <span class="str">'service:failed'</span>: (event) =&gt; {
-      console.<span class="fn">log</span>(<span class="str">`✗ ${event.label} failed: ${event.error}`</span>);
+      console.<span class="fn">log</span>(<span class="str">`✗ ${event.name} failed: ${event.error}`</span>);
     },
     <span class="str">'service:restarting'</span>: (event) =&gt; {
       console.<span class="fn">log</span>(<span class="str">`↻ Attempt ${event.attempt}/${event.maxRetries}`</span>);
     },
     <span class="str">'service:stopped'</span>: (event) =&gt; {
-      console.<span class="fn">log</span>(<span class="str">`■ ${event.label} stopped`</span>);
+      console.<span class="fn">log</span>(<span class="str">`■ ${event.name} stopped`</span>);
     },
   },
 });</code></pre>
@@ -1282,10 +1286,10 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
 <table>
   <tr><th>Event</th><th>Payload</th></tr>
   <tr><td><code>service:pattern-matched</code></td><td><code>{ serviceId, name, remaining }</code></td></tr>
-  <tr><td><code>service:ready</code></td><td><code>{ serviceId, label, endpoints }</code></td></tr>
-  <tr><td><code>service:failed</code></td><td><code>{ serviceId, label, error }</code></td></tr>
-  <tr><td><code>service:restarting</code></td><td><code>{ serviceId, label, attempt, maxRetries }</code></td></tr>
-  <tr><td><code>service:stopped</code></td><td><code>{ serviceId, label }</code></td></tr>
+  <tr><td><code>service:ready</code></td><td><code>{ serviceId, name, endpoints }</code></td></tr>
+  <tr><td><code>service:failed</code></td><td><code>{ serviceId, name, error }</code></td></tr>
+  <tr><td><code>service:restarting</code></td><td><code>{ serviceId, name, attempt, maxRetries }</code></td></tr>
+  <tr><td><code>service:stopped</code></td><td><code>{ serviceId, name }</code></td></tr>
 </table>
 
 <!-- ── CLI Metadata ──────────────────────────────────────────── -->
@@ -1309,21 +1313,140 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
   Metadata is designed for build-time tooling (e.g., generating agent skill templates that reference CLI commands by name). Config fields from <code>secretsSchema</code> are marked <code>sensitive: true</code>. Service metadata includes <code>mcpPrefix</code> derived from readiness captures with <code>type: 'api-mcp'</code>.
 </div>
 
-<!-- ── Handlebars Templates ─────────────────────────────────── -->
+<!-- ── Skill Templates ──────────────────────────────────────── -->
 
-<h2 id="templates">Handlebars Templates</h2>
+<h2 id="skills">Skill Templates</h2>
 
-<p>ph-clint includes a Handlebars template engine for agent skill rendering with missing-variable detection:</p>
-<pre><code><span class="kw">import</span> { <span class="fn">renderSkillTemplate</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<p>Skills are reusable agent instruction packages. Each skill is a folder containing a <code>SKILL.md</code> Handlebars template (with YAML frontmatter) and an optional <code>references/</code> directory with supporting documents. Skills are configured in the <code>prompts</code> section of <code>defineCli()</code>, auto-installed into the workspace on first run, and exposed as CLI commands (<code>/skill-name --prompt "..."</code>) that route to the agent.</p>
 
-<span class="kw">const</span> { rendered, warnings } = <span class="fn">renderSkillTemplate</span>(
-  <span class="str">'Hello {{name}}, you have {{count}} tasks. {{missing}}'</span>,
-  { name: <span class="str">'Alice'</span>, count: <span class="num">5</span> },
-);
-<span class="cm">// rendered: 'Hello Alice, you have 5 tasks. '</span>
-<span class="cm">// warnings: ['Template references "{{missing}}" but context has no value for it']</span></code></pre>
+<h3 id="skill-config">Configuration</h3>
 
-<h3 id="tpl-helpers">Built-in Helpers</h3>
+<p>Skills are configured via <code>PromptsConfig</code> on <code>defineCli()</code>:</p>
+<pre><code><span class="kw">import</span> { <span class="fn">defineCli</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+
+<span class="fn">defineCli</span>({
+  <span class="cm">// ...other config...</span>
+  prompts: {
+    <span class="cm">// Directories containing built skill folders (first existing wins)</span>
+    sources: [
+      path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'gen'</span>, <span class="str">'skills'</span>),
+      path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'dist'</span>, <span class="str">'gen'</span>, <span class="str">'skills'</span>),
+    ],
+
+    <span class="cm">// Agent profiles: instruction sections + skill assignments</span>
+    agents: {
+      <span class="str">'rupert-dev-agent'</span>: {
+        name: <span class="str">'RupertDevAgent'</span>,
+        sections: [<span class="str">'AgentBase.md'</span>, <span class="str">'ReactorPackageDevAgent.md'</span>],
+        skills: [<span class="str">'document-modeling'</span>, <span class="str">'document-editor-creation'</span>],
+      },
+    },
+
+    <span class="cm">// Skill definitions: description + optional inputSchema + instructionTemplate</span>
+    skills: {
+      <span class="str">'document-modeling'</span>: {
+        description: <span class="str">'Design Powerhouse document models with state schemas and reducers'</span>,
+        inputSchema: z.<span class="fn">object</span>({
+          mode: z.<span class="fn">enum</span>([<span class="str">'expert'</span>, <span class="str">'discovery'</span>, <span class="str">'one-shot'</span>]).<span class="fn">default</span>(<span class="str">'expert'</span>),
+        }),
+        instructionTemplate: <span class="str">'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}'</span>,
+      },
+      <span class="cm">// Plain string shorthand: equivalent to { description: '...' }</span>
+      <span class="str">'playwright-cli'</span>: <span class="str">'Automate browser interactions and Playwright tests'</span>,
+    },
+  },
+});</code></pre>
+
+<div class="info-box tip">
+  <div class="info-box-title">Tip</div>
+  The <code>inputSchema</code> fields become additional command parameters. When a user runs <code>/document-modeling --prompt "..."</code>, the <code>mode</code> parameter is prompted or accepted as a flag. The <code>instructionTemplate</code> is a Handlebars template that receives <code>{ skillId, description, prompt, ...inputValues }</code>.
+</div>
+
+<h3 id="skill-structure">Folder Structure</h3>
+
+<p>Skill source templates live in a <code>prompts/</code> directory. There are two kinds of skill sources:</p>
+<ul>
+  <li><strong>Template skills</strong> (<code>skills-tpl/</code>) — multi-section Handlebars templates compiled at build time</li>
+  <li><strong>External skills</strong> (<code>skills-ext/</code>) — pre-written SKILL.md files with optional reference documents</li>
+</ul>
+
+<pre><code>prompts/
+  agent-profiles/              <span class="cm"># Agent instruction section templates</span>
+    AgentBase.md
+    ReactorPackageDevAgent.md
+  skills-tpl/                  <span class="cm"># Template skills (compiled at build)</span>
+    document-modeling/
+      .cli-docs.md             <span class="cm"># CLI documentation context (auto-injected)</span>
+      .preamble.md             <span class="cm"># Optional preamble section</span>
+      .result.md               <span class="cm"># Optional result format section</span>
+      00.check-prerequisites.md
+      01.write-description.md
+      03.implement-reducers.md
+    document-editor-creation/
+      .cli-docs.md
+      00.check-prerequisites.md
+      01.write-editor-implementation.md
+  skills-ext/                  <span class="cm"># External skills (copied as-is)</span>
+    playwright-cli/
+      SKILL.md                 <span class="cm"># Handlebars template with frontmatter</span>
+      references/              <span class="cm"># Reference docs included in template</span>
+        session-management.md
+        test-generation.md
+  skills-lock.json             <span class="cm"># Tracks installed skill versions</span></code></pre>
+
+<p>Each <code>SKILL.md</code> has YAML frontmatter with metadata:</p>
+<pre><code>---
+name: document-modeling
+description: <span class="str">"Design Powerhouse document models with state schemas and reducers"</span>
+metadata:
+  author: Powerhouse
+  version: <span class="str">"1.0.0"</span>
+compatibility: <span class="str">"Node.js >=22.13, pnpm"</span>
+---
+
+<span class="cm"># Document Modeling Skill</span>
+
+You are an expert at designing document models...
+Use {{workspaceDir}} as the project root.
+The Switchboard API is at port {{switchboardPort}}.</code></pre>
+
+<h3 id="skill-build">Build Process</h3>
+
+<p>Skill templates are compiled at build time using <code>buildSkills()</code> from <code>ph-clint-dev</code>:</p>
+<pre><code><span class="kw">import</span> { <span class="fn">buildSkills</span> } <span class="kw">from</span> <span class="str">'ph-clint-dev'</span>;
+
+<span class="fn">buildSkills</span>({
+  include: [path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'prompts'</span>)],
+  context: {                            <span class="cm">// Template variables</span>
+    workspaceDir,
+    connectPort,
+    switchboardPort,
+  },
+  output: [                             <span class="cm">// Output directories</span>
+    path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'gen'</span>),
+    path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'dist'</span>, <span class="str">'gen'</span>),
+  ],
+  cli,                                  <span class="cm">// CLI instance for metadata injection</span>
+});</code></pre>
+
+<p>The build process:</p>
+<ol>
+  <li>Reads <code>skills-tpl/</code> directories — each numbered section file (<code>00.*.md</code>, <code>01.*.md</code>, ...) is compiled individually into <code>references/</code>, and a <code>SKILL.md</code> is generated with frontmatter + optional preamble + links to those references</li>
+  <li>Copies <code>skills-ext/</code> skills as-is (SKILL.md + references/)</li>
+  <li>Compiles all Handlebars templates with the provided context variables</li>
+  <li>Compiles agent profile sections from <code>agent-profiles/</code> into instruction strings</li>
+  <li>Copies <code>.cli-docs.md</code> files (rendered through Handlebars) alongside skills</li>
+  <li>Writes compiled output to <code>gen/</code> and <code>dist/gen/</code></li>
+</ol>
+
+<p>Add a build script to <code>package.json</code>:</p>
+<pre><code><span class="str">"build:skills"</span>: <span class="str">"tsx scripts/build-skills.ts"</span></code></pre>
+
+<p>The <code>prompts.sources</code> config should point to the output directories so the CLI finds the compiled skills at runtime.</p>
+
+<h3 id="skill-helpers">Template Helpers</h3>
+
+<p>Skill templates can use these built-in Handlebars helpers:</p>
 <table>
   <tr><th>Helper</th><th>Description</th></tr>
   <tr><td><code>{{formatDate date "time"}}</code></td><td>Format a date (formats: <code>time</code>, <code>date</code>, or ISO)</td></tr>
@@ -1336,7 +1459,9 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
   <tr><td><code>{{default value fallback}}</code></td><td>Use fallback when value is empty</td></tr>
 </table>
 
-<h3 id="tpl-extract">Template Variable Extraction</h3>
+<h3 id="skill-extract">Variable Extraction</h3>
+
+<p>Use <code>extractTemplateVars</code> for build-time validation of template variables:</p>
 <pre><code><span class="kw">import</span> { <span class="fn">extractTemplateVars</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
 
 <span class="kw">const</span> vars = <span class="fn">extractTemplateVars</span>(<span class="str">'{{name}} uses {{#each tools}}{{this}}{{/each}}'</span>);
@@ -1594,13 +1719,15 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
 <p>The examples are progressive — each one adds new capabilities on top of the previous. They serve as both documentation and test targets for the framework.</p>
 
 <table>
-  <tr><th>#</th><th>Name</th><th>Features Introduced</th></tr>
-  <tr><td>01</td><td>Hello World</td><td>Commands, CLI, help, REPL</td></tr>
-  <tr><td>02</td><td>Task Tracker</td><td>Config, workspace persistence, parameter prompting</td></tr>
-  <tr><td>03</td><td>File Watcher</td><td>Triggers, routine loop, process management</td></tr>
-  <tr><td>04</td><td>Chat Assistant</td><td>Mastra agent, streaming, memory, demo agent</td></tr>
-  <tr><td>05</td><td>Vetra</td><td>Service management, readiness detection, preflight checks</td></tr>
-  <tr><td>05b</td><td>Vetra Mastra</td><td>Services + Agent + MCP discovery, skills</td></tr>
+  <tr><th>#</th><th>Name</th><th>Features Introduced</th><th>Status</th></tr>
+  <tr><td>01</td><td>Hello World</td><td>Commands, CLI, help, REPL</td><td>Done</td></tr>
+  <tr><td>02</td><td>Task Tracker</td><td>Config, workspace persistence, parameter prompting</td><td>Done</td></tr>
+  <tr><td>03</td><td>File Watcher</td><td>Triggers, routine loop, process management</td><td>Done</td></tr>
+  <tr><td>04</td><td>Chat Assistant</td><td>Mastra agent, streaming, memory, demo agent</td><td>Done</td></tr>
+  <tr><td>05</td><td>ph-rupert</td><td>Services, agent, MCP discovery, skills, prompts</td><td>Done</td></tr>
+  <tr><td>06</td><td>Doc Browser</td><td>Powerhouse reactor, drives, document operations</td><td>Planned</td></tr>
+  <tr><td>07</td><td>Doc Agent</td><td>Mastra + Powerhouse, routine loop, document triggers</td><td>Planned</td></tr>
+  <tr><td>08</td><td>Reactor Dev</td><td>Full reference: multi-agent, services, skills, MCP</td><td>Planned</td></tr>
 </table>
 
 <!-- ── Example 01 ────────────────────────────────────────────── -->
@@ -1849,19 +1976,23 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
 <!-- ── Example 05 ────────────────────────────────────────────── -->
 
 <div class="example-card" id="ex-05">
-  <h3>05 — Vetra</h3>
+  <h3>05 — ph-rupert</h3>
   <div class="meta">
     <span class="badge badge-service">services</span>
     <span class="badge badge-service">readiness</span>
     <span class="badge badge-service">preflight</span>
-    <code>examples/05-vetra/</code>
+    <span class="badge badge-agent">agent</span>
+    <span class="badge badge-agent">mcp</span>
+    <span class="badge badge-agent">skills</span>
+    <code>examples/05-ph-rupert/</code>
   </div>
-  <p>Reactor service manager — manages the Powerhouse Vetra dev server with multi-pattern readiness detection.</p>
+  <p>Full-featured Powerhouse development assistant — manages Vetra dev servers, AI agent with MCP tool discovery, skills, and prompts.</p>
 
   <h4>Service definition (excerpt)</h4>
-  <pre><code><span class="kw">const</span> vetra = <span class="fn">defineService</span>&lt;<span class="tp">Config</span>&gt;({
-  id: <span class="str">'vetra'</span>,
-  label: <span class="str">'Vetra Dev Server'</span>,
+  <pre><code><span class="kw">const</span> reactorProject = <span class="fn">defineService</span>&lt;<span class="tp">Config</span>&gt;({
+  id: <span class="str">'reactor-project'</span>,
+  name: <span class="str">'Reactor Project'</span>,
+  description: <span class="str">'Vetra dev server for a Reactor Package project'</span>,
   command: <span class="str">'ph vetra --watch'</span>,
   env: (config) =&gt; ({
     PORT: String(config.switchboardPort),
@@ -1892,73 +2023,36 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
   restart: { enabled: <span class="num">true</span>, maxRetries: <span class="num">3</span>, delay: <span class="num">5_000</span> },
 });</code></pre>
 
+  <h4>Prompts configuration</h4>
+  <pre><code>prompts: {
+  sources: [path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'prompts'</span>)],
+  skills: {
+    <span class="str">'document-modeling'</span>: { description: <span class="str">'Create document models'</span> },
+    <span class="str">'document-editor-creation'</span>: { description: <span class="str">'Create document editors'</span> },
+  },
+  agents: {
+    <span class="str">'rupert-dev-agent'</span>: {
+      name: <span class="str">'Rupert Dev Agent'</span>,
+      sections: [<span class="str">'AgentBase'</span>, <span class="str">'ReactorPackageDevAgent'</span>],
+      skills: [<span class="str">'document-modeling'</span>, <span class="str">'document-editor-creation'</span>],
+    },
+  },
+}</code></pre>
+
   <h4>What it demonstrates</h4>
   <ul>
     <li><code>defineService()</code> with multi-pattern readiness (all three must match)</li>
     <li>Endpoint capture from stdout regex groups</li>
     <li>Preflight checks: workdir, command, port</li>
     <li>Restart policy and graceful shutdown</li>
-    <li>Service lifecycle events</li>
-    <li>Config-aware welcome with ASCII art logo</li>
-  </ul>
-</div>
-
-<!-- ── Example 05b ───────────────────────────────────────────── -->
-
-<div class="example-card" id="ex-05b">
-  <h3>05b — Vetra Mastra</h3>
-  <div class="meta">
-    <span class="badge badge-service">services</span>
-    <span class="badge badge-agent">agent</span>
-    <span class="badge badge-agent">mcp</span>
-    <span class="badge badge-agent">skills</span>
-    <code>examples/05b-vetra-mastra/</code>
-  </div>
-  <p>Full-featured example: services + AI agent + MCP tool discovery + skills. The most complete demonstration of the framework.</p>
-
-  <h4>Dynamic service command</h4>
-  <pre><code><span class="kw">const</span> vetraParams = z.object({
-  watch: z.boolean().<span class="fn">default</span>(<span class="num">true</span>),
-  connectPort: z.coerce.number().optional(),
-  switchboardPort: z.coerce.number().optional(),
-});
-
-<span class="kw">const</span> vetra = <span class="fn">defineService</span>&lt;<span class="tp">Config</span>&gt;({
-  id: <span class="str">'vetra'</span>,
-  label: <span class="str">'Vetra Dev Server'</span>,
-  command: (params) =&gt; {
-    <span class="kw">const</span> parts = [<span class="str">'ph'</span>, <span class="str">'vetra'</span>];
-    <span class="kw">if</span> (params?.watch !== <span class="num">false</span>) parts.<span class="fn">push</span>(<span class="str">'--watch'</span>);
-    <span class="kw">if</span> (params?.connectPort) parts.<span class="fn">push</span>(<span class="str">'--connect-port'</span>, String(params.connectPort));
-    <span class="kw">return</span> parts.<span class="fn">join</span>(<span class="str">' '</span>);
-  },
-  paramsSchema: vetraParams,
-  <span class="cm">// ...</span>
-});</code></pre>
-
-  <h4>MCP-typed endpoint capture</h4>
-  <pre><code>captures: {
-  <span class="str">'mcp-server'</span>: { group: <span class="num">1</span>, type: <span class="str">'api-mcp'</span> }
-  <span class="cm">// Enables auto-discovery of MCP tools from this endpoint</span>
-}</code></pre>
-
-  <h4>Skill sources</h4>
-  <pre><code>skillSources: [
-  path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'skills'</span>),
-  path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'dist'</span>, <span class="str">'skills'</span>),
-]</code></pre>
-
-  <h4>What it demonstrates</h4>
-  <ul>
     <li>Dynamic service commands via function: <code>command: (params) =&gt; ...</code></li>
     <li>Service <code>paramsSchema</code> for runtime parameter validation</li>
-    <li>Multiple services (Vetra + Fusion) running concurrently</li>
     <li>Typed endpoint captures with <code>type: 'api-mcp'</code> for auto MCP discovery</li>
     <li>Agent with MCP tool discovery from running services</li>
-    <li>Pre-packaged skill folders</li>
+    <li>Prompts config: agent profiles, skills with <code>inputSchema</code> and templates</li>
+    <li>Project scanner for auto-discovering Reactor Package projects</li>
     <li>Config-aware welcome with mode indicator</li>
-    <li>Separate config module with <code>InferConfig</code></li>
-    <li>Dynamic preflight checks: <code>checkPort((ctx) =&gt; ctx.params?.port ?? 3000)</code></li>
+    <li>Conversation logging via <code>MarkdownConversationLogger</code></li>
   </ul>
 </div>
 
