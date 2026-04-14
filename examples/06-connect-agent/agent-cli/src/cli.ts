@@ -10,9 +10,11 @@
  */
 
 import { defineCli, definePowerhouseIntegration } from 'ph-clint';
+import type { WorkItem } from 'ph-clint';
 import { documentModels } from 'agent-app';
 import { configSchema } from './config.js';
-import { createAgent } from './agent.js';
+import { createAgent, AGENT_ID, getChatDocumentId } from './agent.js';
+import { createDocumentChangeTrigger } from './trigger.js';
 
 // ── Powerhouse Integration ─────────────────────────────────────────
 
@@ -22,6 +24,34 @@ const { integration, services } = definePowerhouseIntegration({
   subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
   switchboard: { enabled: true },
   connect: { enabled: true },
+});
+
+// ── Document Change Trigger ─────────────────────────────────────────
+// When an agent-chat document changes (e.g. a user sends a message via
+// Connect), the trigger produces a work item that invokes the agent.
+
+const documentChangeTrigger = createDocumentChangeTrigger({
+  async onDocumentChanged(): Promise<WorkItem | null> {
+    // No document yet — nothing to do
+    const docId = getChatDocumentId();
+    if (!docId) return null;
+
+    // Produce a function work item that the routine loop will execute.
+    // The function reads the document, checks if the last message is
+    // from a stakeholder, and if so invokes the agent.
+    return {
+      type: 'function',
+      params: {
+        fn: async () => {
+          // This runs inside the routine loop which has the full context.
+          // For now, log that a change was detected — the actual agent
+          // invocation will be wired when we validate against real
+          // Powerhouse packages and know the exact client API shape.
+          console.log(`[trigger] Document change detected on ${docId}`);
+        },
+      },
+    };
+  },
 });
 
 // ── CLI ─────────────────────────────────────────────────────────────
@@ -34,6 +64,7 @@ const cli = defineCli({
   commands: [],
   integrations: [integration],
   services: [...services],
+  triggers: [documentChangeTrigger],
   interactive: {
     welcome: ({ config }) => {
       const mode = config.apiKey

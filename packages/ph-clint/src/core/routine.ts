@@ -54,6 +54,7 @@ export function createRoutine(options: RoutineOptions): Routine {
       config: ctx.config,
       state,
       emit: (event: string, data?: unknown) => bus.emit(event, data),
+      on: (event: string, handler: (data?: unknown) => void) => bus.on(event, handler),
     };
   }
 

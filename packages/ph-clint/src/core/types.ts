@@ -206,6 +206,7 @@ export interface TriggerContext {
   config: Record<string, unknown>;
   state: Record<string, unknown>;
   emit: (event: string, data?: unknown) => void;
+  on: (event: string, handler: (data?: unknown) => void) => void;
 }
 
 /**

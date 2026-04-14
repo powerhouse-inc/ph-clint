@@ -10,7 +10,7 @@ import type { Config } from './config.js';
 import { writeStreamToDocument, writeUserMessage } from './bridge.js';
 import type { DocumentDispatcher } from './bridge.js';
 
-const AGENT_ID = 'connect-agent';
+export const AGENT_ID = 'connect-agent';
 
 const instructions = `You are a helpful AI assistant in a Powerhouse Connect agent chat.
 
@@ -110,6 +110,11 @@ function createDemoAgent(ctx: AgentContext<Config>): AgentProvider {
 
 /** Cache the chat document ID across calls. */
 let chatDocumentId: string | undefined;
+
+/** Get the cached chat document ID (undefined if no document created yet). */
+export function getChatDocumentId(): string | undefined {
+  return chatDocumentId;
+}
 
 async function ensureChatDocument(
   ph: PowerhouseContext,
