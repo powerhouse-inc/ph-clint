@@ -1,7 +1,7 @@
 import type {
   Slide,
   SlideTemplate,
-} from "../../../../document-models/achra-presentation/gen/schema/types.js";
+} from "@powerhousedao/agent-manager/document-models/achra-presentation";
 
 export type SlideTemplateProps = {
   slide: Slide;

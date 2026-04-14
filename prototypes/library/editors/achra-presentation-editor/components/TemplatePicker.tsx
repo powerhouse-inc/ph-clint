@@ -1,4 +1,4 @@
-import type { SlideTemplate } from "../../../document-models/achra-presentation/gen/schema/types.js";
+import type { SlideTemplate } from "@powerhousedao/agent-manager/document-models/achra-presentation";
 import { TEMPLATE_CATEGORIES, TEMPLATE_LABELS } from "./templates/shared.js";
 
 interface TemplatePickerProps {

@@ -1,0 +1,1214 @@
+import type { DocumentModelGlobalState } from "document-model";
+
+export const documentModel: DocumentModelGlobalState = {
+  author: {
+    name: "Achra",
+    website: "https://achra.io",
+  },
+  description:
+    "Achra-branded presentation builder. Users create slides from fixed Achra templates and fill in text content. Templates control all visual decisions (colors, icons, layout).",
+  extension: "achp",
+  id: "achra/presentation",
+  name: "AchraPresentation",
+  specifications: [
+    {
+      changeLog: [],
+      modules: [
+        {
+          description:
+            "Presentation metadata and generic slide management (add, delete, reorder, duplicate)",
+          id: "mod-core",
+          name: "core",
+          operations: [
+            {
+              description:
+                "Set presentation-level metadata (title, author, date)",
+              errors: [],
+              examples: [],
+              id: "op-set-presentation-info",
+              name: "SET_PRESENTATION_INFO",
+              reducer:
+                "if (action.input.title !== undefined && action.input.title !== null) state.title = action.input.title;\nif (action.input.author !== undefined && action.input.author !== null) state.author = action.input.author;\nif (action.input.date !== undefined && action.input.date !== null) state.date = action.input.date;",
+              schema:
+                "input SetPresentationInfoInput {\n  title: String\n  author: String\n  date: String\n}",
+              scope: "global",
+              template: "Set presentation-level metadata (title, author, date)",
+            },
+            {
+              description:
+                "Add a new slide with a chosen template at a given position",
+              errors: [],
+              examples: [],
+              id: "op-add-slide",
+              name: "ADD_SLIDE",
+              reducer:
+                "const newSlide = {\n  id: action.input.id,\n  template: action.input.template,\n  title: null,\n  subtitle: null,\n  supertitle: null,\n  description: null,\n  footerLeft: null,\n  footerRight: null,\n  slogan: null,\n  quoteText: null,\n  speakerName: null,\n  speakerRole: null,\n  bigNumber: null,\n  codeContent: null,\n  imageUrl: null,\n  leftTitle: null,\n  leftText: null,\n  rightTitle: null,\n  rightText: null,\n  links: [],\n  bulletItems: [],\n  steps: [],\n  processSteps: [],\n  agendaItems: [],\n  milestones: [],\n  columns: [\n    { title: null, bulletItems: [] },\n    { title: null, bulletItems: [] },\n    { title: null, bulletItems: [] }\n  ],\n  checklistItems: [],\n  iconListItems: [],\n  highlights: []\n};\nconst pos = action.input.position;\nif (pos !== undefined && pos !== null && pos >= 0 && pos < state.slides.length) {\n  state.slides.splice(pos, 0, newSlide);\n} else {\n  state.slides.push(newSlide);\n}",
+              schema:
+                "input AddSlideInput {\n  id: OID!\n  template: SlideTemplate!\n  position: Int\n}",
+              scope: "global",
+              template:
+                "Add a new slide with a chosen template at a given position",
+            },
+            {
+              description: "Remove a slide from the presentation",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description:
+                    "The specified slide ID does not exist in the presentation",
+                  id: "err-slide-not-found-1",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-slide",
+              name: "DELETE_SLIDE",
+              reducer:
+                "const idx = state.slides.findIndex(s => s.id === action.input.slideId);\nif (idx === -1) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nstate.slides.splice(idx, 1);",
+              schema: "input DeleteSlideInput {\n  slideId: OID!\n}",
+              scope: "global",
+              template: "Remove a slide from the presentation",
+            },
+            {
+              description:
+                "Duplicate a slide and insert the copy after the original",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description:
+                    "The specified slide ID does not exist in the presentation",
+                  id: "err-slide-not-found-2",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-duplicate-slide",
+              name: "DUPLICATE_SLIDE",
+              reducer:
+                "const srcIdx = state.slides.findIndex(s => s.id === action.input.slideId);\nif (srcIdx === -1) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst original = state.slides[srcIdx];\nconst copy = JSON.parse(JSON.stringify(original));\ncopy.id = action.input.id;\nstate.slides.splice(srcIdx + 1, 0, copy);",
+              schema:
+                "input DuplicateSlideInput {\n  id: OID!\n  slideId: OID!\n}",
+              scope: "global",
+              template:
+                "Duplicate a slide and insert the copy after the original",
+            },
+            {
+              description: "Set the full ordering of slides by their IDs",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description:
+                    "The specified slide ID does not exist in the presentation",
+                  id: "err-slide-not-found-3",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-slides",
+              name: "REORDER_SLIDES",
+              reducer:
+                "const reordered = action.input.slideIds.map(id => {\n  const slide = state.slides.find(s => s.id === id);\n  if (!slide) throw new SlideNotFoundError(`Slide ${id} not found`);\n  return slide;\n});\nstate.slides = reordered;",
+              schema: "input ReorderSlidesInput {\n  slideIds: [OID!]!\n}",
+              scope: "global",
+              template: "Set the full ordering of slides by their IDs",
+            },
+            {
+              description: "Change the template of an existing slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description:
+                    "The specified slide ID does not exist in the presentation",
+                  id: "err-slide-not-found-4",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-set-slide-template",
+              name: "SET_SLIDE_TEMPLATE",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.template = action.input.template;",
+              schema:
+                "input SetSlideTemplateInput {\n  slideId: OID!\n  template: SlideTemplate!\n}",
+              scope: "global",
+              template: "Change the template of an existing slide",
+            },
+            {
+              description:
+                "Update scalar text fields on a slide (title, subtitle, description, etc.)",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description:
+                    "The specified slide ID does not exist in the presentation",
+                  id: "err-slide-not-found-5",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-slide-content",
+              name: "UPDATE_SLIDE_CONTENT",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst fields = ['title', 'subtitle', 'supertitle', 'description', 'footerLeft', 'footerRight', 'slogan', 'quoteText', 'speakerName', 'speakerRole', 'bigNumber', 'codeContent', 'imageUrl', 'leftTitle', 'leftText', 'rightTitle', 'rightText'];\nfields.forEach(f => {\n  if (action.input[f] !== undefined && action.input[f] !== null) slide[f] = action.input[f];\n});",
+              schema:
+                "input UpdateSlideContentInput {\n  slideId: OID!\n  title: String\n  subtitle: String\n  supertitle: String\n  description: String\n  footerLeft: String\n  footerRight: String\n  slogan: String\n  quoteText: String\n  speakerName: String\n  speakerRole: String\n  bigNumber: String\n  codeContent: String\n  imageUrl: String\n  leftTitle: String\n  leftText: String\n  rightTitle: String\n  rightText: String\n}",
+              scope: "global",
+              template:
+                "Update scalar text fields on a slide (title, subtitle, description, etc.)",
+            },
+          ],
+        },
+        {
+          description:
+            "Operations for Title, Title Primary, Thank You, Logo Only, and Icon+Slogan slide templates",
+          id: "mod-title-branding",
+          name: "title-branding",
+          operations: [
+            {
+              description: "Add a link to a Thank You slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tb-slide-nf-1",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-link",
+              name: "ADD_LINK",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.links.push({ id: action.input.id, text: action.input.text });",
+              schema:
+                "input AddLinkInput {\n  slideId: OID!\n  id: OID!\n  text: String!\n}",
+              scope: "global",
+              template: "Add a link to a Thank You slide",
+            },
+            {
+              description: "Update a link on a Thank You slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tb-slide-nf-2",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tb-item-nf-1",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-link",
+              name: "UPDATE_LINK",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst link = slide.links.find(l => l.id === action.input.id);\nif (!link) throw new ItemNotFoundError(`Link ${action.input.id} not found`);\nlink.text = action.input.text;",
+              schema:
+                "input UpdateLinkInput {\n  slideId: OID!\n  id: OID!\n  text: String!\n}",
+              scope: "global",
+              template: "Update a link on a Thank You slide",
+            },
+            {
+              description: "Remove a link from a Thank You slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tb-slide-nf-3",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tb-item-nf-2",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-link",
+              name: "DELETE_LINK",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst idx = slide.links.findIndex(l => l.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Link ${action.input.id} not found`);\nslide.links.splice(idx, 1);",
+              schema: "input DeleteLinkInput {\n  slideId: OID!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove a link from a Thank You slide",
+            },
+            {
+              description: "Reorder links on a Thank You slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tb-slide-nf-4",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tb-item-nf-3",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-links",
+              name: "REORDER_LINKS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst reordered = action.input.linkIds.map(id => {\n  const link = slide.links.find(l => l.id === id);\n  if (!link) throw new ItemNotFoundError(`Link ${id} not found`);\n  return link;\n});\nslide.links = reordered;",
+              schema:
+                "input ReorderLinksInput {\n  slideId: OID!\n  linkIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder links on a Thank You slide",
+            },
+          ],
+        },
+        {
+          description:
+            "Operations for Section Dividers, Process/Timeline, Agenda, and Roadmap slide templates",
+          id: "mod-structure-flow",
+          name: "structure-flow",
+          operations: [
+            {
+              description: "Add a step to a Process/Timeline slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-1",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-process-step",
+              name: "ADD_PROCESS_STEP",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.processSteps.push({ id: action.input.id, title: action.input.title, description: action.input.description || null });",
+              schema:
+                "input AddProcessStepInput {\n  slideId: OID!\n  id: OID!\n  title: String!\n  description: String\n}",
+              scope: "global",
+              template: "Add a step to a Process/Timeline slide",
+            },
+            {
+              description: "Update a step on a Process/Timeline slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-2",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-1",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-process-step",
+              name: "UPDATE_PROCESS_STEP",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst step = slide.processSteps.find(s => s.id === action.input.id);\nif (!step) throw new ItemNotFoundError(`Process step ${action.input.id} not found`);\nif (action.input.title) step.title = action.input.title;\nif (action.input.description !== undefined && action.input.description !== null) step.description = action.input.description;",
+              schema:
+                "input UpdateProcessStepInput {\n  slideId: OID!\n  id: OID!\n  title: String\n  description: String\n}",
+              scope: "global",
+              template: "Update a step on a Process/Timeline slide",
+            },
+            {
+              description: "Remove a step from a Process/Timeline slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-3",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-2",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-process-step",
+              name: "DELETE_PROCESS_STEP",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst idx = slide.processSteps.findIndex(s => s.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Process step ${action.input.id} not found`);\nslide.processSteps.splice(idx, 1);",
+              schema:
+                "input DeleteProcessStepInput {\n  slideId: OID!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove a step from a Process/Timeline slide",
+            },
+            {
+              description: "Reorder steps on a Process/Timeline slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-4",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-3",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-process-steps",
+              name: "REORDER_PROCESS_STEPS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst reordered = action.input.stepIds.map(id => {\n  const step = slide.processSteps.find(s => s.id === id);\n  if (!step) throw new ItemNotFoundError(`Process step ${id} not found`);\n  return step;\n});\nslide.processSteps = reordered;",
+              schema:
+                "input ReorderProcessStepsInput {\n  slideId: OID!\n  stepIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder steps on a Process/Timeline slide",
+            },
+            {
+              description: "Add an item to an Agenda slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-5",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-agenda-item",
+              name: "ADD_AGENDA_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.agendaItems.push({ id: action.input.id, title: action.input.title });",
+              schema:
+                "input AddAgendaItemInput {\n  slideId: OID!\n  id: OID!\n  title: String!\n}",
+              scope: "global",
+              template: "Add an item to an Agenda slide",
+            },
+            {
+              description: "Update an item on an Agenda slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-6",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-4",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-agenda-item",
+              name: "UPDATE_AGENDA_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst item = slide.agendaItems.find(i => i.id === action.input.id);\nif (!item) throw new ItemNotFoundError(`Agenda item ${action.input.id} not found`);\nitem.title = action.input.title;",
+              schema:
+                "input UpdateAgendaItemInput {\n  slideId: OID!\n  id: OID!\n  title: String!\n}",
+              scope: "global",
+              template: "Update an item on an Agenda slide",
+            },
+            {
+              description: "Remove an item from an Agenda slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-7",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-5",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-agenda-item",
+              name: "DELETE_AGENDA_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst idx = slide.agendaItems.findIndex(i => i.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Agenda item ${action.input.id} not found`);\nslide.agendaItems.splice(idx, 1);",
+              schema:
+                "input DeleteAgendaItemInput {\n  slideId: OID!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove an item from an Agenda slide",
+            },
+            {
+              description: "Reorder items on an Agenda slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-8",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-6",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-agenda-items",
+              name: "REORDER_AGENDA_ITEMS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst reordered = action.input.itemIds.map(id => {\n  const item = slide.agendaItems.find(i => i.id === id);\n  if (!item) throw new ItemNotFoundError(`Agenda item ${id} not found`);\n  return item;\n});\nslide.agendaItems = reordered;",
+              schema:
+                "input ReorderAgendaItemsInput {\n  slideId: OID!\n  itemIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder items on an Agenda slide",
+            },
+            {
+              description: "Add a milestone to a Roadmap slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-9",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-milestone",
+              name: "ADD_MILESTONE",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.milestones.push({ id: action.input.id, period: action.input.period, title: action.input.title, description: action.input.description || null });",
+              schema:
+                "input AddMilestoneInput {\n  slideId: OID!\n  id: OID!\n  period: String!\n  title: String!\n  description: String\n}",
+              scope: "global",
+              template: "Add a milestone to a Roadmap slide",
+            },
+            {
+              description: "Update a milestone on a Roadmap slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-10",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-7",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-milestone",
+              name: "UPDATE_MILESTONE",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst ms = slide.milestones.find(m => m.id === action.input.id);\nif (!ms) throw new ItemNotFoundError(`Milestone ${action.input.id} not found`);\nif (action.input.period) ms.period = action.input.period;\nif (action.input.title) ms.title = action.input.title;\nif (action.input.description !== undefined && action.input.description !== null) ms.description = action.input.description;",
+              schema:
+                "input UpdateMilestoneInput {\n  slideId: OID!\n  id: OID!\n  period: String\n  title: String\n  description: String\n}",
+              scope: "global",
+              template: "Update a milestone on a Roadmap slide",
+            },
+            {
+              description: "Remove a milestone from a Roadmap slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-11",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-8",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-milestone",
+              name: "DELETE_MILESTONE",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst idx = slide.milestones.findIndex(m => m.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Milestone ${action.input.id} not found`);\nslide.milestones.splice(idx, 1);",
+              schema:
+                "input DeleteMilestoneInput {\n  slideId: OID!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove a milestone from a Roadmap slide",
+            },
+            {
+              description: "Reorder milestones on a Roadmap slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-sf-snf-12",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-sf-inf-9",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-milestones",
+              name: "REORDER_MILESTONES",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst reordered = action.input.milestoneIds.map(id => {\n  const ms = slide.milestones.find(m => m.id === id);\n  if (!ms) throw new ItemNotFoundError(`Milestone ${id} not found`);\n  return ms;\n});\nslide.milestones = reordered;",
+              schema:
+                "input ReorderMilestonesInput {\n  slideId: OID!\n  milestoneIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder milestones on a Roadmap slide",
+            },
+          ],
+        },
+        {
+          description:
+            "Operations for Bullets, Two-Column Text, Three-Column Bullets, Numbered Steps, Checklist, Icon List, and Split Highlight slide templates",
+          id: "mod-text-lists",
+          name: "text-lists",
+          operations: [
+            {
+              description:
+                "Add a text item to a string list field (bulletItems or steps)",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-1",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-text-item",
+              name: "ADD_TEXT_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst field = action.input.listField === 'BULLET_ITEMS' ? 'bulletItems' : 'steps';\nconst item = { id: action.input.id, text: action.input.text };\nconst pos = action.input.position;\nif (pos !== undefined && pos !== null && pos >= 0 && pos < slide[field].length) {\n  slide[field].splice(pos, 0, item);\n} else {\n  slide[field].push(item);\n}",
+              schema:
+                "input AddTextItemInput {\n  slideId: OID!\n  id: OID!\n  listField: TextListField!\n  text: String!\n  position: Int\n}",
+              scope: "global",
+              template:
+                "Add a text item to a string list field (bulletItems or steps)",
+            },
+            {
+              description: "Update a text item in a string list field",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-2",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-1",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-text-item",
+              name: "UPDATE_TEXT_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst field = action.input.listField === 'BULLET_ITEMS' ? 'bulletItems' : 'steps';\nconst item = slide[field].find(i => i.id === action.input.id);\nif (!item) throw new ItemNotFoundError(`Item ${action.input.id} not found`);\nitem.text = action.input.text;",
+              schema:
+                "input UpdateTextItemInput {\n  slideId: OID!\n  id: OID!\n  listField: TextListField!\n  text: String!\n}",
+              scope: "global",
+              template: "Update a text item in a string list field",
+            },
+            {
+              description: "Remove a text item from a string list field",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-3",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-2",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-text-item",
+              name: "DELETE_TEXT_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst field = action.input.listField === 'BULLET_ITEMS' ? 'bulletItems' : 'steps';\nconst idx = slide[field].findIndex(i => i.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Item ${action.input.id} not found`);\nslide[field].splice(idx, 1);",
+              schema:
+                "input DeleteTextItemInput {\n  slideId: OID!\n  id: OID!\n  listField: TextListField!\n}",
+              scope: "global",
+              template: "Remove a text item from a string list field",
+            },
+            {
+              description: "Reorder text items in a string list field",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-4",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-3",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-text-items",
+              name: "REORDER_TEXT_ITEMS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst field = action.input.listField === 'BULLET_ITEMS' ? 'bulletItems' : 'steps';\nconst reordered = action.input.itemIds.map(id => {\n  const item = slide[field].find(i => i.id === id);\n  if (!item) throw new ItemNotFoundError(`Item ${id} not found`);\n  return item;\n});\nslide[field] = reordered;",
+              schema:
+                "input ReorderTextItemsInput {\n  slideId: OID!\n  listField: TextListField!\n  itemIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder text items in a string list field",
+            },
+            {
+              description:
+                "Set the title of a fixed column (index 0-2) on a Three-Column Bullets slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-5",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "INVALID_COLUMN_INDEX",
+                  description: "Column index must be 0, 1, or 2",
+                  id: "err-tl-ici-1",
+                  name: "InvalidColumnIndexError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-set-column-title",
+              name: "SET_COLUMN_TITLE",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst ci = action.input.columnIndex;\nif (ci < 0 || ci > 2) throw new InvalidColumnIndexError(`Column index ${ci} is out of range (0-2)`);\nslide.columns[ci].title = action.input.title;",
+              schema:
+                "input SetColumnTitleInput {\n  slideId: OID!\n  columnIndex: Int!\n  title: String!\n}",
+              scope: "global",
+              template:
+                "Set the title of a fixed column (index 0-2) on a Three-Column Bullets slide",
+            },
+            {
+              description:
+                "Add a bullet item to a specific column on a Three-Column Bullets slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-6",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "INVALID_COLUMN_INDEX",
+                  description: "Column index must be 0, 1, or 2",
+                  id: "err-tl-ici-2",
+                  name: "InvalidColumnIndexError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-column-bullet",
+              name: "ADD_COLUMN_BULLET",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst ci = action.input.columnIndex;\nif (ci < 0 || ci > 2) throw new InvalidColumnIndexError(`Column index ${ci} is out of range (0-2)`);\nconst item = { id: action.input.id, text: action.input.text };\nconst pos = action.input.position;\nif (pos !== undefined && pos !== null && pos >= 0 && pos < slide.columns[ci].bulletItems.length) {\n  slide.columns[ci].bulletItems.splice(pos, 0, item);\n} else {\n  slide.columns[ci].bulletItems.push(item);\n}",
+              schema:
+                "input AddColumnBulletInput {\n  slideId: OID!\n  columnIndex: Int!\n  id: OID!\n  text: String!\n  position: Int\n}",
+              scope: "global",
+              template:
+                "Add a bullet item to a specific column on a Three-Column Bullets slide",
+            },
+            {
+              description: "Update a bullet item in a column",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-7",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "INVALID_COLUMN_INDEX",
+                  description: "Column index must be 0, 1, or 2",
+                  id: "err-tl-ici-3",
+                  name: "InvalidColumnIndexError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-4",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-column-bullet",
+              name: "UPDATE_COLUMN_BULLET",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst ci = action.input.columnIndex;\nif (ci < 0 || ci > 2) throw new InvalidColumnIndexError(`Column index ${ci} is out of range (0-2)`);\nconst item = slide.columns[ci].bulletItems.find(i => i.id === action.input.id);\nif (!item) throw new ItemNotFoundError(`Bullet ${action.input.id} not found`);\nitem.text = action.input.text;",
+              schema:
+                "input UpdateColumnBulletInput {\n  slideId: OID!\n  columnIndex: Int!\n  id: OID!\n  text: String!\n}",
+              scope: "global",
+              template: "Update a bullet item in a column",
+            },
+            {
+              description: "Remove a bullet item from a column",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-8",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "INVALID_COLUMN_INDEX",
+                  description: "Column index must be 0, 1, or 2",
+                  id: "err-tl-ici-4",
+                  name: "InvalidColumnIndexError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-5",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-column-bullet",
+              name: "DELETE_COLUMN_BULLET",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst ci = action.input.columnIndex;\nif (ci < 0 || ci > 2) throw new InvalidColumnIndexError(`Column index ${ci} is out of range (0-2)`);\nconst idx = slide.columns[ci].bulletItems.findIndex(i => i.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Bullet ${action.input.id} not found`);\nslide.columns[ci].bulletItems.splice(idx, 1);",
+              schema:
+                "input DeleteColumnBulletInput {\n  slideId: OID!\n  columnIndex: Int!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove a bullet item from a column",
+            },
+            {
+              description: "Reorder bullet items within a column",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-9",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "INVALID_COLUMN_INDEX",
+                  description: "Column index must be 0, 1, or 2",
+                  id: "err-tl-ici-5",
+                  name: "InvalidColumnIndexError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-6",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-column-bullets",
+              name: "REORDER_COLUMN_BULLETS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst ci = action.input.columnIndex;\nif (ci < 0 || ci > 2) throw new InvalidColumnIndexError(`Column index ${ci} is out of range (0-2)`);\nconst reordered = action.input.bulletIds.map(id => {\n  const item = slide.columns[ci].bulletItems.find(i => i.id === id);\n  if (!item) throw new ItemNotFoundError(`Bullet ${id} not found`);\n  return item;\n});\nslide.columns[ci].bulletItems = reordered;",
+              schema:
+                "input ReorderColumnBulletsInput {\n  slideId: OID!\n  columnIndex: Int!\n  bulletIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder bullet items within a column",
+            },
+            {
+              description: "Add a checklist item to a Checklist slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-10",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-checklist-item",
+              name: "ADD_CHECKLIST_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.checklistItems.push({ id: action.input.id, text: action.input.text, checked: action.input.checked || false });",
+              schema:
+                "input AddChecklistItemInput {\n  slideId: OID!\n  id: OID!\n  text: String!\n  checked: Boolean\n}",
+              scope: "global",
+              template: "Add a checklist item to a Checklist slide",
+            },
+            {
+              description:
+                "Update a checklist item (text and/or checked state)",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-11",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-7",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-checklist-item",
+              name: "UPDATE_CHECKLIST_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst item = slide.checklistItems.find(i => i.id === action.input.id);\nif (!item) throw new ItemNotFoundError(`Checklist item ${action.input.id} not found`);\nif (action.input.text) item.text = action.input.text;\nif (action.input.checked !== undefined && action.input.checked !== null) item.checked = action.input.checked;",
+              schema:
+                "input UpdateChecklistItemInput {\n  slideId: OID!\n  id: OID!\n  text: String\n  checked: Boolean\n}",
+              scope: "global",
+              template: "Update a checklist item (text and/or checked state)",
+            },
+            {
+              description: "Remove a checklist item",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-12",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-8",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-checklist-item",
+              name: "DELETE_CHECKLIST_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst idx = slide.checklistItems.findIndex(i => i.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Checklist item ${action.input.id} not found`);\nslide.checklistItems.splice(idx, 1);",
+              schema:
+                "input DeleteChecklistItemInput {\n  slideId: OID!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove a checklist item",
+            },
+            {
+              description: "Reorder checklist items",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-13",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-9",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-checklist-items",
+              name: "REORDER_CHECKLIST_ITEMS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst reordered = action.input.itemIds.map(id => {\n  const item = slide.checklistItems.find(i => i.id === id);\n  if (!item) throw new ItemNotFoundError(`Checklist item ${id} not found`);\n  return item;\n});\nslide.checklistItems = reordered;",
+              schema:
+                "input ReorderChecklistItemsInput {\n  slideId: OID!\n  itemIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder checklist items",
+            },
+            {
+              description: "Add an item to an Icon List slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-14",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-icon-list-item",
+              name: "ADD_ICON_LIST_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.iconListItems.push({ id: action.input.id, title: action.input.title, description: action.input.description || null });",
+              schema:
+                "input AddIconListItemInput {\n  slideId: OID!\n  id: OID!\n  title: String!\n  description: String\n}",
+              scope: "global",
+              template: "Add an item to an Icon List slide",
+            },
+            {
+              description: "Update an item on an Icon List slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-15",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-10",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-icon-list-item",
+              name: "UPDATE_ICON_LIST_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst item = slide.iconListItems.find(i => i.id === action.input.id);\nif (!item) throw new ItemNotFoundError(`Icon list item ${action.input.id} not found`);\nif (action.input.title) item.title = action.input.title;\nif (action.input.description !== undefined && action.input.description !== null) item.description = action.input.description;",
+              schema:
+                "input UpdateIconListItemInput {\n  slideId: OID!\n  id: OID!\n  title: String\n  description: String\n}",
+              scope: "global",
+              template: "Update an item on an Icon List slide",
+            },
+            {
+              description: "Remove an item from an Icon List slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-16",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-11",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-icon-list-item",
+              name: "DELETE_ICON_LIST_ITEM",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst idx = slide.iconListItems.findIndex(i => i.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Icon list item ${action.input.id} not found`);\nslide.iconListItems.splice(idx, 1);",
+              schema:
+                "input DeleteIconListItemInput {\n  slideId: OID!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove an item from an Icon List slide",
+            },
+            {
+              description: "Reorder items on an Icon List slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-17",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-12",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-icon-list-items",
+              name: "REORDER_ICON_LIST_ITEMS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst reordered = action.input.itemIds.map(id => {\n  const item = slide.iconListItems.find(i => i.id === id);\n  if (!item) throw new ItemNotFoundError(`Icon list item ${id} not found`);\n  return item;\n});\nslide.iconListItems = reordered;",
+              schema:
+                "input ReorderIconListItemsInput {\n  slideId: OID!\n  itemIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder items on an Icon List slide",
+            },
+            {
+              description: "Add a highlight box to a Split Highlight slide",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-18",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-add-highlight",
+              name: "ADD_HIGHLIGHT",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nslide.highlights.push({ id: action.input.id, value: action.input.value, label: action.input.label, sublabel: action.input.sublabel || null });",
+              schema:
+                "input AddHighlightInput {\n  slideId: OID!\n  id: OID!\n  value: String!\n  label: String!\n  sublabel: String\n}",
+              scope: "global",
+              template: "Add a highlight box to a Split Highlight slide",
+            },
+            {
+              description: "Update a highlight box",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-19",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-13",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-update-highlight",
+              name: "UPDATE_HIGHLIGHT",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst item = slide.highlights.find(i => i.id === action.input.id);\nif (!item) throw new ItemNotFoundError(`Highlight ${action.input.id} not found`);\nif (action.input.value) item.value = action.input.value;\nif (action.input.label) item.label = action.input.label;\nif (action.input.sublabel !== undefined && action.input.sublabel !== null) item.sublabel = action.input.sublabel;",
+              schema:
+                "input UpdateHighlightInput {\n  slideId: OID!\n  id: OID!\n  value: String\n  label: String\n  sublabel: String\n}",
+              scope: "global",
+              template: "Update a highlight box",
+            },
+            {
+              description: "Remove a highlight box",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-20",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-14",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-delete-highlight",
+              name: "DELETE_HIGHLIGHT",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst idx = slide.highlights.findIndex(i => i.id === action.input.id);\nif (idx === -1) throw new ItemNotFoundError(`Highlight ${action.input.id} not found`);\nslide.highlights.splice(idx, 1);",
+              schema:
+                "input DeleteHighlightInput {\n  slideId: OID!\n  id: OID!\n}",
+              scope: "global",
+              template: "Remove a highlight box",
+            },
+            {
+              description: "Reorder highlight boxes",
+              errors: [
+                {
+                  code: "SLIDE_NOT_FOUND",
+                  description: "The specified slide ID does not exist",
+                  id: "err-tl-snf-21",
+                  name: "SlideNotFoundError",
+                  template: "",
+                },
+                {
+                  code: "ITEM_NOT_FOUND",
+                  description: "The specified item ID does not exist",
+                  id: "err-tl-inf-15",
+                  name: "ItemNotFoundError",
+                  template: "",
+                },
+              ],
+              examples: [],
+              id: "op-reorder-highlights",
+              name: "REORDER_HIGHLIGHTS",
+              reducer:
+                "const slide = state.slides.find(s => s.id === action.input.slideId);\nif (!slide) throw new SlideNotFoundError(`Slide ${action.input.slideId} not found`);\nconst reordered = action.input.highlightIds.map(id => {\n  const item = slide.highlights.find(i => i.id === id);\n  if (!item) throw new ItemNotFoundError(`Highlight ${id} not found`);\n  return item;\n});\nslide.highlights = reordered;",
+              schema:
+                "input ReorderHighlightsInput {\n  slideId: OID!\n  highlightIds: [OID!]!\n}",
+              scope: "global",
+              template: "Reorder highlight boxes",
+            },
+          ],
+        },
+      ],
+      state: {
+        global: {
+          examples: [],
+          initialValue: '{"title": "", "author": "", "date": "", "slides": []}',
+          schema:
+            "enum SlideTemplate {\n  TITLE\n  TITLE_PRIMARY\n  SECTION_DIVIDER_CENTERED\n  SECTION_DIVIDER_LEFT\n  BULLETS_IMAGE\n  IMAGE_BULLETS\n  STATS_METRICS\n  TWO_COLUMN_TEXT\n  QUOTE\n  PROCESS_TIMELINE\n  FEATURE_GRID\n  BIG_IMAGE_CAPTION\n  BEFORE_AFTER\n  CHART_PLACEHOLDER\n  AGENDA\n  TEAM_GRID\n  THREE_COLUMN_BULLETS\n  BIG_NUMBER\n  IMAGE_GRID\n  ROADMAP\n  PRICING_TIERS\n  TESTIMONIAL\n  NUMBERED_STEPS\n  CODE_BLOCK\n  DATA_TABLE\n  CHECKLIST\n  TWO_IMAGES\n  ICON_LIST\n  SPLIT_HIGHLIGHT\n  TAGS_ECOSYSTEM\n  CONTACT_CARD\n  THANK_YOU\n  LOGO_ONLY\n  ICON_SLOGAN\n}\n\nenum TextListField {\n  BULLET_ITEMS\n  STEPS\n}\n\ntype TextItem {\n  id: OID!\n  text: String!\n}\n\ntype Link {\n  id: OID!\n  text: String!\n}\n\ntype ProcessStep {\n  id: OID!\n  title: String!\n  description: String\n}\n\ntype AgendaItem {\n  id: OID!\n  title: String!\n}\n\ntype MilestoneItem {\n  id: OID!\n  period: String!\n  title: String!\n  description: String\n}\n\ntype BulletColumn {\n  title: String\n  bulletItems: [TextItem!]!\n}\n\ntype ChecklistItem {\n  id: OID!\n  text: String!\n  checked: Boolean!\n}\n\ntype IconListItem {\n  id: OID!\n  title: String!\n  description: String\n}\n\ntype HighlightItem {\n  id: OID!\n  value: String!\n  label: String!\n  sublabel: String\n}\n\ntype Slide {\n  id: OID!\n  template: SlideTemplate!\n  title: String\n  subtitle: String\n  supertitle: String\n  description: String\n  footerLeft: String\n  footerRight: String\n  slogan: String\n  quoteText: String\n  speakerName: String\n  speakerRole: String\n  bigNumber: String\n  codeContent: String\n  imageUrl: String\n  leftTitle: String\n  leftText: String\n  rightTitle: String\n  rightText: String\n  links: [Link!]!\n  bulletItems: [TextItem!]!\n  steps: [TextItem!]!\n  processSteps: [ProcessStep!]!\n  agendaItems: [AgendaItem!]!\n  milestones: [MilestoneItem!]!\n  columns: [BulletColumn!]!\n  checklistItems: [ChecklistItem!]!\n  iconListItems: [IconListItem!]!\n  highlights: [HighlightItem!]!\n}\n\ntype AchraPresentationState {\n  title: String\n  author: String\n  date: String\n  slides: [Slide!]!\n}",
+        },
+        local: {
+          examples: [],
+          initialValue: "",
+          schema: "",
+        },
+      },
+      version: 1,
+    },
+  ],
+};
