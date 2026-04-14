@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect, type ElementType } from "react";
 import { useIsPresenting } from "./PresentContext.js";
 
 interface EditableTextProps {
-  value: string | null;
+  value: string | undefined | null;
   onCommit: (newValue: string) => void;
   placeholder?: string;
   className?: string;

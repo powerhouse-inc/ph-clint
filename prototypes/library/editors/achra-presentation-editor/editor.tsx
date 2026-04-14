@@ -35,8 +35,8 @@ import {
   updateHighlight,
   deleteHighlight,
   setPresentationInfo,
-} from "../../document-models/achra-presentation/gen/creators.js";
-import type { SlideTemplate } from "../../document-models/achra-presentation/gen/schema/types.js";
+} from "@powerhousedao/agent-manager/document-models/achra-presentation";
+import type { SlideTemplate } from "@powerhousedao/agent-manager/document-models/achra-presentation";
 import { AchraIcon } from "./components/AchraLogo.js";
 import { AchraStyles } from "./components/AchraStyles.js";
 import { SlidePanel } from "./components/SlidePanel.js";

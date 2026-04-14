@@ -1,4 +1,4 @@
-import type { Slide } from "../../../document-models/achra-presentation/gen/schema/types.js";
+import type { Slide } from "@powerhousedao/agent-manager/document-models/achra-presentation";
 import { TEMPLATE_LABELS } from "./templates/shared.js";
 
 interface SlideThumbnailProps {

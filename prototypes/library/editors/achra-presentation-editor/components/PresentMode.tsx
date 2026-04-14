@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Slide } from "../../../document-models/achra-presentation/gen/schema/types.js";
+import type { Slide } from "@powerhousedao/agent-manager/document-models/achra-presentation";
 import { AchraStyles } from "./AchraStyles.js";
 import { SlideRenderer } from "./SlideRenderer.js";
 import { PresentProvider } from "./PresentContext.js";
