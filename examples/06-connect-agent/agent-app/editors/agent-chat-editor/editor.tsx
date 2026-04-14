@@ -1,86 +1,75 @@
 import {
-  DocumentStateViewer,
   DocumentToolbar,
-} from "@powerhousedao/design-system/connect";
+} from "@powerhousedao/design-system/connect/index";
 import {
   useSelectedAgentChatDocument,
   actions,
 } from "document-models/agent-chat";
+import { ChatHeader } from "./components/ChatHeader.js";
+import { ChatMessages } from "./components/ChatMessages.js";
+import { ChatInput } from "./components/ChatInput.js";
 
 export default function Editor() {
   const [document, dispatch] = useSelectedAgentChatDocument();
 
-  const handleSetName = (name: string) => {
-    // 'actions' contains all available actions for this document type
-    dispatch(actions.setName(name));
+  if (!document || !dispatch) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        No document selected
+      </div>
+    );
+  }
+
+  const state = document.state.global;
+  const { topic, agents, stakeholders, messages } = state;
+
+  // Use the first non-removed stakeholder as the active sender
+  const activeSender = stakeholders.find((s) => !s.removed);
+
+  const handleSetTopic = (newTopic: string) => {
+    dispatch(actions.setTopic({ topic: newTopic }));
+  };
+
+  const handleSendMessage = (input: {
+    id: string;
+    sender: string;
+    text: string;
+    when: string;
+  }) => {
+    dispatch(
+      actions.sendText({
+        id: input.id,
+        sender: input.sender,
+        text: input.text,
+        when: input.when,
+        format: "Text",
+      }),
+    );
   };
 
   return (
-    <div className="mx-auto max-w-4xl bg-gray-50 p-6">
-      <DocumentToolbar />
+    <div className="flex flex-col pt-4 px-4 w-full h-[calc(100vh-1rem)] mx-auto max-w-[1600px]">
+      <div className="pb-6 flex-0">
+        <DocumentToolbar />
+      </div>
 
-      {/* "ph-default-styles" sets default styles for basic UI elements */}
-      <div className="ph-default-styles">
-        {/* Edit document name */}
-        <label className="my-6">
-          <h3>Document Name</h3>
-          <input
-            type="text"
-            defaultValue={document.header.name}
-            placeholder="Enter document name..."
-            title="Edit document name and click outside to save."
-            autoFocus
-            onBlur={(e) => handleSetName(e.target.value.trim())}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.currentTarget.blur();
-              }
-            }}
-            className="font-semibold"
-          />
-        </label>
-        <hr />
+      <div className="overflow-hidden flex-1 flex flex-col border border-gray-200 shadow-md">
+        <ChatHeader
+          topic={topic}
+          agents={agents}
+          onSetTopic={handleSetTopic}
+        />
 
-        {/* Document header info */}
-        <div className="mb-6 grid grid-cols-2 gap-x-8">
-          <label>
-            <h3 className="text-base">ID</h3>
-            <input
-              type="text"
-              value={document.header.id}
-              readOnly
-              className="font-mono"
-            />
-          </label>
-          <label>
-            <h3 className="text-base">Created</h3>
-            <input
-              type="text"
-              value={new Date(document.header.createdAtUtcIso).toLocaleString()}
-              readOnly
-            />
-          </label>
-          <label>
-            <h3 className="text-base">Type</h3>
-            <input type="text" value={document.header.documentType} readOnly />
-          </label>
-          <label>
-            <h3 className="text-base">Last Modified</h3>
-            <input
-              type="text"
-              value={new Date(
-                document.header.lastModifiedAtUtcIso,
-              ).toLocaleString()}
-              readOnly
-            />
-          </label>
-        </div>
+        <ChatMessages
+          messages={messages}
+          agents={agents}
+          stakeholders={stakeholders}
+        />
 
-        {/* Document state */}
-        <div className="mt-6">
-          <h3 className="text-base">Document State</h3>
-          <DocumentStateViewer state={document.state} />
-        </div>
+        <ChatInput
+          stakeholder={activeSender}
+          onSend={handleSendMessage}
+        />
       </div>
     </div>
   );
