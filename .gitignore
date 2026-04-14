@@ -8,4 +8,8 @@ pnpm-lock.yaml
 !.env.example
 
 /.claude/settings.local.json
+/.agents
+
 /prototypes/agent-rupert-cli/.claude/settings.local.json
+/specs/enterprise
+/specs/ph-mara
