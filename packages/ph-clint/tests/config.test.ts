@@ -37,6 +37,14 @@ describe('toUpperSnake', () => {
   it('handles already uppercase', () => {
     expect(toUpperSnake('URL')).toBe('URL');
   });
+
+  it('converts kebab-case', () => {
+    expect(toUpperSnake('connect-agent')).toBe('CONNECT_AGENT');
+  });
+
+  it('converts kebab-case with multiple dashes', () => {
+    expect(toUpperSnake('my-cool-app')).toBe('MY_COOL_APP');
+  });
 });
 
 describe('configKeyToEnvVar', () => {
@@ -49,6 +57,12 @@ describe('configKeyToEnvVar', () => {
   it('converts cli name too', () => {
     expect(configKeyToEnvVar('myApp', 'connectPort')).toBe(
       'MY_APP_CONNECT_PORT',
+    );
+  });
+
+  it('handles kebab-case CLI names', () => {
+    expect(configKeyToEnvVar('connect-agent', 'apiKey')).toBe(
+      'CONNECT_AGENT_API_KEY',
     );
   });
 });
