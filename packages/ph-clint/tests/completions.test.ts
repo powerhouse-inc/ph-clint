@@ -40,6 +40,7 @@ describe('getCompletions', () => {
       expect(result).toContain('/list');
       expect(result).not.toContain('/help'); // help is no longer a builtin; cli-docs is a command
       expect(result).toContain('/exit');
+      expect(result).toContain('/quit');
     });
 
     it('returns empty for no match', () => {

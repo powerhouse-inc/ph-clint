@@ -550,6 +550,10 @@ export function defineCli<
       program.option('-i, --interactive', 'Start interactive REPL mode');
     }
 
+    if (hasTriggers) {
+      program.option('-R, --no-routine', 'Skip routine activation');
+    }
+
     program.option('--verbose', 'Enable debug-level logging');
     program.option('--meta', 'Output CLI metadata as JSON');
 
@@ -740,6 +744,7 @@ export function defineCli<
     let interactiveFlag = false;
     let verboseFlag = false;
     let metaFlag = false;
+    let noRoutineFlag = false;
     const frameworkFlags = new Set(['--resume', '--workdir', '-w', '--config', '-c']);
     for (let i = 0; i < preCommandArgs.length; i++) {
       const arg = preCommandArgs[i]!;
@@ -749,6 +754,8 @@ export function defineCli<
         verboseFlag = true;
       } else if (arg === '--meta') {
         metaFlag = true;
+      } else if (arg === '-R' || arg === '--no-routine') {
+        noRoutineFlag = true;
       } else if (frameworkFlags.has(arg) && i + 1 < preCommandArgs.length) {
         const value = preCommandArgs[i + 1]!;
         if (arg === '--workdir' || arg === '-w') workdirFlag = value;
@@ -803,15 +810,25 @@ export function defineCli<
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
 
     // Create ServiceManager when services and/or routine-as-service are defined
+    // Re-check options.services because configureReactor() may have added services after defineCli()
     {
+      const servicesNow = options.services && options.services.length > 0;
+      const needsEventBus = servicesNow && !eventBus;
+      const effectiveEventBus = eventBus ?? (needsEventBus ? createEventBus() : undefined);
       let processServiceManager: import('./types.js').ServiceManager | undefined;
-      if (hasServices && options.services && eventBus) {
+      if (servicesNow && options.services && effectiveEventBus) {
         const svcDir = userStoreFolder(options.name, 'services');
         processServiceManager = createServiceManager(options.services as any[], {
           config,
           servicesDir: svcDir,
-          eventBus,
+          eventBus: effectiveEventBus,
         });
+      }
+
+      // Wire up emit/on if we created a late eventBus for services
+      if (needsEventBus && effectiveEventBus) {
+        context.emit = (event: string, data?: unknown) => effectiveEventBus.emit(event, data);
+        context.on = (event: string, handler: (data?: unknown) => void) => effectiveEventBus.on(event, handler);
       }
 
       // Wire up composite or single ServiceManager
@@ -986,10 +1003,10 @@ export function defineCli<
           }
         }
 
-        // 4. Routine (tick-based trigger loop)
-        if (routine) {
-          routine.setContext(context);
-          routine.start();
+        // 4. Routine (tick-based trigger loop) — skipped when --no-routine
+        if (effectiveRoutine) {
+          effectiveRoutine.setContext(context);
+          effectiveRoutine.start();
           output('Routine running');
         }
       } catch (err) {
@@ -1092,6 +1109,8 @@ export function defineCli<
     // Path 1: no -i AND (subcommand or prompt) → lazy mode, no startup
     // Path 2: -i OR routine → startupSequence, then run prompt/subcommand
     // Path 3: else → show help
+    // --no-routine suppresses routine from the dispatch condition and startup step 4
+    const effectiveRoutine = noRoutineFlag ? undefined : routine;
 
     if (isBuiltinFlag || (!interactiveFlag && (isSubcommand || hasPrompt))) {
       // ── Path 1: Lazy mode — no startup sequence ──────────────────
@@ -1123,7 +1142,7 @@ export function defineCli<
       }
 
       await teardown();
-    } else if (interactiveFlag || routine) {
+    } else if (interactiveFlag || effectiveRoutine) {
       // ── Path 2: Interactive / Routine mode ────────────────────────────
 
       // 1. PREAMBLE — validate interactive config, build session if needed
@@ -1222,6 +1241,22 @@ export function defineCli<
               break;
             }
             if (result.text) stdout(result.text);
+          }
+
+          // EOF received — if routine is active, keep alive on signals
+          if (effectiveRoutine) {
+            stdout('Stdin closed — routine still active. Press Ctrl+C to stop.');
+            await new Promise<void>((resolve) => {
+              const onSignal = async () => {
+                process.removeListener('SIGINT', onSignal);
+                process.removeListener('SIGTERM', onSignal);
+                await teardown();
+                resolve();
+              };
+              process.on('SIGINT', onSignal);
+              process.on('SIGTERM', onSignal);
+            });
+            return; // teardown already called in signal handler
           }
         } else {
           // Routine-only mode (no -i, routine defined)

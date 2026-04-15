@@ -1616,4 +1616,142 @@ describe('defineCli', () => {
       });
     });
   });
+
+  describe('--no-routine flag', () => {
+    function capture() {
+      const output: string[] = [];
+      const errors: string[] = [];
+      let exitCode: number | undefined;
+      return {
+        output,
+        errors,
+        get exitCode() { return exitCode; },
+        options: {
+          stdout: (msg: string) => output.push(msg),
+          stderr: (msg: string) => errors.push(msg),
+          exit: (code: number) => { exitCode = code; },
+        },
+      };
+    }
+
+    it('--no-routine suppresses routine start during startup sequence', async () => {
+      let routineStarted = false;
+      const cli = defineCli({
+        name: 'nr-test',
+        version: '0.0.1',
+        description: 'No-routine test',
+        commands: [echo],
+        interactive: { welcome: 'Welcome' },
+        triggers: [{
+          id: 'watcher',
+          type: 'condition',
+          setup: async () => { routineStarted = true; },
+          poll: async () => null,
+        }],
+        routine: { tickInterval: 50, idleInterval: 50 },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-i', '-R'], {
+        ...cap.options,
+        interactiveInput: (async function* () {
+          yield '/exit';
+        })(),
+      });
+
+      expect(routineStarted).toBe(false);
+      expect(cap.output).not.toEqual(
+        expect.arrayContaining([expect.stringContaining('Routine running')]),
+      );
+    });
+
+    it('--no-routine without -i falls to help (Path 3)', async () => {
+      const cli = defineCli({
+        name: 'nr-help',
+        version: '0.0.1',
+        description: 'No-routine help test',
+        commands: [echo],
+        triggers: [{
+          id: 'watcher',
+          type: 'condition',
+          poll: async () => null,
+        }],
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '--no-routine'], cap.options);
+
+      // Should show help instead of entering Path 2
+      expect(cap.output.join('\n')).toContain('nr-help');
+      expect(cap.output).not.toEqual(
+        expect.arrayContaining([expect.stringContaining('Routine running')]),
+      );
+    });
+
+    it('EOF with active routine keeps process alive (blocks on signal)', async () => {
+      let routinePolled = false;
+      const cli = defineCli({
+        name: 'eof-alive',
+        version: '0.0.1',
+        description: 'EOF keep-alive test',
+        commands: [echo],
+        interactive: { welcome: 'Welcome' },
+        triggers: [{
+          id: 'watcher',
+          type: 'condition',
+          poll: async () => { routinePolled = true; return null; },
+        }],
+        routine: { tickInterval: 50, idleInterval: 50 },
+      });
+
+      const cap = capture();
+      // Input ends immediately (EOF) — no /exit
+      const runPromise = cli.run(['node', 'test', '-i'], {
+        ...cap.options,
+        interactiveInput: (async function* () {
+          // empty — EOF immediately
+        })(),
+      });
+
+      // Give the routine time to poll
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Process should still be alive (run hasn't resolved)
+      // and routine should have polled
+      expect(routinePolled).toBe(true);
+      expect(cap.output).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Routine running'),
+          expect.stringContaining('Stdin closed'),
+        ]),
+      );
+
+      // Clean up: send SIGINT to unblock
+      process.emit('SIGINT' as any);
+      await runPromise;
+    });
+
+    it('EOF without routine exits cleanly', async () => {
+      const cli = defineCli({
+        name: 'eof-exit',
+        version: '0.0.1',
+        description: 'EOF exit test',
+        commands: [echo],
+        interactive: { welcome: 'Welcome' },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-i'], {
+        ...cap.options,
+        interactiveInput: (async function* () {
+          // empty — EOF immediately
+        })(),
+      });
+
+      expect(cap.exitCode).toBe(0);
+      expect(cap.output).not.toEqual(
+        expect.arrayContaining([expect.stringContaining('Stdin closed')]),
+      );
+    });
+  });
 });

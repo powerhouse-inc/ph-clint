@@ -154,9 +154,32 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     return rendered.trim();
   }
 
-  const exitMessage = threadId
-    ? `Goodbye! \x1b[2mTo resume, run: ${cli.name} -i --resume ${threadId}\x1b[0m`
-    : 'Goodbye!';
+  function buildExitMessage(): string {
+    const parts: string[] = [];
+
+    // Report any services still running
+    if (context.services) {
+      const dim = '\x1b[2m';
+      const reset = '\x1b[0m';
+      const active = context.services.list().filter(
+        (s) => s.status === 'ready' || s.status === 'starting',
+      );
+      for (const svc of active) {
+        const where = svc.workdir ? ` ${dim}\`${svc.workdir}\`${reset}` : '';
+        parts.push(`${svc.name} still active${where}\n  ${dim}Run \`${cli.name} ${svc.serviceId}-stop\` to shut it down${reset}\n`);
+      }
+    }
+
+    if (threadId) {
+      parts.push(`Goodbye! \x1b[2mTo resume, run: ${cli.name} -i --resume ${threadId}\x1b[0m`);
+    } else {
+      parts.push('Goodbye!');
+    }
+
+    return parts.join('\n');
+  }
+
+  // buildExitMessage() is called lazily — services may start after session creation
 
   /**
    * Return the next prompt output for the current prompting state,
@@ -240,7 +263,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         return { text: '', type: 'empty' };
 
       case 'exit':
-        return { text: exitMessage, type: 'exit' };
+        return { text: buildExitMessage(), type: 'exit' };
 
       case 'text':
         return handleAgentPrompt(parsed.raw);
@@ -388,7 +411,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     getCompletionSuffix: (completion: string, input: string) => getCompletionSuffix(completion, input, commands),
     get isPrompting() { return prompting !== null; },
     welcome: typeof cli.interactive?.welcome === 'function' ? undefined : cli.interactive?.welcome,
-    exitMessage,
+    get exitMessage() { return buildExitMessage(); },
   };
   sessionRef = session;
 

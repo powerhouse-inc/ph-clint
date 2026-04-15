@@ -75,7 +75,7 @@ export function getCompletions(
   // Completing the command name: `/gr` → ['/greet']
   if (tokens.length === 1 && !trailingSpace) {
     const prefix = tokens[0]!.slice(1).toLowerCase();
-    const builtins = ['exit'];
+    const builtins = ['exit', 'quit'];
     const allNames = [...commands.map((c) => c.id), ...builtins];
     return allNames
       .filter((name) => name.toLowerCase().startsWith(prefix))

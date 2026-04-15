@@ -15,6 +15,18 @@ Three flags bypass the three-path dispatch entirely:
 
 The detection is simple: if any pre-command arg is `--help`, `-h`, `--version`, or `-V`, force Path 1. Commander's `exitOverride()` ensures the process exits cleanly after printing.
 
+## Framework Flags
+
+### `--no-routine` / `-R`
+
+Suppresses routine activation. When set, the routine object is still created (so CLI metadata, help text, and auto-injected service commands remain correct), but:
+
+- **Dispatch**: `--no-routine` without `-i` falls to Path 3 (help) instead of Path 2, because the routine no longer counts as a reason to enter long-running mode.
+- **Startup sequence step 4**: Skipped entirely — the trigger loop does not start.
+- **Keep-alive**: Since the routine is suppressed, stdin EOF causes a clean exit instead of blocking on signals.
+
+Use cases: debugging the REPL or Switchboard without the trigger loop interfering, running one-shot commands while the routine is defined but not needed.
+
 ## The Three Paths
 
 After extracting framework flags, checking for exceptions, and resolving the context (workdir, config, services), `runImpl()` dispatches to one of three paths:
@@ -23,7 +35,7 @@ After extracting framework flags, checking for exceptions, and resolving the con
 Path 1: built-in flag OR (no -i AND (subcommand or prompt))
   → Lazy mode. No startup sequence. Route to Commander or agent, then exit.
 
-Path 2: -i OR routine defined
+Path 2: -i OR routine defined (and not suppressed by --no-routine)
   → Full startup sequence. REPL or long-running server mode.
 
 Path 3: else
@@ -92,7 +104,7 @@ Connect is started via `ServiceManager.start()`, which runs the service definiti
 
 ### Step 4: Routine
 
-Sets the resolved context on the routine and starts the tick loop. This is the final step because triggers may immediately query the Reactor or inspect Switchboard state.
+Sets the resolved context on the routine and starts the tick loop. This is the final step because triggers may immediately query the Reactor or inspect Switchboard state. **Skipped when `--no-routine` / `-R` is set.**
 
 **Output:** `Routine running`
 
@@ -101,6 +113,20 @@ Sets the resolved context on the routine and starts the tick loop. This is the f
 In interactive mode, the REPL session is created and the welcome message is displayed **before** `startupSequence()` runs. This is deliberate: the user sees the prompt immediately while Reactor, Switchboard, and Connect initialize in the background (from the user's perspective — they're actually sequential but happen after the welcome).
 
 The startup sequence's `output` callback writes status messages into the same stream as the REPL, so messages like "Reactor ready" appear inline as the user waits. In headless/test mode, they go to the `stdout` callback.
+
+## EOF Keep-Alive
+
+In non-TTY interactive mode (piped stdin), there are two reasons the process should stay alive after the input stream closes:
+
+1. **The routine is active** — the trigger loop is processing document events and the Switchboard is serving requests. Tearing down on EOF would kill a running server.
+2. **The user sent `/exit`** — explicit exit intent, regardless of routine state.
+
+The rule: **when stdin reaches EOF and the routine is active, the process blocks on SIGINT/SIGTERM instead of tearing down.** This matches the behavior of routine-only mode (no `-i`, triggers defined). When the routine is not active (either not configured or suppressed with `--no-routine`), EOF causes a clean teardown and exit — the process has no reason to stay alive.
+
+This means:
+- `echo "hello" | connect-agent -i` → processes "hello", then stays alive (routine serving)
+- `connect-agent -i -R < input.txt` → processes input, then exits cleanly (routine suppressed)
+- `connect-agent -i` in a real TTY → Ink REPL manages lifecycle, unaffected
 
 ## Teardown
 
