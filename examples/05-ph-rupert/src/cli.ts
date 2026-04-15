@@ -158,4 +158,4 @@ export const cli = defineCli({
   },
 });
 
-cli.setAgentLoader(createAgent);
+cli.configureAgent(createAgent);

@@ -58,7 +58,7 @@ const cli = defineCli({
   },
 });
 
-cli.setAgentLoader(async (ctx) => {
+cli.configureAgent(async (ctx) => {
   if (!ctx.config.apiKey) return createAssistant();
 
   // Lazy-load Mastra only when an API key is configured

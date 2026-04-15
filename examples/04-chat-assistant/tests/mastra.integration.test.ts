@@ -12,7 +12,7 @@ import {
   formatStreamChunk,
   createMemoryWorkdirStore,
 } from 'ph-clint';
-import type { StreamChunk, AgentProvider, AgentContext } from 'ph-clint';
+import type { StreamChunk, AgentProvider, AgentSetupContext } from 'ph-clint';
 import { ascii } from '../src/commands/ascii.js';
 import { saveImage } from '../src/commands/save-image.js';
 import { listImages } from '../src/commands/list-images.js';
@@ -46,13 +46,14 @@ describeWithKey('Mastra agent E2E', () => {
     const { createMastraHelpers } = await import('ph-clint/mastra');
     const { Agent } = await import('@mastra/core/agent');
 
-    const ctx: AgentContext = {
+    const ctx: AgentSetupContext = {
       workdir: '/tmp/ph-clint-test-e2e',
       config: {},
       cliName: 'assist',
       cliVersion: '1.0.0',
       context: { workdir: '/tmp/ph-clint-test-e2e', workspace: createMemoryWorkdirStore(), stdout: () => {}, config: {} },
       commands,
+      skills: [],
     };
     const m = createMastraHelpers(ctx);
 
@@ -126,7 +127,7 @@ describeWithKey('Mastra agent E2E', () => {
       description: 'Test assistant',
       commands,
     });
-    cli.setAgentLoader(async () => agentProvider);
+    cli.configureAgent(async () => agentProvider);
 
     const output: string[] = [];
     await cli.run(['node', 'assist', 'Say "hello world" and nothing else.'], {
@@ -148,7 +149,7 @@ describeWithKey('Mastra agent E2E', () => {
       commands,
       interactive: { welcome: 'Hi!' },
     });
-    cli.setAgentLoader(async () => agentProvider);
+    cli.configureAgent(async () => agentProvider);
 
     const output: string[] = [];
     await cli.run(['node', 'assist', '-i'], {

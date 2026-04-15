@@ -167,7 +167,7 @@ describe('CLI integration', () => {
     },
   });
 
-  cli.setAgentLoader(async () => demoAgent);
+  cli.configureAgent(async () => demoAgent);
 
   it('has correct metadata', () => {
     expect(cli.name).toBe('vetra-mastra');

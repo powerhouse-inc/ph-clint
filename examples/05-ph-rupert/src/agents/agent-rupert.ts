@@ -7,7 +7,7 @@ import { LibSQLStore } from '@mastra/libsql';
 import { MCPClient } from '@mastra/mcp';
 import { createWorkdirStore } from 'ph-clint';
 import { createMastraHelpers, getMastraPaths } from 'ph-clint/mastra';
-import type { AgentContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
+import type { AgentSetupContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
 import type { WrapAgentOptions } from 'ph-clint/mastra';
 import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
 import { createDemoAgent } from './demo-agent.js';
@@ -79,7 +79,7 @@ export async function createAgentRupert(
   // Use createMastraHelpers for CLI tools + auto-discovered MCP tools.
   // tools callback is invoked per-turn, so MCP endpoints that appear after
   // agent creation (e.g. vetra-start in interactive mode) are picked up.
-  const agentCtx: AgentContext<Config> = {
+  const agentCtx: AgentSetupContext<Config> = {
     workdir,
     config,
     cliName: CLI_NAME,
@@ -114,7 +114,7 @@ export async function createAgentRupert(
  * Returns a demo agent when no API key is configured, or wraps the full
  * Rupert agent as a ph-clint AgentProvider.
  */
-export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvider> {
+export async function createAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {
   if (!ctx.config.apiKey) return createDemoAgent();
 
   const { createMastraHelpers } = await import('ph-clint/mastra');

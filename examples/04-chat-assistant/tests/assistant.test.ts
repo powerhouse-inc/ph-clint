@@ -212,7 +212,7 @@ describe('CLI integration', () => {
       welcome: 'Image Assistant — ask me anything',
     },
   });
-  cli.setAgentLoader(async () => assistant);
+  cli.configureAgent(async () => assistant);
 
   it('has correct metadata', () => {
     expect(cli.name).toBe('assist');
@@ -393,7 +393,7 @@ describe('REPL session with agent', () => {
       commands: [ascii],
       interactive: { welcome: '' },
     });
-    cli.setAgentLoader(async () => agent);
+    cli.configureAgent(async () => agent);
 
     const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), stdout: () => {}, config: {} };
     const session = createReplSession({ cli, context, agentProvider: agent });
