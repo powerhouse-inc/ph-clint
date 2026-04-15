@@ -27,6 +27,14 @@ This means CLIs built with ph-clint can be tested at multiple levels:
 
 The framework avoids patterns that make testing difficult: global mutable state, implicit singletons, hardcoded I/O. When new features are added, they must preserve these properties.
 
+### Design Principle: First-class Capabilities, not Generic Integrations
+
+Reactor and agent are **first-class framework capabilities**, not pluggable third-party integrations. Both are 100% optional and lazy-loaded for performance, but their APIs are designed into the framework's type system.
+
+There is no generic `Integration` interface — YAGNI. The framework knows about exactly two optional capabilities (reactor and agent) and exposes them with typed, symmetric APIs. Both follow the same lifecycle pattern: late configuration via `configureReactor()` / `configureAgent()`, lazy loading on first access, and uniform `reactor()` / `agent()` async accessors on both `CommandContext` and `TriggerContext`.
+
+Decoupling is achieved through **lazy loading and optional types** — the `reactor()` and `agent()` accessors return `undefined` when not configured — not through abstraction layers that obscure the actual capabilities. The key distinction: we want **decoupling** (no startup cost when not used, no type dependency when not configured) but not **genericness** (no `Integration[]` bag where capabilities lose their identity and type safety).
+
 ## Features
 
 ### 1. Fast Startup via Lazy Loading
@@ -114,7 +122,7 @@ This ensures CLIs with required configuration (API keys, endpoints, etc.) provid
 
 #### Mastra Integration
 
-When the Mastra integration is enabled, the **Mastra database** lives at `{workspace}/.ph/{cli-name}/mastra/mastra.db`. The workspace directory itself is passed to Mastra as the agent's working directory, so agents read and write files in the same space as the user. When the Powerhouse integration is also enabled, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive or reactor, enabling agents to work with documents through the same workspace abstraction.
+When an agent is configured, the **Mastra database** lives at `{workspace}/.ph/{cli-name}/mastra/mastra.db`. The workspace directory itself is passed to Mastra as the agent's working directory, so agents read and write files in the same space as the user. When the reactor is also configured, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive or reactor, enabling agents to work with documents through the same workspace abstraction.
 
 ### 3. Unified Subcommands
 
@@ -251,7 +259,7 @@ The default interactive mode experience is:
 
 ### 15. Agent Skills
 
-When a CLI includes agent capabilities (via the Mastra integration), agents are equipped with **skills** — structured, multi-step guides that teach agents how to perform domain-specific tasks.
+When a CLI includes agent capabilities (via agent configuration), agents are equipped with **skills** — structured, multi-step guides that teach agents how to perform domain-specific tasks.
 
 Skills are authored as **Handlebars markdown templates** with build-time configuration injection. A skill consists of:
 
@@ -261,7 +269,7 @@ Skills are authored as **Handlebars markdown templates** with build-time configu
 
 At build time, these are compiled into a single `SKILL.md` file with YAML frontmatter, with configuration values (ports, paths, URLs, etc.) injected from the CLI's Zod config schema.
 
-**Standard Powerhouse skills:** When the Powerhouse integration is enabled, agents receive a default skill set out of the box:
+**Standard Powerhouse skills:** When the reactor is configured, agents receive a default skill set out of the box:
 
 - **Powerhouse Technology Primer** — Embedded in the base agent profile. Covers the Reactor component, document model system (self-contained, cryptographically verifiable documents with append-only operation history), drives, Connect, Switchboard, and the Fusion platform.
 - **Document Access and Editing** — How to read documents, dispatch operations via `addActions`, work with drives (vetra drive for specifications, preview drive for testing), and follow the mandatory two-step modification process (MCP update + source file update).

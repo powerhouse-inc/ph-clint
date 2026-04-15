@@ -476,13 +476,13 @@ The runtime is **single-threaded with async I/O** (standard Node.js), but manage
 - **Event bus** — A central `EventEmitter`-based bus that all event sources publish to and routines subscribe to.
 - **Reactor subscriptions** — The Powerhouse reactor's `subscribe()` calls push document change events onto the event bus asynchronously.
 
-### Standard Integrations: Powerhouse and Mastra
+### First-class Capabilities: Reactor and Agent
 
-Powerhouse and Mastra are **independent, optional integrations** that the library provides as standardized modules. Either can be enabled independently. Both are configured via Zod schemas that feed into the 5-layer config system, so implementations only need to supply their specific defaults.
+Powerhouse Reactor and Mastra Agent are **first-class framework capabilities** with typed APIs, lazy-loaded and optional. Either can be configured independently. Both follow the same lifecycle: late configuration via `configureReactor()` / `configureAgent()`, lazy loading on first access, and uniform `reactor()` / `agent()` async accessors. Both are configured via Zod schemas that feed into the 6-layer config system, so implementations only need to supply their specific defaults.
 
-#### Powerhouse Reactor Integration
+#### Powerhouse Reactor Capability
 
-**Toggle:** `powerhouse.enabled: true` in the CLI config schema.
+**Configuration:** `cli.configureReactor({ create: ..., connect?: ..., switchboard?: ... })` after `defineCli()`.
 
 The library provides a standard Powerhouse config schema covering:
 
@@ -491,20 +491,20 @@ The library provides a standard Powerhouse config schema covering:
 - **Document subscriptions** — Document IDs to watch, mapped to event bus topics.
 - **Reactor storage** — Storage backend selection (memory, filesystem, pglite).
 
-At runtime, when enabled:
+At runtime, when accessed:
 
-1. **Reactor initialization** — Build a reactor instance with `ReactorBuilder`, loading the configured document models.
+1. **Reactor initialization** — The `create` factory builds a reactor instance with `ReactorBuilder`, loading the configured document models. Called lazily on first `reactor()` access.
 2. **Drive mounting** — Connect to configured remote drives via `document-drive` for sync.
 3. **Document subscriptions** — `reactor.subscribe({ids: [...]})` to listen for changes. These fire as events on the bus.
 4. **Document operations** — Commands dispatch operations to documents through the reactor. Operations carry Zod schemas and can be adapted to CLI subcommands.
 
-Implementations provide their defaults (e.g., which drives to mount, which document models to load) through the standard config schema. An implementation like a reactor package dev CLI would default to mounting the agent manager drive and loading inbox/WBS document models, while a different CLI might mount entirely different drives.
+Implementations provide their reactor factory via `configureReactor()`. The `buildDefaultReactor()` convenience helper composes `buildReactor()` + `ensureDrive()` + `bridgeSubscriptions()` + `startSwitchboard()` for the common case. An implementation like a reactor package dev CLI would default to mounting the agent manager drive and loading inbox/WBS document models, while a different CLI might mount entirely different drives.
 
-When both Powerhouse and Mastra are enabled, the library automatically provisions the **standard Powerhouse skill set** for agents (technology primer, document access/editing, document modeling). These skills are shipped as Handlebars templates with the library and compiled during the build step with the implementation's config values injected. Implementations can extend, replace, or supplement these with domain-specific skills.
+When both reactor and agent are configured, the library automatically provisions the **standard Powerhouse skill set** for agents (technology primer, document access/editing, document modeling). These skills are shipped as Handlebars templates with the library and compiled during the build step with the implementation's config values injected. Implementations can extend, replace, or supplement these with domain-specific skills.
 
-#### Mastra Integration
+#### Mastra Agent Capability
 
-**Toggle:** `mastra.enabled: true` in the CLI config schema.
+**Configuration:** `cli.configureAgent((ctx: AgentSetupContext) => Promise<AgentProvider>)` after `defineCli()`.
 
 The library provides a standard Mastra config schema covering:
 
@@ -514,14 +514,14 @@ The library provides a standard Mastra config schema covering:
 - **MCP servers** — External MCP endpoints to connect to for dynamic tools.
 - **Observability** — Tracing, logging, and evaluation settings.
 
-At runtime, when enabled:
+At runtime, when accessed:
 
-1. **Mastra instance** — Created with the configured agents, tools, storage, and memory.
+1. **Mastra instance** — Created lazily on first `agent()` access via the factory provided to `configureAgent()`.
 2. **Agent selection** — The active agent is selected by CLI flag or interactive command.
 3. **Tool composition** — Static tools (defined at build time) + dynamic tools (from MCP servers discovered at runtime) are merged into the agent's available toolset.
 4. **Memory** — `@mastra/memory` with configured backend, keyed by thread ID.
 5. **Streaming** — Agent responses stream through `fullStream`, yielding typed chunks that the output system renders.
-6. **Skills** — Compiled SKILL.md files are loaded via the `Workspace.skills` array. The standard Powerhouse skills (when that integration is also enabled) are included automatically alongside implementation-specific skills.
+6. **Skills** — Compiled SKILL.md files are loaded via the `Workspace.skills` array. The standard Powerhouse skills (when the reactor is also configured) are included automatically alongside implementation-specific skills.
 
 #### Workspace Relationship: User Space vs. Context vs. Mastra
 
@@ -542,17 +542,17 @@ Global config:
 ~/.ph/{cli-name}.config.user.json         # User-wide defaults
 ```
 
-When Mastra is enabled:
+When an agent is configured:
 
 - The **Mastra `Workspace`** (`LocalFilesystem`) is rooted at the workspace directory itself — agents operate on the same files the user sees. This is the key difference from the previous design where Mastra was nested in a subdirectory.
 - **Mastra storage** (LibSQL for memory) lives at `{workspace}/.ph/{cli-name}/mastra/mastra.db`, inside the context folder.
 - The **session store** for conversation memory uses the same LibSQL instance — the CLI's thread IDs map directly to Mastra's `memory.thread` parameter.
 
-When Mastra is disabled:
+When no agent is configured:
 
 - The workspace and context folder function standalone. No Mastra directories are created.
 
-**Future: Workspace ↔ Powerhouse Drive mapping.** When both integrations are enabled, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive. This would let agents read and write documents through the standard `Workspace` filesystem abstraction, with the reactor handling sync, operations, and subscriptions transparently underneath.
+**Future: Workspace ↔ Powerhouse Drive mapping.** When both reactor and agent are configured, a future extension will allow the Mastra workspace to map directly onto a Powerhouse document drive. This would let agents read and write documents through the standard `Workspace` filesystem abstraction, with the reactor handling sync, operations, and subscriptions transparently underneath.
 
 ---
 
@@ -602,16 +602,15 @@ ph-clint/
 │   ├── integrations/
 │   │   ├── powerhouse/
 │   │   │   ├── config.ts       # Standard Powerhouse config schema
-│   │   │   ├── reactor.ts      # Reactor lifecycle and subscriptions
+│   │   │   ├── reactor.ts      # Reactor builder and lifecycle
 │   │   │   ├── drives.ts       # Drive mounting and sync
 │   │   │   └── operations.ts   # Document operation → command adapter
-│   │   ├── mastra/
-│   │   │   ├── config.ts       # Standard Mastra config schema
-│   │   │   ├── agents.ts       # Agent setup, selection, streaming
-│   │   │   ├── workspace.ts    # Mastra workspace nested in CLI workspace
-│   │   │   ├── memory.ts       # Session/thread memory bridge
-│   │   │   └── mcp-client.ts   # MCP client for dynamic tools
-│   │   └── index.ts            # Integration registry
+│   │   └── mastra/
+│   │       ├── config.ts       # Standard Mastra config schema
+│   │       ├── agents.ts       # Agent setup, selection, streaming
+│   │       ├── workspace.ts    # Mastra workspace nested in CLI workspace
+│   │       ├── memory.ts       # Session/thread memory bridge
+│   │       └── mcp-client.ts   # MCP client for dynamic tools
 │   ├── skills/
 │   │   ├── build.ts            # Handlebars compilation pipeline
 │   │   ├── helpers.ts          # Handlebars helpers (formatDate, join, exists, eq, etc.)
@@ -626,4 +625,4 @@ ph-clint/
 └── skills/                     # Compiled SKILL.md output (generated)
 ```
 
-This structure keeps the core command/event system independent of any specific integration. Powerhouse and Mastra are self-contained under `integrations/` with their own config schemas, and plug into the core via the event bus, command registry, and workspace system.
+This structure keeps the core command/event system independent of reactor and agent concerns. Powerhouse and Mastra helpers are self-contained under `integrations/` with their own config schemas, and plug into the core via `configureReactor()` / `configureAgent()`, the event bus, command registry, and workspace system.
