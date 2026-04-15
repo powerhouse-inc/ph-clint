@@ -614,6 +614,77 @@ describe('headless interactive mode via run()', () => {
   });
 });
 
+describe('piped stdin processes commands (via interactiveInput)', () => {
+  const greet = defineCommand({
+    id: 'greet',
+    description: 'Greet someone by name',
+    inputSchema: z.object({
+      name: z.string().describe('Name'),
+    }),
+    execute: async ({ name }) => `Hello, ${name}!`,
+  });
+
+  it('processes multiple commands from piped input and exits on /exit', async () => {
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test CLI',
+      commands: [greet],
+      interactive: { welcome: 'Welcome!' },
+    });
+
+    const output: string[] = [];
+
+    // Simulate piped stdin by providing interactiveInput (same code path)
+    await cli.run(['node', 'test', '-i'], {
+      stdout: (msg) => output.push(msg),
+      stderr: () => {},
+      exit: () => {},
+      interactiveInput: (async function* () {
+        yield '/greet --name World';
+        yield '/greet --name Alice';
+        yield '/exit';
+      })(),
+    });
+
+    expect(output[0]).toBe('Welcome!');
+    expect(output).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Hello, World!'),
+        expect.stringContaining('Hello, Alice!'),
+      ]),
+    );
+    expect(output).toContain('Goodbye!');
+  });
+
+  it('exits cleanly when piped input ends without /exit', async () => {
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test CLI',
+      commands: [greet],
+      interactive: { welcome: 'Hi' },
+    });
+
+    const output: string[] = [];
+    let exitCode: number | undefined;
+
+    await cli.run(['node', 'test', '-i'], {
+      stdout: (msg) => output.push(msg),
+      stderr: () => {},
+      exit: (code) => { exitCode = code; },
+      interactiveInput: (async function* () {
+        yield '/greet --name Test';
+      })(),
+    });
+
+    expect(output).toEqual(
+      expect.arrayContaining([expect.stringContaining('Hello, Test!')]),
+    );
+    expect(exitCode).toBe(0);
+  });
+});
+
 describe('default command — agent routing', () => {
   function createTestAgent(
     responses: Record<string, StreamChunk[]>,

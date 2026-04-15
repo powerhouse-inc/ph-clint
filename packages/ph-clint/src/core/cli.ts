@@ -1124,7 +1124,10 @@ export function defineCli<
 
       await teardown();
     } else if (interactiveFlag || routine) {
-      // ── Path 2: Full startup sequence ────────────────────────────
+      // ── Path 2: Interactive / Routine mode ────────────────────────────
+
+      // 1. PREAMBLE — validate interactive config, build session if needed
+      let session: import('../interactive/types.js').ReplSession | undefined;
       if (interactiveFlag) {
         if (!options.interactive) {
           stderr('Interactive mode is not configured for this CLI');
@@ -1156,27 +1159,63 @@ export function defineCli<
           stopRoutine,
         };
 
-        // REPL starts first — user sees welcome immediately
         const agentProvider = await getAgent();
-        const session = createReplSession({
+        session = createReplSession({
           cli: cliRef,
           context,
           agentProvider,
           threadId: resumeId,
         });
+      }
 
-        if (opts.interactiveInput) {
-          // Headless mode for testing
-          if (session.welcome) stdout(session.welcome);
-          // Run startup sequence — output appears in the REPL stream
-          try {
-            await startupSequence(stdout);
-          } catch (err) {
-            log.error(err instanceof Error ? err.message : String(err));
-            exit(1);
-            return;
-          }
-          for await (const line of opts.interactiveInput) {
+      // Determine I/O mode
+      const isTTY = interactiveFlag && !opts.interactiveInput && process.stdin.isTTY;
+
+      // 2. WELCOME (non-TTY only — Ink renders its own welcome)
+      if (session?.welcome && !isTTY) stdout(session.welcome);
+
+      // 3. STARTUP + MAIN LOOP
+      if (isTTY) {
+        // ── TTY: Ink REPL ──
+        /* istanbul ignore next -- Ink REPL requires a real terminal */
+        const { startInkRepl } = await import('../interactive/start.js');
+        /* istanbul ignore next */
+        await startInkRepl(session!, {
+          services: context.services,
+          workdir: context.workdir,
+          onStart: async (append) => {
+            await startupSequence(append);
+          },
+          onMessage: eventBus ? (handler) => {
+            const events = ['service:ready', 'service:failed', 'service:restarting', 'service:stopped', 'powerhouse:switchboard:ready'];
+            const listener = (data?: unknown) => {
+              const msg = typeof data === 'string' ? data : (data && typeof data === 'object' && 'message' in data) ? String((data as any).message) : '';
+              if (msg) handler(msg);
+            };
+            for (const event of events) eventBus.on(event, listener);
+            return () => { for (const event of events) eventBus.off(event, listener); };
+          } : undefined,
+        });
+        /* istanbul ignore next */
+        await teardown();
+        /* istanbul ignore next */
+        exit(0);
+      } else {
+        // ── Non-TTY: headless, piped stdin, or routine-only ──
+        try {
+          await startupSequence(stdout);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (session) log.error(msg); else stderr(msg);
+          exit(1);
+          return;
+        }
+
+        if (session) {
+          // Interactive input source: injected (testing) or piped stdin
+          const { createStdinLineReader } = await import('./stdin.js');
+          const source = opts.interactiveInput ?? createStdinLineReader();
+          for await (const line of source) {
             const result = await session.processInput(line);
             if (result.type === 'exit') {
               if (result.text) stdout(result.text);
@@ -1184,41 +1223,24 @@ export function defineCli<
             }
             if (result.text) stdout(result.text);
           }
-          await teardown();
-          exit(0);
-        } else if (!process.stdin.isTTY) {
-          /* istanbul ignore next -- no TTY in CI */
-          stderr('Interactive mode requires a terminal. Use command mode instead: ' + options.name + ' "your message"');
-          exit(1);
-          return;
         } else {
-          /* istanbul ignore next -- Ink REPL requires a real terminal */
-          const { startInkRepl } = await import('../interactive/start.js');
-          /* istanbul ignore next */
-          await startInkRepl(session, { services: context.services, workdir: context.workdir });
-          /* istanbul ignore next */
-          exit(0);
+          // Routine-only mode (no -i, routine defined)
+          stdout('Press Ctrl+C to stop.');
+          await new Promise<void>((resolve) => {
+            const onSignal = async () => {
+              process.removeListener('SIGINT', onSignal);
+              process.removeListener('SIGTERM', onSignal);
+              await teardown();
+              resolve();
+            };
+            process.on('SIGINT', onSignal);
+            process.on('SIGTERM', onSignal);
+          });
+          return; // teardown already called in signal handler
         }
-      } else {
-        // Routine-only mode (no -i, routine defined, no subcommand/prompt)
-        try {
-          await startupSequence(stdout);
-        } catch (err) {
-          stderr(err instanceof Error ? err.message : String(err));
-          exit(1);
-          return;
-        }
-        stdout('Press Ctrl+C to stop.');
-        await new Promise<void>((resolve) => {
-          const onSignal = async () => {
-            process.removeListener('SIGINT', onSignal);
-            process.removeListener('SIGTERM', onSignal);
-            await teardown();
-            resolve();
-          };
-          process.on('SIGINT', onSignal);
-          process.on('SIGTERM', onSignal);
-        });
+
+        await teardown();
+        exit(0);
       }
     } else {
       // ── Path 3: No -i, no routine, no subcommand/prompt → show help

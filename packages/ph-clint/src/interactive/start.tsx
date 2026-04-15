@@ -7,6 +7,10 @@ import type { ServiceManager } from '../core/types.js';
 export interface StartInkReplOptions {
   services?: ServiceManager;
   workdir?: string;
+  /** Called after Ink mounts, before user input is accepted. The `append` function adds a system message to the Repl's display. */
+  onStart?: (append: (msg: string) => void) => Promise<void>;
+  /** Subscribe to background messages (service events). Returns unsubscribe function. */
+  onMessage?: (handler: (msg: string) => void) => (() => void);
 }
 
 /**
@@ -15,7 +19,13 @@ export interface StartInkReplOptions {
  */
 export async function startInkRepl(session: ReplSession, opts?: StartInkReplOptions): Promise<void> {
   const app = render(
-    <Repl session={session} services={opts?.services} workdir={opts?.workdir} />,
+    <Repl
+      session={session}
+      services={opts?.services}
+      workdir={opts?.workdir}
+      onStart={opts?.onStart}
+      onMessage={opts?.onMessage}
+    />,
     { exitOnCtrlC: false },
   );
   await app.waitUntilExit();

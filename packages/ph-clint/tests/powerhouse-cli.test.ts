@@ -162,6 +162,65 @@ describe('configureReactor() in cli.ts', () => {
     expect(shutdownFn).toHaveBeenCalled();
   });
 
+  it('startupSequence output appears in headless interactive mode', async () => {
+    const cli = defineCli({
+      name: 'test-ph',
+      version: '0.0.1',
+      description: 'Test CLI',
+      commands: [noopCommand],
+      interactive: { welcome: 'hi' },
+    });
+
+    cli.configureReactor({
+      create: async () => createMockReactor(),
+    });
+
+    const out = captureOutput();
+    async function* inputGen() {
+      yield '/exit';
+    }
+    await cli.run(['node', 'test-ph', '-i'], {
+      ...out,
+      interactiveInput: inputGen(),
+    });
+
+    // Startup sequence should output "Reactor ready" to stdout
+    expect(out.lines).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Reactor ready'),
+      ]),
+    );
+  });
+
+  it('teardown shuts down reactor after headless interactive exit', async () => {
+    const shutdownFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const mockReactor: ReactorContext = {
+      client: {},
+      driveId: 'test',
+      shutdown: shutdownFn,
+    };
+
+    const cli = defineCli({
+      name: 'test-ph',
+      version: '0.0.1',
+      description: 'Test CLI',
+      commands: [noopCommand],
+      interactive: { welcome: 'hi' },
+    });
+    cli.configureReactor({ create: async () => mockReactor });
+
+    const out = captureOutput();
+    async function* inputGen() {
+      yield '/exit';
+    }
+    await cli.run(['node', 'test-ph', '-i'], {
+      ...out,
+      interactiveInput: inputGen(),
+    });
+
+    expect(shutdownFn).toHaveBeenCalled();
+  });
+
   it('configureReactor with connect injects service commands', () => {
     const cli = defineCli({
       name: 'test-ph',

@@ -534,6 +534,32 @@ await cli.run(['node', 'cli.ts', '-i'], {
 });
 ```
 
+### Input Modes
+
+The REPL supports three input modes:
+
+| Mode | Trigger | Input Source | Output Sink |
+|------|---------|-------------|-------------|
+| TTY REPL | `-i` + terminal | Ink keyboard | Ink render |
+| Piped | `-i` + piped stdin | `process.stdin` lines | `stdout` callback |
+| Headless | `interactiveInput` in RunOptions | Injected async iterable | `stdout` callback |
+
+```bash
+# Interactive REPL
+mycli -i
+
+# Pipe commands
+echo "/greet --name World" | mycli -i
+
+# Batch from file
+cat commands.txt | mycli -i
+
+# Pipe agent prompt
+echo "explain this code" | mycli -i
+```
+
+In piped mode, the welcome message is printed to stdout (downstream consumers can filter it). The `interactiveInput` option in RunOptions is the testing equivalent of piped stdin.
+
 ---
 
 ## Triggers and Routine Loop

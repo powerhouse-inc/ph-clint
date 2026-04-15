@@ -12,6 +12,10 @@ interface ReplProps {
   session: ReplSession;
   services?: ServiceManager;
   workdir?: string;
+  /** Called after Ink mounts, before user input is accepted. The `append` function adds a system message to the Repl's display. */
+  onStart?: (append: (msg: string) => void) => Promise<void>;
+  /** Subscribe to background messages (service events). Returns unsubscribe function. */
+  onMessage?: (handler: (msg: string) => void) => (() => void);
 }
 
 /**
@@ -26,7 +30,7 @@ type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
 /**
  * Main REPL component for interactive mode.
  */
-export function Repl({ session, services, workdir }: ReplProps) {
+export function Repl({ session, services, workdir, onStart, onMessage }: ReplProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const columns = stdout?.columns || 80;
@@ -40,7 +44,34 @@ export function Repl({ session, services, workdir }: ReplProps) {
     return () => { stdout.write('\x1b[?1004l'); };
   }, [stdout, isTTY]);
 
-  const [phase, setPhase] = useState<'idle' | 'executing' | 'panel'>('idle');
+  const [phase, setPhase] = useState<'starting' | 'idle' | 'executing' | 'panel'>(onStart ? 'starting' : 'idle');
+  const [systemMessages, setSystemMessages] = useState<string[]>([]);
+  const [statusLines, setStatusLines] = useState<string[]>([]);
+  // Run onStart callback after mount — shows spinner + system messages, then transitions to idle
+  useEffect(() => {
+    if (!onStart) return;
+    const append = (msg: string) => setSystemMessages((prev) => [...prev, msg]);
+    onStart(append).then(
+      () => setPhase('idle'),
+      (err) => {
+        append(`Error: ${err instanceof Error ? err.message : String(err)}`);
+        setPhase('idle');
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Subscribe to background messages (service events) — rolling 3-line window
+  useEffect(() => {
+    if (!onMessage) return;
+    const handler = (msg: string) => {
+      setStatusLines((prev) => [...prev.slice(-2), msg]);
+    };
+    const unsub = onMessage(handler);
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [activePanelId, setActivePanelId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [input, setInput] = useState('');
@@ -373,6 +404,15 @@ export function Repl({ session, services, workdir }: ReplProps) {
         </Box>
       )}
 
+      {/* System messages from onStart (e.g. "Reactor ready", "Switchboard ready") */}
+      {systemMessages.length > 0 && (
+        <Box flexDirection="column">
+          {systemMessages.map((msg, i) => (
+            <Text key={i} dimColor>{msg}</Text>
+          ))}
+        </Box>
+      )}
+
       {/* Immutable history */}
       <Static items={history}>
         {(entry) => (
@@ -391,8 +431,15 @@ export function Repl({ session, services, workdir }: ReplProps) {
         )}
       </Static>
 
-      {/* Current execution, panel, or input */}
-      {phase === 'panel' && activePanelId?.startsWith('services:') && services ? (
+      {/* Current execution, panel, starting, or input */}
+      {phase === 'starting' ? (
+        <Box>
+          <Text color="yellow">
+            <Spinner type="dots" />
+          </Text>
+          <Text> Starting…</Text>
+        </Box>
+      ) : phase === 'panel' && activePanelId?.startsWith('services:') && services ? (
         <ServicePanel
           services={services}
           serviceId={activePanelId.split(':')[1]}
@@ -420,6 +467,14 @@ export function Repl({ session, services, workdir }: ReplProps) {
         </Box>
       ) : (
         <Box flexDirection="column">
+          {/* Status lines from background services */}
+          {statusLines.length > 0 && (
+            <Box flexDirection="column" marginBottom={0}>
+              {statusLines.map((line, i) => (
+                <Text key={i} dimColor>{line}</Text>
+              ))}
+            </Box>
+          )}
           <Text color="green">{'─'.repeat(columns)}</Text>
           <Box>
             <Text color={promptLabel ? "cyan" : "green"}>

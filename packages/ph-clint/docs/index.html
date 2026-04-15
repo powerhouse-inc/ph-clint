@@ -902,6 +902,34 @@ cli.<span class="fn">setAgentLoader</span>(loader)       <span class="cm">// Set
   stdout: (msg) =&gt; console.<span class="fn">log</span>(msg),
 });</code></pre>
 
+<h3>Input Modes</h3>
+<p>The REPL supports three input modes:</p>
+<table>
+  <thead>
+    <tr><th>Mode</th><th>Trigger</th><th>Input Source</th><th>Output Sink</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>TTY REPL</td><td><code>-i</code> + terminal</td><td>Ink keyboard</td><td>Ink render</td></tr>
+    <tr><td>Piped</td><td><code>-i</code> + piped stdin</td><td><code>process.stdin</code> lines</td><td><code>stdout</code> callback</td></tr>
+    <tr><td>Headless</td><td><code>interactiveInput</code> in RunOptions</td><td>Injected async iterable</td><td><code>stdout</code> callback</td></tr>
+  </tbody>
+</table>
+
+<pre><code><span class="cm"># Interactive REPL</span>
+mycli -i
+
+<span class="cm"># Pipe commands</span>
+echo "/greet --name World" | mycli -i
+
+<span class="cm"># Batch from file</span>
+cat commands.txt | mycli -i
+
+<span class="cm"># Pipe agent prompt</span>
+echo "explain this code" | mycli -i</code></pre>
+
+<p>In piped mode, the welcome message is printed to stdout (downstream consumers can filter it).
+The <code>interactiveInput</code> option in RunOptions is the testing equivalent of piped stdin.</p>
+
 <!-- ── Triggers ──────────────────────────────────────────────── -->
 
 <h2 id="triggers">Triggers &amp; Routine Loop</h2>
