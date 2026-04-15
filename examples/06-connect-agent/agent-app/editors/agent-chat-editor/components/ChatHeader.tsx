@@ -66,13 +66,21 @@ export function ChatHeader({ topic, agents, onSetTopic }: ChatHeaderProps) {
         </div>
         <div className="flex items-center space-x-2">
           {activeAgents.map((agent) => (
-            <div key={agent.id} className="flex items-center space-x-1.5 px-2 py-1 bg-blue-50 rounded-full">
+            <div
+              key={agent.id}
+              className="flex items-center space-x-1.5 px-2 py-1 bg-blue-50 rounded-full"
+            >
               <img
-                src={agent.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${agent.name || "Agent"}`}
+                src={
+                  agent.avatar ||
+                  `https://api.dicebear.com/7.x/initials/svg?seed=${agent.name || "Agent"}`
+                }
                 alt={agent.name || "Agent"}
                 className="w-5 h-5 rounded-full"
               />
-              <span className="text-xs font-medium text-blue-700">{agent.name || "Agent"}</span>
+              <span className="text-xs font-medium text-blue-700">
+                {agent.name || "Agent"}
+              </span>
             </div>
           ))}
         </div>

@@ -125,8 +125,18 @@ export function StakeholderSelector({
               onClick={onClose}
               className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -145,8 +155,18 @@ export function StakeholderSelector({
                 placeholder="Search stakeholders..."
                 className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
 
@@ -202,7 +222,8 @@ export function StakeholderSelector({
                               defaultValue={stakeholder.name}
                               onBlur={(e) => {
                                 const v = e.target.value.trim();
-                                if (v && v !== stakeholder.name) onUpdate(stakeholder.id, "name", v);
+                                if (v && v !== stakeholder.name)
+                                  onUpdate(stakeholder.id, "name", v);
                                 setEditingId(null);
                               }}
                               className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -214,7 +235,8 @@ export function StakeholderSelector({
                               placeholder="ETH Address (optional)"
                               onBlur={(e) => {
                                 const v = e.target.value.trim();
-                                if (v !== (stakeholder.ethAddress || "")) onUpdate(stakeholder.id, "ethAddress", v);
+                                if (v !== (stakeholder.ethAddress || ""))
+                                  onUpdate(stakeholder.id, "ethAddress", v);
                               }}
                               className="w-full px-2 py-1 text-xs font-mono border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
@@ -224,14 +246,17 @@ export function StakeholderSelector({
                               placeholder="Avatar URL (optional)"
                               onBlur={(e) => {
                                 const v = e.target.value.trim();
-                                if (v !== (stakeholder.avatar || "")) onUpdate(stakeholder.id, "avatar", v);
+                                if (v !== (stakeholder.avatar || ""))
+                                  onUpdate(stakeholder.id, "avatar", v);
                               }}
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
                         ) : (
                           <>
-                            <div className="font-medium text-gray-900">{stakeholder.name}</div>
+                            <div className="font-medium text-gray-900">
+                              {stakeholder.name}
+                            </div>
                             {stakeholder.ethAddress && (
                               <div className="text-xs text-gray-500 font-mono truncate">
                                 {stakeholder.ethAddress}
@@ -246,13 +271,25 @@ export function StakeholderSelector({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setEditingId(editingId === stakeholder.id ? null : stakeholder.id);
+                            setEditingId(
+                              editingId === stakeholder.id
+                                ? null
+                                : stakeholder.id,
+                            );
                           }}
                           className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
                           title="Edit"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
                               d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                             />
                           </svg>
@@ -261,13 +298,22 @@ export function StakeholderSelector({
                           onClick={(e) => {
                             e.stopPropagation();
                             onRemove(stakeholder.id);
-                            if (selectedId === stakeholder.id) setSelectedId(null);
+                            if (selectedId === stakeholder.id)
+                              setSelectedId(null);
                           }}
                           className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
                           title="Remove"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                             />
                           </svg>
@@ -333,8 +379,18 @@ export function StakeholderSelector({
                 className="w-full p-3 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-center space-x-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   <span>Add New Stakeholder</span>
                 </div>
