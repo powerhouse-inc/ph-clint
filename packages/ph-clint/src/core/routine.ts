@@ -1,6 +1,8 @@
 import type {
+  AgentProvider,
   Command,
   CommandContext,
+  CoreContext,
   EventBus,
   ProcessManager,
   Routine,
@@ -9,6 +11,7 @@ import type {
   TriggerContext,
   WorkItem,
 } from './types.js';
+import type { ReactorContext } from '../integrations/powerhouse/types.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
 import { createMemoryWorkdirStore } from './store.js';
@@ -21,6 +24,8 @@ export interface RoutineOptions {
   context?: CommandContext;
   eventBus?: EventBus;
   processManager?: ProcessManager;
+  getReactor?: () => Promise<ReactorContext | undefined>;
+  getAgent?: () => Promise<AgentProvider | undefined>;
 }
 
 /**
@@ -40,6 +45,9 @@ export function createRoutine(options: RoutineOptions): Routine {
     workdir: '',
     stdout: console.log,
   };
+  // Ensure emit/on are wired from the event bus
+  if (!ctx.emit) ctx.emit = (event: string, data?: unknown) => bus.emit(event, data);
+  if (!ctx.on) ctx.on = (event: string, handler: (data?: unknown) => void) => bus.on(event, handler);
 
   let status: RoutineStatus = 'init';
   let loopPromise: Promise<void> | null = null;
@@ -47,14 +55,18 @@ export function createRoutine(options: RoutineOptions): Routine {
 
   const queue: WorkItem[] = [];
 
+  // Mutable capability accessors — set after construction via setCapabilities()
+  let getReactor: (() => Promise<ReactorContext | undefined>) | undefined = options.getReactor;
+  let getAgent: (() => Promise<AgentProvider | undefined>) | undefined = options.getAgent;
+
   function makeTriggerContext(trigger: Trigger): TriggerContext {
     // Each trigger gets its own persistent state object
     const state: Record<string, unknown> = {};
     return {
-      config: ctx.config,
+      get context(): CoreContext { return ctx; },
       state,
-      emit: (event: string, data?: unknown) => bus.emit(event, data),
-      on: (event: string, handler: (data?: unknown) => void) => bus.on(event, handler),
+      reactor: () => getReactor?.() ?? Promise.resolve(undefined),
+      agent: () => getAgent?.() ?? Promise.resolve(undefined),
     };
   }
 
@@ -196,6 +208,10 @@ export function createRoutine(options: RoutineOptions): Routine {
     },
     setContext(newCtx: CommandContext) {
       ctx = newCtx;
+    },
+    setCapabilities(caps) {
+      if (caps.getReactor) getReactor = caps.getReactor;
+      if (caps.getAgent) getAgent = caps.getAgent;
     },
   };
 

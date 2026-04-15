@@ -350,7 +350,7 @@ describe('createRoutine', () => {
         id: 'config-trigger',
         type: 'condition',
         poll: async (ctx) => {
-          receivedConfig = ctx.config;
+          receivedConfig = ctx.context.config as Record<string, unknown>;
           return null;
         },
       });
@@ -429,7 +429,7 @@ describe('createRoutine', () => {
         poll: async (ctx) => {
           if (!triggerFired) {
             triggerFired = true;
-            ctx.emit('test:event', { ok: true });
+            ctx.context.emit!('test:event', { ok: true });
           }
           return null;
         },

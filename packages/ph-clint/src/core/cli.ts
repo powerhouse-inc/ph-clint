@@ -888,6 +888,11 @@ export function defineCli<
     context.reactor = getReactor;
     context.agent = getAgent;
 
+    // Pass lazy accessors to the routine for TriggerContext
+    if (routine) {
+      routine.setCapabilities({ getReactor, getAgent });
+    }
+
     // Handle --meta: output metadata JSON and exit (ignoring all other args)
     if (metaFlag) {
       stdout(JSON.stringify(getMetadata(), null, 2));

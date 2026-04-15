@@ -198,12 +198,17 @@ export interface WorkItem {
 
 /**
  * Context passed to trigger setup() and poll() functions.
+ * Provides core infrastructure via `context`, per-trigger state,
+ * and lazy accessors for reactor and agent capabilities.
  */
 export interface TriggerContext {
-  config: Record<string, unknown>;
+  /** Live reference to the core context (workdir, config, emit, services, etc.). */
+  context: CoreContext;
   state: Record<string, unknown>;
-  emit: (event: string, data?: unknown) => void;
-  on: (event: string, handler: (data?: unknown) => void) => void;
+  /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
+  reactor: () => Promise<import('../integrations/powerhouse/types.js').ReactorContext | undefined>;
+  /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
+  agent: () => Promise<AgentProvider | undefined>;
 }
 
 /**
@@ -248,6 +253,11 @@ export interface Routine {
   onOutput?: (text: string) => void;
   /** Update the context used for command execution within the routine. */
   setContext(context: CommandContext): void;
+  /** Set lazy capability accessors (reactor, agent) for trigger contexts. */
+  setCapabilities(caps: {
+    getReactor?: () => Promise<import('../integrations/powerhouse/types.js').ReactorContext | undefined>;
+    getAgent?: () => Promise<AgentProvider | undefined>;
+  }): void;
 }
 
 // ── Process Management ────────────────────────────────────────────
