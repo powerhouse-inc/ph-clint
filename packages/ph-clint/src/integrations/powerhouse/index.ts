@@ -11,7 +11,7 @@
 
 import type { CommandContext, Integration, ServiceDefinition } from '../../core/types.js';
 import type {
-  PowerhouseContext,
+  ReactorContext,
   PowerhouseIntegrationOptions,
   SwitchboardInstance,
 } from './types.js';
@@ -19,7 +19,7 @@ import { isPortFree } from '../../core/preflight.js';
 import { connectServiceDefinition } from './connect.js';
 
 export type {
-  PowerhouseContext,
+  ReactorContext,
   PowerhouseIntegrationOptions,
   DriveConfig,
   SubscriptionConfig,
@@ -99,9 +99,12 @@ export function definePowerhouseIntegration(
       }
 
       // Phase 1: Expose on context
-      const phContext: PowerhouseContext = {
+      const phContext: ReactorContext = {
         client: reactorModule.client,
         driveId,
+        async shutdown() {
+          // Handled by integration teardown()
+        },
       };
       context.powerhouse = phContext;
 

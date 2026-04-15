@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { Command as Commander } from 'commander';
 import type {
-  AgentContext,
+  AgentSetupContext,
   AgentLoader,
   AgentProvider,
   Cli,
@@ -207,10 +207,10 @@ export function defineCli<
     }
   }
 
-  // Mutable agent loader — set via setAgentLoader()
+  // Mutable agent factory — set via configureAgent()
   let agentLoader: AgentLoader<any> | undefined;
 
-  function setAgentLoader(loader: AgentLoader<any>): void {
+  function configureAgent(loader: AgentLoader<any>): void {
     agentLoader = loader;
   }
 
@@ -847,7 +847,7 @@ export function defineCli<
       if (cachedProvider) return cachedProvider;
       if (!agentLoader) return undefined;
       await ensureIntegrationsReady();
-      const agentCtx: AgentContext<TConfig> = {
+      const agentCtx: AgentSetupContext<TConfig> = {
         workdir,
         config: typedConfig,
         cliName: options.name,
@@ -884,7 +884,7 @@ export function defineCli<
         configSchema: options.configSchema,
         interactive: resolvedInteractive,
         get hasAgent() { return !!agentLoader; },
-        setAgentLoader,
+        configureAgent,
         getCommand,
         listCommands,
         execute,
@@ -1222,7 +1222,7 @@ export function defineCli<
     configSchema: options.configSchema,
     interactive: options.interactive,
     get hasAgent() { return !!agentLoader; },
-    setAgentLoader,
+    configureAgent,
     getCommand,
     listCommands,
     execute,

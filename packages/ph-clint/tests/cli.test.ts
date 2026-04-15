@@ -291,7 +291,7 @@ describe('defineCli', () => {
           commands: [echo],
           prompts: { sources: [tmp] },
         });
-        skillCli.setAgentLoader(async () => ({
+        skillCli.configureAgent(async () => ({
           id: 'test-agent',
           async *stream(prompt: string) {
             agentPrompts.push(prompt);
@@ -1461,7 +1461,7 @@ describe('defineCli', () => {
           commands: [echo],
           ...extra,
         });
-        cli.setAgentLoader(async () => agent);
+        cli.configureAgent(async () => agent);
         return cli;
       }
 

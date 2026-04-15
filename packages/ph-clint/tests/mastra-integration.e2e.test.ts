@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
 import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { createMemoryWorkdirStore } from '../src/core/store.js';
-import type { AgentContext, AgentProvider, StreamChunk } from '../src/core/types.js';
+import type { AgentSetupContext, AgentProvider, StreamChunk } from '../src/core/types.js';
 
 // Load .env from example 04 (no dotenv dependency)
 try {
@@ -59,7 +59,7 @@ describeWithKey('Mastra integration E2E', () => {
   let agentProvider: AgentProvider;
 
   async function createTestAgent() {
-    const ctx: AgentContext = {
+    const ctx: AgentSetupContext = {
       workdir: testWorkspace,
       config: {},
       cliName: 'test-e2e',

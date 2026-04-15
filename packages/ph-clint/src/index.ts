@@ -31,8 +31,7 @@ export { renderMarkdown } from './interactive/markdown.js';
 export { definePowerhouseIntegration } from './integrations/powerhouse/index.js';
 export type { PowerhouseIntegrationResult } from './integrations/powerhouse/index.js';
 export type {
-  PowerhouseContext,
-  PowerhouseIntegrationOptions,
+  ReactorContext,
   DriveConfig,
   SubscriptionConfig,
   SwitchboardConfig,
@@ -77,7 +76,7 @@ export type {
   ErrorChunk,
   AgentProvider,
   AgentStreamOptions,
-  AgentContext,
+  AgentSetupContext,
   AgentLoader,
   Logger,
   LogLevel,

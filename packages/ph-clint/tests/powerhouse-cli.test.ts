@@ -130,7 +130,7 @@ describe('integration lifecycle in cli.ts', () => {
     const integration: Integration = {
       id: 'powerhouse',
       async setup(ctx) {
-        ctx.powerhouse = { client: { fake: true }, driveId: 'test-drive' };
+        ctx.powerhouse = { client: { fake: true }, driveId: 'test-drive', async shutdown() {} };
       },
     };
 

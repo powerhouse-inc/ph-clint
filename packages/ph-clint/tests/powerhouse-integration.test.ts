@@ -3,7 +3,7 @@ import { definePowerhouseIntegration } from '../src/integrations/powerhouse/inde
 import { connectServiceDefinition } from '../src/integrations/powerhouse/connect.js';
 import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscriptions.js';
 import { ensureDrive } from '../src/integrations/powerhouse/drive.js';
-import type { PowerhouseContext } from '../src/integrations/powerhouse/types.js';
+import type { ReactorContext } from '../src/integrations/powerhouse/types.js';
 import type { CommandContext } from '../src/core/types.js';
 
 describe('definePowerhouseIntegration', () => {
@@ -306,11 +306,12 @@ describe('ensureDrive', () => {
   });
 });
 
-describe('PowerhouseContext type', () => {
+describe('ReactorContext type', () => {
   it('has the expected shape', () => {
-    const ctx: PowerhouseContext = {
+    const ctx: ReactorContext = {
       client: {},
       driveId: 'test-drive',
+      async shutdown() {},
     };
     expect(ctx.driveId).toBe('test-drive');
     expect(ctx.switchboardUrl).toBeUndefined();
@@ -320,13 +321,14 @@ describe('PowerhouseContext type', () => {
   });
 
   it('accepts all optional Phase 2+3 fields', () => {
-    const ctx: PowerhouseContext = {
+    const ctx: ReactorContext = {
       client: {},
       driveId: 'test',
       switchboardUrl: 'http://localhost:4001/graphql',
       driveUrl: 'http://localhost:4001/d/test',
       mcpUrl: 'http://localhost:4001/mcp',
       connectUrl: 'http://localhost:3000',
+      async shutdown() {},
     };
     expect(ctx.switchboardUrl).toBe('http://localhost:4001/graphql');
     expect(ctx.connectUrl).toBe('http://localhost:3000');

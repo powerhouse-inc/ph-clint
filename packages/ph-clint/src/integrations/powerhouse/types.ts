@@ -7,10 +7,10 @@
  */
 
 /**
- * Context added to CommandContext when the Powerhouse integration is active.
- * Commands access this as `context.powerhouse`.
+ * Context for the Powerhouse reactor capability.
+ * Returned by the reactor factory and accessible via `context.reactor()`.
  */
-export interface PowerhouseContext {
+export interface ReactorContext {
   /** The Reactor client — full CRUD + subscription API (IReactorClient). */
   client: any;
   /** The default drive ID (created or found on startup). */
@@ -23,6 +23,8 @@ export interface PowerhouseContext {
   mcpUrl?: string;
   /** Phase 3: Connect web UI URL (e.g. http://localhost:3000). */
   connectUrl?: string;
+  /** Teardown — called by the framework on CLI exit. */
+  shutdown(): Promise<void>;
 }
 
 /**

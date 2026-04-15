@@ -10,7 +10,7 @@ import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
 import { mapMastraStream } from '../src/integrations/mastra/stream.js';
 import { createMemoryWorkdirStore } from '../src/core/store.js';
-import type { AgentContext, ServiceInstanceStatus, ServiceManager } from '../src/core/types.js';
+import type { AgentSetupContext, ServiceInstanceStatus, ServiceManager } from '../src/core/types.js';
 
 const testWorkspace = join(tmpdir(), `ph-clint-mastra-test-${randomBytes(4).toString('hex')}`);
 
@@ -25,7 +25,7 @@ const echoCommand = defineCommand({
   execute: async (input) => ({ text: input.text }),
 });
 
-function makeAgentContext(overrides?: Partial<AgentContext>): AgentContext {
+function makeAgentSetupContext(overrides?: Partial<AgentSetupContext>): AgentSetupContext {
   const workdir = overrides?.workdir ?? testWorkspace;
   return {
     workdir,
@@ -41,7 +41,7 @@ function makeAgentContext(overrides?: Partial<AgentContext>): AgentContext {
 
 describe('createMastraHelpers', () => {
   it('returns an object with getTools, createWorkspace, createMemory, wrapAgent', () => {
-    const helpers = createMastraHelpers(makeAgentContext());
+    const helpers = createMastraHelpers(makeAgentSetupContext());
     expect(typeof helpers.getTools).toBe('function');
     expect(typeof helpers.createWorkspace).toBe('function');
     expect(typeof helpers.createMemory).toBe('function');
@@ -49,26 +49,26 @@ describe('createMastraHelpers', () => {
   });
 
   it('getTools converts commands to Mastra tools', async () => {
-    const helpers = createMastraHelpers(makeAgentContext());
+    const helpers = createMastraHelpers(makeAgentSetupContext());
     const tools = await helpers.getTools();
     expect(Object.keys(tools)).toEqual(['echo']);
     expect(tools.echo).toBeDefined();
   });
 
   it('getTools returns empty object when no commands', async () => {
-    const helpers = createMastraHelpers(makeAgentContext({ commands: [] }));
+    const helpers = createMastraHelpers(makeAgentSetupContext({ commands: [] }));
     const tools = await helpers.getTools();
     expect(tools).toEqual({});
   });
 
   it('createWorkspace returns a Mastra Workspace', async () => {
-    const helpers = createMastraHelpers(makeAgentContext());
+    const helpers = createMastraHelpers(makeAgentSetupContext());
     const workspace = await helpers.createWorkspace();
     expect(workspace).toBeDefined();
   });
 
   it('createMemory creates LibSQL-backed memory and db directory', async () => {
-    const helpers = createMastraHelpers(makeAgentContext());
+    const helpers = createMastraHelpers(makeAgentSetupContext());
     const memory = await helpers.createMemory();
     expect(memory).toBeDefined();
     // Verify the database directory was created
@@ -76,7 +76,7 @@ describe('createMastraHelpers', () => {
   });
 
   it('wrapAgent wraps a mock agent as AgentProvider', () => {
-    const helpers = createMastraHelpers(makeAgentContext());
+    const helpers = createMastraHelpers(makeAgentSetupContext());
     const mockAgent = { id: 'mock-agent' };
     const provider = helpers.wrapAgent(mockAgent);
     expect(provider.id).toBe('mock-agent');
@@ -84,7 +84,7 @@ describe('createMastraHelpers', () => {
   });
 
   it('wrapAgent defaults id to "default" when agent has no id', () => {
-    const helpers = createMastraHelpers(makeAgentContext());
+    const helpers = createMastraHelpers(makeAgentSetupContext());
     const provider = helpers.wrapAgent({});
     expect(provider.id).toBe('default');
   });
@@ -156,7 +156,7 @@ describe('getTools with MCP discovery', () => {
   }
 
   it('getTools({ includeMcp: false }) returns only CLI tools', async () => {
-    const ctx = makeAgentContext();
+    const ctx = makeAgentSetupContext();
     // Add a mock service manager with an api-mcp endpoint
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
@@ -174,13 +174,13 @@ describe('getTools with MCP discovery', () => {
   });
 
   it('getTools() returns CLI tools when no services manager', async () => {
-    const helpers = createMastraHelpers(makeAgentContext());
+    const helpers = createMastraHelpers(makeAgentSetupContext());
     const tools = await helpers.getTools();
     expect(Object.keys(tools)).toEqual(['echo']);
   });
 
   it('getTools() returns CLI tools when services have no api-mcp endpoints', async () => {
-    const ctx = makeAgentContext();
+    const ctx = makeAgentSetupContext();
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
@@ -196,7 +196,7 @@ describe('getTools with MCP discovery', () => {
   });
 
   it('getTools() throws when api-mcp service is ready but no MCPClient provided', async () => {
-    const ctx = makeAgentContext();
+    const ctx = makeAgentSetupContext();
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
@@ -211,7 +211,7 @@ describe('getTools with MCP discovery', () => {
   });
 
   it('getTools({ includeMcp: false }) skips error even with api-mcp services', async () => {
-    const ctx = makeAgentContext();
+    const ctx = makeAgentSetupContext();
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',
@@ -227,7 +227,7 @@ describe('getTools with MCP discovery', () => {
   });
 
   it('getTools() returns CLI tools when services are not ready', async () => {
-    const ctx = makeAgentContext();
+    const ctx = makeAgentSetupContext();
     ctx.context.services = makeMockServiceManager([{
       serviceId: 'test',
       instanceId: 'test',

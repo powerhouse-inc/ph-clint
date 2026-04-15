@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { PowerhouseContext } from '../integrations/powerhouse/types.js';
+import type { ReactorContext } from '../integrations/powerhouse/types.js';
 
 /**
  * Utility type: infer the TypeScript type from a Zod config schema.
@@ -64,8 +64,8 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   processes?: ProcessManager;
   services?: ServiceManager;
   emit?: (event: string, data?: unknown) => void;
-  /** Powerhouse integration context — populated when definePowerhouseIntegration() is used. */
-  powerhouse?: PowerhouseContext;
+  /** Powerhouse integration context — populated when configureReactor() is used. */
+  powerhouse?: ReactorContext;
 }
 
 /**
@@ -503,14 +503,14 @@ export interface RoutineConfig {
  */
 export type Resolvable<T, TConfig = Record<string, unknown>> = T | ((ctx: { workdir: string; config: TConfig }) => T);
 
-// ── Agent Context ─────────────────────────────────────────────────
+// ── Agent Setup Context ───────────────────────────────────────────
 
 /**
  * Context passed to agent factory callbacks.
  * Provides everything the factory needs to construct an agent.
  * TConfig is inferred from the CLI's configSchema.
  */
-export interface AgentContext<TConfig = Record<string, unknown>> {
+export interface AgentSetupContext<TConfig = Record<string, unknown>> {
   workdir: string;
   config: TConfig;
   cliName: string;
@@ -525,11 +525,11 @@ export interface AgentContext<TConfig = Record<string, unknown>> {
 
 /**
  * A loader that dynamically imports and constructs the agent.
- * Receives the full AgentContext (including auto-injected commands)
+ * Receives the full AgentSetupContext (including auto-injected commands)
  * and should return a configured AgentProvider.
  */
 export type AgentLoader<TConfig = Record<string, unknown>> =
-  (ctx: AgentContext<TConfig>) => Promise<AgentProvider>;
+  (ctx: AgentSetupContext<TConfig>) => Promise<AgentProvider>;
 
 // ── Prompts ──────────────────────────────────────────────────────
 
@@ -711,8 +711,8 @@ export interface Cli {
   interactive?: InteractiveConfig<any> | ResolvedInteractiveConfig;
   /** True when an agent loader has been set. */
   hasAgent: boolean;
-  /** Set the agent loader — called lazily when the agent is first needed. */
-  setAgentLoader(loader: AgentLoader<any>): void;
+  /** Configure the agent factory — called lazily when the agent is first needed. */
+  configureAgent(loader: AgentLoader<any>): void;
   getCommand(id: string): Command | undefined;
   listCommands(): Command[];
   execute(
