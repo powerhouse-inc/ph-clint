@@ -13,7 +13,7 @@ import type { Trigger, WorkItem, TriggerContext } from 'ph-clint';
 
 export interface DocumentChangeTriggerOptions {
   /** Called when a document change is detected. Should return a work item if the agent should respond, or null to skip. */
-  onDocumentChanged: () => Promise<WorkItem | null>;
+  onDocumentChanged: (ctx: TriggerContext) => Promise<WorkItem | null>;
 }
 
 /**
@@ -29,7 +29,7 @@ export function createDocumentChangeTrigger(
     async setup(ctx: TriggerContext) {
       ctx.state.pendingChanges = [] as Array<{ documents: unknown }>;
 
-      ctx.on('powerhouse:document:changed', (data) => {
+      ctx.context.on!('powerhouse:document:changed', (data) => {
         console.log('[trigger] Document change event received');
         const pending = ctx.state.pendingChanges as Array<unknown>;
         pending.push(data);
@@ -46,7 +46,7 @@ export function createDocumentChangeTrigger(
 
       // Delegate to the callback which has full context to inspect
       // the document and decide whether the agent should respond
-      return options.onDocumentChanged();
+      return options.onDocumentChanged(ctx);
     },
   };
 }

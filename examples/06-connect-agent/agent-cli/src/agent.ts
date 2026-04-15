@@ -5,7 +5,7 @@
  * document and writes responses back to it via the bridge.
  */
 
-import type { AgentContext, AgentProvider, StreamChunk, AgentStreamOptions, PowerhouseContext } from 'ph-clint';
+import type { AgentSetupContext, AgentProvider, StreamChunk, AgentStreamOptions, ReactorContext } from 'ph-clint';
 import type { Config } from './config.js';
 import { writeStreamToDocument, writeUserMessage } from './bridge.js';
 import type { DocumentDispatcher } from './bridge.js';
@@ -21,10 +21,24 @@ const instructions = `You are a helpful AI assistant in a Powerhouse Connect age
 - Keep responses focused and practical.`;
 
 /**
+ * Create the agent for the connect-agent CLI.
+ *
+ * When an API key is configured, creates a full Mastra agent with memory and tools.
+ * Otherwise, returns a simple demo echo agent.
+ *
+ * The returned agent wraps output in a document bridge so all agent output
+ * is written to the agent-chat document when a reactor is available.
+ */
+export async function createAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {
+  const inner = await createInnerAgent(ctx);
+  return createDocumentBridgedProvider(inner, ctx);
+}
+
+/**
  * Create the raw (unwrapped) agent — no document bridging.
  * Used by the trigger to stream responses directly via writeStreamToDocument.
  */
-export async function createInnerAgent(ctx: AgentContext<Config>): Promise<AgentProvider> {
+async function createInnerAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {
   if (!ctx.config.apiKey) {
     return createDemoAgent();
   }
@@ -46,45 +60,33 @@ export async function createInnerAgent(ctx: AgentContext<Config>): Promise<Agent
 }
 
 /**
- * Create the agent for the connect-agent CLI.
- *
- * When an API key is configured, creates a full Mastra agent with memory and tools.
- * Otherwise, returns a simple demo echo agent.
- */
-export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvider> {
-  const inner = await createInnerAgent(ctx);
-  // Wrap with document bridge so all agent output is written to the chat document
-  return createDocumentBridgedProvider(inner, ctx);
-}
-
-/**
  * Wraps an AgentProvider to also write all stream output to the agent-chat document.
  */
 function createDocumentBridgedProvider(
   inner: AgentProvider,
-  ctx: AgentContext<Config>,
+  ctx: AgentSetupContext<Config>,
 ): AgentProvider {
   return {
     id: inner.id,
     async *stream(prompt: string, opts?: AgentStreamOptions): AsyncGenerator<StreamChunk> {
-      const ph = ctx.context.powerhouse;
-      if (!ph) {
-        // No Powerhouse context — pass through without document bridge
+      const reactor = await ctx.context.reactor?.();
+      if (!reactor) {
+        // No reactor configured — pass through without document bridge
         yield* inner.stream(prompt, opts);
         return;
       }
 
       // Ensure we have a document to write to
-      const documentId = await ensureChatDocument(ph, ctx);
+      const documentId = await ensureChatDocument(reactor, ctx);
 
       // Ensure stakeholder exists for the CLI user
-      await ensureStakeholder(ph, documentId, 'cli-user', 'CLI User');
+      await ensureStakeholder(reactor, documentId, 'cli-user', 'CLI User');
 
       // Ensure agent participant exists
-      await ensureAgent(ph, documentId, AGENT_ID, 'Connect Agent');
+      await ensureAgent(reactor, documentId, AGENT_ID, 'Connect Agent');
 
       // Write user message to document
-      const dispatcher = createDispatcher(ph);
+      const dispatcher = createDispatcher(reactor);
       await writeUserMessage(dispatcher, documentId, 'cli-user', prompt);
 
       // Stream agent response, writing chunks to document
@@ -114,14 +116,6 @@ function createDemoAgent(): AgentProvider {
 }
 
 // ── Reactor client helpers ─────────────────────────────────────────
-//
-// Reactor client API:
-//   createEmpty(docType) → full document
-//   addChildren(parentId, [childId]) → link parent-child
-//   execute(docId, 'main', [action]) → dispatch operations
-//   get(id) → full document with state
-//   getChildren(parentId) → { results, options, nextCursor }
-//   rename(id, name) → rename a document
 
 /** Cache the chat document ID across calls. */
 let chatDocumentId: string | undefined;
@@ -132,13 +126,13 @@ export function getChatDocumentId(): string | undefined {
 }
 
 async function ensureChatDocument(
-  ph: PowerhouseContext,
-  ctx: AgentContext<Config>,
+  reactor: ReactorContext,
+  ctx: AgentSetupContext<Config>,
 ): Promise<string> {
   if (chatDocumentId) return chatDocumentId;
 
   // Try to find an existing agent-chat document among drive children
-  const children = await ph.client.getChildren(ph.driveId);
+  const children = await reactor.client.getChildren(reactor.driveId);
   const existing = children?.results?.find?.(
     (d: any) => d.header?.documentType === 'powerhouse/agent-chat',
   );
@@ -148,14 +142,14 @@ async function ensureChatDocument(
   }
 
   // Create a new agent-chat document and add it to the drive
-  const chatDoc = await ph.client.createEmpty('powerhouse/agent-chat');
+  const chatDoc = await reactor.client.createEmpty('powerhouse/agent-chat');
   chatDocumentId = chatDoc.header.id;
-  await ph.client.addChildren(ph.driveId, [chatDocumentId]);
+  await reactor.client.addChildren(reactor.driveId, [chatDocumentId]);
 
   // Set initial pruneLength
   if (ctx.config.pruneLength) {
     const { setPruneLength } = await import('agent-app/document-models/agent-chat');
-    await ph.client.execute(chatDocumentId, 'main', [
+    await reactor.client.execute(chatDocumentId, 'main', [
       setPruneLength({ pruneLength: ctx.config.pruneLength }),
     ]);
   }
@@ -164,38 +158,38 @@ async function ensureChatDocument(
 }
 
 async function ensureStakeholder(
-  ph: PowerhouseContext,
+  reactor: ReactorContext,
   documentId: string,
   id: string,
   name: string,
 ): Promise<void> {
   try {
-    const doc = await ph.client.get(documentId);
+    const doc = await reactor.client.get(documentId);
     const state = doc?.state?.global ?? doc?.state;
     const exists = state?.stakeholders?.some?.((s: any) => s.id === id);
     if (exists) return;
 
     const { addStakeholder } = await import('agent-app/document-models/agent-chat');
-    await ph.client.execute(documentId, 'main', [addStakeholder({ id, name })]);
+    await reactor.client.execute(documentId, 'main', [addStakeholder({ id, name })]);
   } catch {
     // Best-effort — may fail if stakeholder already exists
   }
 }
 
 async function ensureAgent(
-  ph: PowerhouseContext,
+  reactor: ReactorContext,
   documentId: string,
   id: string,
   name: string,
 ): Promise<void> {
   try {
-    const doc = await ph.client.get(documentId);
+    const doc = await reactor.client.get(documentId);
     const state = doc?.state?.global ?? doc?.state;
     const exists = state?.agents?.some?.((a: any) => a.id === id);
     if (exists) return;
 
     const { addAgent } = await import('agent-app/document-models/agent-chat');
-    await ph.client.execute(documentId, 'main', [
+    await reactor.client.execute(documentId, 'main', [
       addAgent({ id, name, role: 'AI Assistant', description: 'Powerhouse Connect Agent' }),
     ]);
   } catch {
@@ -203,10 +197,10 @@ async function ensureAgent(
   }
 }
 
-function createDispatcher(ph: PowerhouseContext): DocumentDispatcher {
+function createDispatcher(reactor: ReactorContext): DocumentDispatcher {
   return {
     async addAction(documentId: string, action: any): Promise<void> {
-      await ph.client.execute(documentId, 'main', [action]);
+      await reactor.client.execute(documentId, 'main', [action]);
     },
   };
 }

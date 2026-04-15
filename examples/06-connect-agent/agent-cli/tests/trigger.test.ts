@@ -5,15 +5,22 @@ import { createDocumentChangeTrigger } from '../src/trigger.js';
 function makeTriggerContext(): TriggerContext {
   const handlers = new Map<string, Array<(data?: unknown) => void>>();
   return {
-    config: {},
+    context: {
+      workspace: {} as any,
+      config: {},
+      workdir: '',
+      stdout: console.log,
+      emit: (event, data) => {
+        for (const h of handlers.get(event) ?? []) h(data);
+      },
+      on: (event, handler) => {
+        if (!handlers.has(event)) handlers.set(event, []);
+        handlers.get(event)!.push(handler);
+      },
+    },
     state: {},
-    emit: (event, data) => {
-      for (const h of handlers.get(event) ?? []) h(data);
-    },
-    on: (event, handler) => {
-      if (!handlers.has(event)) handlers.set(event, []);
-      handlers.get(event)!.push(handler);
-    },
+    reactor: async () => undefined,
+    agent: async () => undefined,
   };
 }
 
@@ -53,7 +60,7 @@ describe('createDocumentChangeTrigger', () => {
     await trigger.setup!(ctx);
 
     // Simulate a document change event
-    ctx.emit('powerhouse:document:changed', { changeType: 'Updated', documents: [] });
+    ctx.context.emit!('powerhouse:document:changed', { changeType: 'Updated', documents: [] });
 
     const result = await trigger.poll(ctx);
     expect(called).toBe(true);
@@ -72,9 +79,9 @@ describe('createDocumentChangeTrigger', () => {
     await trigger.setup!(ctx);
 
     // Multiple events before a single poll
-    ctx.emit('powerhouse:document:changed', {});
-    ctx.emit('powerhouse:document:changed', {});
-    ctx.emit('powerhouse:document:changed', {});
+    ctx.context.emit!('powerhouse:document:changed', {});
+    ctx.context.emit!('powerhouse:document:changed', {});
+    ctx.context.emit!('powerhouse:document:changed', {});
 
     await trigger.poll(ctx);
     expect(callCount).toBe(1); // Only one callback despite 3 events
@@ -92,7 +99,7 @@ describe('createDocumentChangeTrigger', () => {
     const ctx = makeTriggerContext();
     await trigger.setup!(ctx);
 
-    ctx.emit('powerhouse:document:changed', {});
+    ctx.context.emit!('powerhouse:document:changed', {});
 
     const result = await trigger.poll(ctx);
     expect(result).toBeNull();
@@ -110,7 +117,7 @@ describe('createDocumentChangeTrigger', () => {
     await trigger.setup!(ctx);
 
     // Different event
-    ctx.emit('powerhouse:document:created', { documentId: 'x' });
+    ctx.context.emit!('powerhouse:document:created', { documentId: 'x' });
 
     const result = await trigger.poll(ctx);
     expect(result).toBeNull();
