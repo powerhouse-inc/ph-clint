@@ -13,3 +13,8 @@ pnpm-lock.yaml
 /prototypes/agent-rupert-cli/.claude/settings.local.json
 /specs/enterprise
 /specs/ph-mara
+
+# Playwright CLI artifacts
+.playwright-cli/
+
+/specs/powerhouse

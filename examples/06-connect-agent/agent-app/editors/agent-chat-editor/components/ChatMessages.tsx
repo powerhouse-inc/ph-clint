@@ -1,24 +1,82 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo, Fragment } from "react";
+import MarkdownIt from "markdown-it";
 import type {
   ChatMessage,
   AgentInfo,
   Stakeholder,
 } from "document-models/agent-chat";
-import { getParticipantInfo } from "./participants.js";
+import { getParticipantInfo, getActiveParticipants } from "./participants.js";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
   agents: AgentInfo[];
   stakeholders: Stakeholder[];
+  currentStakeholderId?: string;
+}
+
+/**
+ * Highlight @mentions in an HTML string by wrapping them in spans.
+ */
+function highlightMentionsInHtml(
+  html: string,
+  agents: AgentInfo[],
+  stakeholders: Stakeholder[],
+): string {
+  const participants = getActiveParticipants(agents, stakeholders);
+  // Sort by name length descending to match longest names first
+  const sorted = [...participants].sort(
+    (a, b) => b.name.length - a.name.length,
+  );
+  let result = html;
+  for (const p of sorted) {
+    const escaped = p.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(
+      new RegExp(`@${escaped}`, "g"),
+      `<span class="mention-highlight">@${p.name}</span>`,
+    );
+  }
+  return result;
 }
 
 export function ChatMessages({
   messages,
   agents,
   stakeholders,
+  currentStakeholderId,
 }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const newMessagesRef = useRef<HTMLDivElement>(null);
+
+  const md = useMemo(() => {
+    const markdown = new MarkdownIt({
+      html: false,
+      linkify: true,
+      typographer: true,
+      breaks: true,
+    });
+
+    // Configure links to open in new tab
+    const defaultRender =
+      markdown.renderer.rules.link_open ||
+      function (tokens, idx, options, _env, self) {
+        return self.renderToken(tokens, idx, options);
+      };
+
+    markdown.renderer.rules.link_open = function (
+      tokens,
+      idx,
+      options,
+      env,
+      self,
+    ) {
+      tokens[idx].attrSet("target", "_blank");
+      tokens[idx].attrSet("rel", "noopener noreferrer");
+      return defaultRender(tokens, idx, options, env, self);
+    };
+
+    return markdown;
+  }, []);
 
   const scrollToBottom = () => {
     if (scrollContainerRef.current) {
@@ -27,19 +85,86 @@ export function ChatMessages({
     }
   };
 
+  // Find first unread message for current stakeholder
+  const firstUnreadIndex = currentStakeholderId
+    ? messages.findIndex(
+        (msg) =>
+          msg.sender !== currentStakeholderId &&
+          !msg.readBy?.includes(currentStakeholderId),
+      )
+    : -1;
+
   useEffect(() => {
-    const timer = setTimeout(scrollToBottom, 100);
+    const timer = setTimeout(() => {
+      if (
+        firstUnreadIndex !== -1 &&
+        newMessagesRef.current &&
+        scrollContainerRef.current
+      ) {
+        const dividerTop = newMessagesRef.current.offsetTop;
+        const containerTop = scrollContainerRef.current.offsetTop;
+        scrollContainerRef.current.scrollTop = dividerTop - containerTop;
+      } else {
+        scrollToBottom();
+      }
+    }, 100);
     return () => clearTimeout(timer);
   }, [messages.length]);
 
-  const renderMessageContent = (msg: ChatMessage) => {
+  const renderMessageContent = (msg: ChatMessage, isFromAgent: boolean) => {
     switch (msg.type) {
-      case "Text":
+      case "Text": {
+        const chunks = msg.text ?? [];
+        const useMarkdown =
+          msg.format === "MarkDown" || msg.format === "Mixed";
+
+        if (chunks.length <= 1) {
+          const text = chunks[0] || "";
+          if (useMarkdown) {
+            const html = md.render(text);
+            const highlighted = highlightMentionsInHtml(html, agents, stakeholders);
+            return (
+              <div
+                className={`markdown-chat-message ${isFromAgent ? "" : "stakeholder"}`}
+                dangerouslySetInnerHTML={{ __html: highlighted }}
+              />
+            );
+          }
+          const highlighted = highlightMentionsInHtml(
+            text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+            agents, stakeholders,
+          );
+          return (
+            <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlighted }} />
+          );
+        }
+
+        // Multiple chunks — render each as a separate block with spacing
         return (
-          <div className="whitespace-pre-wrap break-words">
-            {msg.text?.join("") || ""}
+          <div className="space-y-2">
+            {chunks.map((chunk, i) => {
+              if (useMarkdown) {
+                const html = md.render(chunk);
+                const highlighted = highlightMentionsInHtml(html, agents, stakeholders);
+                return (
+                  <div
+                    key={i}
+                    className={`markdown-chat-message ${isFromAgent ? "" : "stakeholder"}`}
+                    dangerouslySetInnerHTML={{ __html: highlighted }}
+                  />
+                );
+              }
+              const highlighted = highlightMentionsInHtml(
+                chunk.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+                agents, stakeholders,
+              );
+              return (
+                <div key={i} className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlighted }} />
+              );
+            })}
           </div>
         );
+      }
       case "ToolCall":
         return (
           <div className="font-mono text-xs">
@@ -106,8 +231,8 @@ export function ChatMessages({
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50" ref={scrollContainerRef}>
-      <div className="px-6 py-4 space-y-6">
-        {messages.map((message) => {
+      <div className="px-6 py-4 space-y-6 min-h-full flex flex-col justify-end">
+        {messages.map((message, index) => {
           const sender = getParticipantInfo(
             message.sender,
             agents,
@@ -122,63 +247,111 @@ export function ChatMessages({
           const isToolMessage =
             message.type === "ToolCall" || message.type === "ToolResult";
 
+          // Read indicator for stakeholder messages
+          const isFromCurrentStakeholder =
+            currentStakeholderId && message.sender === currentStakeholderId;
+          const isRead =
+            isFromCurrentStakeholder &&
+            message.readBy &&
+            message.readBy.some((id) => id !== currentStakeholderId);
+
           return (
-            <div
-              key={message.id}
-              className={`flex ${isFromAgent ? "justify-start" : "justify-end"}`}
-            >
+            <Fragment key={message.id}>
+              {/* Unread messages divider */}
+              {index === firstUnreadIndex && (
+                <div ref={newMessagesRef} className="flex items-center my-4">
+                  <div className="flex-1 border-t border-red-400"></div>
+                  <span className="px-3 text-xs font-medium text-red-500">
+                    NEW MESSAGES
+                  </span>
+                  <div className="flex-1 border-t border-red-400"></div>
+                </div>
+              )}
               <div
-                className={`flex ${isFromAgent ? "flex-row" : "flex-row-reverse"} items-start space-x-1.5 max-w-[75%]`}
+                className={`flex ${isFromAgent ? "justify-start" : "justify-end"}`}
               >
-                {!isToolMessage && (
-                  <img
-                    src={sender.avatar}
-                    alt={sender.name}
-                    className="w-8 h-8 rounded-full flex-shrink-0"
-                  />
-                )}
                 <div
-                  className={`${isFromAgent ? "ml-1.5 mr-0" : "ml-0 mr-1.5"} ${isToolMessage ? "ml-10" : ""}`}
+                  className={`flex ${isFromAgent ? "flex-row" : "flex-row-reverse"} items-start space-x-1.5 max-w-[75%]`}
                 >
                   {!isToolMessage && (
-                    <div className="flex items-baseline space-x-2 mb-1">
-                      <span className="text-sm font-medium text-gray-900">
-                        {sender.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {messageTime}
-                      </span>
-                    </div>
+                    <img
+                      src={sender.avatar}
+                      alt={sender.name}
+                      className="w-8 h-8 rounded-full flex-shrink-0"
+                    />
                   )}
                   <div
-                    className={`rounded-lg px-4 py-3 ${
-                      message.type === "Error"
-                        ? "bg-red-600 text-white"
-                        : isToolMessage
-                          ? "bg-gray-200 text-gray-800 border border-gray-300"
-                          : isFromAgent
-                            ? "bg-blue-700 text-white"
-                            : "bg-white border border-gray-200 text-gray-900"
-                    }`}
+                    className={`${isFromAgent ? "ml-1.5 mr-0" : "ml-0 mr-1.5"} ${isToolMessage ? "ml-10" : ""}`}
                   >
-                    {renderMessageContent(message)}
-                  </div>
-                  {message.mentioned.length > 0 && (
-                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                      <span>@</span>
-                      {message.mentioned.map((id) => {
-                        const p = getParticipantInfo(id, agents, stakeholders);
-                        return (
-                          <span key={id} className="font-medium text-blue-600">
-                            {p.name}
-                          </span>
-                        );
-                      })}
+                    {!isToolMessage && (
+                      <div className="flex items-baseline space-x-2 mb-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {sender.name}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {messageTime}
+                        </span>
+                      </div>
+                    )}
+                    <div
+                      className={`rounded-lg px-4 py-3 ${
+                        message.type === "Error"
+                          ? "bg-red-600 text-white"
+                          : isToolMessage
+                            ? "bg-gray-200 text-gray-800 border border-gray-300"
+                            : isFromAgent
+                              ? "bg-blue-700 text-white"
+                              : "bg-white border border-gray-200 text-gray-900"
+                      }`}
+                    >
+                      {renderMessageContent(message, isFromAgent)}
                     </div>
-                  )}
+                    {/* Read/Delivered indicator for stakeholder messages */}
+                    {isFromCurrentStakeholder && !isToolMessage && (
+                      <div className="flex items-center justify-end mt-1">
+                        {isRead ? (
+                          <div className="flex items-center space-x-1">
+                            <svg
+                              className="w-4 h-4 text-blue-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <span className="text-xs text-gray-500">Read</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-1">
+                            <svg
+                              className="w-4 h-4 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <span className="text-xs text-gray-400">
+                              Delivered
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Fragment>
           );
         })}
         <div ref={messagesEndRef} />

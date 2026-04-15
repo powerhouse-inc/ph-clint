@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { generateId } from "document-model";
-import Mentions from "@rc-component/mentions";
 import type { AgentInfo, Stakeholder } from "document-models/agent-chat";
 import { getActiveParticipants } from "./participants.js";
+import { MentionInput, type MentionInputHandle } from "./MentionInput.js";
 
 interface ChatInputProps {
   stakeholder: Stakeholder | undefined;
@@ -25,8 +25,41 @@ export function ChatInput({
   onSend,
   onSwitchStakeholder,
 }: ChatInputProps) {
-  const [value, setValue] = useState("");
-  const [mentionedIds, setMentionedIds] = useState<Set<string>>(new Set());
+  const mentionRef = useRef<MentionInputHandle>(null);
+  const [canSend, setCanSend] = useState(false);
+  const observerRef = useRef<MutationObserver | null>(null);
+
+  // Track whether the editor has content (for enabling/disabling Send button)
+  // We observe DOM mutations on the mention-input-editor element
+  useEffect(() => {
+    const checkContent = () => {
+      const editor = document.querySelector(".mention-input-editor");
+      if (editor) {
+        const hasText = !!editor.textContent?.trim();
+        const hasPills = !!editor.querySelector(".mention-pill");
+        setCanSend(hasText || hasPills);
+      }
+    };
+
+    // Set up observer once the editor is mounted
+    const timer = setTimeout(() => {
+      const editor = document.querySelector(".mention-input-editor");
+      if (editor) {
+        observerRef.current = new MutationObserver(checkContent);
+        observerRef.current.observe(editor, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+        checkContent();
+      }
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      observerRef.current?.disconnect();
+    };
+  }, [stakeholder?.id]);
 
   if (!stakeholder || stakeholder.removed) {
     return (
@@ -55,68 +88,24 @@ export function ChatInput({
     );
   }
 
-  // Build mention options: all active participants except the current sender
+  // All active participants except the current sender
   const participants = getActiveParticipants(agents, stakeholders).filter(
     (p) => p.id !== stakeholder.id,
   );
 
-  const mentionOptions = participants.map((p) => ({
-    value: p.name,
-    key: p.id,
-    label: (
-      <div className="flex items-center gap-2">
-        <img src={p.avatar} alt={p.name} className="w-5 h-5 rounded-full" />
-        <span className="text-sm">{p.name}</span>
-        {p.isAgent && (
-          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-            agent
-          </span>
-        )}
-      </div>
-    ),
-  }));
-
-  const handleChange = (text: string) => {
-    setValue(text);
-    // Prune mentions whose @name no longer appears in the text
-    setMentionedIds((prev) => {
-      const next = new Set<string>();
-      for (const id of prev) {
-        const participant = participants.find((p) => p.id === id);
-        if (participant && text.includes(`@${participant.name}`)) {
-          next.add(id);
-        }
-      }
-      return next;
-    });
-  };
-
-  const handleSelect = (option: { value?: string; key?: string }) => {
-    if (option.key) {
-      setMentionedIds((prev) => new Set(prev).add(option.key!));
-    }
-  };
-
-  const handleSend = () => {
-    const trimmed = value.trim();
-    if (!trimmed) return;
-
+  const handleSubmit = (text: string, mentionedIds: string[]) => {
     onSend({
       id: generateId(),
       sender: stakeholder.id,
-      text: trimmed,
-      mentioned: [...mentionedIds],
+      text,
+      mentioned: mentionedIds,
       when: new Date().toISOString(),
     });
-    setValue("");
-    setMentionedIds(new Set());
+    setCanSend(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleSend();
-    }
+  const handleSendClick = () => {
+    mentionRef.current?.submit();
   };
 
   const avatarUrl =
@@ -125,10 +114,10 @@ export function ChatInput({
 
   return (
     <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
-      <div className="flex items-center space-x-3">
+      <div className="flex items-start space-x-3">
         <button
           onClick={onSwitchStakeholder}
-          className="flex-shrink-0 rounded-full hover:ring-2 hover:ring-blue-400 transition-all"
+          className="flex-shrink-0 rounded-full hover:ring-2 hover:ring-blue-400 transition-all mt-1"
           title={`Chatting as ${stakeholder.name} — click to switch`}
         >
           <img
@@ -139,27 +128,19 @@ export function ChatInput({
         </button>
         <div className="flex-1 flex items-stretch space-x-3">
           <div className="flex-1">
-            <Mentions
-              value={value}
-              onChange={handleChange}
-              onSelect={handleSelect}
-              onKeyDown={handleKeyDown}
-              prefix="@"
-              split=""
-              options={mentionOptions}
-              rows={3}
-              autoSize={{ minRows: 2, maxRows: 5 }}
+            <MentionInput
+              ref={mentionRef}
+              participants={participants}
+              onSubmit={handleSubmit}
               placeholder="Type a message... Use @ to mention"
-              placement="top"
-              notFoundContent={null}
-              classNames={{ textarea: "chat-mentions-textarea" }}
             />
           </div>
           <button
-            onClick={handleSend}
-            disabled={!value.trim()}
-            className={`px-5 py-3 text-sm font-medium rounded-lg transition-colors self-stretch ${
-              value.trim()
+            onClick={handleSendClick}
+            disabled={!canSend}
+            style={{ height: 60 }}
+            className={`px-5 text-sm font-medium rounded-lg transition-colors flex-shrink-0 ${
+              canSend
                 ? "bg-blue-700 text-white hover:bg-blue-800"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
             }`}

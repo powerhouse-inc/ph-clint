@@ -63,6 +63,15 @@ export const agentChatMessagesOperations: AgentChatMessagesOperations = {
       // Auto-append to last message
       lastMessage.text.push(action.input.text);
       lastMessage.updated = action.input.when;
+      // Merge mentioned arrays
+      if (action.input.mentioned?.length) {
+        const existingIds = new Set(lastMessage.mentioned);
+        for (const id of action.input.mentioned) {
+          if (!existingIds.has(id)) {
+            lastMessage.mentioned.push(id);
+          }
+        }
+      }
       // Upgrade format to Mixed if different
       if (
         action.input.format &&
