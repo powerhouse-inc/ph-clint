@@ -26,7 +26,7 @@ export function bridgeSubscriptions(
   return client.subscribe(search, (event: any) => {
     try {
       switch (event.type) {
-        case 'Created':
+        case 'created':
           for (const doc of event.documents ?? []) {
             emit('powerhouse:document:created', {
               documentId: doc.id,
@@ -34,13 +34,13 @@ export function bridgeSubscriptions(
             });
           }
           break;
-        case 'Updated':
+        case 'updated':
           emit('powerhouse:document:changed', {
             changeType: event.type,
             documents: event.documents,
           });
           break;
-        case 'Deleted':
+        case 'deleted':
           for (const doc of event.documents ?? []) {
             emit('powerhouse:document:deleted', { documentId: doc.id });
           }

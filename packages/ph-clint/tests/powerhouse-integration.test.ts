@@ -67,7 +67,7 @@ describe('bridgeSubscriptions', () => {
       subscribe: (search: any, callback: any) => {
         // Simulate a Created event
         callback({
-          type: 'Created',
+          type: 'created',
           documents: [
             { id: 'doc-1', documentType: 'conversation' },
             { id: 'doc-2', documentType: 'task' },
@@ -96,7 +96,7 @@ describe('bridgeSubscriptions', () => {
 
     const mockClient = {
       subscribe: (_search: any, callback: any) => {
-        callback({ type: 'Updated', documents: docs });
+        callback({ type: 'updated', documents: docs });
         return () => {};
       },
     };
@@ -105,7 +105,7 @@ describe('bridgeSubscriptions', () => {
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toEqual({
       event: 'powerhouse:document:changed',
-      data: { changeType: 'Updated', documents: docs },
+      data: { changeType: 'updated', documents: docs },
     });
   });
 
@@ -115,7 +115,7 @@ describe('bridgeSubscriptions', () => {
 
     const mockClient = {
       subscribe: (_search: any, callback: any) => {
-        callback({ type: 'Deleted', documents: [{ id: 'doc-1' }] });
+        callback({ type: 'deleted', documents: [{ id: 'doc-1' }] });
         return () => {};
       },
     };
@@ -158,7 +158,7 @@ describe('bridgeSubscriptions', () => {
       subscribe: (_search: any, callback: any) => {
         // Should not throw even though emit throws
         expect(() => {
-          callback({ type: 'Created', documents: [{ id: 'x', documentType: 't' }] });
+          callback({ type: 'created', documents: [{ id: 'x', documentType: 't' }] });
         }).not.toThrow();
         return () => {};
       },
@@ -174,7 +174,7 @@ describe('bridgeSubscriptions', () => {
     const mockClient = {
       subscribe: (_search: any, callback: any) => {
         // Created event with undefined documents
-        callback({ type: 'Created' });
+        callback({ type: 'created' });
         return () => {};
       },
     };

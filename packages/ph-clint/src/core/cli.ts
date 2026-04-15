@@ -169,7 +169,15 @@ export function defineCli<
   }
   const skillIds = new Set(resolvedSkills.map(s => s.name));
 
-  const eventBus = (hasTriggers || hasServices) ? createEventBus() : undefined;
+  // Lazy singleton event bus — created on first access, shared everywhere.
+  // This eliminates the dual-path wiring that caused stale references when
+  // services were added after defineCli() (e.g. configureReactor adding Connect).
+  let _eventBus: ReturnType<typeof createEventBus> | undefined;
+  function getEventBus(): ReturnType<typeof createEventBus> {
+    if (!_eventBus) _eventBus = createEventBus();
+    return _eventBus;
+  }
+  const eventBus = (hasTriggers || hasServices) ? getEventBus() : undefined;
   const processManager = hasTriggers ? createProcessManager() : undefined;
   let routine: Routine | undefined;
 
@@ -255,10 +263,10 @@ export function defineCli<
     // Extend with runtime services if available
     if (routine) ctx.routine = routine;
     if (processManager) ctx.processes = processManager;
-    if (eventBus) {
-      ctx.emit = (event: string, data?: unknown) => eventBus.emit(event, data);
-      ctx.on = (event: string, handler: (data?: unknown) => void) => eventBus.on(event, handler);
-    }
+    // Always wire emit/on through getEventBus() — late-bound so the bus is
+    // created on demand even if services are added after defineCli().
+    ctx.emit = (event: string, data?: unknown) => getEventBus().emit(event, data);
+    ctx.on = (event: string, handler: (data?: unknown) => void) => getEventBus().on(event, handler);
     return ctx;
   }
 
@@ -813,22 +821,14 @@ export function defineCli<
     // Re-check options.services because configureReactor() may have added services after defineCli()
     {
       const servicesNow = options.services && options.services.length > 0;
-      const needsEventBus = servicesNow && !eventBus;
-      const effectiveEventBus = eventBus ?? (needsEventBus ? createEventBus() : undefined);
       let processServiceManager: import('./types.js').ServiceManager | undefined;
-      if (servicesNow && options.services && effectiveEventBus) {
+      if (servicesNow && options.services) {
         const svcDir = userStoreFolder(options.name, 'services');
         processServiceManager = createServiceManager(options.services as any[], {
           config,
           servicesDir: svcDir,
-          eventBus: effectiveEventBus,
+          eventBus: getEventBus(),
         });
-      }
-
-      // Wire up emit/on if we created a late eventBus for services
-      if (needsEventBus && effectiveEventBus) {
-        context.emit = (event: string, data?: unknown) => effectiveEventBus.emit(event, data);
-        context.on = (event: string, handler: (data?: unknown) => void) => effectiveEventBus.on(event, handler);
       }
 
       // Wire up composite or single ServiceManager
@@ -850,9 +850,9 @@ export function defineCli<
       }
 
       // Register event handlers on the event bus
-      if (eventBus && options.events) {
+      if (_eventBus && options.events) {
         for (const [event, handler] of Object.entries(options.events)) {
-          eventBus.on(event, handler);
+          _eventBus.on(event, handler);
         }
       }
     }
