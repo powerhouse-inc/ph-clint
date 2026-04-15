@@ -366,8 +366,8 @@ describe('streaming rendering', () => {
       yield { type: 'text-delta', text: 'Here is the ASCII art.' };
     }
     const parts: string[] = [];
-    for await (const part of renderStream(chunks())) {
-      parts.push(part);
+    for await (const { formatted } of renderStream(chunks())) {
+      parts.push(formatted);
     }
     const output = parts.join('');
     expect(output).toContain('▶');

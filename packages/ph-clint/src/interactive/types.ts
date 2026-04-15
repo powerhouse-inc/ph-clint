@@ -1,4 +1,4 @@
-import type { AgentProvider, Cli, CommandContext } from '../core/types.js';
+import type { AgentProvider, Cli, CommandContext, StreamChunk } from '../core/types.js';
 
 /**
  * Output from processing a REPL input line.
@@ -40,8 +40,8 @@ export interface ReplSession {
   welcome: string | undefined;
   /** The exit message (includes resume hint when a threadId is set). */
   readonly exitMessage: string;
-  /** Callback invoked for each formatted chunk during agent streaming. */
-  onStreamChunk?: (text: string) => void;
+  /** Callback invoked for each chunk during agent streaming. Receives the raw chunk and cumulative formatted text. */
+  onStreamChunk?: (chunk: StreamChunk, fullText: string) => void;
 }
 
 /**

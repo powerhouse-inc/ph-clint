@@ -2,7 +2,8 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Box, Text, Static, useInput, useApp, useStdout } from 'ink';
 import Spinner from 'ink-spinner';
 import type { ReplSession, HistoryEntry } from './types.js';
-import type { ServiceManager } from '../core/types.js';
+import type { ServiceManager, StreamChunk } from '../core/types.js';
+import { formatStreamChunk } from '../core/stream.js';
 import { renderMarkdown } from './markdown.js';
 import { applyCompletion } from './completions.js';
 import { TextInput } from './text-input.js';
@@ -26,6 +27,71 @@ interface ReplProps {
  * - 'history-cycling': Up/Down cycling through history
  */
 type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
+
+/** Number of trailing lines shown in the rolling output window during streaming. */
+const ROLLING_LINES = 6;
+
+/** A logical segment of streaming output — either agent text or a tool call/result pair. */
+interface StreamSegment {
+  type: 'text' | 'tool';
+  /** Formatted display lines accumulated in this segment. */
+  lines: string[];
+  /** Tool name (for tool segments). */
+  toolName?: string;
+  /** Whether the tool segment has received its result. */
+  complete: boolean;
+}
+
+/** Reducer: append a new StreamChunk to the segment list. */
+function updateSegments(prev: StreamSegment[], chunk: StreamChunk): StreamSegment[] {
+  const next = prev.map(s => ({ ...s, lines: [...s.lines] }));
+
+  switch (chunk.type) {
+    case 'text-delta': {
+      const last = next[next.length - 1];
+      if (last && last.type === 'text') {
+        // Append to existing text segment
+        const text = last.lines.join('') + chunk.text;
+        last.lines = text.split('\n');
+      } else {
+        // Start a new text segment
+        next.push({ type: 'text', lines: chunk.text.split('\n'), complete: false });
+      }
+      break;
+    }
+    case 'tool-call':
+      next.push({
+        type: 'tool',
+        lines: [formatStreamChunk(chunk)],
+        toolName: chunk.toolName,
+        complete: false,
+      });
+      break;
+    case 'tool-result': {
+      // Find the matching incomplete tool segment
+      const toolSeg = [...next].reverse().find(s => s.type === 'tool' && !s.complete);
+      if (toolSeg) {
+        toolSeg.lines.push(formatStreamChunk(chunk));
+        toolSeg.complete = true;
+      } else {
+        // Orphan result — append to a new segment
+        next.push({ type: 'tool', lines: [formatStreamChunk(chunk)], toolName: chunk.toolName, complete: true });
+      }
+      break;
+    }
+    case 'error': {
+      const last = next[next.length - 1];
+      if (last) {
+        last.lines.push(formatStreamChunk(chunk));
+      } else {
+        next.push({ type: 'text', lines: [formatStreamChunk(chunk)], complete: false });
+      }
+      break;
+    }
+  }
+
+  return next;
+}
 
 /**
  * Main REPL component for interactive mode.
@@ -78,7 +144,8 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
   const [cursorOffset, setCursorOffset] = useState<number | undefined>(undefined);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [promptLabel, setPromptLabel] = useState<string | null>(null);
-  const [streamingText, setStreamingText] = useState('');
+  const [segments, setSegments] = useState<StreamSegment[]>([]);
+  const streamingFullRef = useRef('');
   const [currentInput, setCurrentInput] = useState('');
   const nextId = useRef(0);
   const interruptedRef = useRef(false);
@@ -122,18 +189,23 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
       setSuggestions([]);
       resetToTyping();
       setPhase('executing');
-      setStreamingText('');
+      setSegments([]);
+      streamingFullRef.current = '';
       setCurrentInput(trimmed);
       interruptedRef.current = false;
 
       // Wire up streaming callback so chunks appear incrementally
-      session.onStreamChunk = (text) => setStreamingText(text);
+      session.onStreamChunk = (chunk, fullText) => {
+        streamingFullRef.current = fullText;
+        setSegments(prev => updateSegments(prev, chunk));
+      };
 
       const result = await session.processInput(trimmed);
 
       // Clear streaming callback
       session.onStreamChunk = undefined;
-      setStreamingText('');
+      setSegments([]);
+      streamingFullRef.current = '';
 
       // If the user pressed Escape during execution, the partial output
       // was already captured into history — skip adding a duplicate.
@@ -227,11 +299,12 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
               {
                 id: nextId.current++,
                 input: currentInput,
-                output: streamingText || '(interrupted)',
+                output: streamingFullRef.current || '(interrupted)',
                 type: 'result' as const,
               },
             ]);
-            setStreamingText('');
+            setSegments([]);
+            streamingFullRef.current = '';
           }
           setPhase('idle');
         }
@@ -454,8 +527,23 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
           <Text>{' '}</Text>
           <Text backgroundColor="#333333" color="#eeeeee">{' > '}{currentInput}{' '}</Text>
           <Text>{' '}</Text>
-          {streamingText ? (
-            <Text>{renderMarkdown(streamingText)}</Text>
+          {segments.length > 0 ? (
+            <Box flexDirection="column">
+              {segments.map((seg, i) => {
+                const isLast = i === segments.length - 1;
+                if (seg.type === 'tool' && seg.complete && !isLast) {
+                  // Collapsed completed tool: one-liner
+                  return <Text key={i} dimColor>  ▶ {seg.toolName} ✓</Text>;
+                }
+                if (seg.type === 'text' && !isLast) {
+                  // Earlier text block: first line only
+                  return <Text key={i} dimColor>{seg.lines[0]}</Text>;
+                }
+                // Active segment: rolling tail
+                const visible = seg.lines.slice(-ROLLING_LINES);
+                return <Text key={i}>{visible.join('\n')}</Text>;
+              })}
+            </Box>
           ) : (
             <Box>
               <Text color="yellow">

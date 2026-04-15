@@ -840,6 +840,47 @@ describe('default command — agent routing', () => {
   });
 });
 
+describe('onStreamChunk callback', () => {
+  it('receives raw chunks and cumulative text during agent streaming', async () => {
+    const agent: AgentProvider = {
+      id: 'test',
+      async *stream() {
+        yield { type: 'tool-call' as const, toolName: 'search', args: { q: 'cats' } };
+        yield { type: 'tool-result' as const, toolName: 'search', result: '3 results', isError: false };
+        yield { type: 'text-delta' as const, text: 'Found cats.' };
+      },
+    };
+
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [],
+      interactive: { welcome: '' },
+    });
+    cli.configureAgent(async () => agent);
+
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const chunks: { type: string; fullText: string }[] = [];
+    session.onStreamChunk = (chunk, fullText) => {
+      chunks.push({ type: chunk.type, fullText });
+    };
+
+    await session.processInput('find cats');
+
+    expect(chunks.length).toBe(3);
+    expect(chunks[0]!.type).toBe('tool-call');
+    expect(chunks[1]!.type).toBe('tool-result');
+    expect(chunks[2]!.type).toBe('text-delta');
+
+    // Each call gets cumulative text
+    expect(chunks[2]!.fullText).toContain('Found cats.');
+    expect(chunks[2]!.fullText).toContain('search');
+  });
+});
+
 describe('session edge cases', () => {
   const echo = defineCommand({
     id: 'echo',

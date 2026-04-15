@@ -370,9 +370,9 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       const parts: string[] = [];
       const commandMap = new Map(commands.map((c) => [c.id, c]));
       const stream = agentProvider.stream(text, { threadId, tools: commandMap });
-      for await (const formatted of renderStream(stream)) {
+      for await (const { chunk, formatted } of renderStream(stream)) {
         parts.push(formatted);
-        sessionRef?.onStreamChunk?.(parts.join(''));
+        sessionRef?.onStreamChunk?.(chunk, parts.join(''));
       }
       return { text: renderMarkdown(parts.join('')), type: 'result' };
     } catch (err: unknown) {

@@ -110,29 +110,39 @@ describe('renderStream', () => {
     for (const chunk of chunks) yield chunk;
   }
 
-  async function collectStream(stream: AsyncGenerator<string>): Promise<string[]> {
-    const parts: string[] = [];
+  async function collectStream(stream: AsyncGenerator<{ chunk: StreamChunk; formatted: string }>): Promise<{ chunk: StreamChunk; formatted: string }[]> {
+    const parts: { chunk: StreamChunk; formatted: string }[] = [];
     for await (const part of stream) parts.push(part);
     return parts;
   }
 
-  it('converts stream chunks to formatted strings', async () => {
+  it('yields { chunk, formatted } pairs', async () => {
     const chunks: StreamChunk[] = [
       { type: 'text-delta', text: 'Hello ' },
       { type: 'text-delta', text: 'world' },
     ];
     const parts = await collectStream(renderStream(makeStream(chunks)));
-    expect(parts.join('')).toContain('Hello world');
+    expect(parts).toHaveLength(2);
+    expect(parts[0]!.chunk.type).toBe('text-delta');
+    expect(parts[0]!.formatted).toContain('Hello ');
+    expect(parts[1]!.chunk.type).toBe('text-delta');
+    expect(parts[1]!.formatted).toBe('world');
+    expect(parts.map(p => p.formatted).join('')).toContain('Hello world');
   });
 
-  it('includes tool activity in output', async () => {
+  it('preserves chunk types through rendering', async () => {
     const chunks: StreamChunk[] = [
       { type: 'tool-call', toolName: 'search', args: { q: 'test' } },
       { type: 'tool-result', toolName: 'search', result: '3 results', isError: false },
       { type: 'text-delta', text: 'Based on the search...' },
     ];
     const parts = await collectStream(renderStream(makeStream(chunks)));
-    const output = parts.join('');
+    expect(parts).toHaveLength(3);
+    expect(parts[0]!.chunk.type).toBe('tool-call');
+    expect(parts[1]!.chunk.type).toBe('tool-result');
+    expect(parts[2]!.chunk.type).toBe('text-delta');
+
+    const output = parts.map(p => p.formatted).join('');
     expect(output).toContain('▶');
     expect(output).toContain('search');
     expect(output).toContain('✓');
@@ -150,7 +160,7 @@ describe('renderStream', () => {
       { type: 'error', error: 'API rate limit' },
     ];
     const parts = await collectStream(renderStream(makeStream(chunks)));
-    const output = parts.join('');
+    const output = parts.map(p => p.formatted).join('');
     expect(output).toContain('Starting...');
     expect(output).toContain('API rate limit');
   });

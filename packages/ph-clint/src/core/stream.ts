@@ -39,8 +39,14 @@ export function formatStreamChunk(chunk: StreamChunk): string {
   }
 }
 
+/** A rendered stream element: the raw chunk paired with its formatted text. */
+export interface RenderedChunk {
+  chunk: StreamChunk;
+  formatted: string;
+}
+
 /**
- * Consume a stream of StreamChunks and yield formatted display strings.
+ * Consume a stream of StreamChunks and yield { chunk, formatted } pairs.
  * This is the main entry point for rendering agent/streaming output.
  *
  * Inserts an extra newline before the first text-delta after tool activity,
@@ -48,19 +54,20 @@ export function formatStreamChunk(chunk: StreamChunk): string {
  */
 export async function* renderStream(
   stream: AsyncGenerator<StreamChunk>,
-): AsyncGenerator<string, void, unknown> {
+): AsyncGenerator<RenderedChunk, void, unknown> {
   let lastChunkWasText = false;
 
   for await (const chunk of stream) {
+    let prefix = '';
     if (chunk.type === 'text-delta') {
       if (!lastChunkWasText) {
-        yield '\n';
+        prefix = '\n';
         lastChunkWasText = true;
       }
     } else {
       lastChunkWasText = false;
     }
-    yield formatStreamChunk(chunk);
+    yield { chunk, formatted: prefix + formatStreamChunk(chunk) };
   }
 }
 
