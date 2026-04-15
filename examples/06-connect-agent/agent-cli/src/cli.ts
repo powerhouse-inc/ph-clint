@@ -13,11 +13,11 @@ import { fileURLToPath } from 'node:url';
 import { defineCli, buildDefaultReactor } from 'ph-clint';
 import type { WorkItem } from 'ph-clint';
 import { documentModels } from 'agent-app';
+import * as agentChatCreators from 'agent-app/document-models/agent-chat';
 import { configSchema } from './config.js';
-import { createAgent, AGENT_ID } from './agent.js';
+import { createAgent, AGENT_ID, findChatDocuments, ensureParticipant, createDispatcher } from './agent.js';
 import { createDocumentChangeTrigger } from './trigger.js';
 import { writeStreamToDocument } from './bridge.js';
-import type { DocumentDispatcher } from './bridge.js';
 
 // Connect (ph connect) must run inside the agent-app Reactor Package.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,12 +41,10 @@ const documentChangeTrigger = createDocumentChangeTrigger({
           const agent = await ctx.agent();
           if (!reactor || !agent) return;
 
-          // Find all agent-chat documents in the drive
           const docIds = await findChatDocuments(reactor.client, reactor.driveId);
           if (docIds.length === 0) return;
 
           for (const docId of docIds) {
-            // Read current document state
             const doc = await reactor.client.get(docId);
             const state = doc?.state?.global ?? doc?.state;
             if (!state?.messages?.length) continue;
@@ -59,38 +57,21 @@ const documentChangeTrigger = createDocumentChangeTrigger({
             );
             if (agentIds.has(lastMsg.sender)) continue;
 
-            // Build the prompt from the last user message
-            let prompt: string;
-            if (lastMsg.type === 'Text' && lastMsg.text?.length) {
-              prompt = lastMsg.text.join('');
-            } else {
-              continue; // only respond to text messages
-            }
+            // Only respond to text messages
+            if (lastMsg.type !== 'Text' || !lastMsg.text?.length) continue;
+            const prompt = lastMsg.text.join('');
 
             console.log(`[trigger] Agent responding to message from ${lastMsg.sender} in ${docId}`);
 
             try {
-              // Ensure agent participant exists in the document
-              const agentExists = state.agents?.some?.((a: any) => a.id === AGENT_ID);
-              if (!agentExists) {
-                const { addAgent } = await import('agent-app/document-models/agent-chat');
-                await reactor.client.execute(docId, 'main', [
-                  addAgent({ id: AGENT_ID, name: 'Connect Agent', role: 'AI Assistant', description: 'Powerhouse Connect Agent' }),
-                ]);
-              }
+              await ensureParticipant(reactor, docId, 'agents', AGENT_ID,
+                agentChatCreators.addAgent({ id: AGENT_ID, name: 'Connect Agent', role: 'AI Assistant', description: 'Powerhouse Connect Agent' }));
 
-              // Stream agent response, writing to document
-              const dispatcher: DocumentDispatcher = {
-                async addAction(documentId: string, action: any) {
-                  await reactor.client.execute(documentId, 'main', [action]);
-                },
-              };
-              const creators = await import('agent-app/document-models/agent-chat');
-
+              const dispatcher = createDispatcher(reactor);
               for await (const _chunk of writeStreamToDocument(
                 agent.stream(prompt, { threadId: docId }),
                 { dispatcher, documentId: docId, agentId: AGENT_ID },
-                creators,
+                agentChatCreators,
               )) {
                 // Drain — chunks written to document by writeStreamToDocument
               }
@@ -104,18 +85,6 @@ const documentChangeTrigger = createDocumentChangeTrigger({
     };
   },
 });
-
-/** Find all agent-chat document IDs in the drive. */
-async function findChatDocuments(client: any, driveId: string): Promise<string[]> {
-  try {
-    const children = await client.getChildren(driveId);
-    return (children?.results ?? [])
-      .filter((d: any) => d.header?.documentType === 'powerhouse/agent-chat')
-      .map((d: any) => d.header.id);
-  } catch {
-    return [];
-  }
-}
 
 // ── CLI ─────────────────────────────────────────────────────────────
 

@@ -1,16 +1,12 @@
 /**
  * Bridge between ph-clint StreamChunks and agent-chat document operations.
  *
- * Two directions:
  * - writeStreamToDocument: Consumes agent StreamChunks and dispatches document operations
- * - readMessagesAsHistory: Converts document messages to Mastra conversation format
+ * - writeUserMessage: Writes a user message to the document before invoking the agent
  */
 
 import type { StreamChunk } from 'ph-clint';
-import type {
-  AgentChatState,
-  ChatMessage,
-} from 'agent-app/document-models/agent-chat';
+import { sendText } from 'agent-app/document-models/agent-chat';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -23,12 +19,6 @@ export interface BridgeOptions {
   dispatcher: DocumentDispatcher;
   documentId: string;
   agentId: string;
-}
-
-/** Mastra-compatible message format for conversation history. */
-export interface ConversationMessage {
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
 }
 
 // ── Write: StreamChunk → Document ──────────────────────────────────
@@ -66,7 +56,6 @@ export async function* writeStreamToDocument(
         break;
 
       case 'tool-call':
-        // New message ID for tool call
         messageId = generateId();
         await dispatcher.addAction(
           documentId,
@@ -81,7 +70,6 @@ export async function* writeStreamToDocument(
         break;
 
       case 'tool-result':
-        // New message ID for tool result
         messageId = generateId();
         await dispatcher.addAction(
           documentId,
@@ -94,7 +82,6 @@ export async function* writeStreamToDocument(
             when: now(),
           }),
         );
-        // Next text chunk starts a new message
         messageId = generateId();
         break;
 
@@ -117,63 +104,7 @@ export async function* writeStreamToDocument(
   }
 }
 
-// ── Read: Document → Conversation History ──────────────────────────
-
-/**
- * Convert agent-chat document messages to Mastra conversation format.
- * Agent messages become 'assistant' role, stakeholder messages become 'user'.
- */
-export function readMessagesAsHistory(
-  state: AgentChatState,
-  agentIds: Set<string>,
-): ConversationMessage[] {
-  const messages: ConversationMessage[] = [];
-
-  for (const msg of state.messages) {
-    const role = agentIds.has(msg.sender) ? 'assistant' : 'user';
-
-    switch (msg.type) {
-      case 'Text':
-        if (msg.text && msg.text.length > 0) {
-          messages.push({ role, content: msg.text.join('') });
-        }
-        break;
-
-      case 'ToolCall':
-        if (msg.toolCall) {
-          messages.push({
-            role: 'assistant',
-            content: `[Tool call: ${msg.toolCall.name}(${msg.toolCall.argsJson})]`,
-          });
-        }
-        break;
-
-      case 'ToolResult':
-        if (msg.toolResult) {
-          messages.push({
-            role: 'tool',
-            content: msg.toolResult.result,
-          });
-        }
-        break;
-
-      case 'Error':
-        if (msg.error) {
-          messages.push({ role, content: `Error: ${msg.error}` });
-        }
-        break;
-    }
-  }
-
-  return messages;
-}
-
-// ── Helpers ────────────────────────────────────────────────────────
-
-let idCounter = 0;
-function generateId(): string {
-  return `msg-${Date.now()}-${++idCounter}`;
-}
+// ── Write user message ───────────────────────────────────────────
 
 /**
  * Write a user message to the document before invoking the agent.
@@ -184,7 +115,6 @@ export async function writeUserMessage(
   senderId: string,
   text: string,
 ): Promise<void> {
-  const { sendText } = await import('agent-app/document-models/agent-chat');
   await dispatcher.addAction(
     documentId,
     sendText({
@@ -195,4 +125,11 @@ export async function writeUserMessage(
       format: 'Text',
     }),
   );
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+let idCounter = 0;
+function generateId(): string {
+  return `msg-${Date.now()}-${++idCounter}`;
 }
