@@ -87,6 +87,31 @@ export interface PowerhouseIntegrationOptions {
 }
 
 /**
+ * Context passed to the reactor factory in configureReactor().
+ * Provides core infrastructure the factory needs to build the reactor.
+ */
+export interface ReactorSetupContext {
+  workdir: string;
+  config: Record<string, unknown>;
+  workspace: import('../../core/types.js').WorkdirStore;
+  emit?: (event: string, data?: unknown) => void;
+  on?: (event: string, handler: (data?: unknown) => void) => void;
+}
+
+/**
+ * Configuration for configureReactor().
+ * The `create` factory is called lazily on first reactor() access.
+ */
+export interface ReactorConfiguration {
+  /** Factory that builds and returns a ReactorContext. */
+  create: (ctx: ReactorSetupContext) => Promise<ReactorContext>;
+  /** Connect web UI service configuration — commands injected immediately. */
+  connect?: ConnectConfig;
+  /** Switchboard service configuration. */
+  switchboard?: SwitchboardConfig;
+}
+
+/**
  * Internal handle for the Switchboard instance.
  */
 export interface SwitchboardInstance {

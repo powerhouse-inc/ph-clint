@@ -32,6 +32,8 @@ export { definePowerhouseIntegration } from './integrations/powerhouse/index.js'
 export type { PowerhouseIntegrationResult } from './integrations/powerhouse/index.js';
 export type {
   ReactorContext,
+  ReactorSetupContext,
+  ReactorConfiguration,
   DriveConfig,
   SubscriptionConfig,
   SwitchboardConfig,
@@ -54,6 +56,7 @@ export type {
   RunOptions,
   WorkdirStore,
   CommandContext,
+  CoreContext,
   PromptConfig,
   InteractiveConfig,
   ResolvedInteractiveConfig,

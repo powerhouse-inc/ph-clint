@@ -64,9 +64,21 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   processes?: ProcessManager;
   services?: ServiceManager;
   emit?: (event: string, data?: unknown) => void;
+  on?: (event: string, handler: (data?: unknown) => void) => void;
   /** Powerhouse integration context — populated when configureReactor() is used. */
   powerhouse?: ReactorContext;
+  /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
+  reactor?: () => Promise<ReactorContext | undefined>;
+  /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
+  agent?: () => Promise<AgentProvider | undefined>;
 }
+
+/**
+ * CommandContext without the reactor/agent accessors.
+ * Used as TriggerContext.context to avoid duplicate access paths.
+ */
+export type CoreContext<TConfig = Record<string, unknown>> =
+  Omit<CommandContext<TConfig>, 'reactor' | 'agent'>;
 
 /**
  * Interactive parameter prompting configuration for a command.
@@ -711,8 +723,12 @@ export interface Cli {
   interactive?: InteractiveConfig<any> | ResolvedInteractiveConfig;
   /** True when an agent loader has been set. */
   hasAgent: boolean;
+  /** True when a reactor configuration has been set. */
+  hasReactor: boolean;
   /** Configure the agent factory — called lazily when the agent is first needed. */
   configureAgent(loader: AgentLoader<any>): void;
+  /** Configure the reactor capability — lazy-loaded on first reactor() access. */
+  configureReactor(config: import('../integrations/powerhouse/types.js').ReactorConfiguration): void;
   getCommand(id: string): Command | undefined;
   listCommands(): Command[];
   execute(
