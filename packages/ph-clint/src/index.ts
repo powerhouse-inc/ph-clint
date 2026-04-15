@@ -28,6 +28,8 @@ export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
 export { renderMarkdown } from './interactive/markdown.js';
+export { buildDefaultReactor } from './integrations/powerhouse/index.js';
+export type { BuildDefaultReactorOptions } from './integrations/powerhouse/index.js';
 export type {
   ReactorContext,
   ReactorSetupContext,

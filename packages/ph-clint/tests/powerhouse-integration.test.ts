@@ -2,6 +2,7 @@ import { describe, it, expect, jest } from '@jest/globals';
 import { connectServiceDefinition } from '../src/integrations/powerhouse/connect.js';
 import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscriptions.js';
 import { ensureDrive } from '../src/integrations/powerhouse/drive.js';
+import { buildDefaultReactor } from '../src/integrations/powerhouse/index.js';
 import type { ReactorContext } from '../src/integrations/powerhouse/types.js';
 
 describe('connectServiceDefinition', () => {
@@ -289,5 +290,11 @@ describe('ReactorContext type', () => {
     };
     expect(ctx.switchboardUrl).toBe('http://localhost:4001/graphql');
     expect(ctx.connectUrl).toBe('http://localhost:3000');
+  });
+});
+
+describe('buildDefaultReactor', () => {
+  it('is exported as a function', () => {
+    expect(typeof buildDefaultReactor).toBe('function');
   });
 });
