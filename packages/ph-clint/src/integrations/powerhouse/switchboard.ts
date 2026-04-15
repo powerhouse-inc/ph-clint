@@ -8,6 +8,8 @@ import type { SwitchboardInstance } from './types.js';
 export interface StartSwitchboardOptions {
   /** The ReactorClientModule from Phase 1. */
   reactorModule: any;
+  /** Hostname/IP to bind to. Default: 'localhost'. */
+  host?: string;
   /** HTTP port for Switchboard. */
   port: number;
   /** Path for the Switchboard read model database. */
@@ -48,9 +50,10 @@ export async function startSwitchboard(
     'agent',
   );
 
-  const switchboardUrl = `http://localhost:${options.port}/graphql`;
-  const driveUrl = `http://localhost:${options.port}/d/${options.driveId}`;
-  const mcpUrl = `http://localhost:${options.port}/mcp`;
+  const host = options.host ?? 'localhost';
+  const switchboardUrl = `http://${host}:${options.port}/graphql`;
+  const driveUrl = `http://${host}:${options.port}/d/${options.driveId}`;
+  const mcpUrl = `http://${host}:${options.port}/mcp`;
 
   return {
     switchboardUrl,

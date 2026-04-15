@@ -23,6 +23,8 @@ export interface ReactorContext {
   mcpUrl?: string;
   /** Phase 3: Connect web UI URL (e.g. http://localhost:3000). */
   connectUrl?: string;
+  /** Internal: the ReactorClientModule, passed to startSwitchboard(). */
+  _module?: any;
   /** Teardown — called by the framework on CLI exit. */
   shutdown(): Promise<void>;
 }
@@ -52,6 +54,8 @@ export interface SubscriptionConfig {
 export interface SwitchboardConfig {
   /** Enable Switchboard. Default: false. */
   enabled: boolean;
+  /** Hostname/IP to bind to. Default: 'localhost'. */
+  host?: string;
   /** HTTP port. Default: 4801. */
   port?: number;
   /** Run preflight port check before starting. Default: true. */
@@ -96,6 +100,8 @@ export interface ReactorSetupContext {
   workspace: import('../../core/types.js').WorkdirStore;
   emit?: (event: string, data?: unknown) => void;
   on?: (event: string, handler: (data?: unknown) => void) => void;
+  /** Switchboard config — passed by the framework so create() can set enableSync. */
+  switchboard?: SwitchboardConfig;
 }
 
 /**

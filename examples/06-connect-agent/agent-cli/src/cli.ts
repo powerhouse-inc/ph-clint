@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * connect-agent CLI — A ph-clint CLI that connects a Mastra AI agent
  * to the Powerhouse document ecosystem via the agent-chat document model.
@@ -142,10 +141,11 @@ cli.configureReactor({
     documentModels,
     drive: { name: 'Agent Chat' },
     subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
-    switchboard: { enabled: true, port: 4801 },
   }),
+  switchboard: { enabled: true, port: 4801 },
   connect: { enabled: true, port: 3000, workdir: agentAppDir },
 });
 
 cli.configureAgent(createAgent);
-cli.run(process.argv);
+
+export { cli };

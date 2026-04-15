@@ -15,7 +15,8 @@ import type {
   Routine,
   RunOptions,
 } from './types.js';
-import type { ReactorConfiguration, ReactorContext } from '../integrations/powerhouse/types.js';
+import type { ReactorConfiguration, ReactorContext, SwitchboardInstance } from '../integrations/powerhouse/types.js';
+import { checkPort } from './preflight.js';
 import { connectServiceDefinition } from '../integrations/powerhouse/connect.js';
 import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
@@ -860,8 +861,141 @@ export function defineCli<
         workspace,
         emit: context.emit,
         on: context.on,
+        switchboard: reactorConfig.switchboard,
       });
       return cachedReactor;
+    }
+
+    // Switchboard instance — started by startupSequence, shut down before reactor
+    let switchboardInstance: SwitchboardInstance | undefined;
+
+    async function startSwitchboardLayer(): Promise<void> {
+      if (!reactorConfig?.switchboard?.enabled || !cachedReactor?._module) return;
+      const switchboardHost = reactorConfig.switchboard.host ?? 'localhost';
+      const switchboardPort = reactorConfig.switchboard.port ?? 4801;
+
+      if (reactorConfig.switchboard.preflight !== false) {
+        log.debug(`Preflight: checking port ${switchboardPort} for Switchboard`);
+        const check = checkPort(switchboardPort, 'Switchboard');
+        const result = await check({ cwd: workdir, config: typedConfig as Record<string, unknown>, command: '' });
+        if (!result.ok) {
+          const parts = [result.message];
+          if (result.hint) parts.push(`  Hint: ${result.hint}`);
+          throw new Error(parts.join('\n'));
+        }
+      }
+
+      const dbPath = workspace.getStoreFolder('read-model.db');
+      log.debug(`Starting Switchboard on ${switchboardHost}:${switchboardPort}, dbPath: ${dbPath}`);
+
+      const { startSwitchboard } = await import('../integrations/powerhouse/switchboard.js');
+      switchboardInstance = await startSwitchboard({
+        reactorModule: cachedReactor._module,
+        host: switchboardHost,
+        port: switchboardPort,
+        dbPath,
+        driveId: cachedReactor.driveId,
+      });
+
+      // Propagate URLs to the reactor context
+      cachedReactor.switchboardUrl = switchboardInstance.switchboardUrl;
+      cachedReactor.driveUrl = switchboardInstance.driveUrl;
+      cachedReactor.mcpUrl = switchboardInstance.mcpUrl;
+
+      context.emit?.('powerhouse:switchboard:ready', {
+        switchboardUrl: switchboardInstance.switchboardUrl,
+        driveUrl: switchboardInstance.driveUrl,
+        mcpUrl: switchboardInstance.mcpUrl,
+      });
+    }
+
+    /**
+     * Graceful shutdown of everything started so far.
+     */
+    async function teardown(): Promise<void> {
+      if (routine && routine.status === 'running') {
+        log.debug('Stopping routine...');
+        await routine.stop();
+      }
+      if (switchboardInstance) {
+        log.debug('Stopping Switchboard...');
+        await switchboardInstance.shutdown();
+      }
+      if (cachedReactor) {
+        log.debug('Stopping Reactor...');
+        await cachedReactor.shutdown();
+      }
+    }
+
+    /**
+     * Startup sequence — runs reactor, switchboard, connect, and routine
+     * in order, reporting status via the output callback.
+     *
+     * On error, shuts down everything started so far and re-throws.
+     */
+    async function startupSequence(output: (msg: string) => void): Promise<void> {
+      try {
+        // 1. Reactor (in-process document store + drive + subscriptions)
+        if (reactorConfig) {
+          log.debug('Starting Reactor...');
+          await getReactor();
+          log.debug(`Reactor storage: ${workspace.getStoreFolder('reactor-storage')}`);
+          output(`Reactor ready (drive: ${cachedReactor!.driveId})`);
+        }
+
+        // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor)
+        if (reactorConfig?.switchboard?.enabled && cachedReactor?._module) {
+          log.debug('Starting Switchboard...');
+          await startSwitchboardLayer();
+          const sb = switchboardInstance!;
+          output(`Switchboard ready at ${sb.switchboardUrl}`);
+          log.debug(`  drive: ${sb.driveUrl}`);
+          log.debug(`  mcp:   ${sb.mcpUrl}`);
+        }
+
+        // 3. Connect (web UI child process)
+        if (reactorConfig?.connect?.enabled && context.services) {
+          const connectWorkdir = reactorConfig.connect.workdir ?? workdir;
+          const instances = context.services.list('connect');
+          const running = instances.find(
+            (i) => i.status === 'ready' || i.status === 'starting',
+          );
+
+          if (running && running.workdir === connectWorkdir) {
+            const url = running.endpoints?.['connect-studio'] ?? 'unknown URL';
+            output(`Connect already running at ${url}`);
+          } else {
+            // Stop instance running in wrong workdir
+            if (running) {
+              log.info(`Stopping Connect (wrong workdir: ${running.workdir})`);
+              await context.services.stop('connect');
+            }
+            log.debug(`Starting Connect in ${connectWorkdir}`);
+            const connectParams: Record<string, unknown> = {};
+            if (reactorConfig.connect!.port) connectParams.port = reactorConfig.connect!.port;
+            if (cachedReactor?.driveUrl) connectParams.driveUrl = cachedReactor.driveUrl;
+            const instanceId = await context.services.start('connect', {
+              workdir: connectWorkdir,
+              cwd: connectWorkdir,
+              params: Object.keys(connectParams).length > 0 ? connectParams : undefined,
+            });
+            // URL is captured from the service's readiness pattern
+            const status = context.services.list('connect').find((i) => i.instanceId === instanceId);
+            const connectUrl = status?.endpoints?.['connect-studio'] ?? `http://localhost:${reactorConfig.connect!.port ?? 3000}`;
+            output(`Connect ready at ${connectUrl}`);
+          }
+        }
+
+        // 4. Routine (tick-based trigger loop)
+        if (routine) {
+          routine.setContext(context);
+          routine.start();
+          output('Routine running');
+        }
+      } catch (err) {
+        await teardown();
+        throw err;
+      }
     }
 
     // Lazy agent provider — only created when first accessed via context.agent()
@@ -900,114 +1034,26 @@ export function defineCli<
       return;
     }
 
-    // Check for interactive mode (-i or --interactive)
-    if (interactiveFlag) {
-      if (!options.interactive) {
-        stderr('Interactive mode is not configured for this CLI');
-        exit(1);
-        return;
-      }
-
-      const resolvedInteractive: ResolvedInteractiveConfig = { welcome: resolvedWelcome! };
-      const cliRef: Cli = {
-        name: options.name,
-        version: options.version,
-        description: resolvedDescription,
-        configSchema: options.configSchema,
-        interactive: resolvedInteractive,
-        get hasAgent() { return !!agentLoader; },
-        get hasReactor() { return !!reactorConfig; },
-        configureAgent,
-        configureReactor,
-        getCommand,
-        listCommands,
-        execute,
-        parseArgs,
-        generateHelp,
-        generateCommandHelp,
-        generateCompletion,
-        configEnvVars,
-        getMetadata,
-        run,
-        stopRoutine,
-      };
-
-      const agentProvider = await getAgent();
-      const session = createReplSession({
-        cli: cliRef,
-        context,
-        agentProvider,
-        threadId: resumeId,
-      });
-
-      if (opts.interactiveInput) {
-        // Headless mode for testing
-        if (session.welcome) stdout(session.welcome);
-        for await (const line of opts.interactiveInput) {
-          const result = await session.processInput(line);
-          if (result.type === 'exit') {
-            if (result.text) stdout(result.text);
-            break;
-          }
-          if (result.text) stdout(result.text);
-        }
-        // Teardown reactor before exiting interactive mode
-        await cachedReactor?.shutdown();
-        exit(0);
-      } else if (!process.stdin.isTTY) {
-        /* istanbul ignore next -- no TTY in CI */
-        stderr('Interactive mode requires a terminal. Use command mode instead: ' + options.name + ' "your message"');
-        exit(1);
-        return;
-      } else {
-        /* istanbul ignore next -- Ink REPL requires a real terminal */
-        const { startInkRepl } = await import('../interactive/start.js');
-        /* istanbul ignore next */
-        await startInkRepl(session, { services: context.services, workdir: context.workdir });
-        /* istanbul ignore next */
-        exit(0);
-      }
-      return;
-    }
-
-    // Update the routine's context so it uses the resolved config/workspace
-    if (routine) routine.setContext(context);
-
-    // Check if the first non-flag arg is a registered subcommand or Commander built-in.
-    // We already know from subcommandIdx whether a subcommand is present.
-    // If not, and we have an agent, treat remaining non-flag args as an agent prompt.
+    // ── Detect subcommand or agent prompt ────────────────────────────
     const postCmdArgs = userArgs.slice(subcommandIdx);
     const firstSubcmd = postCmdArgs[0];
     const isSubcommand = firstSubcmd && (commandMap.has(firstSubcmd) || firstSubcmd === 'help');
 
-    if (!isSubcommand && agentLoader) {
-      // Collect non-flag, non-framework-value args as the agent prompt.
-      // Skip framework flag values by tracking when we see a framework flag.
-      const promptArgs: string[] = [];
+    // --help and --version are Commander built-ins — route to Commander, not startup
+    const isBuiltinFlag = preCommandArgs.some(a => a === '--help' || a === '-h' || a === '--version' || a === '-V');
+
+    // Collect non-flag, non-framework-value pre-command args as agent prompt words
+    const promptArgs: string[] = [];
+    {
       let skipNext = false;
       for (const arg of preCommandArgs) {
         if (skipNext) { skipNext = false; continue; }
         if (frameworkFlags.has(arg)) { skipNext = true; continue; }
-        if (arg.startsWith('-')) continue; // other flags like -i
+        if (arg.startsWith('-')) continue;
         promptArgs.push(arg);
       }
-      if (promptArgs.length > 0) {
-        const agentProvider = await getAgent();
-        if (agentProvider) {
-          const prompt = promptArgs.join(' ');
-          const threadId = resumeId ?? randomUUID();
-          const parts: string[] = [];
-          for await (const chunk of agentProvider.stream(prompt, { threadId, tools: commandMap })) {
-            const text = formatStreamChunk(chunk);
-            parts.push(text);
-            stdout(text);
-          }
-          stdout('');
-          stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
-          return;
-        }
-      }
     }
+    const hasPrompt = !isSubcommand && agentLoader && promptArgs.length > 0;
 
     /**
      * Render an agent prompt from a SkillInvocation using its template.
@@ -1015,13 +1061,13 @@ export function defineCli<
     function renderSkillPrompt(invocation: SkillInvocation): string {
       const template = invocation.instructionTemplate ?? DEFAULT_SKILL_INSTRUCTION;
       const skill = resolvedSkills.find(s => s.name === invocation.skillName);
-      const context: Record<string, unknown> = {
+      const ctx: Record<string, unknown> = {
         skillId: invocation.skillName,
         description: skill?.description ?? '',
         prompt: invocation.userMessage ?? '',
         ...(invocation.inputValues ?? {}),
       };
-      return renderSkillTemplate(template, context).rendered.trim();
+      return renderSkillTemplate(template, ctx).rendered.trim();
     }
 
     // Skill invocation handler for command mode — routes to agent with skill prefix
@@ -1042,52 +1088,152 @@ export function defineCli<
       stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
     }
 
-    // If no subcommand and no agent prompt but a routine is configured,
-    // start the routine and wait indefinitely (like a long-running server).
-    if (!isSubcommand && routine) {
-      routine.start();
-      stdout(`Routine running. Press Ctrl+C to stop.`);
-      await new Promise<void>((resolve) => {
-        const onSignal = async () => {
-          process.removeListener('SIGINT', onSignal);
-          process.removeListener('SIGTERM', onSignal);
-          await routine!.stop();
-          await cachedReactor?.shutdown();
-          resolve();
-        };
-        process.on('SIGINT', onSignal);
-        process.on('SIGTERM', onSignal);
-      });
-      return;
-    }
+    // ── Dispatch ─────────────────────────────────────────────────────
+    // Path 1: no -i AND (subcommand or prompt) → lazy mode, no startup
+    // Path 2: -i OR routine → startupSequence, then run prompt/subcommand
+    // Path 3: else → show help
 
-    const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
+    if (isBuiltinFlag || (!interactiveFlag && (isSubcommand || hasPrompt))) {
+      // ── Path 1: Lazy mode — no startup sequence ──────────────────
+      if (hasPrompt) {
+        const agentProvider = await getAgent();
+        if (agentProvider) {
+          const prompt = promptArgs.join(' ');
+          const threadId = resumeId ?? randomUUID();
+          for await (const chunk of agentProvider.stream(prompt, { threadId, tools: commandMap })) {
+            const text = formatStreamChunk(chunk);
+            stdout(text);
+          }
+          stdout('');
+          stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
+          await teardown();
+          return;
+        }
+      }
 
-    try {
-      await program.parseAsync(argv);
-    } catch (err: any) {
-      if (err.exitCode === 0) {
-        exit(0);
+      const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
+      try {
+        await program.parseAsync(argv);
+      } catch (err: any) {
+        if (err.exitCode === 0) { exit(0); return; }
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg !== '(outputHelp)' && msg !== '(version)') stderr(msg);
+        exit(err.exitCode ?? 1);
         return;
       }
-      const msg = err instanceof Error ? err.message : String(err);
-      // Commander's exitOverride wraps help/version output as errors with
-      // messages like "(outputHelp)" or "(version)". The actual text has
-      // already been written via configureOutput, so skip these.
-      if (msg !== '(outputHelp)' && msg !== '(version)') {
-        stderr(msg);
+
+      await teardown();
+    } else if (interactiveFlag || routine) {
+      // ── Path 2: Full startup sequence ────────────────────────────
+      if (interactiveFlag) {
+        if (!options.interactive) {
+          stderr('Interactive mode is not configured for this CLI');
+          exit(1);
+          return;
+        }
+
+        const resolvedInteractive: ResolvedInteractiveConfig = { welcome: resolvedWelcome! };
+        const cliRef: Cli = {
+          name: options.name,
+          version: options.version,
+          description: resolvedDescription,
+          configSchema: options.configSchema,
+          interactive: resolvedInteractive,
+          get hasAgent() { return !!agentLoader; },
+          get hasReactor() { return !!reactorConfig; },
+          configureAgent,
+          configureReactor,
+          getCommand,
+          listCommands,
+          execute,
+          parseArgs,
+          generateHelp,
+          generateCommandHelp,
+          generateCompletion,
+          configEnvVars,
+          getMetadata,
+          run,
+          stopRoutine,
+        };
+
+        // REPL starts first — user sees welcome immediately
+        const agentProvider = await getAgent();
+        const session = createReplSession({
+          cli: cliRef,
+          context,
+          agentProvider,
+          threadId: resumeId,
+        });
+
+        if (opts.interactiveInput) {
+          // Headless mode for testing
+          if (session.welcome) stdout(session.welcome);
+          // Run startup sequence — output appears in the REPL stream
+          try {
+            await startupSequence(stdout);
+          } catch (err) {
+            log.error(err instanceof Error ? err.message : String(err));
+            exit(1);
+            return;
+          }
+          for await (const line of opts.interactiveInput) {
+            const result = await session.processInput(line);
+            if (result.type === 'exit') {
+              if (result.text) stdout(result.text);
+              break;
+            }
+            if (result.text) stdout(result.text);
+          }
+          await teardown();
+          exit(0);
+        } else if (!process.stdin.isTTY) {
+          /* istanbul ignore next -- no TTY in CI */
+          stderr('Interactive mode requires a terminal. Use command mode instead: ' + options.name + ' "your message"');
+          exit(1);
+          return;
+        } else {
+          /* istanbul ignore next -- Ink REPL requires a real terminal */
+          const { startInkRepl } = await import('../interactive/start.js');
+          /* istanbul ignore next */
+          await startInkRepl(session, { services: context.services, workdir: context.workdir });
+          /* istanbul ignore next */
+          exit(0);
+        }
+      } else {
+        // Routine-only mode (no -i, routine defined, no subcommand/prompt)
+        try {
+          await startupSequence(stdout);
+        } catch (err) {
+          stderr(err instanceof Error ? err.message : String(err));
+          exit(1);
+          return;
+        }
+        stdout('Press Ctrl+C to stop.');
+        await new Promise<void>((resolve) => {
+          const onSignal = async () => {
+            process.removeListener('SIGINT', onSignal);
+            process.removeListener('SIGTERM', onSignal);
+            await teardown();
+            resolve();
+          };
+          process.on('SIGINT', onSignal);
+          process.on('SIGTERM', onSignal);
+        });
       }
-      exit(err.exitCode ?? 1);
-      return;
+    } else {
+      // ── Path 3: No -i, no routine, no subcommand/prompt → show help
+      const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
+      try {
+        await program.parseAsync(argv);
+      } catch (err: any) {
+        if (err.exitCode === 0) { exit(0); return; }
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg !== '(outputHelp)' && msg !== '(version)') stderr(msg);
+        exit(err.exitCode ?? 1);
+        return;
+      }
+      await teardown();
     }
-
-    // If a command started the routine, stop it — command mode is one-shot
-    if (routine && routine.status === 'running') {
-      await routine.stop();
-    }
-
-    // Teardown reactor if it was initialized
-    await cachedReactor?.shutdown();
   }
 
   async function stopRoutine(): Promise<void> {

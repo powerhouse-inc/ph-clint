@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "bin": {
-    "connect-agent": "./dist/cli.js"
+    "connect-agent": "./dist/main.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/cli.js",
-    "dev": "tsx src/cli.ts",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles"
   },
   "dependencies": {

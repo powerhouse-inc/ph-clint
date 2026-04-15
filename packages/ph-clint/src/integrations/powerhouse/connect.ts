@@ -41,7 +41,7 @@ export function connectServiceDefinition(
       patterns: [
         {
           name: 'connect',
-          pattern: /Local:\s*(http:\/\/localhost:\d+)/,
+          pattern: /Local:\s*(https?:\/\/[^\s]+)/,
           captures: { 'connect-studio': { group: 1, type: 'website' as const } },
         },
       ],

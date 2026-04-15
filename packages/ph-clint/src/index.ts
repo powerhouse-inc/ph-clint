@@ -30,6 +30,8 @@ export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletio
 export { renderMarkdown } from './interactive/markdown.js';
 export { buildDefaultReactor } from './integrations/powerhouse/index.js';
 export type { BuildDefaultReactorOptions } from './integrations/powerhouse/index.js';
+export { startSwitchboard } from './integrations/powerhouse/index.js';
+export type { StartSwitchboardOptions } from './integrations/powerhouse/switchboard.js';
 export type {
   ReactorContext,
   ReactorSetupContext,
