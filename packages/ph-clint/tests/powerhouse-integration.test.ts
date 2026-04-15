@@ -1,51 +1,8 @@
 import { describe, it, expect, jest } from '@jest/globals';
-import { definePowerhouseIntegration } from '../src/integrations/powerhouse/index.js';
 import { connectServiceDefinition } from '../src/integrations/powerhouse/connect.js';
 import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscriptions.js';
 import { ensureDrive } from '../src/integrations/powerhouse/drive.js';
 import type { ReactorContext } from '../src/integrations/powerhouse/types.js';
-import type { CommandContext } from '../src/core/types.js';
-
-describe('definePowerhouseIntegration', () => {
-  it('returns an integration with id "powerhouse"', () => {
-    const { integration } = definePowerhouseIntegration({
-      documentModels: [],
-    });
-    expect(integration.id).toBe('powerhouse');
-    expect(typeof integration.setup).toBe('function');
-    expect(typeof integration.teardown).toBe('function');
-  });
-
-  it('returns empty services when connect is not enabled', () => {
-    const { services } = definePowerhouseIntegration({
-      documentModels: [],
-    });
-    expect(services).toEqual([]);
-  });
-
-  it('returns connect service definition when connect is enabled', () => {
-    const { services } = definePowerhouseIntegration({
-      documentModels: [],
-      connect: { enabled: true, port: 3001 },
-    });
-    expect(services).toHaveLength(1);
-    expect(services[0].id).toBe('connect');
-    expect(services[0].name).toBe('Connect Studio');
-  });
-
-  it('returns connect service with default port when not specified', () => {
-    const { services } = definePowerhouseIntegration({
-      documentModels: [],
-      connect: { enabled: true },
-    });
-    expect(services).toHaveLength(1);
-    // Verify the command generates with default port
-    const cmd = typeof services[0].command === 'function'
-      ? services[0].command({ port: 3000, driveUrl: 'http://test' })
-      : services[0].command;
-    expect(cmd).toContain('--port 3000');
-  });
-});
 
 describe('connectServiceDefinition', () => {
   it('creates a service definition with correct id and name', () => {

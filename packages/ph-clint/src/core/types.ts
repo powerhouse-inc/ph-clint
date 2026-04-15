@@ -65,8 +65,6 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   services?: ServiceManager;
   emit?: (event: string, data?: unknown) => void;
   on?: (event: string, handler: (data?: unknown) => void) => void;
-  /** Powerhouse integration context — populated when configureReactor() is used. */
-  powerhouse?: ReactorContext;
   /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
   reactor?: () => Promise<ReactorContext | undefined>;
   /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
@@ -180,19 +178,6 @@ export interface AgentProvider {
     prompt: string,
     opts?: AgentStreamOptions,
   ): AsyncGenerator<StreamChunk>;
-}
-
-// ── Integration ──────────────────────────────────────────────────
-
-/**
- * An optional integration that plugs into the CLI lifecycle.
- * Mastra and Powerhouse each implement this interface.
- */
-export interface Integration {
-  id: string;
-  agents?: AgentProvider[];
-  setup?(context: CommandContext): Promise<void>;
-  teardown?(): Promise<void>;
 }
 
 // ── Work Items ────────────────────────────────────────────────────
@@ -658,7 +643,6 @@ export interface CliOptions<
   interactive?: InteractiveConfig<z.infer<TSchema> & z.infer<TSecrets>>;
   triggers?: Trigger[];
   routine?: RoutineConfig;
-  integrations?: Integration[];
   /** Service definitions for the ServiceManager. */
   services?: ServiceDefinition<z.infer<TSchema> & z.infer<TSecrets>>[];
   /** Event handlers registered on the event bus. */

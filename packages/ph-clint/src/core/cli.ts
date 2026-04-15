@@ -15,6 +15,8 @@ import type {
   Routine,
   RunOptions,
 } from './types.js';
+import type { ReactorConfiguration, ReactorContext } from '../integrations/powerhouse/types.js';
+import { connectServiceDefinition } from '../integrations/powerhouse/connect.js';
 import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
 import { getSchemaFields, slugToTitle, type FieldInfo } from './schema.js';
@@ -214,6 +216,24 @@ export function defineCli<
     agentLoader = loader;
   }
 
+  // Mutable reactor configuration — set via configureReactor()
+  let reactorConfig: ReactorConfiguration | undefined;
+
+  function configureReactor(config: ReactorConfiguration): void {
+    reactorConfig = config;
+
+    // Inject Connect service commands immediately
+    if (config.connect?.enabled) {
+      const def = connectServiceDefinition(config.connect);
+      for (const cmd of createServiceCommands(def)) {
+        if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
+      }
+      // Store the service definition for ServiceManager registration in run()
+      if (!options.services) options.services = [];
+      (options.services as any[]).push(def);
+    }
+  }
+
   function getCommand(id: string): Command | undefined {
     return commandMap.get(id);
   }
@@ -234,7 +254,10 @@ export function defineCli<
     // Extend with runtime services if available
     if (routine) ctx.routine = routine;
     if (processManager) ctx.processes = processManager;
-    if (eventBus) ctx.emit = (event: string, data?: unknown) => eventBus.emit(event, data);
+    if (eventBus) {
+      ctx.emit = (event: string, data?: unknown) => eventBus.emit(event, data);
+      ctx.on = (event: string, handler: (data?: unknown) => void) => eventBus.on(event, handler);
+    }
     return ctx;
   }
 
@@ -816,21 +839,6 @@ export function defineCli<
       }
     }
 
-    // Lazy integration setup — only runs when the routine starts or
-    // an agent provider is created.  Service commands, help, config,
-    // and any other subcommand that doesn't touch agent/routine skip
-    // integration initialization entirely.
-    let integrationsReady = false;
-    async function ensureIntegrationsReady(): Promise<void> {
-      if (integrationsReady) return;
-      integrationsReady = true;
-      if (options.integrations) {
-        for (const integration of options.integrations) {
-          await integration.setup?.(context);
-        }
-      }
-    }
-
     // Resolve Resolvable values now that workdir/config are known.
     // Cast config to the inferred type — at runtime it IS that type (Zod parsed it).
     type TConfig = TMerged;
@@ -841,12 +849,28 @@ export function defineCli<
       ? resolveValue(options.interactive.welcome, resolvableCtx)
       : undefined;
 
-    // Lazy agent provider — only created when actually needed
+    // Lazy reactor — only created when first accessed via context.reactor()
+    let cachedReactor: ReactorContext | undefined;
+    async function getReactor(): Promise<ReactorContext | undefined> {
+      if (cachedReactor) return cachedReactor;
+      if (!reactorConfig) return undefined;
+      cachedReactor = await reactorConfig.create({
+        workdir,
+        config: typedConfig as Record<string, unknown>,
+        workspace,
+        emit: context.emit,
+        on: context.on,
+      });
+      return cachedReactor;
+    }
+
+    // Lazy agent provider — only created when first accessed via context.agent()
     let cachedProvider: AgentProvider | undefined;
-    async function getAgentProvider(): Promise<AgentProvider | undefined> {
+    async function getAgent(): Promise<AgentProvider | undefined> {
       if (cachedProvider) return cachedProvider;
       if (!agentLoader) return undefined;
-      await ensureIntegrationsReady();
+      // Reactor is initialized first — agent may need reactor tools
+      await getReactor();
       const agentCtx: AgentSetupContext<TConfig> = {
         workdir,
         config: typedConfig,
@@ -860,6 +884,10 @@ export function defineCli<
       return cachedProvider;
     }
 
+    // Wire lazy accessors onto the context
+    context.reactor = getReactor;
+    context.agent = getAgent;
+
     // Handle --meta: output metadata JSON and exit (ignoring all other args)
     if (metaFlag) {
       stdout(JSON.stringify(getMetadata(), null, 2));
@@ -869,7 +897,6 @@ export function defineCli<
 
     // Check for interactive mode (-i or --interactive)
     if (interactiveFlag) {
-      await ensureIntegrationsReady();
       if (!options.interactive) {
         stderr('Interactive mode is not configured for this CLI');
         exit(1);
@@ -884,9 +911,9 @@ export function defineCli<
         configSchema: options.configSchema,
         interactive: resolvedInteractive,
         get hasAgent() { return !!agentLoader; },
-        get hasReactor() { return options.integrations?.some(i => i.id === 'powerhouse') ?? false; },
+        get hasReactor() { return !!reactorConfig; },
         configureAgent,
-        configureReactor() { /* placeholder — will be implemented in step 3 */ },
+        configureReactor,
         getCommand,
         listCommands,
         execute,
@@ -900,7 +927,7 @@ export function defineCli<
         stopRoutine,
       };
 
-      const agentProvider = await getAgentProvider();
+      const agentProvider = await getAgent();
       const session = createReplSession({
         cli: cliRef,
         context,
@@ -919,12 +946,8 @@ export function defineCli<
           }
           if (result.text) stdout(result.text);
         }
-        // Teardown integrations before exiting interactive mode
-        if (integrationsReady && options.integrations) {
-          for (const integration of [...options.integrations].reverse()) {
-            await integration.teardown?.();
-          }
-        }
+        // Teardown reactor before exiting interactive mode
+        await cachedReactor?.shutdown();
         exit(0);
       } else if (!process.stdin.isTTY) {
         /* istanbul ignore next -- no TTY in CI */
@@ -964,7 +987,7 @@ export function defineCli<
         promptArgs.push(arg);
       }
       if (promptArgs.length > 0) {
-        const agentProvider = await getAgentProvider();
+        const agentProvider = await getAgent();
         if (agentProvider) {
           const prompt = promptArgs.join(' ');
           const threadId = resumeId ?? randomUUID();
@@ -998,7 +1021,7 @@ export function defineCli<
 
     // Skill invocation handler for command mode — routes to agent with skill prefix
     async function handleSkillInvocation(invocation: SkillInvocation) {
-      const agentProvider = await getAgentProvider();
+      const agentProvider = await getAgent();
       if (!agentProvider) {
         stderr('Agent not available — cannot invoke skill');
         exit(1);
@@ -1017,7 +1040,6 @@ export function defineCli<
     // If no subcommand and no agent prompt but a routine is configured,
     // start the routine and wait indefinitely (like a long-running server).
     if (!isSubcommand && routine) {
-      await ensureIntegrationsReady();
       routine.start();
       stdout(`Routine running. Press Ctrl+C to stop.`);
       await new Promise<void>((resolve) => {
@@ -1025,12 +1047,7 @@ export function defineCli<
           process.removeListener('SIGINT', onSignal);
           process.removeListener('SIGTERM', onSignal);
           await routine!.stop();
-          // Teardown integrations (reverse order)
-          if (integrationsReady && options.integrations) {
-            for (const integration of [...options.integrations].reverse()) {
-              await integration.teardown?.();
-            }
-          }
+          await cachedReactor?.shutdown();
           resolve();
         };
         process.on('SIGINT', onSignal);
@@ -1064,12 +1081,8 @@ export function defineCli<
       await routine.stop();
     }
 
-    // Teardown integrations (reverse order) — only if they were initialized
-    if (integrationsReady && options.integrations) {
-      for (const integration of [...options.integrations].reverse()) {
-        await integration.teardown?.();
-      }
-    }
+    // Teardown reactor if it was initialized
+    await cachedReactor?.shutdown();
   }
 
   async function stopRoutine(): Promise<void> {
@@ -1204,7 +1217,7 @@ export function defineCli<
       description: desc,
       hasInteractive: !!options.interactive,
       hasAgent: !!agentLoader,
-      hasReactor: options.integrations?.some(i => i.id === 'powerhouse') ?? false,
+      hasReactor: !!reactorConfig,
       config: configMeta,
       commands: commandsMeta,
       services: servicesMeta,
@@ -1224,9 +1237,9 @@ export function defineCli<
     configSchema: options.configSchema,
     interactive: options.interactive,
     get hasAgent() { return !!agentLoader; },
-    get hasReactor() { return options.integrations?.some(i => i.id === 'powerhouse') ?? false; },
+    get hasReactor() { return !!reactorConfig; },
     configureAgent,
-    configureReactor() { /* placeholder — will be implemented in step 3 */ },
+    configureReactor,
     getCommand,
     listCommands,
     execute,

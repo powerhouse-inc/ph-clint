@@ -28,8 +28,6 @@ export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
 export { renderMarkdown } from './interactive/markdown.js';
-export { definePowerhouseIntegration } from './integrations/powerhouse/index.js';
-export type { PowerhouseIntegrationResult } from './integrations/powerhouse/index.js';
 export type {
   ReactorContext,
   ReactorSetupContext,
@@ -84,7 +82,6 @@ export type {
   Logger,
   LogLevel,
   Resolvable,
-  Integration,
   PreflightResult,
   PreflightContext,
   PreflightCheck,

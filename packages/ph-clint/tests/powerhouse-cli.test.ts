@@ -2,7 +2,8 @@ import { describe, it, expect, jest } from '@jest/globals';
 import { defineCli } from '../src/core/cli.js';
 import { defineCommand } from '../src/core/command.js';
 import { z } from 'zod';
-import type { Integration, CommandContext } from '../src/core/types.js';
+import type { CommandContext } from '../src/core/types.js';
+import type { ReactorContext, ReactorSetupContext } from '../src/integrations/powerhouse/types.js';
 
 const noopCommand = defineCommand({
   id: 'noop',
@@ -10,16 +11,6 @@ const noopCommand = defineCommand({
   inputSchema: z.object({}),
   execute: async () => undefined,
 });
-
-function createTestCli(integrations: Integration[]) {
-  return defineCli({
-    name: 'test-ph',
-    version: '0.0.1',
-    description: 'Test CLI',
-    commands: [noopCommand],
-    integrations,
-  });
-}
 
 function captureOutput() {
   const lines: string[] = [];
@@ -31,108 +22,43 @@ function captureOutput() {
   };
 }
 
-describe('integration lifecycle in cli.ts', () => {
-  it('does NOT call setup() for plain subcommands (lazy initialization)', async () => {
-    const setupFn = jest.fn<(ctx: CommandContext) => Promise<void>>();
-    const integration: Integration = {
-      id: 'test',
-      setup: setupFn,
-    };
+function createMockReactor(): ReactorContext {
+  return {
+    client: { fake: true },
+    driveId: 'test-drive',
+    async shutdown() {},
+  };
+}
 
-    const cli = createTestCli([integration]);
-    const out = captureOutput();
-    await cli.run(['node', 'test-ph', 'noop'], out);
-
-    // Subcommands don't trigger integration setup — it's lazy
-    expect(setupFn).not.toHaveBeenCalled();
-  });
-
-  it('does NOT call teardown() for plain subcommands', async () => {
-    const teardownFn = jest.fn<() => Promise<void>>();
-    const integration: Integration = {
-      id: 'test',
-      teardown: teardownFn,
-    };
-
-    const cli = createTestCli([integration]);
-    const out = captureOutput();
-    await cli.run(['node', 'test-ph', 'noop'], out);
-
-    expect(teardownFn).not.toHaveBeenCalled();
-  });
-
-  it('calls setup in interactive mode and teardown on exit', async () => {
-    const order: string[] = [];
-    const integration: Integration = {
-      id: 'test',
-      async setup() { order.push('setup'); },
-      async teardown() { order.push('teardown'); },
-    };
-
+describe('configureReactor() in cli.ts', () => {
+  it('hasReactor is true after configureReactor()', () => {
     const cli = defineCli({
       name: 'test-ph',
       version: '0.0.1',
       description: 'Test CLI',
       commands: [noopCommand],
-      integrations: [integration],
-      interactive: { welcome: 'hi' },
     });
-
-    const out = captureOutput();
-    async function* inputGen() {
-      yield '/exit';
-    }
-    await cli.run(['node', 'test-ph', '-i'], {
-      ...out,
-      interactiveInput: inputGen(),
+    expect(cli.hasReactor).toBe(false);
+    cli.configureReactor({
+      create: async () => createMockReactor(),
     });
-
-    expect(order).toEqual(['setup', 'teardown']);
+    expect(cli.hasReactor).toBe(true);
   });
 
-  it('calls multiple integrations in order (setup) and reverse (teardown) in interactive mode', async () => {
-    const order: string[] = [];
-    const int1: Integration = {
-      id: 'first',
-      async setup() { order.push('setup-1'); },
-      async teardown() { order.push('teardown-1'); },
-    };
-    const int2: Integration = {
-      id: 'second',
-      async setup() { order.push('setup-2'); },
-      async teardown() { order.push('teardown-2'); },
-    };
-
+  it('hasReactor is false when not configured', () => {
     const cli = defineCli({
       name: 'test-ph',
       version: '0.0.1',
       description: 'Test CLI',
       commands: [noopCommand],
-      integrations: [int1, int2],
-      interactive: { welcome: 'hi' },
     });
-
-    const out = captureOutput();
-    async function* inputGen() {
-      yield '/exit';
-    }
-    await cli.run(['node', 'test-ph', '-i'], {
-      ...out,
-      interactiveInput: inputGen(),
-    });
-
-    expect(order).toEqual(['setup-1', 'setup-2', 'teardown-2', 'teardown-1']);
+    expect(cli.hasReactor).toBe(false);
+    const meta = cli.getMetadata();
+    expect(meta.hasReactor).toBe(false);
   });
 
-  it('integration can mutate context.powerhouse in setup() (visible in interactive mode)', async () => {
+  it('reactor() accessor returns the ReactorContext in interactive mode', async () => {
     let capturedContext: CommandContext | undefined;
-
-    const integration: Integration = {
-      id: 'powerhouse',
-      async setup(ctx) {
-        ctx.powerhouse = { client: { fake: true }, driveId: 'test-drive', async shutdown() {} };
-      },
-    };
 
     const cmd = defineCommand({
       id: 'check',
@@ -149,8 +75,12 @@ describe('integration lifecycle in cli.ts', () => {
       version: '0.0.1',
       description: 'Test CLI',
       commands: [cmd],
-      integrations: [integration],
       interactive: { welcome: 'hi' },
+    });
+
+    const mockReactor = createMockReactor();
+    cli.configureReactor({
+      create: async () => mockReactor,
     });
 
     const out = captureOutput();
@@ -163,36 +93,92 @@ describe('integration lifecycle in cli.ts', () => {
       interactiveInput: inputGen(),
     });
 
-    expect(capturedContext?.powerhouse).toBeDefined();
-    expect(capturedContext?.powerhouse?.driveId).toBe('test-drive');
-    expect(capturedContext?.powerhouse?.client).toEqual({ fake: true });
+    expect(capturedContext?.reactor).toBeDefined();
+    const reactor = await capturedContext!.reactor!();
+    expect(reactor).toBeDefined();
+    expect(reactor?.driveId).toBe('test-drive');
+    expect(reactor?.client).toEqual({ fake: true });
   });
 
-  it('hasReactor is true when powerhouse integration is present', () => {
-    const integration: Integration = { id: 'powerhouse' };
-    const cli = createTestCli([integration]);
-    const meta = cli.getMetadata();
-    expect(meta.hasReactor).toBe(true);
-  });
+  it('reactor create factory is called lazily (not on startup)', async () => {
+    const createFn = jest.fn<(ctx: ReactorSetupContext) => Promise<ReactorContext>>();
+    createFn.mockResolvedValue(createMockReactor());
 
-  it('hasReactor is false when no powerhouse integration', () => {
-    const cli = createTestCli([]);
-    const meta = cli.getMetadata();
-    expect(meta.hasReactor).toBe(false);
-  });
+    const cli = defineCli({
+      name: 'test-ph',
+      version: '0.0.1',
+      description: 'Test CLI',
+      commands: [noopCommand],
+    });
+    cli.configureReactor({ create: createFn });
 
-  it('hasReactor is false when integration has different id', () => {
-    const integration: Integration = { id: 'other' };
-    const cli = createTestCli([integration]);
-    const meta = cli.getMetadata();
-    expect(meta.hasReactor).toBe(false);
-  });
-
-  it('handles integration without setup/teardown gracefully', async () => {
-    const integration: Integration = { id: 'minimal' };
-    const cli = createTestCli([integration]);
     const out = captureOutput();
-    // Should not throw
     await cli.run(['node', 'test-ph', 'noop'], out);
+
+    // Factory should NOT have been called — noop doesn't access reactor
+    expect(createFn).not.toHaveBeenCalled();
+  });
+
+  it('shutdown is called on teardown in interactive mode', async () => {
+    const shutdownFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const mockReactor: ReactorContext = {
+      client: {},
+      driveId: 'test',
+      shutdown: shutdownFn,
+    };
+
+    let capturedCtx: CommandContext | undefined;
+    const cmd = defineCommand({
+      id: 'init-reactor',
+      description: 'Init reactor',
+      inputSchema: z.object({}),
+      execute: async (_input, ctx) => {
+        // Force reactor initialization
+        capturedCtx = ctx;
+        await ctx.reactor!();
+        return undefined;
+      },
+    });
+
+    const cli = defineCli({
+      name: 'test-ph',
+      version: '0.0.1',
+      description: 'Test CLI',
+      commands: [cmd],
+      interactive: { welcome: 'hi' },
+    });
+    cli.configureReactor({ create: async () => mockReactor });
+
+    const out = captureOutput();
+    async function* inputGen() {
+      yield '/init-reactor';
+      yield '/exit';
+    }
+    await cli.run(['node', 'test-ph', '-i'], {
+      ...out,
+      interactiveInput: inputGen(),
+    });
+
+    expect(shutdownFn).toHaveBeenCalled();
+  });
+
+  it('configureReactor with connect injects service commands', () => {
+    const cli = defineCli({
+      name: 'test-ph',
+      version: '0.0.1',
+      description: 'Test CLI',
+      commands: [noopCommand],
+    });
+
+    cli.configureReactor({
+      create: async () => createMockReactor(),
+      connect: { enabled: true, port: 3000 },
+    });
+
+    // Service commands should have been injected
+    const cmds = cli.listCommands().map(c => c.id);
+    expect(cmds).toContain('connect-start');
+    expect(cmds).toContain('connect-stop');
+    expect(cmds).toContain('connect-ps');
   });
 });
