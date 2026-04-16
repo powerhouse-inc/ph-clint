@@ -1,0 +1,35 @@
+{
+  "name": "ph-clint-tpl-cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Template for ph-clint CLI projects (consumed by ph-clint-cli code generator)",
+  "type": "module",
+  "scripts": {
+    "build:skills": "tsx scripts/build-skills.ts",
+    "build": "pnpm build:skills && tsc",
+    "dev": "tsx src/main.ts",
+    "start": "node dist/main.js",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles",
+    "lint": "eslint src",
+    "mastra:dev": "mastra dev",
+    "mastra:build": "mastra build",
+    "mastra:start": "mastra start",
+    "publish:npm": "pnpm build && pnpm publish --no-git-checks"
+  },
+  "dependencies": {
+    "ph-clint": "file:../../ph-clint",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@types/node": "^25.5.2",
+    "jest": "^30.2.0",
+    "ph-clint-dev": "file:../../ph-clint-dev",
+    "ts-jest": "^29.4.6",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}
