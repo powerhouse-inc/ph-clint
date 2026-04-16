@@ -18,6 +18,7 @@ export const configSchema = z.object({
   switchboardPort: z.number().default(4802).describe('Switchboard port for ph-clint itself'),
   devServicePort: z.number().default(3000).describe('Port reserved for the impl project (Service B) `pnpm dev`'),
   phVersion: z.string().default('6.0.0-dev.170').describe('Pinned Powerhouse version used when emitting a new impl project'),
+  projectDocumentId: z.string().optional().describe('ID of the powerhouse/ph-clint-project document that drives codegen (set on first regen; edit to switch projects)'),
 });
 // @clint:end configSchema
 
