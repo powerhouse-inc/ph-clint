@@ -112,3 +112,49 @@ When the generator is invoked on an existing project (spec exists):
 - Re-running the generator with an unchanged spec is a no-op.
 - Flipping a feature flag on a second pass correctly migrates (split happens, Mastra agent wiring appears, routine trigger file appears).
 - Unit tests cover each file-builder and each ts-morph patch function.
+
+## 3.6 Progress (2026-04-16) — foundation landed
+
+Scope delivered in this pass: **3.1 + 3.2 + 3.3 in create-mode only**, deliberately deferring 3.4 and the flat→split migration. Two design decisions diverged from the original plan and are documented here.
+
+### Shipped
+
+- **3.1 `ClintProjectSpec` + Zod schema** — `packages/ph-clint-cli/ph-clint-cli/src/spec/types.ts` with identity fields, the three feature toggles, and helpers `getPackageName`, `getBinName`, `getCliFolderName`, `getAppFolderName`. Persistence at `src/spec/file.ts` (`readProjectSpec` / `writeProjectSpec` / `getSpecPath`).
+- **3.2 Code generator (create mode)** — `src/codegen/` with `generateProject(spec, targetDir)`, `write.ts` helpers, and one builder per emitted file under `src/codegen/builders/`. Covers `package.json` (CLI side + split-layout root), `cli.ts`, `config.ts`, `main.ts`, `tsconfig.json`, `jest.config.js`, `eslint.config.js`, `.gitignore`, `README.md`, `src/mastra/index.ts`, `scripts/build-skills.ts`, `prompts/agent-profiles/AgentBase.md`, `src/agents/agent.ts`, plus `.gitkeep` placeholders and an `app/README.md`. All `@clint:begin/@clint:end` markers present so 3.4 can patch them later.
+- **3.3 Init wizard** — `src/commands/init.ts`, registered in `src/cli.ts`. Parses `@scope/name`, forces `routine` on when `mastra` is on, validates via Zod, writes the spec, invokes the generator, prints next-steps. Emptiness guard (`.git`, `.DS_Store`, `.ph` are ignorable) with `--force` escape hatch.
+- **Tests** — 51 passing (spec schema, each builder in isolation, all 8 feature-toggle combinations end-to-end on tmpdirs, `buildSpec` logic in init). Generated flat-layout and Mastra-enabled projects both pass `tsc --noEmit` when linked against the parent `node_modules`.
+
+### Decisions deviating from the spec
+
+- **Templating: plain TS template literals, not `@tmpl/core`** (resolves Further Consideration #1). The JSR dependency was flagged as "verify before committing" and the ergonomic win is marginal at this scale — each builder is a short `lines.push(...)` or `JSON.stringify(...)` call. `@tmpl/core` can be adopted later if a builder grows complex enough to need it.
+- **Mastra Studio re-export is a placeholder even when `mastra.enabled`** — the generator emits a demo `AgentProvider` shim rather than a real `@mastra/core` `Agent`, so `src/mastra/index.ts` is `export {};` with a comment pointing to where a real Mastra instance belongs. Re-exporting from the shim would not typecheck. A later phase that emits a real `Agent` will flip this.
+- **Zod 4 default cascading** — `.default({})` on a parent object does not re-trigger nested `.default(...)` leaves in Zod 4. `clintProjectSpecSchema` spells out the full feature-tree default explicitly (`DEFAULT_POWERHOUSE`, `DEFAULT_MASTRA`, `DEFAULT_ROUTINE`).
+
+### Deferred to later phases
+
+- **Prettier pass** — no formatter is run over emitted files. Output is hand-formatted in the builders.
+- **`pnpm dev` smoke test on generated projects** — blocked on `ph-clint` not being published; generated `package.json`s depend on `ph-clint@^0.1.0` from npm. Typechecking the output with a linked `node_modules` is the closest substitute available today.
+- **Surgical `ts-morph` mutators** (`add-command`, `add-service`, `add-trigger` from §3.2) — not needed for the spec→codegen loop; deferred until a command-driven feature explicitly wants to mutate cli.ts without re-running the full builder.
+
+## 3.7 Progress (2026-04-16) — delta mode, migration, and post-generation scaffolding
+
+Scope delivered in this pass: **3.4 delta mode + flat→split migration + `ph init`/`pnpm install` automation**. Phase 3 is now functionally complete except for the two deferred items above.
+
+### Shipped
+
+- **Delta / update mode** — `generateProject` now auto-detects create vs update from the persisted spec, with explicit `mode: 'create' | 'update' | 'auto'` override. Update mode:
+  - Splices fresh marker-region content into `src/cli.ts` via plain-text region replacement (`src/codegen/markers.ts`). User code outside markers is preserved verbatim.
+  - For non-marker files, uses a hash-protected overwrite: `.ph/ph-clint-cli/.hashes.json` records the sha256 of every written file; on re-run, a matching on-disk hash proves the file is pristine (safe to overwrite) and a mismatch skips with a warning (or overwrites under `--force`).
+  - Removes files the new spec no longer emits when their stored hash still matches; warns and keeps user-modified abandoned files.
+  - No `ts-morph` dependency — the marker regions are comment-delimited, so regex splicing handles them cleanly. `ts-morph` remains available for future surgical mutators.
+- **Flat → split migration** — `src/codegen/migrate/flat-to-split.ts` fires automatically when `features.powerhouse.enabled` flips `false` → `true` during update. Moves all top-level entries (except `.git`, `.ph`, `README.md`, `node_modules`, and the target `-cli`/`-app` folders) into `{name}-cli/`, then rekeys the stored hashes so the subsequent update writes land on the correct paths. `node_modules` is deliberately left at the root per Further Consideration #9 — pnpm `file:` symlinks do not survive cross-dir rename; callers re-run `pnpm install` after. Uncommitted git changes in the target dir abort the migration unless `--force` (Consideration #10).
+- **`ph init` + `pnpm install` automation** — `src/codegen/scaffold.ts` wraps `node:child_process.spawn` with stdio-inherited subprocesses so users can handle any prompts. Both steps are opt-out (`--skip-ph-init`, `--skip-install`), degrade gracefully when the binary isn't on PATH (warn + continue), and are wired into the init command. Split layouts run install in both `{name}-app/` and `{name}-cli/`; flat layouts run it at the project root.
+- **`regen` command** — `ph-clint regen` (in `src/commands/regen.ts`, registered in `src/cli.ts`) explicitly runs update mode against the current workdir, surfaces skipped files via stdout/log, and includes migration status in its structured `data` payload.
+- **Tests** — 92 passing (was 51). New suites:
+  - `tests/codegen/hashes.test.ts` — hash record round-trips.
+  - `tests/codegen/markers.test.ts` — region parsing/splicing, mismatched/unterminated markers.
+  - `tests/codegen/update-mode.test.ts` — no-op re-run, marker patching preserves user code outside markers, hash-protected skip, `--force` override, file removal on feature-flip, user-edited abandoned files kept.
+  - `tests/codegen/migrate.test.ts` — flat→split end-to-end, hash rekeying, git-dirty guard, `node_modules` preservation.
+  - `tests/codegen/scaffold.test.ts` — graceful degradation when `ph`/`pnpm` missing.
+  - `tests/commands/init.test.ts` — execute path with skip flags.
+  - `tests/commands/regen.test.ts` — no-spec error, no-op, user-edited file surfaces a warning.
