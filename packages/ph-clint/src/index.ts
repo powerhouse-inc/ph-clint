@@ -3,6 +3,8 @@ export { formatZodError } from './core/errors.js';
 export { createLogger } from './core/logger.js';
 export { defineCli } from './core/cli.js';
 export { defineTrigger } from './core/trigger.js';
+export { createTypes } from './core/types-binding.js';
+export type { CreateTypesOptions, TypedFactory } from './core/types-binding.js';
 export { getSchemaFields, slugToTitle } from './core/schema.js';
 export { createWorkdirStore, createMemoryWorkdirStore } from './core/store.js';
 export { toUpperSnake, configKeyToEnvVar, resolveConfig, localConfigPath, userConfigPath, userStoreFolder, getMissingRequiredFields } from './core/config.js';

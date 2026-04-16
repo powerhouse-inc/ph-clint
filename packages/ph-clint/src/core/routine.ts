@@ -17,7 +17,7 @@ import { createProcessManager } from './processes.js';
 import { createMemoryWorkdirStore } from './store.js';
 
 export interface RoutineOptions {
-  triggers: Trigger[];
+  triggers: Trigger<any, any, any>[];
   commands: Map<string, Command>;
   tickInterval?: number;
   idleInterval?: number;
@@ -59,19 +59,21 @@ export function createRoutine(options: RoutineOptions): Routine {
   let getReactor: (() => Promise<ReactorContext | undefined>) | undefined = options.getReactor;
   let getAgent: (() => Promise<AgentProvider | undefined>) | undefined = options.getAgent;
 
-  function makeTriggerContext(trigger: Trigger): TriggerContext {
-    // Each trigger gets its own persistent state object
-    const state: Record<string, unknown> = {};
+  function makeTriggerContext(trigger: Trigger<any, any, any>): TriggerContext<any, any, any> {
+    // Each trigger gets its own persistent state object. If the trigger
+    // defines a `state()` initializer, it is called exactly once per
+    // trigger instance before setup()/poll() run.
+    const state: unknown = trigger.state ? trigger.state() : {};
     return {
       get context(): CoreContext { return ctx; },
       state,
       reactor: () => getReactor?.() ?? Promise.resolve(undefined),
       agent: () => getAgent?.() ?? Promise.resolve(undefined),
-    };
+    } as TriggerContext<any, any, any>;
   }
 
   // Build trigger contexts once
-  const triggerContexts = new Map<string, TriggerContext>();
+  const triggerContexts = new Map<string, TriggerContext<any, any, any>>();
   for (const trigger of options.triggers) {
     triggerContexts.set(trigger.id, makeTriggerContext(trigger));
   }

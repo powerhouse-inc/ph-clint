@@ -27,7 +27,7 @@ export const fileChangeTrigger = defineTrigger({
     context.state.lastModified = 0;
   },
   poll: async (context) => {
-    const { watchDir } = context.config;
+    const { watchDir } = context.context.config;
     const current = await getLatestMtime(watchDir as string);
 
     if (current > (context.state.lastModified as number)) {
@@ -36,8 +36,8 @@ export const fileChangeTrigger = defineTrigger({
         type: 'command' as const,
         params: { commandId: 'build', args: {} },
         callbacks: {
-          onSuccess: () => context.emit('build:complete'),
-          onFailure: (err: Error) => context.emit('build:failed', err),
+          onSuccess: () => context.context.emit?.('build:complete'),
+          onFailure: (err: Error) => context.context.emit?.('build:failed', err),
         },
       };
     }
