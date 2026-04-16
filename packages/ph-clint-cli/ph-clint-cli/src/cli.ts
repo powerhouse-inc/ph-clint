@@ -14,6 +14,8 @@ import { CLI_NAME, CLI_VERSION, configSchema, secretsSchema } from './config.js'
 // @clint:begin imports
 import { documentModels } from 'ph-clint-app';
 import { createAgent } from './agents/clint-agent.js';
+import { init } from './commands/init.js';
+import { regen } from './commands/regen.js';
 // @clint:end imports
 
 // Connect (ph connect) must run inside the Reactor Package (ph-clint-app).
@@ -28,7 +30,7 @@ export const cli = defineCli({
   secretsSchema,
 
   // @clint:begin commands
-  commands: [],
+  commands: [init, regen],
   // @clint:end commands
 
   // @clint:begin services
