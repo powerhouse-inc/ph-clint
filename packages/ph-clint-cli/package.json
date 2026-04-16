@@ -1,0 +1,15 @@
+{
+  "name": "ph-clint-cli-root",
+  "private": true,
+  "description": "Root of the ph-clint-cli project. Split layout: ph-clint-cli (the ph-clint CLI side) + ph-clint-app (the Powerhouse reactor-package side). No pnpm workspace — each sub-project installs independently.",
+  "scripts": {
+    "install": "cd ph-clint-app && pnpm install && cd ../ph-clint-cli && pnpm install",
+    "build": "cd ph-clint-app && pnpm build && cd ../ph-clint-cli && pnpm build",
+    "dev": "cd ph-clint-cli && pnpm dev",
+    "start": "cd ph-clint-cli && pnpm start",
+    "test": "cd ph-clint-app && pnpm test && cd ../ph-clint-cli && pnpm test",
+    "lint": "cd ph-clint-cli && pnpm lint",
+    "app:dev": "cd ph-clint-app && pnpm dev",
+    "cli:dev": "cd ph-clint-cli && pnpm dev"
+  }
+}
