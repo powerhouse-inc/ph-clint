@@ -3,24 +3,18 @@ import { z } from 'zod';
 import type { AuthStatusResult } from '@renown/sdk/node';
 import type { Config } from '../config.js';
 
-interface RenownConfig {
-  url: string;
-  privateKey?: string;
-  keyPath?: string;
-  storagePath?: string;
-}
 
-async function buildRenown(renown: RenownConfig) {
+async function buildRenown(config: Config) {
   const { RenownBuilder, RENOWN_PRIVATE_KEY_ENV } = await import('@renown/sdk/node');
 
-  if (renown.privateKey) {
-    process.env[RENOWN_PRIVATE_KEY_ENV] = renown.privateKey;
+  if (config.renownPrivateKey) {
+    process.env[RENOWN_PRIVATE_KEY_ENV] = config.renownPrivateKey;
   }
 
   return new RenownBuilder('ph-rupert', {
-    baseUrl: renown.url,
-    keyPath: renown.keyPath,
-    storagePath: renown.storagePath,
+    baseUrl: config.renownUrl,
+    keyPath: config.renownKeyPath,
+    storagePath: config.renownStoragePath,
   }).build();
 }
 
@@ -60,10 +54,10 @@ This command:
 4. Stores the credentials locally in .ph/.renown.json
 `,
   inputSchema: loginInputSchema,
-  execute: async ({ renownUrl, timeout, status, showDid }, { stdout, config }) => {
+  execute: async ({ renownUrl, timeout, status, showDid }, { stdout, config}) => {
     const renownConfig = {
-      ...config.renown,
-      ...(renownUrl && { url: renownUrl }),
+      ...config,
+      ...(renownUrl && { renownUrl: renownUrl }),
     };
     const renown = await buildRenown(renownConfig);
 
@@ -87,7 +81,7 @@ This command:
 
     try {
       await browserLogin(renown, {
-        renownUrl: renownConfig.url,
+        renownUrl: renownConfig.renownUrl,
         timeoutMs,
         onLoginUrl: (u) => {
           stdout(`Login URL: [${u}](${u})\n`);
@@ -115,7 +109,7 @@ export const phLogout = defineCommand<typeof logoutInputSchema, { text: string }
   description: 'Sign out and remove the existing session created with the login command.',
   inputSchema: logoutInputSchema,
   execute: async (_input, { config }) => {
-    const renown = await buildRenown(config.renown);
+    const renown = await buildRenown(config);
 
     if (!renown.user) {
       return {
@@ -147,7 +141,7 @@ The token is a JWT containing your CLI's DID, credential subject, and expiration
   inputSchema: accessTokenInputSchema,
   execute: async ({ expiry, audience }, { config }) => {
     const { generateAccessToken, parseExpiry, formatExpiry } = await import('@renown/sdk/node');
-    const renown = await buildRenown(config.renown);
+    const renown = await buildRenown(config);
 
     let expiresIn = expiry ? parseExpiry(expiry) : undefined;
     const result = await generateAccessToken(renown, {
