@@ -16,6 +16,7 @@ import { documentModels } from 'ph-clint-app';
 import { createAgent } from './agents/clint-agent.js';
 import { init } from './commands/init.js';
 import { regen } from './commands/regen.js';
+import { specChangeTrigger } from './triggers/spec-change.js';
 // @clint:end imports
 
 // Connect (ph connect) must run inside the Reactor Package (ph-clint-app).
@@ -38,7 +39,7 @@ export const cli = defineCli({
   // @clint:end services
 
   // @clint:begin triggers
-  triggers: [],
+  triggers: [specChangeTrigger],
   // @clint:end triggers
 
   // @clint:begin prompts
@@ -78,6 +79,7 @@ cli.configureReactor({
   create: (ctx) => buildDefaultReactor(ctx, {
     documentModels,
     drive: { name: 'Clint' },
+    subscriptions: { documentTypes: ['powerhouse/ph-clint-project'] },
   }),
   switchboard: { enabled: true, port: 4802 },
   connect: { enabled: true, port: 3001, workdir: appDir },

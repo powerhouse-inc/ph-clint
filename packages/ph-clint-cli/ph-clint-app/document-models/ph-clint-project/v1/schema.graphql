@@ -1,0 +1,114 @@
+scalar Unknown
+scalar DateTime
+scalar Attachment
+scalar Address
+scalar Amount_Tokens
+scalar EthereumAddress
+scalar EmailAddress
+scalar Amount_Percentage
+scalar Date
+scalar URL
+scalar Amount_Money
+scalar OLabel
+scalar Currency
+scalar PHID
+scalar OID
+scalar Amount_Fiat
+scalar Amount_Currency
+scalar Amount_Crypto
+scalar Amount
+scalar Upload
+
+type PhClintProjectState {
+  name: String
+  scope: String
+  version: String!
+  description: String!
+  bin: String
+  features: PhClintFeatures!
+}
+
+type PhClintFeatures {
+  powerhouse: PhClintPowerhouseFeature!
+  mastra: PhClintMastraFeature!
+  routine: PhClintRoutineFeature!
+}
+
+type PhClintPowerhouseFeature {
+  enabled: Boolean!
+  switchboard: Boolean!
+  connect: Boolean!
+}
+
+type PhClintMastraFeature {
+  enabled: Boolean!
+}
+
+type PhClintRoutineFeature {
+  enabled: Boolean!
+}
+
+
+# identity
+
+input SetPackageNameInput {
+  name: String!
+}
+
+input ClearBinInput {
+  _: Boolean
+}
+
+input SetBinInput {
+  bin: String!
+}
+
+input SetDescriptionInput {
+  description: String!
+}
+
+input SetVersionInput {
+  version: String!
+}
+
+input ClearScopeInput {
+  _: Boolean
+}
+
+input SetScopeInput {
+  scope: String!
+}
+
+# features_powerhouse
+
+input EnablePowerhouseInput {
+  _: Boolean
+}
+
+input SetPowerhouseSwitchboardInput {
+  enabled: Boolean!
+}
+
+input SetPowerhouseConnectInput {
+  enabled: Boolean!
+}
+
+# features_mastra
+
+input EnableMastraInput {
+  _: Boolean
+}
+
+input DisableMastraInput {
+  _: Boolean
+}
+
+# features_routine
+
+input EnableRoutineInput {
+  _: Boolean
+}
+
+input DisableRoutineInput {
+  _: Boolean
+}
