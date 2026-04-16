@@ -254,10 +254,14 @@ export interface WorkItem {
  * Provides core infrastructure via `context`, per-trigger state,
  * and lazy accessors for reactor and agent capabilities.
  */
-export interface TriggerContext<R extends DocumentRegistry = AnyRegistry> {
+export interface TriggerContext<
+  TState = Record<string, unknown>,
+  TConfig = Record<string, unknown>,
+  R extends DocumentRegistry = AnyRegistry,
+> {
   /** Live reference to the core context (workdir, config, emit, services, etc.). */
-  context: CoreContext<Record<string, unknown>, R>;
-  state: Record<string, unknown>;
+  context: CoreContext<TConfig, R>;
+  state: TState;
   /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
   reactor: () => Promise<ReactorContext<R> | undefined>;
   /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
@@ -267,23 +271,35 @@ export interface TriggerContext<R extends DocumentRegistry = AnyRegistry> {
 /**
  * Options for defineTrigger().
  */
-export interface TriggerOptions {
+export interface TriggerOptions<
+  TState = Record<string, unknown>,
+  TConfig = Record<string, unknown>,
+  R extends DocumentRegistry = AnyRegistry,
+> {
   id: string;
   type: 'condition';
-  setup?: (context: TriggerContext) => Promise<void>;
-  teardown?: (context: TriggerContext) => Promise<void>;
-  poll: (context: TriggerContext) => Promise<WorkItem | null>;
+  /** Optional initializer called once per trigger instance before setup()/poll(). */
+  state?: () => TState;
+  setup?: (context: TriggerContext<TState, TConfig, R>) => Promise<void>;
+  teardown?: (context: TriggerContext<TState, TConfig, R>) => Promise<void>;
+  poll: (context: TriggerContext<TState, TConfig, R>) => Promise<WorkItem | null>;
 }
 
 /**
  * A trigger instance — produces work items for the routine loop.
  */
-export interface Trigger {
+export interface Trigger<
+  TState = Record<string, unknown>,
+  TConfig = Record<string, unknown>,
+  R extends DocumentRegistry = AnyRegistry,
+> {
   id: string;
   type: string;
-  setup?: (context: TriggerContext) => Promise<void>;
-  teardown?: (context: TriggerContext) => Promise<void>;
-  poll: (context: TriggerContext) => Promise<WorkItem | null>;
+  /** Optional initializer called once per trigger instance before setup()/poll(). */
+  state?: () => TState;
+  setup?: (context: TriggerContext<TState, TConfig, R>) => Promise<void>;
+  teardown?: (context: TriggerContext<TState, TConfig, R>) => Promise<void>;
+  poll: (context: TriggerContext<TState, TConfig, R>) => Promise<WorkItem | null>;
 }
 
 // ── Routine ───────────────────────────────────────────────────────
@@ -706,7 +722,7 @@ export interface CliOptions<
   /** Schema for sensitive config values. Merged into configSchema internally; values are censored in output. */
   secretsSchema?: TSecrets;
   interactive?: InteractiveConfig<z.infer<TSchema> & z.infer<TSecrets>>;
-  triggers?: Trigger[];
+  triggers?: Trigger<any, any, any>[];
   routine?: RoutineConfig;
   /** Service definitions for the ServiceManager. */
   services?: ServiceDefinition<z.infer<TSchema> & z.infer<TSecrets>>[];

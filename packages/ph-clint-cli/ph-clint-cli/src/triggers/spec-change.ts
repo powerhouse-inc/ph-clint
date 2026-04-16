@@ -21,16 +21,16 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { Trigger, TriggerContext, WorkItem } from 'ph-clint';
-import {
-  isPhClintProjectDocument,
-  type PhClintProjectDocument,
-} from 'ph-clint-app/document-models/ph-clint-project';
+import { defineTrigger } from '../framework.js';
 import { generateProject } from '../codegen/index.js';
 import { specFromDocumentState } from '../spec/from-document.js';
 import type { ClintProjectSpec } from '../spec/types.js';
 
-const DOCUMENT_TYPE = 'powerhouse/ph-clint-project';
+const DOCUMENT_TYPE = 'powerhouse/ph-clint-project' as const;
+
+interface SpecChangeState {
+  pending: number;
+}
 const HASH_DIR = path.join('.ph', 'ph-clint-cli');
 const HASH_FILE = '.last-spec-hash';
 
@@ -110,28 +110,14 @@ async function findProjectDocumentId(
   return null;
 }
 
-/** Read the configured project doc id from the CLI config, if any. */
-function getConfiguredDocId(ctx: TriggerContext): string | undefined {
-  const cfg = ctx.context.config as { projectDocumentId?: string } | undefined;
-  const id = cfg?.projectDocumentId;
-  return id && id.length > 0 ? id : undefined;
-}
-
 /** Extract document ids from a `powerhouse:document:changed` payload. */
-function extractDocIds(payload: unknown): string[] {
-  const docs =
-    (payload as { documents?: Array<unknown> } | undefined)?.documents;
-  if (!Array.isArray(docs)) return [];
+function extractDocIds(
+  documents: ReadonlyArray<{ header?: { id?: string } }>,
+): string[] {
   const ids: string[] = [];
-  for (const d of docs) {
-    const obj = d as { id?: unknown; header?: { id?: unknown } };
-    const id =
-      typeof obj?.id === 'string'
-        ? obj.id
-        : typeof obj?.header?.id === 'string'
-          ? obj.header.id
-          : null;
-    if (id) ids.push(id);
+  for (const d of documents) {
+    const id = d?.header?.id;
+    if (typeof id === 'string' && id) ids.push(id);
   }
   return ids;
 }
@@ -146,12 +132,12 @@ function safeJson(value: unknown): string {
   }
 }
 
-export const specChangeTrigger: Trigger = {
+export const specChangeTrigger = defineTrigger<SpecChangeState>({
   id: 'spec-change',
   type: 'condition',
+  state: () => ({ pending: 0 }),
 
-  async setup(ctx: TriggerContext) {
-    ctx.state.pending = 0 as number;
+  async setup(ctx) {
     const log = ctx.context.log;
     const on = ctx.context.on;
     if (!on) {
@@ -159,8 +145,8 @@ export const specChangeTrigger: Trigger = {
       return;
     }
     on('powerhouse:document:changed', (payload) => {
-      const targetId = getConfiguredDocId(ctx);
-      const ids = extractDocIds(payload);
+      const targetId = ctx.context.config.projectDocumentId;
+      const ids = extractDocIds(payload.documents);
       // Raw payload at debug — helps diagnose upstream shape changes.
       log?.debug(`${TAG} raw payload: ${safeJson(payload)}`);
       // If we know the target and can parse ids, drop non-matching events.
@@ -171,7 +157,7 @@ export const specChangeTrigger: Trigger = {
         );
         return;
       }
-      ctx.state.pending = (ctx.state.pending as number) + 1;
+      ctx.state.pending += 1;
       log?.debug(
         `${TAG} queued change event (docs=[${ids.join(', ')}], pending=${ctx.state.pending})`,
       );
@@ -181,8 +167,8 @@ export const specChangeTrigger: Trigger = {
     log?.debug(`${TAG} setup complete — initial reconcile queued`);
   },
 
-  async poll(ctx: TriggerContext): Promise<WorkItem | null> {
-    const pending = ctx.state.pending as number;
+  async poll(ctx) {
+    const pending = ctx.state.pending;
     if (!pending) return null;
     ctx.state.pending = 0;
 
@@ -195,7 +181,11 @@ export const specChangeTrigger: Trigger = {
       return null;
     }
 
-    const configuredId = getConfiguredDocId(ctx);
+    const configuredId =
+      ctx.context.config.projectDocumentId &&
+      ctx.context.config.projectDocumentId.length > 0
+        ? ctx.context.config.projectDocumentId
+        : undefined;
     const docId =
       configuredId ??
       (await findProjectDocumentId(reactor.client, reactor.driveId));
@@ -220,8 +210,7 @@ export const specChangeTrigger: Trigger = {
           ...current,
           projectDocumentId: docId,
         });
-        (ctx.context.config as { projectDocumentId?: string }).projectDocumentId =
-          docId;
+        ctx.context.config.projectDocumentId = docId;
         log?.info(
           `${TAG} pinned projectDocumentId=${docId} in ${ctx.context.workspace.getLocalConfigPath()}`,
         );
@@ -234,14 +223,7 @@ export const specChangeTrigger: Trigger = {
       }
     }
 
-    const raw = await reactor.client.get(docId);
-    if (!isPhClintProjectDocument(raw)) {
-      log?.debug(
-        `${TAG} document ${docId} is not a ${DOCUMENT_TYPE} document, skipping`,
-      );
-      return null;
-    }
-    const doc: PhClintProjectDocument = raw;
+    const doc = await reactor.client.get<typeof DOCUMENT_TYPE>(docId);
     const spec = specFromDocumentState(doc.state.global);
     if (!spec) {
       log?.debug(
@@ -318,4 +300,4 @@ export const specChangeTrigger: Trigger = {
       },
     };
   },
-};
+});

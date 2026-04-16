@@ -97,6 +97,52 @@ describe('createRoutine', () => {
       expect(setupCalled).toBe(true);
     });
 
+    it('calls state() initializer exactly once before setup', async () => {
+      let stateCalls = 0;
+      let setupStateValue: unknown;
+
+      const trigger = defineTrigger<{ pending: number }>({
+        id: 'state-init',
+        type: 'condition',
+        state: () => {
+          stateCalls++;
+          return { pending: 42 };
+        },
+        setup: async (ctx) => {
+          setupStateValue = ctx.state.pending;
+        },
+        poll: async () => null,
+      });
+
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT));
+      await routine.stop();
+
+      expect(stateCalls).toBe(1);
+      expect(setupStateValue).toBe(42);
+    });
+
+    it('defaults to {} when no state initializer is provided', async () => {
+      let observedState: unknown;
+
+      const trigger = defineTrigger({
+        id: 'no-state-init',
+        type: 'condition',
+        setup: async (ctx) => {
+          observedState = { ...ctx.state };
+        },
+        poll: async () => null,
+      });
+
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+
+      expect(observedState).toEqual({});
+    });
+
     it('provides state object to trigger context', async () => {
       let stateValue: unknown;
       const trigger = defineTrigger({

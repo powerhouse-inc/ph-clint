@@ -32,4 +32,15 @@ describe('defineTrigger', () => {
     });
     expect(trigger.poll).toBe(poll);
   });
+
+  it('preserves state initializer', () => {
+    const state = () => ({ pending: 0 });
+    const trigger = defineTrigger<{ pending: number }>({
+      id: 'test',
+      type: 'condition',
+      state,
+      poll: async () => null,
+    });
+    expect(trigger.state).toBe(state);
+  });
 });
