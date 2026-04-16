@@ -34,24 +34,29 @@ pnpm mastra:dev
 
 ## Commands
 
-| Command | Source | Description |
-|---------|--------|-------------|
-| `reactor-project-init` | manual | Initialize a new Reactor package project via `ph init` |
-| `reactor-project-ls` | auto (service scanner) | List Reactor package projects in the working directory |
-| `reactor-project-start` | auto (service) | Start the Vetra Studio server for a Reactor project |
-| `reactor-project-stop` | auto (service) | Stop the Reactor Projects service |
-| `reactor-project-restart` | auto (service) | Restart the Reactor Projects service |
-| `reactor-project-ps` | auto (service) | Show Reactor Projects service status and endpoints |
-| `reactor-project-logs` | auto (service) | Tail Reactor Projects service logs |
-| `reactor-project-manage` | auto (service) | Open interactive management panel (REPL only) |
-| `fusion-project-init` | manual | Initialize a new Fusion project via git clone |
-| `fusion-project-ls` | auto (service scanner) | List Fusion projects in the working directory |
-| `fusion-project-start` | auto (service) | Start the Fusion Dev Server |
-| `fusion-project-stop` | auto (service) | Stop the Fusion Dev Server |
-| `fusion-project-restart` | auto (service) | Restart the Fusion Dev Server |
-| `fusion-project-ps` | auto (service) | Show Fusion Dev Server status |
-| `fusion-project-logs` | auto (service) | Tail Fusion Dev Server logs |
-| `fusion-project-manage` | auto (service) | Open interactive management panel (REPL only) |
+| Command                   | Source                 | Description                                                                |
+| ------------------------- | ---------------------- | -------------------------------------------------------------------------- |
+| `login`                   | manual                 | Authenticate with Renown — opens browser, polls for session, saves keypair |
+| `logout`                  | manual                 | Clear local credentials and revoke the active Renown session               |
+| `access-token`            | manual                 | Generate a short-lived access token from the stored keypair                |
+| `reactor-project-init`    | manual                 | Initialize a new Reactor package project via `ph init`                     |
+| `reactor-project-build`   | manual                 | Build a Reactor package (`ph build`) — streams output                      |
+| `reactor-project-publish` | manual                 | Build and publish a Reactor package to the npm registry                    |
+| `reactor-project-ls`      | auto (service scanner) | List Reactor package projects in the working directory                     |
+| `reactor-project-start`   | auto (service)         | Start the Vetra Studio server for a Reactor project                        |
+| `reactor-project-stop`    | auto (service)         | Stop the Reactor Projects service                                          |
+| `reactor-project-restart` | auto (service)         | Restart the Reactor Projects service                                       |
+| `reactor-project-ps`      | auto (service)         | Show Reactor Projects service status and endpoints                         |
+| `reactor-project-logs`    | auto (service)         | Tail Reactor Projects service logs                                         |
+| `reactor-project-manage`  | auto (service)         | Open interactive management panel (REPL only)                              |
+| `fusion-project-init`     | manual                 | Initialize a new Fusion project via git clone                              |
+| `fusion-project-ls`       | auto (service scanner) | List Fusion projects in the working directory                              |
+| `fusion-project-start`    | auto (service)         | Start the Fusion Dev Server                                                |
+| `fusion-project-stop`     | auto (service)         | Stop the Fusion Dev Server                                                 |
+| `fusion-project-restart`  | auto (service)         | Restart the Fusion Dev Server                                              |
+| `fusion-project-ps`       | auto (service)         | Show Fusion Dev Server status                                              |
+| `fusion-project-logs`     | auto (service)         | Tail Fusion Dev Server logs                                                |
+| `fusion-project-manage`   | auto (service)         | Open interactive management panel (REPL only)                              |
 
 ## Project structure
 

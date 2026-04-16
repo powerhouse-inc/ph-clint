@@ -4,6 +4,9 @@ import { defineCli } from 'ph-clint';
 import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, secretsSchema } from './config.js';
 import { reactorProjectInit } from './commands/reactor-project-init.js';
 import { fusionProjectInit } from './commands/fusion-project-init.js';
+import { phLogin, phLogout, phAccessToken } from './commands/ph-auth.js';
+import { reactorProjectPublish } from './commands/reactor-project-publish.js';
+import { reactorProjectBuild } from './commands/reactor-project-build.js';
 import { createAgent } from './agents/agent-rupert.js';
 import { reactorProject } from './services/reactor-project.js';
 import { fusionProject } from './services/fusion-project.js';
@@ -16,23 +19,15 @@ export const cli = defineCli({
   description: `Powerhouse Rupert CLI v${CLI_VERSION}\nFull-stack Development of Local-first Apps and Platforms`,
   configSchema,
   secretsSchema,
-  commands: [reactorProjectInit, fusionProjectInit],
+  commands: [reactorProjectInit, fusionProjectInit, phLogin, phLogout, phAccessToken, reactorProjectPublish, reactorProjectBuild],
   services: [reactorProject, fusionProject],
   prompts: {
-    sources: [
-      path.join(PROJECT_ROOT, 'gen', 'skills'),
-      path.join(PROJECT_ROOT, 'dist', 'gen', 'skills'),
-    ],
+    sources: [path.join(PROJECT_ROOT, 'gen', 'skills'), path.join(PROJECT_ROOT, 'dist', 'gen', 'skills')],
     agents: {
       'rupert-dev-agent': {
         name: 'RupertDevAgent',
         sections: ['AgentBase.md', 'ReactorPackageDevAgent.md'],
-        skills: [
-          'document-modeling', 'document-editor-creation',
-          'fusion-development', 'fusion-project-management',
-          'playwright-cli',
-          'reactor-project-management',
-        ],
+        skills: ['document-modeling', 'document-editor-creation', 'fusion-development', 'fusion-project-management', 'playwright-cli', 'reactor-project-management'],
       },
       'powerhouse-architect-agent': {
         name: 'PowerhouseArchitectAgent',
@@ -44,7 +39,9 @@ export const cli = defineCli({
       'document-modeling': {
         description: 'Design Powerhouse document models with state schemas, operations, and reducers',
         inputSchema: z.object({
-          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
             .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
         }),
         instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
@@ -52,17 +49,20 @@ export const cli = defineCli({
       'document-editor-creation': {
         description: 'Build React editor components for Powerhouse document types',
         inputSchema: z.object({
-          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
             .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
-          useBrowser: z.enum(['chromium', 'chrome', 'firefox', 'webkit', 'msedge']).default('chromium')
-            .describe('Browser engine for Playwright visual verification of the editor'),
+          useBrowser: z.enum(['chromium', 'chrome', 'firefox', 'webkit', 'msedge']).default('chromium').describe('Browser engine for Playwright visual verification of the editor'),
         }),
         instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode with browser {{useBrowser}} for: {{prompt}}',
       },
       'fusion-development': {
         description: 'Build local-first platforms based on Next.js with document drives as the backend',
         inputSchema: z.object({
-          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
             .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
         }),
         instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
@@ -70,7 +70,9 @@ export const cli = defineCli({
       'fusion-project-management': {
         description: 'Initialize, configure, and run Fusion project instances',
         inputSchema: z.object({
-          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
             .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
         }),
         instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
@@ -78,7 +80,9 @@ export const cli = defineCli({
       'handle-stakeholder-message': {
         description: 'Triage stakeholder messages, update WBS documents, and draft replies',
         inputSchema: z.object({
-          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
             .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
         }),
         instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
@@ -86,7 +90,9 @@ export const cli = defineCli({
       'reactor-project-management': {
         description: 'Initialize and run Reactor Package projects with Vetra services',
         inputSchema: z.object({
-          mode: z.enum(['expert', 'discovery', 'one-shot']).default('expert')
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
             .describe('Expert: align technical design decisions between fellow experts. Discovery: explain the process and guide non-expert users to decisions. One-shot: make all design decisions autonomously and execute without asking'),
         }),
         instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
@@ -94,8 +100,7 @@ export const cli = defineCli({
       'playwright-cli': {
         description: 'Automate browser interactions, test web pages and work with Playwright tests',
         inputSchema: z.object({
-          useBrowser: z.enum(['chromium', 'chrome', 'firefox', 'webkit', 'msedge']).default('chromium')
-            .describe('Browser engine to use for Playwright sessions'),
+          useBrowser: z.enum(['chromium', 'chrome', 'firefox', 'webkit', 'msedge']).default('chromium').describe('Browser engine to use for Playwright sessions'),
         }),
         instructionTemplate: 'Use your {{skillId}} skill with browser {{useBrowser}} for: {{prompt}}',
       },
@@ -108,10 +113,7 @@ export const cli = defineCli({
     },
     'service:ready': (event) => {
       const ep = event.endpoints ?? {};
-      console.log(
-        `\u2713 ${event.name} is ready` +
-          (ep['vetra-studio'] ? ` \u2014 Vetra Studio at ${ep['vetra-studio']}` : ''),
-      );
+      console.log(`\u2713 ${event.name} is ready` + (ep['vetra-studio'] ? ` \u2014 Vetra Studio at ${ep['vetra-studio']}` : ''));
     },
     'service:failed': (event) => {
       console.log(`\u2717 ${event.name} failed: ${event.error}`);
@@ -132,9 +134,7 @@ export const cli = defineCli({
 
   interactive: {
     welcome: ({ config, workdir }) => {
-      const mode = config.apiKey
-        ? config.model
-        : 'demo mode \u2014 set VETRA_MASTRA_API_KEY for real LLM responses';
+      const mode = config.apiKey ? config.model : 'demo mode \u2014 set VETRA_MASTRA_API_KEY for real LLM responses';
       const G = '\x1b[32m';
       const W = '\x1b[97m';
       const D = '\x1b[2m';
