@@ -15,8 +15,8 @@ import type { WorkItem } from 'ph-clint';
 import { documentModels } from 'agent-app';
 import * as agentChatCreators from 'agent-app/document-models/agent-chat';
 import { configSchema } from './config.js';
+import { createDocumentChangeTrigger } from './framework.js';
 import { createAgent, AGENT_ID, findChatDocuments, ensureParticipant, createDispatcher } from './agent.js';
-import { createDocumentChangeTrigger } from './trigger.js';
 import { writeStreamToDocument } from './bridge.js';
 
 // Connect (ph connect) must run inside the agent-app Reactor Package.
@@ -26,9 +26,23 @@ const agentAppDir = path.resolve(__dirname, '../../agent-app');
 // ── Document Change Trigger ─────────────────────────────────────────
 // When an agent-chat document changes (e.g. a user sends a message via
 // Connect), the trigger produces a work item that invokes the agent.
+//
+// `documentId` is omitted so we react to any agent-chat document on the
+// drive. The `onChange` handler then iterates the drive to find all chat
+// docs (a single change may touch several) and dispatches the agent.
+// The `doc` parameter is unused — we refetch inside the work-item body so
+// the agent always sees the latest state when it actually runs.
 
-const documentChangeTrigger = createDocumentChangeTrigger({
-  async onDocumentChanged(ctx): Promise<WorkItem | null> {
+const documentChangeTrigger = createDocumentChangeTrigger<'powerhouse/agent-chat'>({
+  id: 'document-change',
+  documentType: 'powerhouse/agent-chat',
+  documentId: async (ctx) => {
+    const reactor = await ctx.reactor();
+    if (!reactor) return undefined;
+    const docIds = await findChatDocuments(reactor.client, reactor.driveId);
+    return docIds[0];
+  },
+  async onChange(_doc, ctx): Promise<WorkItem | null> {
     const reactor = await ctx.reactor();
     const agent = await ctx.agent();
     if (!reactor || !agent) return null;
@@ -45,8 +59,8 @@ const documentChangeTrigger = createDocumentChangeTrigger({
           if (docIds.length === 0) return;
 
           for (const docId of docIds) {
-            const doc = await reactor.client.get(docId);
-            const state = doc?.state?.global ?? doc?.state;
+            const doc = await reactor.client.get<'powerhouse/agent-chat'>(docId);
+            const state = (doc as any)?.state?.global ?? (doc as any)?.state;
             if (!state?.messages?.length) continue;
 
             const lastMsg = state.messages[state.messages.length - 1];

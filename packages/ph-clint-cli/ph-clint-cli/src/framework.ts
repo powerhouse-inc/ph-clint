@@ -41,7 +41,12 @@ export const registry = Object.fromEntries(
 export const fullConfigSchema = configSchema.merge(secretsSchema);
 export type Config = z.infer<typeof fullConfigSchema>;
 
-export const { defineCommand, defineTrigger, defineService } = createTypes({
+export const {
+  defineCommand,
+  defineTrigger,
+  defineService,
+  createDocumentChangeTrigger,
+} = createTypes({
   configSchema: fullConfigSchema,
   registry,
 });
