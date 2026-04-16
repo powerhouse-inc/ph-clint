@@ -33,6 +33,7 @@ export { buildDefaultReactor } from './integrations/powerhouse/index.js';
 export type { BuildDefaultReactorOptions } from './integrations/powerhouse/index.js';
 export { startSwitchboard } from './integrations/powerhouse/index.js';
 export type { StartSwitchboardOptions } from './integrations/powerhouse/switchboard.js';
+export { defineRegistry } from './integrations/powerhouse/registry.js';
 export type {
   ReactorContext,
   ReactorSetupContext,
@@ -41,7 +42,13 @@ export type {
   SubscriptionConfig,
   SwitchboardConfig,
   ConnectConfig,
+  DocumentRegistry,
+  AnyRegistry,
+  RegistryEntry,
+  TypedReactorClient,
+  TypedDocumentChangeEvent,
 } from './integrations/powerhouse/types.js';
+export type { InferRegistry, ActionOf } from './integrations/powerhouse/registry.js';
 export type { FieldInfo } from './core/schema.js';
 export type { InstallSkillsOptions } from './core/init.js';
 export type { SkillInfo } from './core/skills.js';
@@ -105,4 +112,7 @@ export type {
   PromptsConfig,
   AgentProfileConfig,
   SkillConfig,
+  PhClintEvents,
+  EmitFn,
+  OnFn,
 } from './core/types.js';

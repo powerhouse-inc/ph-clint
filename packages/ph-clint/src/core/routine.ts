@@ -210,7 +210,11 @@ export function createRoutine(options: RoutineOptions): Routine {
       ctx = newCtx;
     },
     setCapabilities(caps) {
-      if (caps.getReactor) getReactor = caps.getReactor;
+      // Erase R at storage — the registry generic is only for caller-side
+      // type-checking of the returned ReactorContext.
+      if (caps.getReactor) {
+        getReactor = caps.getReactor as unknown as typeof getReactor;
+      }
       if (caps.getAgent) getAgent = caps.getAgent;
     },
   };

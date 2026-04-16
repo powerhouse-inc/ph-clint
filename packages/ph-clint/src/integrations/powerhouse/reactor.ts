@@ -3,9 +3,11 @@
  * a ReactorClientModule with persistent PGlite storage.
  */
 
+import type { DocumentModelModule } from 'document-model';
+
 export interface BuildReactorOptions {
   /** Document model modules to register. */
-  documentModels: any[];
+  documentModels: DocumentModelModule[];
   /** Absolute path to the persistent PGlite directory. */
   storagePath: string;
   /** Enable Switchboard sync channel scheme (required for Phase 2). */

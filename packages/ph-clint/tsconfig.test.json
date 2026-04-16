@@ -3,7 +3,8 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "rootDir": ".",
-    "allowJs": true
+    "allowJs": true,
+    "isolatedModules": true
   },
   "include": ["src", "tests"]
 }

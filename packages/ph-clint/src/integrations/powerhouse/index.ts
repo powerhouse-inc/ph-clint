@@ -19,7 +19,15 @@ export type {
   SwitchboardConfig,
   ConnectConfig,
   SwitchboardInstance,
+  DocumentRegistry,
+  AnyRegistry,
+  RegistryEntry,
+  TypedReactorClient,
+  TypedDocumentChangeEvent,
 } from './types.js';
+
+export type { InferRegistry, ActionOf } from './registry.js';
+export { defineRegistry } from './registry.js';
 
 export { connectServiceDefinition } from './connect.js';
 export { bridgeSubscriptions } from './subscriptions.js';
@@ -28,18 +36,29 @@ export { buildReactor } from './reactor.js';
 export { startSwitchboard } from './switchboard.js';
 export type { StartSwitchboardOptions } from './switchboard.js';
 
-import type { ReactorContext, ReactorSetupContext, DriveConfig, SubscriptionConfig } from './types.js';
+import type { DocumentModelModule } from 'document-model';
+import type {
+  ReactorContext,
+  ReactorSetupContext,
+  DriveConfig,
+  SubscriptionConfig,
+  DocumentRegistry,
+  AnyRegistry,
+  TypedReactorClient,
+} from './types.js';
 
 /**
  * Options for buildDefaultReactor().
  */
-export interface BuildDefaultReactorOptions {
+export interface BuildDefaultReactorOptions<
+  R extends DocumentRegistry = AnyRegistry,
+> {
   /** Document model modules to register with the Reactor. */
-  documentModels: any[];
+  documentModels: DocumentModelModule[];
   /** Default drive to create/find on startup. */
   drive?: DriveConfig;
   /** Subscribe to document changes → event bus. */
-  subscriptions?: SubscriptionConfig;
+  subscriptions?: SubscriptionConfig<R>;
 }
 
 /**
@@ -49,10 +68,12 @@ export interface BuildDefaultReactorOptions {
  * This is the common-case helper for configureReactor().create.
  * Advanced users can write their own factory.
  */
-export async function buildDefaultReactor(
-  ctx: ReactorSetupContext,
-  options: BuildDefaultReactorOptions,
-): Promise<ReactorContext> {
+export async function buildDefaultReactor<
+  R extends DocumentRegistry = AnyRegistry,
+>(
+  ctx: ReactorSetupContext<R>,
+  options: BuildDefaultReactorOptions<R>,
+): Promise<ReactorContext<R>> {
   const { buildReactor } = await import('./reactor.js');
   const { ensureDrive } = await import('./drive.js');
 
@@ -67,15 +88,15 @@ export async function buildDefaultReactor(
   let unsubscribe: (() => void) | undefined;
   if (options.subscriptions && ctx.emit) {
     const { bridgeSubscriptions } = await import('./subscriptions.js');
-    unsubscribe = bridgeSubscriptions(
+    unsubscribe = bridgeSubscriptions<R>(
       reactorModule.client,
       options.subscriptions,
       ctx.emit,
     );
   }
 
-  const result: ReactorContext = {
-    client: reactorModule.client,
+  const result: ReactorContext<R> = {
+    client: reactorModule.client as TypedReactorClient<R>,
     driveId,
     _module: reactorModule,
     async shutdown() {
