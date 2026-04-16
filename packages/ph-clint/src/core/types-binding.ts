@@ -8,9 +8,7 @@
  *
  * Runtime is a thin pass-through: the returned factories are just the
  * original `defineX` identity wrappers cast to the typed shape. All
- * narrowing lives on `TypedFactory`. Phase 3 adds
- * `createDocumentChangeTrigger` here — at that point the helper also
- * captures `registry` for runtime use.
+ * narrowing lives on `TypedFactory`.
  */
 import type { z } from 'zod';
 import type {
@@ -25,9 +23,11 @@ import type {
   TriggerOptions,
   ServiceDefinition,
 } from './types.js';
+import type { DocumentChangeTriggerOptions } from '../integrations/powerhouse/change-trigger.js';
 import { defineCommand as baseDefineCommand } from './command.js';
 import { defineTrigger as baseDefineTrigger } from './trigger.js';
 import { defineService as baseDefineService } from './services.js';
+import { createDocumentChangeTrigger as baseCreateDocumentChangeTrigger } from '../integrations/powerhouse/change-trigger.js';
 
 /**
  * Options for `createTypes`.
@@ -90,6 +90,18 @@ export interface TypedFactory<
   defineService(
     options: ServiceDefinition<TConfig>,
   ): ServiceDefinition<TConfig>;
+
+  /**
+   * Typed `createDocumentChangeTrigger` — `TConfig` and `R` are pre-bound
+   * from `createTypes`. At the call site, only `T` (documentType key) and
+   * optionally `TState` need to be declared.
+   */
+  createDocumentChangeTrigger<
+    T extends keyof R & string,
+    TState extends { pending: number } = { pending: number },
+  >(
+    options: DocumentChangeTriggerOptions<R, T, TConfig, TState>,
+  ): Trigger<TState, TConfig, R>;
 }
 
 /**
@@ -105,8 +117,12 @@ export interface TypedFactory<
  * const configSchema = z.object({ projectDocumentId: z.string().optional() });
  * const registry = defineRegistry([PhClintProject] as const);
  *
- * export const { defineCommand, defineTrigger, defineService } =
- *   createTypes({ configSchema, registry });
+ * export const {
+ *   defineCommand,
+ *   defineTrigger,
+ *   defineService,
+ *   createDocumentChangeTrigger,
+ * } = createTypes({ configSchema, registry });
  * ```
  */
 export function createTypes<
@@ -125,5 +141,9 @@ export function createTypes<
       R
     >['defineTrigger'],
     defineService: baseDefineService,
+    createDocumentChangeTrigger: baseCreateDocumentChangeTrigger as unknown as TypedFactory<
+      z.infer<TSchema>,
+      R
+    >['createDocumentChangeTrigger'],
   };
 }

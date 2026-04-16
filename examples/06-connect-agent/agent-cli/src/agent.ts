@@ -142,7 +142,7 @@ async function ensureChatDocument(
 
 /** Ensure a participant exists in the document's collection before dispatching. */
 export async function ensureParticipant(
-  reactor: ReactorContext,
+  reactor: ReactorContext<any>,
   documentId: string,
   collection: 'stakeholders' | 'agents',
   id: string,
@@ -150,7 +150,7 @@ export async function ensureParticipant(
 ): Promise<void> {
   try {
     const doc = await reactor.client.get(documentId);
-    const state = doc?.state?.global ?? doc?.state;
+    const state = (doc as any)?.state?.global ?? (doc as any)?.state;
     if (state?.[collection]?.some?.((p: any) => p.id === id)) return;
     await reactor.client.execute(documentId, 'main', [action]);
   } catch (err) {
@@ -171,7 +171,7 @@ export async function findChatDocuments(client: any, driveId: string): Promise<s
 }
 
 /** Create a DocumentDispatcher that dispatches actions via the reactor client. */
-export function createDispatcher(reactor: ReactorContext): DocumentDispatcher {
+export function createDispatcher(reactor: ReactorContext<any>): DocumentDispatcher {
   return {
     async addAction(documentId: string, action: any): Promise<void> {
       await reactor.client.execute(documentId, 'main', [action]);
