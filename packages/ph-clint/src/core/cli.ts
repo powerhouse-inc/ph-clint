@@ -15,7 +15,13 @@ import type {
   Routine,
   RunOptions,
 } from './types.js';
-import type { ReactorConfiguration, ReactorContext, SwitchboardInstance } from '../integrations/powerhouse/types.js';
+import type {
+  ReactorConfiguration,
+  ReactorContext,
+  SwitchboardInstance,
+  DocumentRegistry,
+  AnyRegistry,
+} from '../integrations/powerhouse/types.js';
 import { checkPort } from './preflight.js';
 import { connectServiceDefinition } from '../integrations/powerhouse/connect.js';
 import { randomUUID } from 'node:crypto';
@@ -228,8 +234,12 @@ export function defineCli<
   // Mutable reactor configuration — set via configureReactor()
   let reactorConfig: ReactorConfiguration | undefined;
 
-  function configureReactor(config: ReactorConfiguration): void {
-    reactorConfig = config;
+  function configureReactor<R extends DocumentRegistry = AnyRegistry>(
+    config: ReactorConfiguration<R>,
+  ): void {
+    // Erase R at the storage site — at runtime the registry is just a dict.
+    // The generic only exists to type-check the caller's `create` factory.
+    reactorConfig = config as unknown as ReactorConfiguration;
 
     // Inject Connect service commands immediately
     if (config.connect?.enabled) {

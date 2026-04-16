@@ -24,7 +24,7 @@ function captureOutput() {
 
 function createMockReactor(): ReactorContext {
   return {
-    client: { fake: true },
+    client: { fake: true } as any,
     driveId: 'test-drive',
     async shutdown() {},
   };
@@ -122,7 +122,7 @@ describe('configureReactor() in cli.ts', () => {
   it('shutdown is called on teardown in interactive mode', async () => {
     const shutdownFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const mockReactor: ReactorContext = {
-      client: {},
+      client: {} as any,
       driveId: 'test',
       shutdown: shutdownFn,
     };
@@ -195,7 +195,7 @@ describe('configureReactor() in cli.ts', () => {
   it('teardown shuts down reactor after headless interactive exit', async () => {
     const shutdownFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const mockReactor: ReactorContext = {
-      client: {},
+      client: {} as any,
       driveId: 'test',
       shutdown: shutdownFn,
     };

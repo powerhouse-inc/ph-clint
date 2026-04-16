@@ -1,5 +1,9 @@
 import type { z } from 'zod';
-import type { ReactorContext } from '../integrations/powerhouse/types.js';
+import type {
+  ReactorContext,
+  DocumentRegistry,
+  AnyRegistry,
+} from '../integrations/powerhouse/types.js';
 
 /**
  * Utility type: infer the TypeScript type from a Zod config schema.
@@ -46,11 +50,58 @@ export interface WorkdirStore {
   storeLocalConfig(value: unknown): Promise<void>;
 }
 
+// ── Framework events ──────────────────────────────────────────────
+
+/**
+ * Payload map for framework-emitted events. Registry generic narrows
+ * `powerhouse:*` payloads to registered document types.
+ *
+ * User code registered via declaration merging can extend this interface
+ * (or just emit/on with arbitrary string keys; those fall through to the
+ * `unknown` overload).
+ */
+export interface PhClintEvents<R extends DocumentRegistry = AnyRegistry> {
+  'powerhouse:ready': { driveId: string };
+  'powerhouse:document:changed': {
+    changeType: 'updated';
+    documents: Array<R[keyof R & string]['document']>;
+  };
+  'powerhouse:document:created': {
+    documentId: string;
+    documentType: keyof R & string;
+  };
+  'powerhouse:document:deleted': { documentId: string };
+}
+
+/**
+ * Overloaded emit function: typed for framework-emitted events, fallback
+ * `unknown` payload for any other event string.
+ */
+export type EmitFn<R extends DocumentRegistry = AnyRegistry> = {
+  <K extends keyof PhClintEvents<R>>(event: K, data: PhClintEvents<R>[K]): void;
+  (event: string, data?: unknown): void;
+};
+
+/**
+ * Overloaded listener registration: typed handler for framework events,
+ * fallback `unknown` payload for any other event string.
+ */
+export type OnFn<R extends DocumentRegistry = AnyRegistry> = {
+  <K extends keyof PhClintEvents<R>>(
+    event: K,
+    handler: (data: PhClintEvents<R>[K]) => void,
+  ): void;
+  (event: string, handler: (data?: unknown) => void): void;
+};
+
 /**
  * Context passed to command execute functions.
  * Provides access to workdir, workspace, resolved config, and optional runtime services.
  */
-export interface CommandContext<TConfig = Record<string, unknown>> {
+export interface CommandContext<
+  TConfig = Record<string, unknown>,
+  R extends DocumentRegistry = AnyRegistry,
+> {
   /** The resolved working directory — where the user/agent collaborate on data. */
   workdir: string;
   /** Key-value store for CLI-managed state at {workdir}/.ph/{cli-name}/. */
@@ -63,10 +114,10 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
   routine?: Routine;
   processes?: ProcessManager;
   services?: ServiceManager;
-  emit?: (event: string, data?: unknown) => void;
-  on?: (event: string, handler: (data?: unknown) => void) => void;
+  emit?: EmitFn<R>;
+  on?: OnFn<R>;
   /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
-  reactor?: () => Promise<ReactorContext | undefined>;
+  reactor?: () => Promise<ReactorContext<R> | undefined>;
   /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
   agent?: () => Promise<AgentProvider | undefined>;
 }
@@ -75,8 +126,10 @@ export interface CommandContext<TConfig = Record<string, unknown>> {
  * CommandContext without the reactor/agent accessors.
  * Used as TriggerContext.context to avoid duplicate access paths.
  */
-export type CoreContext<TConfig = Record<string, unknown>> =
-  Omit<CommandContext<TConfig>, 'reactor' | 'agent'>;
+export type CoreContext<
+  TConfig = Record<string, unknown>,
+  R extends DocumentRegistry = AnyRegistry,
+> = Omit<CommandContext<TConfig, R>, 'reactor' | 'agent'>;
 
 /**
  * Interactive parameter prompting configuration for a command.
@@ -201,12 +254,12 @@ export interface WorkItem {
  * Provides core infrastructure via `context`, per-trigger state,
  * and lazy accessors for reactor and agent capabilities.
  */
-export interface TriggerContext {
+export interface TriggerContext<R extends DocumentRegistry = AnyRegistry> {
   /** Live reference to the core context (workdir, config, emit, services, etc.). */
-  context: CoreContext;
+  context: CoreContext<Record<string, unknown>, R>;
   state: Record<string, unknown>;
   /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
-  reactor: () => Promise<import('../integrations/powerhouse/types.js').ReactorContext | undefined>;
+  reactor: () => Promise<ReactorContext<R> | undefined>;
   /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
   agent: () => Promise<AgentProvider | undefined>;
 }
@@ -254,8 +307,8 @@ export interface Routine {
   /** Update the context used for command execution within the routine. */
   setContext(context: CommandContext): void;
   /** Set lazy capability accessors (reactor, agent) for trigger contexts. */
-  setCapabilities(caps: {
-    getReactor?: () => Promise<import('../integrations/powerhouse/types.js').ReactorContext | undefined>;
+  setCapabilities<R extends DocumentRegistry = AnyRegistry>(caps: {
+    getReactor?: () => Promise<ReactorContext<R> | undefined>;
     getAgent?: () => Promise<AgentProvider | undefined>;
   }): void;
 }
@@ -477,12 +530,14 @@ export interface ServiceManager {
 // ── Event Bus ─────────────────────────────────────────────────────
 
 /**
- * A central event bus for decoupled communication.
+ * A central event bus for decoupled communication. Typed for framework
+ * events via PhClintEvents<R>; arbitrary string events fall through to
+ * the `unknown` payload overload.
  */
-export interface EventBus {
-  emit(event: string, data?: unknown): void;
-  on(event: string, handler: (data?: unknown) => void): void;
-  off(event: string, handler: (data?: unknown) => void): void;
+export interface EventBus<R extends DocumentRegistry = AnyRegistry> {
+  emit: EmitFn<R>;
+  on: OnFn<R>;
+  off: OnFn<R>;
 }
 
 // ── Routine Config ────────────────────────────────────────────────
@@ -722,7 +777,9 @@ export interface Cli {
   /** Configure the agent factory — called lazily when the agent is first needed. */
   configureAgent(loader: AgentLoader<any>): void;
   /** Configure the reactor capability — lazy-loaded on first reactor() access. */
-  configureReactor(config: import('../integrations/powerhouse/types.js').ReactorConfiguration): void;
+  configureReactor<R extends DocumentRegistry = AnyRegistry>(
+    config: import('../integrations/powerhouse/types.js').ReactorConfiguration<R>,
+  ): void;
   getCommand(id: string): Command | undefined;
   listCommands(): Command[];
   execute(

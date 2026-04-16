@@ -3,6 +3,7 @@ import { connectServiceDefinition } from '../src/integrations/powerhouse/connect
 import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscriptions.js';
 import { ensureDrive } from '../src/integrations/powerhouse/drive.js';
 import { buildDefaultReactor } from '../src/integrations/powerhouse/index.js';
+import { defineRegistry } from '../src/integrations/powerhouse/registry.js';
 import type { ReactorContext } from '../src/integrations/powerhouse/types.js';
 
 describe('connectServiceDefinition', () => {
@@ -69,15 +70,15 @@ describe('bridgeSubscriptions', () => {
         callback({
           type: 'created',
           documents: [
-            { id: 'doc-1', documentType: 'conversation' },
-            { id: 'doc-2', documentType: 'task' },
+            { header: { id: 'doc-1', documentType: 'conversation' } },
+            { header: { id: 'doc-2', documentType: 'task' } },
           ],
         });
         return () => {};
       },
     };
 
-    bridgeSubscriptions(mockClient, { documentTypes: ['conversation'] }, emit);
+    bridgeSubscriptions(mockClient as any, { documentTypes: ['conversation'] }, emit);
     expect(emitted).toHaveLength(2);
     expect(emitted[0]).toEqual({
       event: 'powerhouse:document:created',
@@ -92,7 +93,7 @@ describe('bridgeSubscriptions', () => {
   it('maps Updated events to powerhouse:document:changed', () => {
     const emitted: Array<{ event: string; data: unknown }> = [];
     const emit = (event: string, data?: unknown) => emitted.push({ event, data });
-    const docs = [{ id: 'doc-1', documentType: 'conversation' }];
+    const docs = [{ header: { id: 'doc-1', documentType: 'conversation' } }];
 
     const mockClient = {
       subscribe: (_search: any, callback: any) => {
@@ -101,7 +102,7 @@ describe('bridgeSubscriptions', () => {
       },
     };
 
-    bridgeSubscriptions(mockClient, {}, emit);
+    bridgeSubscriptions(mockClient as any, {}, emit);
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toEqual({
       event: 'powerhouse:document:changed',
@@ -115,12 +116,12 @@ describe('bridgeSubscriptions', () => {
 
     const mockClient = {
       subscribe: (_search: any, callback: any) => {
-        callback({ type: 'deleted', documents: [{ id: 'doc-1' }] });
+        callback({ type: 'deleted', documents: [{ header: { id: 'doc-1' } }] });
         return () => {};
       },
     };
 
-    bridgeSubscriptions(mockClient, {}, emit);
+    bridgeSubscriptions(mockClient as any, {}, emit);
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toEqual({
       event: 'powerhouse:document:deleted',
@@ -134,7 +135,7 @@ describe('bridgeSubscriptions', () => {
       subscribe: () => unsub,
     };
 
-    const result = bridgeSubscriptions(mockClient, {}, () => {});
+    const result = bridgeSubscriptions(mockClient as any, {}, () => {});
     result();
     expect(unsub).toHaveBeenCalled();
   });
@@ -148,7 +149,7 @@ describe('bridgeSubscriptions', () => {
       },
     };
 
-    bridgeSubscriptions(mockClient, { documentTypes: ['conversation', 'task'] }, () => {});
+    bridgeSubscriptions(mockClient as any, { documentTypes: ['conversation', 'task'] }, () => {});
     expect(receivedSearch).toEqual({ documentTypes: ['conversation', 'task'] });
   });
 
@@ -158,13 +159,13 @@ describe('bridgeSubscriptions', () => {
       subscribe: (_search: any, callback: any) => {
         // Should not throw even though emit throws
         expect(() => {
-          callback({ type: 'created', documents: [{ id: 'x', documentType: 't' }] });
+          callback({ type: 'created', documents: [{ header: { id: 'x', documentType: 't' } }] });
         }).not.toThrow();
         return () => {};
       },
     };
 
-    bridgeSubscriptions(mockClient, {}, emit);
+    bridgeSubscriptions(mockClient as any, {}, emit);
   });
 
   it('handles missing documents array gracefully', () => {
@@ -180,7 +181,7 @@ describe('bridgeSubscriptions', () => {
     };
 
     // Should not throw
-    bridgeSubscriptions(mockClient, {}, emit);
+    bridgeSubscriptions(mockClient as any, {}, emit);
     expect(emitted).toHaveLength(0);
   });
 });
@@ -267,7 +268,7 @@ describe('ensureDrive', () => {
 describe('ReactorContext type', () => {
   it('has the expected shape', () => {
     const ctx: ReactorContext = {
-      client: {},
+      client: {} as any,
       driveId: 'test-drive',
       async shutdown() {},
     };
@@ -280,7 +281,7 @@ describe('ReactorContext type', () => {
 
   it('accepts all optional Phase 2+3 fields', () => {
     const ctx: ReactorContext = {
-      client: {},
+      client: {} as any,
       driveId: 'test',
       switchboardUrl: 'http://localhost:4001/graphql',
       driveUrl: 'http://localhost:4001/d/test',
@@ -296,5 +297,29 @@ describe('ReactorContext type', () => {
 describe('buildDefaultReactor', () => {
   it('is exported as a function', () => {
     expect(typeof buildDefaultReactor).toBe('function');
+  });
+});
+
+describe('defineRegistry', () => {
+  it('builds a registry keyed by documentModel.global.id', () => {
+    const moduleA = {
+      documentModel: { global: { id: 'test/a' } },
+      actions: {},
+    } as unknown as Parameters<typeof defineRegistry>[0][number];
+    const moduleB = {
+      documentModel: { global: { id: 'test/b' } },
+      actions: {},
+    } as unknown as Parameters<typeof defineRegistry>[0][number];
+
+    const registry = defineRegistry([moduleA, moduleB] as const);
+
+    expect(Object.keys(registry)).toEqual(['test/a', 'test/b']);
+    expect((registry as Record<string, unknown>)['test/a']).toBe(moduleA);
+    expect((registry as Record<string, unknown>)['test/b']).toBe(moduleB);
+  });
+
+  it('returns an empty registry for an empty tuple', () => {
+    const registry = defineRegistry([] as const);
+    expect(Object.keys(registry)).toEqual([]);
   });
 });

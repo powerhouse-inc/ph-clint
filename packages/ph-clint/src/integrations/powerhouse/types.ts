@@ -1,18 +1,215 @@
 /**
  * Types for the Powerhouse integration.
  *
- * These are intentionally loose (using `any` for Reactor types) because
- * @powerhousedao/reactor is an optional peer dependency — we can't import
- * its types at the module level.
+ * All Powerhouse types are imported via `import type` — erased at runtime,
+ * no peer-dep coupling at the module level. @powerhousedao/reactor is still
+ * an optional peer for runtime, but types flow freely.
  */
+
+import type {
+  IReactorClient,
+  DocumentChangeEvent,
+  SearchFilter,
+  ViewFilter,
+  PagingOptions,
+  PagedResults,
+  JobInfo,
+} from '@powerhousedao/reactor';
+
+/**
+ * Options for creating an empty document. Mirrors the internal
+ * `CreateDocumentOptions` type in @powerhousedao/reactor (not exported there).
+ */
+interface CreateDocumentOptions {
+  parentIdentifier?: string;
+  documentModelVersion?: number;
+}
+import type {
+  DocumentModelModule,
+  PHDocument,
+  Action,
+  PHBaseState,
+} from 'document-model';
+import type { WorkdirStore } from '../../core/types.js';
+
+// ── Registry ──────────────────────────────────────────────────────
+
+/**
+ * One entry in a DocumentRegistry. Carries enough to narrow every
+ * IReactorClient method that touches a PHDocument or Action.
+ *
+ * - `document` — the concrete PHDocument shape returned by `get`, `create`, etc.
+ * - `actions` — union of Action types accepted by `execute` / `executeAsync`.
+ * - `state` — the global state shape, used by `DocumentModelModule<S>` introspection.
+ */
+export interface RegistryEntry<
+  S extends PHBaseState = PHBaseState,
+  A extends Action = Action,
+> {
+  document: PHDocument<S>;
+  actions: A;
+  state: S;
+}
+
+/**
+ * Maps a documentType string → RegistryEntry. Impls build one with
+ * `defineRegistry([Module1, Module2] as const)`; see registry.ts.
+ */
+export type DocumentRegistry = Record<string, RegistryEntry>;
+
+/**
+ * Fallback registry used when a CLI doesn't declare one.
+ * Every slot resolves to the base PHDocument / Action shapes.
+ * `R = AnyRegistry` is the default for ReactorContext, CoreContext, etc.
+ */
+export type AnyRegistry = Record<string, RegistryEntry>;
+
+// ── Typed client ──────────────────────────────────────────────────
+
+/**
+ * Typed view over IReactorClient. Every method that takes a documentType
+ * string, returns a PHDocument, or accepts an Action is re-declared with
+ * registry-derived types. All other methods are inherited via `Omit<…>`.
+ *
+ * Runtime: the underlying object IS an IReactorClient — we only cast at the
+ * ReactorContext boundary. No runtime wrapping, no perf cost.
+ */
+export interface TypedReactorClient<R extends DocumentRegistry>
+  extends Omit<
+    IReactorClient,
+    | 'get'
+    | 'getChildren'
+    | 'getParents'
+    | 'find'
+    | 'getDocumentModelModule'
+    | 'create'
+    | 'createEmpty'
+    | 'createDocumentInDrive'
+    | 'execute'
+    | 'executeAsync'
+    | 'rename'
+    | 'addChildren'
+    | 'removeChildren'
+    | 'moveChildren'
+    | 'subscribe'
+  > {
+  get<T extends keyof R & string = keyof R & string>(
+    identifier: string,
+    view?: ViewFilter,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  getChildren<T extends keyof R & string = keyof R & string>(
+    parentIdentifier: string,
+    view?: ViewFilter,
+    paging?: PagingOptions,
+    signal?: AbortSignal,
+  ): Promise<PagedResults<R[T]['document']>>;
+
+  getParents<T extends keyof R & string = keyof R & string>(
+    childIdentifier: string,
+    view?: ViewFilter,
+    paging?: PagingOptions,
+    signal?: AbortSignal,
+  ): Promise<PagedResults<R[T]['document']>>;
+
+  find<T extends keyof R & string = keyof R & string>(
+    search: Omit<SearchFilter, 'documentTypes'> & { documentTypes?: T[] },
+    view?: ViewFilter,
+    paging?: PagingOptions,
+    signal?: AbortSignal,
+  ): Promise<PagedResults<R[T]['document']>>;
+
+  getDocumentModelModule<T extends keyof R & string>(
+    documentType: T,
+  ): Promise<DocumentModelModule<R[T]['state']>>;
+
+  create<T extends keyof R & string = keyof R & string>(
+    document: R[T]['document'],
+    parentIdentifier?: string,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  createEmpty<T extends keyof R & string>(
+    documentModelType: T,
+    options?: CreateDocumentOptions,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  createDocumentInDrive<T extends keyof R & string = keyof R & string>(
+    driveId: string,
+    document: R[T]['document'],
+    parentFolder?: string,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  execute<T extends keyof R & string = keyof R & string>(
+    documentIdentifier: string,
+    branch: string,
+    actions: Array<R[T]['actions']>,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  executeAsync<T extends keyof R & string = keyof R & string>(
+    documentIdentifier: string,
+    branch: string,
+    actions: Array<R[T]['actions']>,
+    signal?: AbortSignal,
+  ): Promise<JobInfo>;
+
+  rename<T extends keyof R & string = keyof R & string>(
+    documentIdentifier: string,
+    name: string,
+    branch?: string,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  addChildren<T extends keyof R & string = keyof R & string>(
+    parentIdentifier: string,
+    documentIdentifiers: string[],
+    branch?: string,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  removeChildren<T extends keyof R & string = keyof R & string>(
+    parentIdentifier: string,
+    documentIdentifiers: string[],
+    branch?: string,
+    signal?: AbortSignal,
+  ): Promise<R[T]['document']>;
+
+  moveChildren<T extends keyof R & string = keyof R & string>(
+    sourceParentIdentifier: string,
+    targetParentIdentifier: string,
+    documentIdentifiers: string[],
+    branch?: string,
+    signal?: AbortSignal,
+  ): Promise<{ source: R[T]['document']; target: R[T]['document'] }>;
+
+  subscribe<T extends keyof R & string = keyof R & string>(
+    search: Omit<SearchFilter, 'documentTypes'> & { documentTypes?: T[] },
+    callback: (event: TypedDocumentChangeEvent<R, T>) => void,
+    view?: ViewFilter,
+  ): () => void;
+}
+
+/** Narrowed DocumentChangeEvent carrying registry-typed documents. */
+export interface TypedDocumentChangeEvent<
+  R extends DocumentRegistry,
+  T extends keyof R & string = keyof R & string,
+> extends Omit<DocumentChangeEvent, 'documents'> {
+  documents: Array<R[T]['document']>;
+}
+
+// ── Reactor context ───────────────────────────────────────────────
 
 /**
  * Context for the Powerhouse reactor capability.
  * Returned by the reactor factory and accessible via `context.reactor()`.
  */
-export interface ReactorContext {
-  /** The Reactor client — full CRUD + subscription API (IReactorClient). */
-  client: any;
+export interface ReactorContext<R extends DocumentRegistry = AnyRegistry> {
+  /** The Reactor client — typed CRUD + subscription API. */
+  client: TypedReactorClient<R>;
   /** The default drive ID (created or found on startup). */
   driveId: string;
   /** Phase 2: Switchboard GraphQL URL (e.g. http://localhost:4001/graphql). */
@@ -23,8 +220,8 @@ export interface ReactorContext {
   mcpUrl?: string;
   /** Phase 3: Connect web UI URL (e.g. http://localhost:3000). */
   connectUrl?: string;
-  /** Internal: the ReactorClientModule, passed to startSwitchboard(). */
-  _module?: any;
+  /** Internal: the ReactorClientModule, passed to startSwitchboard(). Opaque at the public type level. */
+  _module?: unknown;
   /** Teardown — called by the framework on CLI exit. */
   shutdown(): Promise<void>;
 }
@@ -43,9 +240,9 @@ export interface DriveConfig {
  * Subscription configuration — filters which document changes
  * are bridged to the event bus.
  */
-export interface SubscriptionConfig {
+export interface SubscriptionConfig<R extends DocumentRegistry = AnyRegistry> {
   /** Filter by document type(s). */
-  documentTypes?: string[];
+  documentTypes?: Array<keyof R & string>;
 }
 
 /**
@@ -77,13 +274,17 @@ export interface ConnectConfig {
 /**
  * Options for definePowerhouseIntegration().
  */
-export interface PowerhouseIntegrationOptions {
+export interface PowerhouseIntegrationOptions<
+  R extends DocumentRegistry = AnyRegistry,
+> {
   /** Document model modules to register with the Reactor. */
-  documentModels: any[];
+  documentModels: DocumentModelModule[];
+  /** Document registry for typed client narrowing. Usually built with `defineRegistry([...modules] as const)`. */
+  registry?: R;
   /** Default drive to create/find on startup. */
   drive?: DriveConfig;
   /** Subscribe to document changes → event bus. */
-  subscriptions?: SubscriptionConfig;
+  subscriptions?: SubscriptionConfig<R>;
   /** Phase 2: Switchboard (GraphQL + MCP endpoint). Requires Phase 1. */
   switchboard?: SwitchboardConfig;
   /** Phase 3: Connect web UI. Requires Phase 2. */
@@ -94,12 +295,14 @@ export interface PowerhouseIntegrationOptions {
  * Context passed to the reactor factory in configureReactor().
  * Provides core infrastructure the factory needs to build the reactor.
  */
-export interface ReactorSetupContext {
+export interface ReactorSetupContext<
+  R extends DocumentRegistry = AnyRegistry,
+> {
   workdir: string;
   config: Record<string, unknown>;
-  workspace: import('../../core/types.js').WorkdirStore;
-  emit?: (event: string, data?: unknown) => void;
-  on?: (event: string, handler: (data?: unknown) => void) => void;
+  workspace: WorkdirStore;
+  emit?: import('../../core/types.js').EmitFn<R>;
+  on?: import('../../core/types.js').OnFn<R>;
   /** Switchboard config — passed by the framework so create() can set enableSync. */
   switchboard?: SwitchboardConfig;
 }
@@ -108,9 +311,11 @@ export interface ReactorSetupContext {
  * Configuration for configureReactor().
  * The `create` factory is called lazily on first reactor() access.
  */
-export interface ReactorConfiguration {
+export interface ReactorConfiguration<
+  R extends DocumentRegistry = AnyRegistry,
+> {
   /** Factory that builds and returns a ReactorContext. */
-  create: (ctx: ReactorSetupContext) => Promise<ReactorContext>;
+  create: (ctx: ReactorSetupContext<R>) => Promise<ReactorContext<R>>;
   /** Connect web UI service configuration — commands injected immediately. */
   connect?: ConnectConfig;
   /** Switchboard service configuration. */

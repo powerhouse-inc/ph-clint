@@ -2,7 +2,10 @@
 export default {
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { useESM: true, tsconfig: 'tsconfig.test.json' }],
+    '^.+\\.tsx?$': ['ts-jest', {
+      useESM: true,
+      tsconfig: 'tsconfig.test.json',
+    }],
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',

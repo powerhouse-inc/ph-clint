@@ -3,7 +3,17 @@
  * to the ph-clint event bus.
  */
 
-import type { SubscriptionConfig } from './types.js';
+import type {
+  IReactorClient,
+  DocumentChangeEvent,
+  SearchFilter,
+} from '@powerhousedao/reactor';
+import type {
+  SubscriptionConfig,
+  DocumentRegistry,
+  AnyRegistry,
+} from './types.js';
+import type { EmitFn } from '../../core/types.js';
 
 /**
  * Bridge Reactor document subscriptions to the ph-clint event bus.
@@ -13,36 +23,44 @@ import type { SubscriptionConfig } from './types.js';
  * @param emit - Event bus emit function from CommandContext
  * @returns Unsubscribe function
  */
-export function bridgeSubscriptions(
-  client: any,
-  subscriptions: SubscriptionConfig,
-  emit: (event: string, data?: unknown) => void,
+export function bridgeSubscriptions<
+  R extends DocumentRegistry = AnyRegistry,
+>(
+  client: IReactorClient,
+  subscriptions: SubscriptionConfig<R>,
+  emit: EmitFn<R>,
 ): () => void {
-  const search: Record<string, unknown> = {};
+  // The runtime SearchFilter in @powerhousedao/reactor doesn't have
+  // `documentTypes`; ph-clint's high-level SubscriptionConfig exposes it and
+  // we forward it as an extra field. The Reactor currently ignores unknown
+  // keys — this matches pre-existing behavior.
+  const search: SearchFilter & { documentTypes?: string[] } = {};
   if (subscriptions.documentTypes) {
-    search.documentTypes = subscriptions.documentTypes;
+    search.documentTypes = subscriptions.documentTypes as string[];
   }
 
-  return client.subscribe(search, (event: any) => {
+  return client.subscribe(search, (event: DocumentChangeEvent) => {
     try {
       switch (event.type) {
         case 'created':
           for (const doc of event.documents ?? []) {
             emit('powerhouse:document:created', {
-              documentId: doc.id,
-              documentType: doc.documentType,
+              documentId: doc.header.id,
+              documentType: doc.header.documentType as keyof R & string,
             });
           }
           break;
         case 'updated':
           emit('powerhouse:document:changed', {
-            changeType: event.type,
-            documents: event.documents,
+            changeType: 'updated',
+            documents: event.documents as Array<
+              R[keyof R & string]['document']
+            >,
           });
           break;
         case 'deleted':
           for (const doc of event.documents ?? []) {
-            emit('powerhouse:document:deleted', { documentId: doc.id });
+            emit('powerhouse:document:deleted', { documentId: doc.header.id });
           }
           break;
       }
