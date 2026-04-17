@@ -68,11 +68,11 @@ export const reactorProjectInit = defineCommand({
       const versionArgs = tags.includes(phVersion)
         ? [`--${phVersion}`]
         : ['--version', phVersion];
-      const phCmd = ['ph', 'init', name, ...versionArgs, '--pnpm'].join(' ');
-      const child = spawn('script', ['-qec', phCmd, '/dev/null'], {
+      const child = spawn('ph', ['init', name, ...versionArgs, '--pnpm'], {
         cwd: workdir,
         stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, TERM: process.env.TERM ?? 'xterm-256color' },
+        env: { ...process.env, FORCE_COLOR: '1' },
+        shell: process.platform === 'win32',
       });
 
       child.stdout.on('data', (chunk: Buffer) => stdout(chunk.toString()));
