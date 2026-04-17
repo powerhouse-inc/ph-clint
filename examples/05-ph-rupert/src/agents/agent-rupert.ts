@@ -9,7 +9,8 @@ import { createWorkdirStore } from 'ph-clint';
 import { createMastraHelpers, getMastraPaths } from 'ph-clint/mastra';
 import type { AgentSetupContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
 import type { WrapAgentOptions } from 'ph-clint/mastra';
-import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
+import { CLI_NAME, PROJECT_ROOT } from '../config.js';
+import type { Config } from '../framework.js';
 import { createDemoAgent } from './demo-agent.js';
 import type { SkillInfo } from 'ph-clint';
 

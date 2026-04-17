@@ -1,10 +1,9 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { checkNpmAuth, npmPublish, resolveRegistryUrl } from '@powerhousedao/shared/registry';
 import path from 'node:path';
 import fs from 'node:fs';
 import { runBuild } from './reactor-project-build.js';
-import type { Config } from '../config.js';
 import { spawnAsync } from '@powerhousedao/shared/clis';
 import { spawn } from 'node:child_process';
 
@@ -59,7 +58,7 @@ const publishInputSchema = z.object({
   password: z.string().optional().describe('Registry password (overrides config.registryPassword)'),
 });
 
-export const reactorProjectPublish = defineCommand<typeof publishInputSchema, { text: string }, Config>({
+export const reactorProjectPublish = defineCommand({
   id: 'reactor-project-publish',
   description: `Build and publish a Reactor Package to the npm registry.
 

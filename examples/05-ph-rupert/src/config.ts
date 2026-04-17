@@ -67,4 +67,3 @@ export const secretsSchema = z.object({
   ...registrySecretsSchema.shape,
 });
 
-export type Config = z.infer<typeof configSchema> & z.infer<typeof secretsSchema>;

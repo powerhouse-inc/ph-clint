@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { defineService, checkWorkdir, checkCommand, checkPort } from 'ph-clint';
-import type { Config } from '../config.js';
+import { checkWorkdir, checkCommand, checkPort } from 'ph-clint';
+import { defineService } from '../framework.js';
 
 const reactorProjectParams = z.object({
   watch: z.boolean().default(true).describe('Enable file watching'),
@@ -10,7 +10,7 @@ const reactorProjectParams = z.object({
   switchboardPort: z.coerce.number().optional().describe('Vetra Switchboard port (overrides config)'),
 });
 
-export const reactorProject = defineService<Config>({
+export const reactorProject = defineService({
   id: 'reactor-project',
   name: 'Reactor Project',
   description: 'Vetra Studio server for reactor project development',
