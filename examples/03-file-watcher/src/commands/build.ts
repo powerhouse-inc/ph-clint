@@ -1,4 +1,4 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 
 export const build = defineCommand({
@@ -6,7 +6,7 @@ export const build = defineCommand({
   description: 'Run the build command',
   inputSchema: z.object({}),
   execute: async (_, { config, processes }) => {
-    const result = await processes!.run(config.buildCommand as string, {
+    const result = await processes!.run(config.buildCommand, {
       label: 'build',
       timeout: 60_000,
     });

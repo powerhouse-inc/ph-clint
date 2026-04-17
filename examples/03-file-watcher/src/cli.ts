@@ -1,14 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineCli } from 'ph-clint';
-import { z } from 'zod';
 import { build } from './commands/build.js';
 import { fileChangeTrigger } from './trigger.js';
-
-const configSchema = z.object({
-  watchDir: z.string().default('./src').describe('Directory to watch'),
-  buildCommand: z.string().default('npm run build').describe('Build command to execute'),
-});
+import { configSchema } from './framework.js';
 
 const cli = defineCli({
   name: 'watcher',

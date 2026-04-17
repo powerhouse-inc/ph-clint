@@ -1,4 +1,4 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import type { Task } from '../types.js';
 
@@ -19,7 +19,7 @@ export const add = defineCommand({
     const task: Task = {
       id: crypto.randomUUID(),
       title,
-      priority: priority ?? (config.defaultPriority as Task['priority']),
+      priority: priority ?? config.defaultPriority,
       due: due ?? null,
       done: false,
     };

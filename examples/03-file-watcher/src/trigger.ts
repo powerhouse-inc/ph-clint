@@ -1,4 +1,4 @@
-import { defineTrigger } from 'ph-clint';
+import { defineTrigger } from './framework.js';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
@@ -28,7 +28,7 @@ export const fileChangeTrigger = defineTrigger({
   },
   poll: async (context) => {
     const { watchDir } = context.context.config;
-    const current = await getLatestMtime(watchDir as string);
+    const current = await getLatestMtime(watchDir);
 
     if (current > (context.state.lastModified as number)) {
       context.state.lastModified = current;

@@ -1,18 +1,9 @@
 import { defineCli } from 'ph-clint';
-import { z } from 'zod';
+import { configSchema } from './framework.js';
 import { ascii } from './commands/ascii.js';
 import { saveImage } from './commands/save-image.js';
 import { listImages } from './commands/list-images.js';
 import { createAssistant } from './agents/assistant.js';
-
-// ── Config ────────────────────────────────────────────────────────
-// Resolved via 6-layer config: env vars (ASSIST_API_KEY, ASSIST_MODEL),
-// local/user config files, or schema defaults.
-
-const configSchema = z.object({
-  apiKey: z.string().optional().describe('Anthropic API key'),
-  model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model to use'),
-});
 
 // ── Agent instructions ────────────────────────────────────────────
 
