@@ -18,3 +18,5 @@ pnpm-lock.yaml
 .playwright-cli/
 
 /specs/powerhouse
+.claude/settings.local.json
+.eslintcache
