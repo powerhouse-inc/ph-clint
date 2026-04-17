@@ -37,8 +37,8 @@ const fileChangeTrigger = defineTrigger({
         type: 'command' as const,
         params: { commandId: 'build', args: {} },
         callbacks: {
-          onSuccess: () => context.emit('build:complete'),
-          onFailure: (err: Error) => context.emit('build:failed', err),
+          onSuccess: () => context.context.emit?.('build:complete'),
+          onFailure: (err: Error) => context.context.emit?.('build:failed', err),
         },
       };
     }
