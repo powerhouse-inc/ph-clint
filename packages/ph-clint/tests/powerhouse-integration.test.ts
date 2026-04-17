@@ -4,7 +4,7 @@ import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscription
 import { ensureDrive } from '../src/integrations/powerhouse/drive.js';
 import { buildDefaultReactor } from '../src/integrations/powerhouse/index.js';
 import { defineRegistry } from '../src/integrations/powerhouse/registry.js';
-import type { ReactorContext } from '../src/integrations/powerhouse/types.js';
+import type { ReactorContext, ReactorClientModule } from '../src/integrations/powerhouse/types.js';
 
 describe('connectServiceDefinition', () => {
   it('creates a service definition with correct id and name', () => {
@@ -187,80 +187,73 @@ describe('bridgeSubscriptions', () => {
 });
 
 describe('ensureDrive', () => {
-  it('returns existing drive ID when drives exist', async () => {
-    const mockModule = {
-      client: {},
-      reactor: {
-        findByType: async () => ({
-          results: [{ header: { id: 'existing-drive-id' } }],
-        }),
+  /** Helper to build a mock ReactorClientModule with only the methods ensureDrive uses. */
+  function mockModule(overrides: {
+    findByType?: ReactorClientModule['reactor']['findByType'];
+    createEmpty?: (...args: unknown[]) => Promise<{ header: { id: string } }>;
+    rename?: (id: string, name: string) => Promise<void>;
+  }): ReactorClientModule {
+    return {
+      client: {
+        createEmpty: overrides.createEmpty ?? (async () => ({ header: { id: 'fallback' } })),
+        rename: overrides.rename ?? (async () => {}),
       },
-    };
+      reactor: {
+        findByType: overrides.findByType ?? (async () => ({ results: [] })),
+        kill: () => ({ completed: Promise.resolve() }),
+      },
+    } as unknown as ReactorClientModule;
+  }
 
-    const driveId = await ensureDrive(mockModule);
+  it('returns existing drive ID when drives exist', async () => {
+    const mod = mockModule({
+      findByType: async () => ({
+        results: [{ header: { id: 'existing-drive-id' } }],
+      }),
+    });
+
+    const driveId = await ensureDrive(mod);
     expect(driveId).toBe('existing-drive-id');
   });
 
   it('creates a new drive when none exist', async () => {
-    const mockModule = {
-      client: {
-        createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
-        rename: async () => {},
-      },
-      reactor: {
-        findByType: async () => ({ results: [] }),
-      },
-    };
+    const mod = mockModule({
+      createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
+    });
 
-    const driveId = await ensureDrive(mockModule, { name: 'Test Drive' });
+    const driveId = await ensureDrive(mod, { name: 'Test Drive' });
     expect(driveId).toBe('new-drive-id');
   });
 
   it('renames drive with config name', async () => {
     let renamedWith: { id: string; name: string } | undefined;
-    const mockModule = {
-      client: {
-        createEmpty: async () => ({ header: { id: 'new-id' } }),
-        rename: async (id: string, name: string) => { renamedWith = { id, name }; },
-      },
-      reactor: {
-        findByType: async () => ({ results: [] }),
-      },
-    };
+    const mod = mockModule({
+      createEmpty: async () => ({ header: { id: 'new-id' } }),
+      rename: async (id: string, name: string) => { renamedWith = { id, name }; },
+    });
 
-    await ensureDrive(mockModule, { name: 'My Agent' });
+    await ensureDrive(mod, { name: 'My Agent' });
     expect(renamedWith?.id).toBe('new-id');
     expect(renamedWith?.name).toBe('My Agent');
   });
 
   it('uses default name when no config provided', async () => {
     let renamedWith: { id: string; name: string } | undefined;
-    const mockModule = {
-      client: {
-        createEmpty: async () => ({ header: { id: 'new-id' } }),
-        rename: async (id: string, name: string) => { renamedWith = { id, name }; },
-      },
-      reactor: {
-        findByType: async () => ({ results: [] }),
-      },
-    };
+    const mod = mockModule({
+      createEmpty: async () => ({ header: { id: 'new-id' } }),
+      rename: async (id: string, name: string) => { renamedWith = { id, name }; },
+    });
 
-    await ensureDrive(mockModule);
+    await ensureDrive(mod);
     expect(renamedWith?.name).toBe('default');
   });
 
   it('handles empty results from findByType', async () => {
-    const mockModule = {
-      client: {
-        createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
-        rename: async () => {},
-      },
-      reactor: {
-        findByType: async () => ({ results: [] }),
-      },
-    };
+    const mod = mockModule({
+      createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
+    });
 
-    const driveId = await ensureDrive(mockModule);
+    const driveId = await ensureDrive(mod);
     expect(driveId).toBe('new-drive-id');
   });
 });

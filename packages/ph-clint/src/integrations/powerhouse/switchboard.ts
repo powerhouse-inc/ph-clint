@@ -3,11 +3,11 @@
  * exposing GraphQL + MCP endpoints.
  */
 
-import type { SwitchboardInstance } from './types.js';
+import type { ReactorClientModule, SwitchboardInstance } from './types.js';
 
 export interface StartSwitchboardOptions {
   /** The ReactorClientModule from Phase 1. */
-  reactorModule: any;
+  reactorModule: ReactorClientModule;
   /** Hostname/IP to bind to. Default: 'localhost'. */
   host?: string;
   /** HTTP port for Switchboard. */
@@ -22,8 +22,15 @@ export interface StartSwitchboardOptions {
  * Dynamically import a module, wrapping the import() to prevent
  * TypeScript from resolving peer dependency types at compile time.
  */
-async function lazyImport(specifier: string): Promise<any> {
-  return import(/* webpackIgnore: true */ specifier);
+async function lazyImport<T = Record<string, unknown>>(
+  specifier: string,
+): Promise<T> {
+  return import(/* webpackIgnore: true */ specifier) as Promise<T>;
+}
+
+interface SwitchboardApi {
+  stop?: () => Promise<void>;
+  httpAdapter?: { httpServer?: { close(cb: () => void): void }; close?(cb: () => void): void };
 }
 
 /**
@@ -36,11 +43,17 @@ async function lazyImport(specifier: string): Promise<any> {
 export async function startSwitchboard(
   options: StartSwitchboardOptions,
 ): Promise<SwitchboardInstance> {
-  const reactorApi = await lazyImport('@powerhousedao/reactor-api');
+  const reactorApi = await lazyImport<{
+    initializeAndStartAPI: (
+      factory: (documentModels: unknown) => unknown,
+      opts: Record<string, unknown>,
+      mode: string,
+    ) => Promise<SwitchboardApi>;
+  }>('@powerhousedao/reactor-api');
   const { initializeAndStartAPI } = reactorApi;
 
   const api = await initializeAndStartAPI(
-    async (_documentModels: any) => options.reactorModule,
+    async (_documentModels: unknown) => options.reactorModule,
     {
       port: options.port,
       dbPath: options.dbPath,
@@ -63,10 +76,13 @@ export async function startSwitchboard(
       try {
         if (api && typeof api.stop === 'function') {
           await api.stop();
-        } else if (api && api.httpAdapter) {
-          const server = api.httpAdapter?.httpServer ?? api.httpAdapter;
-          if (typeof server.close === 'function') {
-            await new Promise<void>((resolve) => server.close(() => resolve()));
+        } else if (api?.httpAdapter) {
+          const server = api.httpAdapter.httpServer ?? api.httpAdapter;
+          if (server) {
+            const closeFn = 'close' in server ? server.close : undefined;
+            if (typeof closeFn === 'function') {
+              await new Promise<void>((resolve) => closeFn(() => resolve()));
+            }
           }
         }
       } catch {

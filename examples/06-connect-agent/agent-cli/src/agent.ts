@@ -7,6 +7,8 @@
 
 import type { AgentSetupContext, AgentProvider, StreamChunk, AgentStreamOptions, ReactorContext } from 'ph-clint';
 import type { Config } from './config.js';
+import type { Registry } from './framework.js';
+import type { AgentChatAction } from 'agent-app/document-models/agent-chat';
 import * as agentChatCreators from 'agent-app/document-models/agent-chat';
 import { writeStreamToDocument, writeUserMessage } from './bridge.js';
 import type { DocumentDispatcher } from './bridge.js';
@@ -70,7 +72,8 @@ function createDocumentBridgedProvider(
   return {
     id: inner.id,
     async *stream(prompt: string, opts?: AgentStreamOptions): AsyncGenerator<StreamChunk> {
-      const reactor = await ctx.context.reactor?.();
+      // AgentSetupContext doesn't carry the registry generic; cast once at the boundary.
+      const reactor = await ctx.context.reactor?.() as ReactorContext<Registry> | undefined;
       if (!reactor) {
         yield* inner.stream(prompt, opts);
         return;
@@ -116,12 +119,12 @@ function createDemoAgent(): AgentProvider {
 let chatDocumentId: string | undefined;
 
 async function ensureChatDocument(
-  reactor: ReactorContext,
+  reactor: ReactorContext<Registry>,
   ctx: AgentSetupContext<Config>,
 ): Promise<string> {
   if (chatDocumentId) return chatDocumentId;
 
-  const docs = await findChatDocuments(reactor.client, reactor.driveId);
+  const docs = await findChatDocuments(reactor);
   if (docs.length > 0) {
     chatDocumentId = docs[0];
     return chatDocumentId!;
@@ -142,16 +145,16 @@ async function ensureChatDocument(
 
 /** Ensure a participant exists in the document's collection before dispatching. */
 export async function ensureParticipant(
-  reactor: ReactorContext<any>,
+  reactor: ReactorContext<Registry>,
   documentId: string,
   collection: 'stakeholders' | 'agents',
   id: string,
-  action: any,
+  action: AgentChatAction,
 ): Promise<void> {
   try {
     const doc = await reactor.client.get(documentId);
-    const state = (doc as any)?.state?.global ?? (doc as any)?.state;
-    if (state?.[collection]?.some?.((p: any) => p.id === id)) return;
+    const state = doc.state.global;
+    if (state[collection]?.some((p) => p.id === id)) return;
     await reactor.client.execute(documentId, 'main', [action]);
   } catch (err) {
     console.warn(`[agent] Failed to ensure ${collection} entry "${id}":`, err);
@@ -159,21 +162,23 @@ export async function ensureParticipant(
 }
 
 /** Find all agent-chat document IDs in a drive. */
-export async function findChatDocuments(client: any, driveId: string): Promise<string[]> {
+export async function findChatDocuments(
+  reactor: ReactorContext<Registry>,
+): Promise<string[]> {
   try {
-    const children = await client.getChildren(driveId);
+    const children = await reactor.client.getChildren(reactor.driveId);
     return (children?.results ?? [])
-      .filter((d: any) => d.header?.documentType === 'powerhouse/agent-chat')
-      .map((d: any) => d.header.id);
+      .filter((d) => d.header?.documentType === 'powerhouse/agent-chat')
+      .map((d) => d.header.id);
   } catch {
     return [];
   }
 }
 
 /** Create a DocumentDispatcher that dispatches actions via the reactor client. */
-export function createDispatcher(reactor: ReactorContext<any>): DocumentDispatcher {
+export function createDispatcher(reactor: ReactorContext<Registry>): DocumentDispatcher {
   return {
-    async addAction(documentId: string, action: any): Promise<void> {
+    async addAction(documentId: string, action: AgentChatAction): Promise<void> {
       await reactor.client.execute(documentId, 'main', [action]);
     },
   };

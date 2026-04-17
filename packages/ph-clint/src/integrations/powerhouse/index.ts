@@ -24,6 +24,7 @@ export type {
   RegistryEntry,
   TypedReactorClient,
   TypedDocumentChangeEvent,
+  ReactorClientModule,
 } from './types.js';
 
 export type { InferRegistry, ActionOf } from './registry.js';

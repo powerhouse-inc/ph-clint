@@ -6,13 +6,14 @@
  */
 
 import type { StreamChunk } from 'ph-clint';
+import type { AgentChatAction } from 'agent-app/document-models/agent-chat';
 import { sendText } from 'agent-app/document-models/agent-chat';
 
 // ── Types ──────────────────────────────────────────────────────────
 
 /** Abstraction over the Reactor client for dispatching actions to a document. */
 export interface DocumentDispatcher {
-  addAction(documentId: string, action: any): Promise<void>;
+  addAction(documentId: string, action: AgentChatAction): Promise<void>;
 }
 
 export interface BridgeOptions {

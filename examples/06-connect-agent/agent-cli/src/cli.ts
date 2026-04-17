@@ -39,7 +39,7 @@ const documentChangeTrigger = createDocumentChangeTrigger<'powerhouse/agent-chat
   documentId: async (ctx) => {
     const reactor = await ctx.reactor();
     if (!reactor) return undefined;
-    const docIds = await findChatDocuments(reactor.client, reactor.driveId);
+    const docIds = await findChatDocuments(reactor);
     return docIds[0];
   },
   async onChange(_doc, ctx): Promise<WorkItem | null> {
@@ -55,19 +55,19 @@ const documentChangeTrigger = createDocumentChangeTrigger<'powerhouse/agent-chat
           const agent = await ctx.agent();
           if (!reactor || !agent) return;
 
-          const docIds = await findChatDocuments(reactor.client, reactor.driveId);
+          const docIds = await findChatDocuments(reactor);
           if (docIds.length === 0) return;
 
           for (const docId of docIds) {
-            const doc = await reactor.client.get<'powerhouse/agent-chat'>(docId);
-            const state = (doc as any)?.state?.global ?? (doc as any)?.state;
-            if (!state?.messages?.length) continue;
+            const doc = await reactor.client.get(docId);
+            const state = doc.state.global;
+            if (!state.messages?.length) continue;
 
             const lastMsg = state.messages[state.messages.length - 1];
 
             // Only respond if last message is from a stakeholder (not the agent)
             const agentIds = new Set(
-              (state.agents ?? []).map((a: any) => a.id),
+              (state.agents ?? []).map((a) => a.id),
             );
             if (agentIds.has(lastMsg.sender)) continue;
 

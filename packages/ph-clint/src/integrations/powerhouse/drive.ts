@@ -2,7 +2,7 @@
  * Drive management — find or create the default drive on startup.
  */
 
-import type { DriveConfig } from './types.js';
+import type { DriveConfig, ReactorClientModule } from './types.js';
 
 /**
  * Ensure a drive exists. On first run, creates a new drive.
@@ -17,14 +17,14 @@ import type { DriveConfig } from './types.js';
  * @returns The drive ID
  */
 export async function ensureDrive(
-  reactorModule: any,
+  reactorModule: ReactorClientModule,
   driveConfig?: DriveConfig,
 ): Promise<string> {
   const { client, reactor } = reactorModule;
 
   // Find existing document-drive documents
   const existing = await reactor.findByType('powerhouse/document-drive');
-  if (existing?.results?.length > 0) {
+  if (existing?.results?.length && existing.results.length > 0) {
     return existing.results[0].header.id;
   }
 
