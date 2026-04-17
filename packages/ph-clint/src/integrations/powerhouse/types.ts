@@ -201,6 +201,28 @@ export interface TypedDocumentChangeEvent<
   documents: Array<R[T]['document']>;
 }
 
+// ── Reactor client module ────────────────────────────────────────
+
+/**
+ * Structural type for the ReactorClientModule returned by
+ * @powerhousedao/reactor's ReactorClientBuilder.buildModule().
+ *
+ * Used as the boundary type between buildReactor() and its consumers
+ * (ensureDrive, startSwitchboard, buildDefaultReactor). The actual module
+ * has additional properties; this captures the subset ph-clint uses.
+ *
+ * Imported via `import type` — zero runtime coupling.
+ */
+export interface ReactorClientModule {
+  client: IReactorClient;
+  reactor: {
+    kill(): { completed: Promise<void> };
+    findByType(
+      documentType: string,
+    ): Promise<{ results?: Array<{ header: { id: string } }> } | undefined>;
+  };
+}
+
 // ── Reactor context ───────────────────────────────────────────────
 
 /**
@@ -220,8 +242,8 @@ export interface ReactorContext<R extends DocumentRegistry = AnyRegistry> {
   mcpUrl?: string;
   /** Phase 3: Connect web UI URL (e.g. http://localhost:3000). */
   connectUrl?: string;
-  /** Internal: the ReactorClientModule, passed to startSwitchboard(). Opaque at the public type level. */
-  _module?: unknown;
+  /** Internal: the ReactorClientModule, passed to startSwitchboard(). */
+  _module?: ReactorClientModule;
   /** Teardown — called by the framework on CLI exit. */
   shutdown(): Promise<void>;
 }

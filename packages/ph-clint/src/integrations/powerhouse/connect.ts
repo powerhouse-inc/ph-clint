@@ -27,7 +27,7 @@ export function connectServiceDefinition(
       const driveUrl = (params?.driveUrl as string) ?? '';
       return `ph connect --port ${p} --default-drives-url ${driveUrl}`;
     },
-    env: (_config: any, params?: Record<string, unknown>) => ({
+    env: (_config: Record<string, unknown>, params?: Record<string, unknown>) => ({
       PH_CONNECT_DEFAULT_DRIVES_URL: (params?.driveUrl as string) ?? '',
       PH_CONNECT_DRIVES_PRESERVE_STRATEGY: 'preserve-all',
     }),

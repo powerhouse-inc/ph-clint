@@ -51,6 +51,7 @@ export type {
   RegistryEntry,
   TypedReactorClient,
   TypedDocumentChangeEvent,
+  ReactorClientModule,
 } from './integrations/powerhouse/types.js';
 export type { InferRegistry, ActionOf } from './integrations/powerhouse/registry.js';
 export type { FieldInfo } from './core/schema.js';
