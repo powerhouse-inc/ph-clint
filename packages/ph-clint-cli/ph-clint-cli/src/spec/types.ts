@@ -59,6 +59,15 @@ export const clintProjectSpecSchema = z.object({
       mastra: DEFAULT_MASTRA,
       routine: DEFAULT_ROUTINE,
     }),
+  /**
+   * Document types registered with this CLI — full documentType ID strings
+   * (e.g. `powerhouse/ph-clint-project`). Drives codegen of `src/framework.gen.ts`,
+   * which emits a typed `defineRegistry([...] as const)` call so impl code
+   * gets narrowed `reactor.client.get(id, 'my-type')` access. Empty on
+   * fresh projects — populated as document models are added to the reactor
+   * package.
+   */
+  documentTypes: z.array(z.string()).default([]),
 });
 
 export type ClintProjectSpec = z.infer<typeof clintProjectSpecSchema>;
@@ -87,4 +96,31 @@ export function getCliFolderName(spec: ClintProjectSpec): string {
  */
 export function getAppFolderName(spec: ClintProjectSpec): string {
   return `${spec.name}-app`;
+}
+
+/**
+ * Folder slug for a documentType ID. The slug is the portion after the last
+ * `/` (e.g. `powerhouse/ph-clint-project` → `ph-clint-project`). Matches the
+ * convention used by Powerhouse's reactor-package codegen — each document
+ * model lives at `document-models/<slug>/`.
+ */
+export function getDocumentTypeSlug(documentType: string): string {
+  const lastSlash = documentType.lastIndexOf('/');
+  return lastSlash >= 0 ? documentType.slice(lastSlash + 1) : documentType;
+}
+
+/**
+ * PascalCase export name for a documentType ID. Powerhouse's module
+ * generator exports each module as `PascalCase(<slug>)` (e.g.
+ * `powerhouse/ph-clint-project` → `PhClintProject`). The top-level reactor
+ * package re-exports these names, so this helper gives codegen the string
+ * it needs both for the import and the `defineRegistry` entry.
+ */
+export function getDocumentTypeModuleName(documentType: string): string {
+  const slug = getDocumentTypeSlug(documentType);
+  return slug
+    .split(/[-_]/)
+    .filter((s) => s.length > 0)
+    .map((s) => s[0].toUpperCase() + s.slice(1))
+    .join('');
 }

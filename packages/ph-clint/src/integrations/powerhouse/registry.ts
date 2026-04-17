@@ -44,7 +44,7 @@ export type ActionOf<M> =
  * collapses to `string` (no autocomplete for documentTypes lists).
  */
 export type InferRegistry<
-  T extends ReadonlyArray<DocumentModelModule<PHBaseState>>,
+  T extends ReadonlyArray<DocumentModelModule<any>>,
 > = {
   [M in T[number] as Extract<
     M['documentModel']['global']['id'],
@@ -71,9 +71,9 @@ export type InferRegistry<
  * `createDocumentChangeTrigger` also uses it for runtime lookup.
  */
 export function defineRegistry<
-  const T extends ReadonlyArray<DocumentModelModule<PHBaseState>>,
+  const T extends ReadonlyArray<DocumentModelModule<any>>,
 >(modules: T): InferRegistry<T> {
-  const out: Record<string, DocumentModelModule<PHBaseState>> = {};
+  const out: Record<string, DocumentModelModule<any>> = {};
   for (const mod of modules) {
     out[mod.documentModel.global.id] = mod;
   }
