@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { defineService, checkWorkdir, checkPort } from 'ph-clint';
-import type { Config } from '../config.js';
+import { checkWorkdir, checkPort } from 'ph-clint';
+import { defineService } from '../framework.js';
 
 const fusionProjectParams = z.object({
   fusionPort: z.coerce.number().default(8000).describe('Next.js dev server port'),
@@ -12,7 +12,7 @@ const fusionProjectParams = z.object({
     .describe('Switchboard backend URL'),
 });
 
-export const fusionProject = defineService<Config>({
+export const fusionProject = defineService({
   id: 'fusion-project',
   name: 'Fusion Dev Server',
   command: (params) => `pnpm dev -p ${params?.fusionPort ?? 8000}`,

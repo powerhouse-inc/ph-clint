@@ -1,4 +1,4 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -42,11 +42,7 @@ const inputSchema = z.object({
     ),
 });
 
-interface Config {
-  phVersion?: string;
-}
-
-export const reactorProjectInit = defineCommand<typeof inputSchema, { text: string }, Config>({
+export const reactorProjectInit = defineCommand({
   id: 'reactor-project-init',
   description: 'Initialize a new Reactor package project',
   inputSchema,

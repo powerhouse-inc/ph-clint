@@ -13,7 +13,8 @@ import { getMastraPaths } from 'ph-clint/mastra';
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';
-import { CLI_NAME, PROJECT_ROOT, configSchema, secretsSchema, type Config } from '../config.js';
+import { CLI_NAME, PROJECT_ROOT } from '../config.js';
+import { configSchema, secretsSchema, type Config } from '../framework.js';
 import { cli } from '../cli.js';
 import { createAgentRupert } from '../agents/agent-rupert.js';
 

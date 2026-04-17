@@ -41,4 +41,3 @@ export const secretsSchema = z.object({
     .describe("JSON-encoded JWK keypair (overrides keyPath and env var)"),
 });
 
-export type Config = z.infer<typeof configSchema> & z.infer<typeof secretsSchema>;

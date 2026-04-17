@@ -1,4 +1,4 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { DEFAULT_REGISTRY_URL} from '@powerhousedao/shared/clis';
 import { checkNpmAuth, npmPublish, resolveRegistryUrl } from '@powerhousedao/shared/registry';
@@ -16,7 +16,7 @@ const publishInputSchema = z.object({
   log: z.boolean().optional().describe('Whether to log output to the console. Defaults to false.'),
 });
 
-export const reactorProjectPublish = defineCommand<typeof publishInputSchema, { text: string }>({
+export const reactorProjectPublish = defineCommand({
   id: 'reactor-project-publish',
   description: `Build and publish a Reactor Package to the npm registry.
 

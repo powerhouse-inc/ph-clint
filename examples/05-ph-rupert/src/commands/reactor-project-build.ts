@@ -1,4 +1,4 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -47,7 +47,7 @@ const inputSchema = z.object({
   log: z.boolean().optional().describe('Whether to log build output to the console. Defaults to false.'),
 });
 
-export const reactorProjectBuild = defineCommand<typeof inputSchema, { text: string }>({
+export const reactorProjectBuild = defineCommand({
   id: 'reactor-project-build',
   description: 'Build a Reactor package project (runs ph build)',
   inputSchema,

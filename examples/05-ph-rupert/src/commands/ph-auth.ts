@@ -1,7 +1,7 @@
-import { defineCommand } from 'ph-clint';
 import { z } from 'zod';
 import type { AuthStatusResult } from '@renown/sdk/node';
-import type { Config } from '../config.js';
+import { defineCommand } from '../framework.js';
+import type { Config } from '../framework.js';
 
 
 async function buildRenown(config: Config) {
@@ -42,7 +42,7 @@ const loginInputSchema = z.object({
   showDid: z.boolean().optional().describe("Display the CLI's DID."),
 });
 
-export const phLogin = defineCommand<typeof loginInputSchema, { text: string }, Config>({
+export const phLogin = defineCommand({
   id: 'login',
   description: `Authenticate with Renown using your Ethereum wallet. This enables
 the CLI to act on behalf of your Ethereum identity for authenticated operations.
@@ -104,7 +104,7 @@ This command:
 
 const logoutInputSchema = z.object({});
 
-export const phLogout = defineCommand<typeof logoutInputSchema, { text: string }, Config>({
+export const phLogout = defineCommand({
   id: 'logout',
   description: 'Sign out and remove the existing session created with the login command.',
   inputSchema: logoutInputSchema,
@@ -130,7 +130,7 @@ const accessTokenInputSchema = z.object({
   audience: z.string().optional().describe('Audience claim (aud) for the token.'),
 });
 
-export const phAccessToken = defineCommand<typeof accessTokenInputSchema, { text: string }, Config>({
+export const phAccessToken = defineCommand({
   id: 'access-token',
   description: `Generate a bearer token for API authentication. The token can be used to
 authenticate requests to Powerhouse APIs like reactor-api (Switchboard).
