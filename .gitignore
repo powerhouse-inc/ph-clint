@@ -7,10 +7,10 @@ pnpm-lock.yaml
 .env*
 !.env.example
 
-/.claude/settings.local.json
+**/.claude/settings.local.json
+.eslintcache
 /.agents
 
-/prototypes/agent-rupert-cli/.claude/settings.local.json
 /specs/enterprise
 /specs/ph-mara
 

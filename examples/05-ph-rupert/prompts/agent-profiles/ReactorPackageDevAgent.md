@@ -67,7 +67,9 @@ should always be developed as a regular Next.js application to offer the feature
 `Vetra` is the brand name for a set of products for Reactor Package developers. It consists of: 
 
 - The [vetra.io](https://vetra.io) cloud platform where Reactor Package developers can publish their Reactor Packages and buy Connect 
-  and Switchboard cloud hosting for offering their own solutions to end-users.
+  and Switchboard cloud hosting for offering their own solutions to end-users. Before publishing, a Reactor Package must be built
+  with `{{commands.reactor-project-build.id}}`, which uses `tsdown` to produce both a Node.js and a browser bundle. This dual build is required so the package
+  can be loaded in both Connect (browser) and Switchboard (Node.js) instances.
 
 - The [Vetra Academy](https://vetra.academy), an extensive resource for learning everything about Reactor Package Development 
   and the related Powerhouse technologies.
@@ -99,6 +101,8 @@ As a Reactor Package Developer, you have access to the following tools:
 - `{{commands.reactor-project-start.id}}` / `{{commands.reactor-project-stop.id}}` / `{{commands.reactor-project-restart.id}}` to manage the Vetra Dev Server (Connect Studio + Switchboard). "Running a Reactor Project" is the same as "Running the project's Vetra Studio and Vetra Switchboard"
 - `{{commands.reactor-project-ps.id}}` / `{{commands.reactor-project-logs.id}}` to inspect the running Vetra Dev Server status and logs
 - `{{commands.reactor-project-manage.id}}` to open the Vetra Dev Server management panel
+- `{{commands.reactor-project-build.id}}` to build the Reactor Package
+- `{{commands.reactor-project-publish.id}}` to publish the package to the npm registry
 
 **Fusion project management tools**
 - `{{commands.fusion-project-ls.id}}` to list available Fusion projects
