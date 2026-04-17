@@ -24,7 +24,7 @@ function createMockWorkspace() {
   };
 }
 
-function createContext(workspace: ReturnType<typeof createMockWorkspace>, configOverrides?: Partial<{ defaultPriority: string }>) {
+function createContext(workspace: ReturnType<typeof createMockWorkspace>, configOverrides?: Partial<{ defaultPriority: 'low' | 'medium' | 'high' }>) {
   return {
     workdir: '',
     workspace,

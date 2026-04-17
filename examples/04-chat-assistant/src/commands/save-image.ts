@@ -1,4 +1,4 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, basename } from 'path';
