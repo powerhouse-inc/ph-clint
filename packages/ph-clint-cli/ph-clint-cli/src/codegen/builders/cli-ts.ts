@@ -24,9 +24,8 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   } else {
     lines.push(`import { defineCli } from 'ph-clint';`);
   }
-  lines.push(
-    `import { CLI_NAME, CLI_VERSION, configSchema, secretsSchema } from './config.js';`,
-  );
+  lines.push(`import { CLI_NAME, CLI_VERSION } from './config.js';`);
+  lines.push(`import { configSchema, secretsSchema } from './framework.js';`);
   lines.push('');
 
   lines.push('// @clint:begin imports');

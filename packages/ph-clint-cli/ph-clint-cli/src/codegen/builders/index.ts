@@ -17,6 +17,8 @@ import { buildMastraIndexTs } from './mastra-index-ts.js';
 import { buildBuildSkillsScript } from './build-skills-ts.js';
 import { buildAgentBaseMd } from './agent-base-md.js';
 import { buildAgentTs } from './agent-ts.js';
+import { buildFrameworkGenTs } from './framework-gen-ts.js';
+import { buildFrameworkTs } from './framework-ts.js';
 import { type ClintProjectSpec } from '../../spec/types.js';
 
 /**
@@ -27,6 +29,13 @@ export interface FileBuilder {
   /** Path relative to the CLI root (flat or `{name}-cli/`). */
   relativePath: string;
   build(spec: ClintProjectSpec): string | null;
+  /**
+   * When true, this file is only emitted on `mode: 'create'`. In `update`
+   * mode the planner ignores the builder entirely, leaving any on-disk
+   * version untouched regardless of hash state. Used for files that carry
+   * user-owned hand edits (e.g. `src/framework.ts`'s `configSchema`).
+   */
+  initOnly?: boolean;
 }
 
 export const CLI_FILE_BUILDERS: FileBuilder[] = [
@@ -38,6 +47,10 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
   { relativePath: 'src/main.ts', build: () => buildMainTs() },
   { relativePath: 'src/cli.ts', build: buildCliTs },
   { relativePath: 'src/config.ts', build: buildConfigTs },
+  // User-owned; init-only. Holds `configSchema` + `secretsSchema` edits.
+  { relativePath: 'src/framework.ts', build: buildFrameworkTs, initOnly: true },
+  // Machine-owned; regenerated on every run. Null when no document types.
+  { relativePath: 'src/framework.gen.ts', build: buildFrameworkGenTs },
   { relativePath: 'src/mastra/index.ts', build: buildMastraIndexTs },
   { relativePath: 'scripts/build-skills.ts', build: () => buildBuildSkillsScript() },
   { relativePath: 'prompts/agent-profiles/AgentBase.md', build: buildAgentBaseMd },
@@ -74,6 +87,9 @@ export {
   buildBuildSkillsScript,
   buildAgentBaseMd,
   buildAgentTs,
+  buildFrameworkGenTs,
+  buildFrameworkTs,
 };
 export { buildRootPackageJson } from './root-package-json.js';
 export { buildReadme } from './readme-md.js';
+export { buildAppIndexTs } from './app-index-ts.js';

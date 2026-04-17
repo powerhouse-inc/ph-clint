@@ -11,7 +11,7 @@ export function buildAgentTs(spec: ClintProjectSpec): string {
   const id = spec.name;
   return [
     "import type { AgentProvider, AgentSetupContext, StreamChunk } from 'ph-clint';",
-    "import type { Config } from '../config.js';",
+    "import type { Config } from '../framework.js';",
     '',
     '/**',
     ' * Demo agent — deterministic echo responses. Replace with a real Mastra',

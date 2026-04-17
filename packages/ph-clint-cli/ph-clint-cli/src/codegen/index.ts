@@ -53,6 +53,7 @@ import {
   CLI_FILE_BUILDERS,
   buildReadme,
   buildRootPackageJson,
+  buildAppIndexTs,
 } from './builders/index.js';
 
 export type GenerateMode = 'create' | 'update' | 'auto';
@@ -98,6 +99,12 @@ type PlannedFile = {
   relativePath: string;
   absolutePath: string;
   content: string;
+  /**
+   * True when the builder is marked `initOnly`. Planner emits these only on
+   * `create`; `update` mode skips them so user edits to e.g. `configSchema`
+   * survive regens.
+   */
+  initOnly?: boolean;
 };
 
 /**
@@ -165,6 +172,7 @@ function planFiles(
       relativePath: path.relative(targetDir, abs),
       absolutePath: abs,
       content,
+      initOnly: builder.initOnly,
     });
   }
 
@@ -196,6 +204,17 @@ function planFiles(
       absolutePath: appReadme,
       content: buildAppReadmeContent(spec),
     });
+    // Top-level barrel for the reactor package — lets impl code import from
+    // `{name}-app` instead of drilling into `document-models/<slug>/v1/gen`.
+    const appIndex = buildAppIndexTs(spec);
+    if (appIndex !== null) {
+      const appIndexAbs = path.join(appDir, 'index.ts');
+      planned.push({
+        relativePath: path.relative(targetDir, appIndexAbs),
+        absolutePath: appIndexAbs,
+        content: appIndex,
+      });
+    }
   }
 
   return { planned, cliDir, appDir };
@@ -279,6 +298,16 @@ async function runUpdate(
 
   // Step 1: write / patch / skip each planned file.
   for (const p of planned) {
+    if (p.initOnly) {
+      // User-owned files (e.g. `src/framework.ts` with its `configSchema`)
+      // are emitted only on create. In update mode we never overwrite them
+      // and never re-create them if missing — the user may have deliberately
+      // deleted or inlined them. Keep whatever hash the previous run stored
+      // so the deletion pass (step 2) still considers them "ours".
+      const stored = previous[p.relativePath];
+      if (stored !== undefined) next[p.relativePath] = stored;
+      continue;
+    }
     const existing = await hashFile(p.absolutePath);
     if (existing === null) {
       // Not yet on disk — fresh write.

@@ -9,7 +9,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineCli, buildDefaultReactor } from 'ph-clint';
-import { CLI_NAME, CLI_VERSION, configSchema, secretsSchema } from './config.js';
+import { CLI_NAME, CLI_VERSION } from './config.js';
+import { configSchema, secretsSchema } from './framework.js';
 
 // @clint:begin imports
 import { documentModels } from 'ph-clint-app';

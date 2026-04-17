@@ -1,5 +1,5 @@
 import type { AgentProvider, AgentSetupContext, StreamChunk } from 'ph-clint';
-import type { Config } from '../config.js';
+import type { Config } from '../framework.js';
 
 export const AGENT_ID = 'clint';
 
