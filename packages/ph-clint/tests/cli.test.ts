@@ -1617,7 +1617,7 @@ describe('defineCli', () => {
     });
   });
 
-  describe('--no-routine flag', () => {
+  describe('interaction modes and keep-alive', () => {
     function capture() {
       const output: string[] = [];
       const errors: string[] = [];
@@ -1665,7 +1665,7 @@ describe('defineCli', () => {
       );
     });
 
-    it('--no-routine without -i falls to help (Path 3)', async () => {
+    it('--no-routine without -i and no other keep-alive falls to help', async () => {
       const cli = defineCli({
         name: 'nr-help',
         version: '0.0.1',
@@ -1681,14 +1681,14 @@ describe('defineCli', () => {
       const cap = capture();
       await cli.run(['node', 'test', '--no-routine'], cap.options);
 
-      // Should show help instead of entering Path 2
+      // Should show help instead of entering startup sequence
       expect(cap.output.join('\n')).toContain('nr-help');
       expect(cap.output).not.toEqual(
         expect.arrayContaining([expect.stringContaining('Routine running')]),
       );
     });
 
-    it('EOF with active routine keeps process alive (blocks on signal)', async () => {
+    it('EOF with active routine keeps process alive (keep-alive blocks on signal)', async () => {
       let routinePolled = false;
       const cli = defineCli({
         name: 'eof-alive',
@@ -1751,6 +1751,167 @@ describe('defineCli', () => {
       expect(cap.exitCode).toBe(0);
       expect(cap.output).not.toEqual(
         expect.arrayContaining([expect.stringContaining('Stdin closed')]),
+      );
+    });
+
+    it('--no-switchboard suppresses switchboard start during startup sequence', async () => {
+      let reactorCreated = false;
+      const cli = defineCli({
+        name: 'ns-test',
+        version: '0.0.1',
+        description: 'No-switchboard test',
+        commands: [echo],
+        interactive: { welcome: 'Welcome' },
+      });
+      cli.configureReactor({
+        create: async () => {
+          reactorCreated = true;
+          return {
+            client: {} as any,
+            driveId: 'test',
+            shutdown: async () => {},
+          };
+        },
+        switchboard: { enabled: true, port: 19991, preflight: false },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-i', '-S'], {
+        ...cap.options,
+        interactiveInput: (async function* () {
+          yield '/exit';
+        })(),
+      });
+
+      // Reactor should still start (we didn't suppress it)
+      expect(reactorCreated).toBe(true);
+      expect(cap.output).toEqual(
+        expect.arrayContaining([expect.stringContaining('Reactor ready')]),
+      );
+      // Switchboard should NOT start (suppressed by -S)
+      expect(cap.output).not.toEqual(
+        expect.arrayContaining([expect.stringContaining('Switchboard ready')]),
+      );
+    });
+
+    it('--no-switchboard without -i and without routine falls to help', async () => {
+      const cli = defineCli({
+        name: 'ns-help',
+        version: '0.0.1',
+        description: 'No-switchboard help test',
+        commands: [echo],
+      });
+      cli.configureReactor({
+        create: async () => ({
+          client: {} as any,
+          driveId: 'test',
+          shutdown: async () => {},
+        }),
+        switchboard: { enabled: true, port: 19992, preflight: false },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '--no-switchboard'], cap.options);
+
+      // Switchboard was the only keep-alive — suppressing it should show help
+      expect(cap.output.join('\n')).toContain('ns-help');
+      expect(cap.output).not.toEqual(
+        expect.arrayContaining([expect.stringContaining('Reactor ready')]),
+      );
+    });
+
+    it('headless mode with switchboard stays alive (blocks on signal)', async () => {
+      const cli = defineCli({
+        name: 'hl-sb',
+        version: '0.0.1',
+        description: 'Headless switchboard test',
+        commands: [echo],
+      });
+      // Reactor without _module — switchboard step is skipped at runtime,
+      // but effectiveSwitchboard is still true (computed from config alone),
+      // so the keep-alive condition activates.
+      cli.configureReactor({
+        create: async () => ({
+          client: {} as any,
+          driveId: 'test',
+          shutdown: async () => {},
+        }),
+        switchboard: { enabled: true, port: 19993, preflight: false },
+      });
+
+      const cap = capture();
+      const runPromise = cli.run(['node', 'test'], cap.options);
+
+      // Give the startup sequence time to run
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Process should still be alive — startup sequence ran, then blocking on signals
+      expect(cap.output).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Reactor ready'),
+          expect.stringContaining('Serving'),
+        ]),
+      );
+
+      // Clean up: send SIGINT to unblock
+      process.emit('SIGINT' as any);
+      await runPromise;
+    });
+
+    it('headless mode with switchboard + --no-switchboard shows help', async () => {
+      const cli = defineCli({
+        name: 'hl-nosb',
+        version: '0.0.1',
+        description: 'Headless no-switchboard test',
+        commands: [echo],
+      });
+      cli.configureReactor({
+        create: async () => ({
+          client: {} as any,
+          driveId: 'test',
+          shutdown: async () => {},
+        }),
+        switchboard: { enabled: true, port: 19994, preflight: false },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-S'], cap.options);
+
+      // No keep-alive, no -i → should show help
+      expect(cap.output.join('\n')).toContain('hl-nosb');
+      expect(cap.output).not.toEqual(
+        expect.arrayContaining([expect.stringContaining('Reactor ready')]),
+      );
+    });
+
+    it('suppressing both routine and switchboard (-R -S) falls to help', async () => {
+      const cli = defineCli({
+        name: 'both-sup',
+        version: '0.0.1',
+        description: 'Both suppressed test',
+        commands: [echo],
+        triggers: [{
+          id: 'watcher',
+          type: 'condition',
+          poll: async () => null,
+        }],
+      });
+      cli.configureReactor({
+        create: async () => ({
+          client: {} as any,
+          driveId: 'test',
+          shutdown: async () => {},
+        }),
+        switchboard: { enabled: true, port: 19995, preflight: false },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-R', '-S'], cap.options);
+
+      // Both keep-alive reasons suppressed → show help
+      expect(cap.output.join('\n')).toContain('both-sup');
+      expect(cap.output).not.toEqual(
+        expect.arrayContaining([expect.stringContaining('Routine running')]),
       );
     });
   });

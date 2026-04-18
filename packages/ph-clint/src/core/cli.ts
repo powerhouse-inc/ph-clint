@@ -572,6 +572,10 @@ export function defineCli<
       program.option('-R, --no-routine', 'Skip routine activation');
     }
 
+    if (reactorConfig?.switchboard?.enabled) {
+      program.option('-S, --no-switchboard', 'Skip switchboard activation');
+    }
+
     program.option('--verbose', 'Enable debug-level logging');
     program.option('--meta', 'Output CLI metadata as JSON');
 
@@ -763,6 +767,7 @@ export function defineCli<
     let verboseFlag = false;
     let metaFlag = false;
     let noRoutineFlag = false;
+    let noSwitchboardFlag = false;
     const frameworkFlags = new Set(['--resume', '--workdir', '-w', '--config', '-c']);
     for (let i = 0; i < preCommandArgs.length; i++) {
       const arg = preCommandArgs[i]!;
@@ -774,6 +779,8 @@ export function defineCli<
         metaFlag = true;
       } else if (arg === '-R' || arg === '--no-routine') {
         noRoutineFlag = true;
+      } else if (arg === '-S' || arg === '--no-switchboard') {
+        noSwitchboardFlag = true;
       } else if (frameworkFlags.has(arg) && i + 1 < preCommandArgs.length) {
         const value = preCommandArgs[i + 1]!;
         if (arg === '--workdir' || arg === '-w') workdirFlag = value;
@@ -970,8 +977,8 @@ export function defineCli<
           output(`Reactor ready (drive: ${cachedReactor!.driveId})`);
         }
 
-        // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor)
-        if (reactorConfig?.switchboard?.enabled && cachedReactor?._module) {
+        // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor) — skipped when --no-switchboard
+        if (reactorConfig?.switchboard?.enabled && !noSwitchboardFlag && cachedReactor?._module) {
           log.debug('Starting Switchboard...');
           await startSwitchboardLayer();
           const sb = switchboardInstance!;
@@ -1116,14 +1123,25 @@ export function defineCli<
     }
 
     // ── Dispatch ─────────────────────────────────────────────────────
-    // Path 1: no -i AND (subcommand or prompt) → lazy mode, no startup
-    // Path 2: -i OR routine → startupSequence, then run prompt/subcommand
-    // Path 3: else → show help
-    // --no-routine suppresses routine from the dispatch condition and startup step 4
+    // --no-routine / --no-switchboard suppress their respective keep-alive reasons
     const effectiveRoutine = noRoutineFlag ? undefined : routine;
+    const effectiveSwitchboard = !noSwitchboardFlag && reactorConfig?.switchboard?.enabled;
+
+    // Interaction mode: how the CLI does I/O
+    // - headless: no input loop, execute and exit (or serve until killed)
+    // - interactive-streaming: line-based stdio, EOF-aware, testable programmatically
+    // - interactive-terminal: Ink REPL with rich UI
+    const isTTY = interactiveFlag && !opts.interactiveInput && process.stdin.isTTY;
+    type InteractionMode = 'headless' | 'interactive-streaming' | 'interactive-terminal';
+    const mode: InteractionMode = !interactiveFlag ? 'headless'
+      : (isTTY ? 'interactive-terminal' : 'interactive-streaming');
+
+    // Keep-alive: why the process stays running after primary work completes
+    // Orthogonal to interaction mode — a headless CLI with switchboard blocks on signals
+    const hasKeepAlive = !!effectiveRoutine || !!effectiveSwitchboard;
 
     if (isBuiltinFlag || (!interactiveFlag && (isSubcommand || hasPrompt))) {
-      // ── Path 1: Lazy mode — no startup sequence ──────────────────
+      // ── Command execution (any mode): subcommand or prompt without -i → execute, exit ──
       if (hasPrompt) {
         const agentProvider = await getAgent();
         if (agentProvider) {
@@ -1152,8 +1170,8 @@ export function defineCli<
       }
 
       await teardown();
-    } else if (interactiveFlag || effectiveRoutine) {
-      // ── Path 2: Interactive / Routine mode ────────────────────────────
+    } else if (interactiveFlag || hasKeepAlive) {
+      // ── Interactive or keep-alive: -i OR hasKeepAlive ──────────────
 
       // 1. PREAMBLE — validate interactive config, build session if needed
       let session: import('../interactive/types.js').ReplSession | undefined;
@@ -1197,55 +1215,55 @@ export function defineCli<
         });
       }
 
-      // Determine I/O mode
-      const isTTY = interactiveFlag && !opts.interactiveInput && process.stdin.isTTY;
-
       // 2. WELCOME (non-TTY only — Ink renders its own welcome)
-      if (session?.welcome && !isTTY) stdout(session.welcome);
+      if (session?.welcome && mode !== 'interactive-terminal') stdout(session.welcome);
 
-      // 3. STARTUP + MAIN LOOP
-      if (isTTY) {
-        // ── TTY: Ink REPL ──
-        /* istanbul ignore next -- Ink REPL requires a real terminal */
-        const { startInkRepl } = await import('../interactive/start.js');
-        /* istanbul ignore next */
-        await startInkRepl(session!, {
-          services: context.services,
-          workdir: context.workdir,
-          onStart: async (append) => {
-            await startupSequence(append);
-          },
-          onMessage: eventBus ? (handler) => {
-            const events = ['service:ready', 'service:failed', 'service:restarting', 'service:stopped', 'powerhouse:switchboard:ready'];
-            const listener = (data?: unknown) => {
-              const msg = typeof data === 'string' ? data : (data && typeof data === 'object' && 'message' in data) ? String((data as any).message) : '';
-              if (msg) handler(msg);
-            };
-            for (const event of events) eventBus.on(event, listener);
-            return () => { for (const event of events) eventBus.off(event, listener); };
-          } : undefined,
-        });
-        /* istanbul ignore next */
-        await teardown();
-        /* istanbul ignore next */
-        exit(0);
-      } else {
-        // ── Non-TTY: headless, piped stdin, or routine-only ──
-        try {
-          await startupSequence(stdout);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (session) log.error(msg); else stderr(msg);
-          exit(1);
-          return;
+      // 3. STARTUP + MODE-SPECIFIC MAIN LOOP
+      switch (mode) {
+        case 'interactive-terminal': {
+          // ── Ink REPL ──
+          /* istanbul ignore next -- Ink REPL requires a real terminal */
+          const { startInkRepl } = await import('../interactive/start.js');
+          /* istanbul ignore next */
+          await startInkRepl(session!, {
+            services: context.services,
+            workdir: context.workdir,
+            onStart: async (append) => {
+              await startupSequence(append);
+            },
+            onMessage: eventBus ? (handler) => {
+              const events = ['service:ready', 'service:failed', 'service:restarting', 'service:stopped', 'powerhouse:switchboard:ready'];
+              const listener = (data?: unknown) => {
+                const msg = typeof data === 'string' ? data : (data && typeof data === 'object' && 'message' in data) ? String((data as any).message) : '';
+                if (msg) handler(msg);
+              };
+              for (const event of events) eventBus.on(event, listener);
+              return () => { for (const event of events) eventBus.off(event, listener); };
+            } : undefined,
+          });
+          /* istanbul ignore next */
+          await teardown();
+          /* istanbul ignore next */
+          exit(0);
+          break;
         }
 
-        if (session) {
+        case 'interactive-streaming': {
+          // ── Line-based stdio interaction ──
+          try {
+            await startupSequence(stdout);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            log.error(msg);
+            exit(1);
+            return;
+          }
+
           // Interactive input source: injected (testing) or piped stdin
           const { createStdinLineReader } = await import('./stdin.js');
           const source = opts.interactiveInput ?? createStdinLineReader();
           for await (const line of source) {
-            const result = await session.processInput(line);
+            const result = await session!.processInput(line);
             if (result.type === 'exit') {
               if (result.text) stdout(result.text);
               break;
@@ -1253,9 +1271,9 @@ export function defineCli<
             if (result.text) stdout(result.text);
           }
 
-          // EOF received — if routine is active, keep alive on signals
-          if (effectiveRoutine) {
-            stdout('Stdin closed — routine still active. Press Ctrl+C to stop.');
+          // EOF received — if keep-alive reason exists, block on signals
+          if (hasKeepAlive) {
+            stdout('Stdin closed — still serving. Press Ctrl+C to stop.');
             await new Promise<void>((resolve) => {
               const onSignal = async () => {
                 process.removeListener('SIGINT', onSignal);
@@ -1268,9 +1286,24 @@ export function defineCli<
             });
             return; // teardown already called in signal handler
           }
-        } else {
-          // Routine-only mode (no -i, routine defined)
-          stdout('Press Ctrl+C to stop.');
+
+          await teardown();
+          exit(0);
+          break;
+        }
+
+        case 'headless': {
+          // ── Headless with keep-alive: startup sequence, then block on signals ──
+          try {
+            await startupSequence(stdout);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            stderr(msg);
+            exit(1);
+            return;
+          }
+
+          stdout('Serving — press Ctrl+C to stop.');
           await new Promise<void>((resolve) => {
             const onSignal = async () => {
               process.removeListener('SIGINT', onSignal);
@@ -1283,12 +1316,9 @@ export function defineCli<
           });
           return; // teardown already called in signal handler
         }
-
-        await teardown();
-        exit(0);
       }
     } else {
-      // ── Path 3: No -i, no routine, no subcommand/prompt → show help
+      // ── Nothing to do: no -i, no keep-alive, no subcommand/prompt → show help ──
       const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
       try {
         await program.parseAsync(argv);

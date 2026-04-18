@@ -4,16 +4,52 @@
 
 When a ph-clint CLI starts, it must decide what to run and in what order. The startup sequence is the ordered initialization of Reactor, Switchboard, Connect, and Routine — the four optional runtime layers. The dispatch determines *whether* that sequence runs at all.
 
-This document covers the dispatch logic, the startup sequence, the teardown strategy, error handling, and the design principles behind them.
+This document covers the interaction modes, keep-alive conditions, dispatch logic, the startup sequence, the teardown strategy, error handling, and the design principles behind them.
+
+## Interaction Modes
+
+The CLI has three interaction modes, determined by the `-i` flag and TTY detection:
+
+| Mode | Condition | Description |
+|---|---|---|
+| `headless` | no `-i` flag | No input loop. Executes command/prompt and exits, or serves until killed. |
+| `interactive-streaming` | `-i` + `!isTTY` | Line-based stdio interaction. EOF-aware. Testable programmatically. |
+| `interactive-terminal` | `-i` + `isTTY` | Ink REPL with rich UI. |
+
+Detection:
+```typescript
+type InteractionMode = 'headless' | 'interactive-streaming' | 'interactive-terminal';
+
+const mode: InteractionMode = !interactiveFlag ? 'headless'
+  : (isTTY ? 'interactive-terminal' : 'interactive-streaming');
+```
+
+Note that at the OS level there is no "no stdio" — every process gets fd 0/1/2. The difference is the CLI's interaction model, not the process setup. `interactive-streaming` is what tests use (via `interactiveInput` in `RunOptions`), and what piped stdin produces. `interactive-terminal` is the rich Ink REPL that requires a real TTY.
+
+## Keep-Alive Conditions
+
+Orthogonal to interaction mode. A keep-alive reason means the process should block on signals after its primary work (command execution / input stream) completes:
+
+- **Routine active** (`effectiveRoutine` is defined) — the trigger loop is processing events
+- **Switchboard enabled** (`effectiveSwitchboard` is true) — an in-process HTTP server has no purpose if the process exits; treating it as a keep-alive condition is consistent with "if you configured it, you want it to run"
+- **Input channel open** — implicit while stdin/REPL is active, not a post-EOF reason
+
+The behavioral matrix:
+
+| Keep-alive reason | Headless | Interactive-streaming | Interactive-terminal |
+|---|---|---|---|
+| Nothing | exit after command | exit on EOF | exit on `/exit` |
+| Switchboard | block on signals | block on signals after EOF | block until `/exit` |
+| Routine | block on signals | block on signals after EOF | block until `/exit` |
 
 ## Exceptions: `--meta`, `--help`, `--version`
 
-Three flags bypass the three-path dispatch entirely:
+Three flags bypass the dispatch entirely:
 
 - **`--meta`** — Outputs CLI metadata as JSON and exits. Checked first, before any dispatch logic. No startup sequence, no Commander parsing, no context beyond what's needed for metadata generation.
-- **`--help` / `-h`** and **`--version` / `-V`** — Commander built-in flags. These are detected in the pre-command args and routed to Commander (Path 1) regardless of whether a routine is defined or `-i` is set. Without this exception, `mycli --help` on a CLI with triggers would start the full Reactor/Switchboard stack just to print a help message.
+- **`--help` / `-h`** and **`--version` / `-V`** — Commander built-in flags. These are detected in the pre-command args and routed to Commander regardless of whether a routine is defined or `-i` is set. Without this exception, `mycli --help` on a CLI with triggers would start the full Reactor/Switchboard stack just to print a help message.
 
-The detection is simple: if any pre-command arg is `--help`, `-h`, `--version`, or `-V`, force Path 1. Commander's `exitOverride()` ensures the process exits cleanly after printing.
+The detection is simple: if any pre-command arg is `--help`, `-h`, `--version`, or `-V`, force command execution mode. Commander's `exitOverride()` ensures the process exits cleanly after printing.
 
 ## Framework Flags
 
@@ -21,38 +57,68 @@ The detection is simple: if any pre-command arg is `--help`, `-h`, `--version`, 
 
 Suppresses routine activation. When set, the routine object is still created (so CLI metadata, help text, and auto-injected service commands remain correct), but:
 
-- **Dispatch**: `--no-routine` without `-i` falls to Path 3 (help) instead of Path 2, because the routine no longer counts as a reason to enter long-running mode.
+- **Dispatch**: `--no-routine` removes routine as a keep-alive reason. Without other keep-alive reasons or `-i`, falls to help.
 - **Startup sequence step 4**: Skipped entirely — the trigger loop does not start.
-- **Keep-alive**: Since the routine is suppressed, stdin EOF causes a clean exit instead of blocking on signals.
+- **Keep-alive**: Since the routine is suppressed, stdin EOF causes a clean exit instead of blocking on signals (unless switchboard provides keep-alive).
 
 Use cases: debugging the REPL or Switchboard without the trigger loop interfering, running one-shot commands while the routine is defined but not needed.
 
-## The Three Paths
+### `--no-switchboard` / `-S`
 
-After extracting framework flags, checking for exceptions, and resolving the context (workdir, config, services), `runImpl()` dispatches to one of three paths:
+Suppresses switchboard activation. When set:
+
+- **Dispatch**: `--no-switchboard` removes switchboard as a keep-alive reason. Without other keep-alive reasons or `-i`, falls to help.
+- **Startup sequence step 2**: Skipped entirely — the HTTP server does not start.
+- **Keep-alive**: Since the switchboard is suppressed, it no longer counts as a reason to stay alive after EOF or in headless mode.
+
+Use cases: debugging the REPL without the HTTP server, running one-shot commands when switchboard is configured but not needed.
+
+Only registered when `reactorConfig?.switchboard?.enabled` is true (same pattern as `--no-routine` only appearing when triggers are defined).
+
+## Dispatch
+
+After extracting framework flags, checking for exceptions, and resolving the context (workdir, config, services), `runImpl()` dispatches:
 
 ```
-Path 1: built-in flag OR (no -i AND (subcommand or prompt))
-  → Lazy mode. No startup sequence. Route to Commander or agent, then exit.
+1. Command execution: built-in flag OR (no -i AND (subcommand or prompt))
+   → No startup sequence. Route to Commander or agent, then exit.
 
-Path 2: -i OR routine defined (and not suppressed by --no-routine)
-  → Full startup sequence. REPL or long-running server mode.
+2. Interactive or keep-alive: -i OR hasKeepAlive
+   → Full startup sequence. Mode-specific main loop.
 
-Path 3: else
-  → Show help (via Commander).
+3. Nothing to do: else
+   → Show help (via Commander).
 ```
 
-### Why `-i` forces Path 2
+### Why `-i` forces the startup sequence
 
-The spec requires: **if `-i` is set, always go to Path 2, even if a subcommand or prompt is also provided.** This is because interactive mode implies the user wants a persistent session. The startup sequence provisions the runtime (Reactor, Switchboard, Connect) so that the REPL, triggers, and background services all work. Skipping it would create the chicken-and-egg problem the refactor was designed to solve: the routine waits for document changes that can never arrive because Switchboard and Connect aren't running.
+The spec requires: **if `-i` is set, always enter the startup sequence path, even if a subcommand or prompt is also provided.** This is because interactive mode implies the user wants a persistent session. The startup sequence provisions the runtime (Reactor, Switchboard, Connect) so that the REPL, triggers, and background services all work.
 
-### Why routines force Path 2
+### Why keep-alive forces the startup sequence
 
-A routine needs the full runtime stack. Document-change triggers need the Reactor to be initialized and Switchboard to be bridging subscriptions before the routine's tick loop can produce work items. Without the startup sequence, the routine would spin idle forever.
+A routine needs the full runtime stack. Document-change triggers need the Reactor to be initialized and Switchboard to be bridging subscriptions before the routine's tick loop can produce work items. Similarly, a configured switchboard needs the Reactor to be running before it can serve requests. Without the startup sequence, these components would never start.
 
-### Why Path 1 is lazy
+### Why command execution is lazy
 
 One-shot commands (`mycli noop --flag val`) and agent prompts (`mycli "what is the weather"`) should start fast. They don't need Reactor, Switchboard, or Connect unless they explicitly request them via `context.reactor()`. Lazy accessors mean these components are only created on demand, and most commands never touch them.
+
+## Mode-Specific Main Loop
+
+After the startup sequence, the dispatch switches on `mode`:
+
+### `interactive-terminal`
+
+Ink REPL — unchanged. The REPL session is created before `startupSequence()` runs, so the user sees the prompt immediately while runtime layers initialize.
+
+### `interactive-streaming`
+
+Line-based stdio. After startup sequence, reads lines from `interactiveInput` (testing) or piped stdin. On EOF:
+- If `hasKeepAlive` → output "Stdin closed — still serving." and block on SIGINT/SIGTERM
+- Otherwise → clean teardown and exit
+
+### `headless`
+
+No input loop. After startup sequence, outputs "Serving — press Ctrl+C to stop." and blocks on SIGINT/SIGTERM. This branch is reached when keep-alive is active but no `-i` flag is set (e.g., a CLI with switchboard enabled, run without `-i`).
 
 ## The Startup Sequence
 
@@ -60,9 +126,9 @@ One-shot commands (`mycli noop --flag val`) and agent prompts (`mycli "what is t
 
 ```
 1. Reactor    → in-process document store, drive, subscriptions
-2. Switchboard → GraphQL + MCP endpoint wrapping the Reactor
+2. Switchboard → GraphQL + MCP endpoint wrapping the Reactor — skipped when --no-switchboard
 3. Connect    → web UI child process pointing at Switchboard
-4. Routine    → tick-based trigger loop processing document events
+4. Routine    → tick-based trigger loop processing document events — skipped when --no-routine
 ```
 
 ### Step 1: Reactor
@@ -79,7 +145,7 @@ The factory returns a `ReactorContext` with `client`, `driveId`, `_module` (the 
 
 ### Step 2: Switchboard
 
-Runs only if `reactorConfig.switchboard.enabled` is true and the Reactor produced a `_module`. Switchboard is not a full service (no `ServiceManager`, no detached process) — it runs in-process as a NestJS HTTP server.
+Runs only if `reactorConfig.switchboard.enabled` is true, `--no-switchboard` is not set, and the Reactor produced a `_module`. Switchboard is not a full service (no `ServiceManager`, no detached process) — it runs in-process as a NestJS HTTP server.
 
 Before starting, it runs a **preflight port check** using the same `checkPort()` function from the service infrastructure. This gives consistent error messages with hints across all port checks in the system. The preflight can be disabled via `switchboard.preflight: false` for testing.
 
@@ -116,16 +182,16 @@ The startup sequence's `output` callback writes status messages into the same st
 
 ## EOF Keep-Alive
 
-In non-TTY interactive mode (piped stdin), there are two reasons the process should stay alive after the input stream closes:
+In interactive-streaming mode (piped stdin / `interactiveInput`), there are two reasons the process should stay alive after the input stream closes:
 
 1. **The routine is active** — the trigger loop is processing document events and the Switchboard is serving requests. Tearing down on EOF would kill a running server.
-2. **The user sent `/exit`** — explicit exit intent, regardless of routine state.
+2. **The switchboard is enabled** — an HTTP server has no purpose if the process exits immediately.
 
-The rule: **when stdin reaches EOF and the routine is active, the process blocks on SIGINT/SIGTERM instead of tearing down.** This matches the behavior of routine-only mode (no `-i`, triggers defined). When the routine is not active (either not configured or suppressed with `--no-routine`), EOF causes a clean teardown and exit — the process has no reason to stay alive.
+The rule: **when stdin reaches EOF and any keep-alive condition is active (`hasKeepAlive`), the process blocks on SIGINT/SIGTERM instead of tearing down.** When no keep-alive condition is active, EOF causes a clean teardown and exit — the process has no reason to stay alive.
 
 This means:
-- `echo "hello" | connect-agent -i` → processes "hello", then stays alive (routine serving)
-- `connect-agent -i -R < input.txt` → processes input, then exits cleanly (routine suppressed)
+- `echo "hello" | connect-agent -i` → processes "hello", then stays alive (routine/switchboard serving)
+- `connect-agent -i -R -S < input.txt` → processes input, then exits cleanly (both suppressed)
 - `connect-agent -i` in a real TTY → Ink REPL manages lifecycle, unaffected
 
 ## Teardown
@@ -140,11 +206,11 @@ This means:
 
 Connect is **not** shut down by teardown — it's a detached process that intentionally survives CLI exit. The user manages it via `connect-stop`.
 
-Teardown is called from five sites:
-- Interactive mode exit (after REPL session ends)
-- Routine-only mode signal handler (SIGINT/SIGTERM)
-- Path 1 after command/prompt completion
-- Path 3 after Commander finishes
+Teardown is called from these sites:
+- Interactive mode exit (after REPL session ends or EOF processing)
+- Keep-alive signal handler (SIGINT/SIGTERM in headless or interactive-streaming mode)
+- Command execution after command/prompt completion
+- Help display after Commander finishes
 - `startupSequence` catch block (on error, before re-throwing)
 
 Before the refactor, each site had its own inline `await switchboardInstance?.shutdown(); await cachedReactor?.shutdown()` sequence — easy to get wrong when adding new shutdown steps. The centralized `teardown()` ensures consistency and makes it trivial to add a new layer.
