@@ -18,3 +18,7 @@ pnpm-lock.yaml
 .playwright-cli/
 
 /specs/powerhouse
+
+/specs/archive/gtm-agent-experiment/ph-mara/gen/
+/specs/archive/gtm-agent-experiment/ph-mara/mara-test/
+cli-test/
