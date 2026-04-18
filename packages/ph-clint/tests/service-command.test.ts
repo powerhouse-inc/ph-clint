@@ -340,6 +340,53 @@ describe('createServiceCommands — with real services', () => {
       const result = await startCmd.execute({}, makeContext()) as any;
       expect(result.text).toContain('already running');
     });
+
+    it('extracts paramsSchema fields from input when starting', async () => {
+      const paramDef: ServiceDefinition = {
+        id: 'param-svc',
+        name: 'Param Service',
+        command: `node ${TEST_SERVICE}`,
+        env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4569' }),
+        paramsSchema: z.object({
+          port: z.coerce.number().default(3000).describe('Port number'),
+        }),
+        readiness: {
+          pattern: /Server listening on http:\/\/localhost:(\d+)/,
+          timeout: 5000,
+          captures: { port: 1 },
+        },
+        shutdown: { signal: 'SIGTERM', timeout: 3000 },
+      };
+      const paramMgr = createServiceManager([paramDef], {
+        config: {},
+        servicesDir,
+        eventBus,
+      });
+      const cmds = createServiceCommands(paramDef);
+      const startCmd = cmds.find((c) => c.id === 'param-svc-start')!;
+      const ctx: CommandContext = {
+        workdir: tmpDir,
+        workspace: createMemoryWorkdirStore(),
+        config: {},
+        stdout: () => {},
+        services: paramMgr,
+      };
+      const result = await startCmd.execute({ port: 4569 }, ctx) as any;
+      expect(result.text).toContain('ready');
+      trackedPids.push(...collectPids(servicesDir));
+    });
+  });
+
+  describe('manage command', () => {
+    it('returns status list in command-mode fallback', async () => {
+      await mgr.start('test-svc');
+      trackedPids.push(...collectPids(servicesDir));
+
+      const cmds = createServiceCommands(readyDef);
+      const manageCmd = cmds.find((c) => c.id === 'test-svc-manage')!;
+      const result = await manageCmd.execute({}, makeContext()) as any;
+      expect(result.text).toContain('Test Service');
+    });
   });
 
   describe('stop command', () => {
