@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powerhouse — Enterprise AI Infrastructure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/colors.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Site v3 brand tokens */
+      --bg: #0B0D0F;
+      --surface: #141719;
+      --surface-border: rgba(255,255,255,0.06);
+      --text: #F0F2F4;
+      --text-muted: rgba(240,242,244,0.55);
+      --text-dim: rgba(240,242,244,0.35);
+      --accent-cyan: #00D4FF;
+      --accent-purple: #7A3AFF;
+      --accent-gradient: linear-gradient(135deg, #00D4FF, #7A3AFF);
+      --vetra-green: #04C161;
+      --achra-purple: #7A3AFF;
+      --fusion-pink: #F43E81;
+      --connect-purple: #8D45FA;
+      --switchboard-gold: #F2CB29;
+      --switchboard-orange: #F2462A;
+      --renown-green: #21FFB4;
+      --renown-blue: #0080FF;
+      --card-radius: 20px;
+      --card-radius-sm: 12px;
+    }
+
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* =============================================
+       FIXED-CANVAS SLIDE ENGINE
+       Design at 1920×1080. Scale to fit any screen.
+       ============================================= */
+    .deck {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      width: 1920px; height: 1080px;
+      display: flex;
+      background: var(--bg); color: var(--text);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.5s ease;
+      transform-origin: center center;
+      overflow: hidden;
+    }
+    .slide.active { opacity: 1; pointer-events: auto; }
+    .slide * { font-family: 'Inter', sans-serif; }
+    .slide h1, .slide h2, .slide h3, .slide h4 { font-family: 'Poppins', sans-serif; }
+
+    /* =============================================
+       LAYOUT
+       ============================================= */
+    .slide-pad {
+      padding: 80px 100px;
+      display: flex; flex-direction: column; width: 100%; height: 100%;
+      position: relative; z-index: 1;
+    }
+    .slide-split { display: flex; width: 100%; height: 100%; }
+    .slide-half {
+      width: 50%; padding: 80px;
+      display: flex; flex-direction: column; justify-content: center;
+      position: relative; z-index: 1;
+    }
+
+    /* Logo */
+    .slide-logo {
+      height: 32px; margin-bottom: auto; align-self: flex-start;
+    }
+    .slide-icon {
+      position: absolute; top: 48px; right: 80px; height: 32px; z-index: 2;
+    }
+
+    /* Footer */
+    .slide-footer {
+      margin-top: auto; display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px; font-weight: 500; color: var(--text-dim);
+    }
+
+    /* Slide number */
+    .slide-num {
+      position: absolute; bottom: 40px; right: 52px;
+      font-size: 13px; font-weight: 600; color: var(--text-dim);
+      font-family: 'Inter', sans-serif; z-index: 2;
+    }
+
+    /* =============================================
+       ILLUSTRATED SLIDE BASE (from design system)
+       ============================================= */
+    .illust-glow {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    }
+    .illust-glow.tl {
+      background: radial-gradient(ellipse at 15% 10%, var(--glow-color, rgba(0,180,220,0.35)), transparent 70%);
+      filter: blur(40px);
+    }
+    .illust-glow.tr {
+      background: radial-gradient(ellipse at 85% 10%, var(--glow-color, rgba(0,180,220,0.35)), transparent 70%);
+      filter: blur(40px);
+    }
+    .illust-glow.center {
+      background: radial-gradient(ellipse at 50% 40%, var(--glow-color, rgba(0,180,220,0.25)), transparent 70%);
+      filter: blur(50px);
+    }
+    .illust-glow.bl {
+      background: radial-gradient(ellipse at 20% 90%, var(--glow-color, rgba(0,180,220,0.2)), transparent 70%);
+      filter: blur(40px);
+    }
+
+    .illust-bg {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background-repeat: no-repeat;
+    }
+
+    .illust-fullbleed {
+      position: absolute; inset: 0; z-index: 0;
+      background-size: cover; background-position: center;
+      pointer-events: none;
+    }
+    .illust-fullbleed::after {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(0,0,0,0.5);
+    }
+
+    /* Pearl icon with conic glow */
+    .slide-pearl {
+      position: relative;
+      width: 96px; height: 96px;
+    }
+    .slide-pearl img {
+      position: relative; z-index: 1;
+      width: 96px; height: 96px; object-fit: contain;
+    }
+    .slide-pearl-glow {
+      position: absolute; inset: 2px; border-radius: 16px;
+      background: conic-gradient(
+        from 30deg at 50% 50%,
+        rgb(252,214,255) 0deg, rgb(41,216,255) 95.68deg,
+        rgb(255,253,130) 180deg, rgb(158,54,255) 257.23deg,
+        rgb(241,214,255) 360deg
+      );
+      filter: blur(12px);
+      box-shadow: -2px 2px 30px 0px rgba(241,56,255,0.3);
+      opacity: 0.7; z-index: 0;
+    }
+
+    /* Footer wordmark */
+    .slide-wordmark {
+      position: absolute; bottom: -10px; left: -5%; z-index: 0;
+      width: 110%; pointer-events: none; opacity: 0.4;
+    }
+
+    /* =============================================
+       TEXT HELPERS
+       ============================================= */
+    .fg { color: var(--text); }
+    .sub { color: var(--text-muted); }
+    .muted { color: var(--text-dim); }
+
+    .gradient-text {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gradient-bar {
+      width: 72px; height: 5px; border-radius: 3px;
+      background: var(--accent-gradient);
+    }
+    .section-accent { color: var(--accent-cyan); }
+
+    .kicker {
+      font-size: 15px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 4px; margin-bottom: 16px;
+    }
+
+    /* =============================================
+       GRADIENT BACKGROUND SLIDE
+       ============================================= */
+    .gradient-bg {
+      background: linear-gradient(135deg, #00D4FF, #7A3AFF) !important;
+      color: #FCFCFC !important;
+    }
+    .gradient-bg .sub { color: rgba(252,252,252,0.65) !important; }
+    .gradient-bg .muted { color: rgba(252,252,252,0.4) !important; }
+    .gradient-bg .slide-footer { color: rgba(252,252,252,0.3) !important; }
+    .gradient-bg .slide-num { color: rgba(252,252,252,0.3) !important; }
+    .gradient-bg .bullet-list li::before { background: rgba(255,255,255,0.6) !important; }
+
+    /* =============================================
+       SURFACES (from site v3)
+       ============================================= */
+    .surface-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--card-radius-sm);
+    }
+    .surface-card-lg {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--card-radius);
+    }
+
+    /* =============================================
+       BULLET LIST
+       ============================================= */
+    .bullet-list { list-style: none; display: flex; flex-direction: column; gap: 22px; }
+    .bullet-list li {
+      padding-left: 30px; position: relative; font-size: 26px; line-height: 1.55;
+      color: var(--text-muted);
+    }
+    .bullet-list li::before {
+      content: ''; position: absolute; left: 0; top: 14px;
+      width: 10px; height: 10px; border-radius: 50%; background: var(--accent-cyan);
+    }
+    .bullet-list li strong { color: var(--text); font-weight: 600; }
+
+    /* =============================================
+       NUMBERED LIST
+       ============================================= */
+    .num-list { list-style: none; display: flex; flex-direction: column; gap: 24px; counter-reset: num; }
+    .num-list li {
+      display: flex; align-items: flex-start; gap: 20px; font-size: 20px; line-height: 1.5;
+      counter-increment: num;
+    }
+    .num-list li::before {
+      content: counter(num); flex-shrink: 0;
+      width: 40px; height: 40px; border-radius: 50%; background: var(--accent-cyan);
+      color: #fff; font-size: 18px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* =============================================
+       TABLE (from site v3 comparison-table)
+       ============================================= */
+    .slide-table { width: 100%; border-collapse: collapse; font-size: 21px; }
+    .slide-table th {
+      text-align: left; font-weight: 600; font-size: 15px; text-transform: uppercase;
+      letter-spacing: 2px; padding: 18px 24px; border-bottom: 2px solid var(--surface-border);
+    }
+    .slide-table th:nth-child(2) { color: var(--text-dim); }
+    .slide-table th:nth-child(3) { color: var(--accent-cyan); }
+    .slide-table td {
+      padding: 18px 24px; border-bottom: 1px solid var(--surface-border);
+      vertical-align: top; line-height: 1.55;
+    }
+    .slide-table td:first-child { font-weight: 600; white-space: nowrap; color: var(--text); }
+    .slide-table td:nth-child(2) { color: var(--text-muted); }
+    .slide-table td:nth-child(3) { color: var(--text); }
+
+    /* =============================================
+       ICON CIRCLE
+       ============================================= */
+    .icon-circle {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; flex-shrink: 0;
+    }
+
+    /* Icon square (from site v3 use-case-icon) */
+    .icon-square {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; flex-shrink: 0;
+    }
+
+    /* =============================================
+       PROGRESS BAR (outside scaled canvas)
+       ============================================= */
+    .progress-bar-container {
+      position: fixed; top: 0; left: 0; right: 0; height: 3px;
+      background: rgba(255,255,255,0.03); z-index: 100;
+    }
+    .progress-bar-fill {
+      height: 100%; background: var(--accent-gradient);
+      transition: width 0.3s ease;
+    }
+
+    /* =============================================
+       KEYBOARD HINT
+       ============================================= */
+    .nav-hint {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      font-size: 12px; color: rgba(255,255,255,0.2); z-index: 100;
+      font-family: 'Inter', sans-serif; pointer-events: none;
+      transition: opacity 2s ease;
+    }
+
+    /* =============================================
+       SPEAKER NOTES PANEL
+       ============================================= */
+    .notes-panel {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.95); border-top: 1px solid #333;
+      padding: 24px 100px; max-height: 30vh; overflow-y: auto;
+      font-size: 18px; line-height: 1.6; color: #ccc;
+      font-family: 'Inter', sans-serif;
+      transform: translateY(100%); transition: transform 0.3s ease;
+      z-index: 200;
+    }
+    .notes-panel.visible { transform: translateY(0); }
+    .notes-panel h4 { color: var(--accent-cyan); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="progress-bar-container">
+  <div class="progress-bar-fill" id="progress" style="width: 0%"></div>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 1 — COVER
+       Illustrated: dithered cyan icon bg + pearl logo
+       ═══════════════════════════════════════════ -->
+  <div class="slide active" data-notes="Open with energy. This is the first thing they see — let the headline land, then transition quickly.">
+    <div class="illust-glow tl" style="--glow-color: rgba(0,180,220,0.45);"></div>
+    <div class="illust-glow tr" style="--glow-color: rgba(122,58,255,0.3);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-icon-dithered-cyan.png'); background-position: right -200px bottom -300px; background-size: 75%; opacity: 0.6;"></div>
+    <div class="slide-pad">
+      <img src="assets/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse" class="slide-logo">
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:28px; max-width:62%;">
+        <p class="muted" style="font-size:16px; font-weight:600; text-transform:uppercase; letter-spacing:5px;">Enterprise AI Infrastructure</p>
+        <h1 style="font-size:68px; font-weight:700; line-height:1.08; letter-spacing:-0.02em;">AI-Native Operations.<br><span class="gradient-text">Private by Architecture.</span></h1>
+        <p class="sub" style="font-size:24px; line-height:1.6;">Infrastructure for AI-native enterprise operations that keeps your confidential data on&nbsp;your&nbsp;terms.</p>
+      </div>
+      <div class="slide-footer"><span>Powerhouse</span><span>2026</span></div>
+    </div>
+    <span class="slide-num">1</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 2 — THE BOARD IS ASKING
+       Illustrated: electric flow full-bleed
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Don't lecture — validate. Every CTO in the room already feels this pressure. Make eye contact, let the room nod. This slide earns trust by naming what they're living.">
+    <div class="illust-fullbleed" style="background-image: url('assets/illustrations/powerhouse-electric-flow.png');"></div>
+    <div class="slide-pad" style="justify-content:center; align-items:center; text-align:center; z-index:1;">
+      <p style="font-size:16px; font-weight:600; text-transform:uppercase; letter-spacing:5px; color:var(--accent-cyan); margin-bottom:20px;">The Pressure</p>
+      <h2 style="font-size:56px; font-weight:700; line-height:1.12; max-width:80%; letter-spacing:-0.02em;">Your competitors are adopting AI.<br>The board wants a strategy.</h2>
+      <p style="font-size:24px; margin-top:28px; max-width:60%; line-height:1.6; color:rgba(255,255,255,0.6);">The question isn't whether — it's whether you can do it without compromising what makes your business yours.</p>
+    </div>
+    <span class="slide-num">2</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 3 — THE CTO'S DILEMMA
+       Surface cards with colored left borders
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Walk through each pressure in order. Pause on #3 — 'our data isn't ready' — this is the one they didn't expect to be the biggest problem. It's the insight that earns credibility.">
+    <div class="illust-glow bl" style="--glow-color: rgba(0,180,220,0.15);"></div>
+    <div class="slide-pad" style="gap:40px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div>
+        <p class="muted kicker">The Reality</p>
+        <h3 style="font-size:44px; font-weight:700; letter-spacing:-0.02em;">Three pressures. One decision.</h3>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; gap:24px; justify-content:center;">
+        <div class="surface-card" style="padding:32px 36px; display:flex; align-items:flex-start; gap:28px; border-left:4px solid var(--accent-cyan);">
+          <div class="icon-circle" style="background:rgba(0,212,255,0.12); color:var(--accent-cyan); font-weight:700; font-size:22px;">1</div>
+          <div>
+            <h4 style="font-size:26px; font-weight:700; margin-bottom:8px; color:var(--text);">"We need to move on AI — now."</h4>
+            <p style="font-size:20px; line-height:1.6; color:var(--text-muted);">The CEO is asking. Competitors are announcing. The cost of being seen as slow is career-level.</p>
+          </div>
+        </div>
+        <div class="surface-card" style="padding:32px 36px; display:flex; align-items:flex-start; gap:28px; border-left:4px solid var(--accent-purple);">
+          <div class="icon-circle" style="background:rgba(122,58,255,0.12); color:var(--accent-purple); font-weight:700; font-size:22px;">2</div>
+          <div>
+            <h4 style="font-size:26px; font-weight:700; margin-bottom:8px; color:var(--text);">"But if I move wrong, it's my neck."</h4>
+            <p style="font-size:20px; line-height:1.6; color:var(--text-muted);">Data breaches, compliance violations, vendor lock-in, or an expensive implementation that delivers nothing.</p>
+          </div>
+        </div>
+        <div class="surface-card" style="padding:32px 36px; display:flex; align-items:flex-start; gap:28px; border-left:4px solid var(--switchboard-gold);">
+          <div class="icon-circle" style="background:rgba(242,203,41,0.12); color:var(--switchboard-gold); font-weight:700; font-size:22px;">3</div>
+          <div>
+            <h4 style="font-size:26px; font-weight:700; margin-bottom:8px; color:var(--text);">"Our data isn't ready."</h4>
+            <p style="font-size:20px; line-height:1.6; color:var(--text-muted);">Business logic in legacy systems, knowledge in people's heads, data scattered across proprietary formats.</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">3</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 4 — THE REAL BLOCKER
+       Halftone sphere bg + gradient bar
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="This is the 'name the enemy' slide. The enemy isn't a competitor — it's the deployment model. Every AI vendor requires your data to leave your environment. Pause after 'non-starter.'">
+    <div class="illust-glow tl" style="--glow-color: rgba(180,50,220,0.3);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-halftone-sphere.png'); background-position: right -280px bottom -200px; background-size: 90%; opacity: 0.25;"></div>
+    <div class="slide-pad" style="justify-content:center; gap:40px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div class="gradient-bar"></div>
+      <h2 style="font-size:52px; font-weight:700; line-height:1.12; max-width:75%; letter-spacing:-0.02em;">Every AI vendor wants your data.<br>Your regulators say&nbsp;no.</h2>
+      <div style="max-width:70%; display:flex; flex-direction:column; gap:20px;">
+        <p class="sub" style="font-size:24px; line-height:1.7;">Commercial AI requires sending data to external infrastructure. For organizations handling privileged legal communications, employee PII, financial forecasts, or procurement negotiations — that's a <strong style="color:var(--text);">non-starter</strong>.</p>
+        <p style="font-size:22px; line-height:1.6; color:var(--text-dim);">The result: teams stuck between consumer-grade chatbots that can't touch real business data, and 18-month integration projects that bolt AI onto systems never designed for it.</p>
+      </div>
+    </div>
+    <span class="slide-num">4</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 5 — THERE'S A THIRD PATH
+       Pearl icon centered + gradient text
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Transition slide. Shift tone from problem to solution. Emphasize 'parallel adoption' — not rip-and-replace. This is what lowers the perceived risk.">
+    <div class="illust-glow center" style="--glow-color: rgba(0,180,220,0.2);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-icon-dithered-cyan.png'); background-position: center; background-size: 120%; opacity: 0.06;"></div>
+    <div class="slide-pad" style="justify-content:center; align-items:center; text-align:center; gap:32px;">
+      <div class="slide-pearl">
+        <div class="slide-pearl-glow"></div>
+        <img src="assets/logos/powerhouse-logo-pearl.png" alt="Powerhouse">
+      </div>
+      <h2 style="font-size:52px; font-weight:700; line-height:1.12; max-width:80%; letter-spacing:-0.02em;"><span class="gradient-text">Make your data AI-native</span> —<br>without it ever leaving your environment.</h2>
+      <p class="sub" style="font-size:26px; line-height:1.6; max-width:55%;">Not by replacing your existing systems. By adding a structured layer that makes them AI-accessible.</p>
+      <p style="font-size:22px; color:var(--text-dim);">On your infrastructure. Under your control. At your pace.</p>
+    </div>
+    <span class="slide-num">5</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 6 — THREE PILLARS (DIVIDER)
+       Gradient bg with subtle noise
+       ═══════════════════════════════════════════ -->
+  <div class="slide gradient-bg" data-notes="Quick divider — let it breathe. Read the three words, then advance.">
+    <div class="slide-pad" style="justify-content:center; align-items:center; text-align:center;">
+      <img src="assets/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse" style="height:32px; position:absolute; top:48px; left:80px;">
+      <p class="muted" style="font-size:16px; font-weight:600; text-transform:uppercase; letter-spacing:5px; margin-bottom:24px;">The Solution</p>
+      <h1 style="font-size:80px; font-weight:700; line-height:1.05; letter-spacing:-0.02em;">Private. AI-Native.<br>Real-Time.</h1>
+    </div>
+    <span class="slide-num">6</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 7 — PRIVATE BY DEFAULT
+       Pillar card style from site v3 (cyan glow)
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Key message: data never leaves. The DPO defines the tiers — the architecture enforces them. Mention local model deployment explicitly. If they ask 'which models?' — open-source models (Llama, Mistral, etc.) on their own hardware.">
+    <div class="illust-glow tl" style="--glow-color: rgba(0,212,255,0.35);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-halftone-sphere.png'); background-position: right -200px bottom -180px; background-size: 100%; opacity: 0.2;"></div>
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div>
+        <p style="font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:4px; color:var(--accent-cyan); margin-bottom:12px;">Pillar 1</p>
+        <h3 style="font-size:48px; font-weight:700; letter-spacing:-0.02em;">Private by default</h3>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+        <ul class="bullet-list" style="max-width:80%;">
+          <li><strong>Your data stays on your infrastructure</strong> — always</li>
+          <li><strong>AI models run locally</strong> on your hardware for sensitive workflows</li>
+          <li><strong>Commercial APIs</strong> available for general-purpose tasks — with architectural separation</li>
+          <li><strong>Your DPO defines the data tiers.</strong> The architecture enforces them.</li>
+          <li><strong>No data used for model training.</strong> No vendor ever sees your content.</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">7</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 8 — AI-NATIVE
+       Pillar card style (purple glow + crystalline bg)
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="This is NOT 'add a chatbot to your intranet.' Every business object automatically becomes an AI endpoint. Agents follow structured playbooks — specification-driven, not open-ended prompts. Emphasize human oversight.">
+    <div class="illust-glow tl" style="--glow-color: rgba(122,58,255,0.35);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-crystalline.png'); background-position: right -300px bottom -400px; background-size: 110%; opacity: 0.2;"></div>
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div>
+        <p style="font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:4px; color:#a77bff; margin-bottom:12px;">Pillar 2</p>
+        <h3 style="font-size:48px; font-weight:700; letter-spacing:-0.02em;">AI-native from the data layer up</h3>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+        <ul class="bullet-list" style="max-width:80%;">
+          <li><strong>Existing systems connect</strong> to a structured data layer through standards-based integrations</li>
+          <li><strong>AI agents interact through typed interfaces</strong> — not open-ended prompts</li>
+          <li><strong>Multi-agent workflows:</strong> each agent sandboxed to its own data scope and permissions</li>
+          <li><strong>Specification-driven AI:</strong> structured playbooks define what agents can do, see, and escalate</li>
+          <li><strong>Human oversight built in</strong> — agents escalate when confidence is low or thresholds are exceeded</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">8</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 9 — REAL-TIME & SCALABLE
+       Pillar card style (green glow + flowing bg)
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Enterprise architects will recognize event sourcing and CQRS as individually proven patterns. The composition is the novel part. 'Independent consistency boundaries' means no global lock, no single point of failure.">
+    <div class="illust-glow tl" style="--glow-color: rgba(4,193,97,0.3);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-flowing.png'); background-position: right -100px bottom -200px; background-size: 80%; opacity: 0.15;"></div>
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div>
+        <p style="font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:4px; color:var(--vetra-green); margin-bottom:12px;">Pillar 3</p>
+        <h3 style="font-size:48px; font-weight:700; letter-spacing:-0.02em;">Real-time and scalable</h3>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+        <ul class="bullet-list" style="max-width:80%;">
+          <li><strong>Reactive architecture</strong> built on proven patterns: event sourcing, CQRS, event-driven processing</li>
+          <li><strong>Each business object is an independent consistency boundary</strong> — no global lock</li>
+          <li><strong>Write layer scales horizontally;</strong> read models built into any datastore you need</li>
+          <li><strong>Real-time synchronization</strong> across devices, applications, and users</li>
+          <li><strong>Platform-grade performance</strong> without centralized infrastructure</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">9</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 10 — THE PLATFORM (DIVIDER)
+       Dithered icon bg section divider
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Quick divider. Emphasize 'your architecture, your brand' — these are whitelabel components they own and operate. Not a SaaS they subscribe to.">
+    <div class="illust-glow tl" style="--glow-color: rgba(0,180,220,0.25);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-icon-dithered-cyan.png'); background-position: right -180px bottom -280px; background-size: 65%; opacity: 0.35;"></div>
+    <div class="slide-pad" style="justify-content:center; align-items:flex-start;">
+      <img src="assets/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse" style="position:absolute; top:48px; left:80px; height:32px;">
+      <div class="gradient-bar" style="margin-bottom:32px;"></div>
+      <h2 style="font-size:56px; font-weight:700; line-height:1.1; letter-spacing:-0.02em;">Five components.<br>Your architecture. Your brand.</h2>
+      <p class="sub" style="font-size:26px; margin-top:24px; max-width:55%; line-height:1.6;">Local, whitelabel components you own and operate — on your servers, under your control.</p>
+    </div>
+    <span class="slide-num">10</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 11 — PLATFORM COMPONENTS
+       Product cards with brand colors (from site v3 component-card)
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Don't read every card — hit Clint and Switchboard as the most technically interesting, then gesture at the rest.">
+    <div class="slide-pad" style="gap:32px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <h3 style="font-size:36px; font-weight:700; letter-spacing:-0.02em;">The Powerhouse Platform</h3>
+      <div style="flex:1; display:grid; grid-template-columns:repeat(3,1fr); gap:20px; align-content:center;">
+        <!-- Row 1: Clint, Renown, Switchboard -->
+        <div class="surface-card" style="padding:32px; display:flex; flex-direction:column; gap:12px; border-top:3px solid var(--accent-cyan);">
+          <img src="assets/logos/reactors-icon-light.svg" alt="" style="width:36px; height:36px;">
+          <h4 style="font-size:24px; font-weight:700; color:var(--text);">Clint</h4>
+          <p style="font-size:14px; font-weight:500; letter-spacing:0.04em; color:var(--accent-cyan);">AI Agent Infrastructure</p>
+          <p class="sub" style="font-size:18px; line-height:1.6;">Multi-agent workflows, sandboxed agents, local + commercial model access. Every business schema becomes an MCP&nbsp;endpoint.</p>
+        </div>
+        <div class="surface-card" style="padding:32px; display:flex; flex-direction:column; gap:12px; border-top:3px solid var(--renown-green);">
+          <img src="assets/logos/renown-icon.svg" alt="" style="width:36px; height:36px;">
+          <h4 style="font-size:24px; font-weight:700; color:var(--text);">Renown</h4>
+          <p style="font-size:14px; font-weight:500; letter-spacing:0.04em; color:var(--renown-green);">Identity</p>
+          <p class="sub" style="font-size:18px; line-height:1.6;">Unified identity for humans + agents. Scoped permissions. Cryptographic attribution. Enterprise SSO integration&nbsp;point.</p>
+        </div>
+        <div class="surface-card" style="padding:32px; display:flex; flex-direction:column; gap:12px; border-top:3px solid var(--switchboard-gold);">
+          <img src="assets/logos/switchboard-icon-light.svg" alt="" style="width:36px; height:36px;">
+          <h4 style="font-size:24px; font-weight:700; color:var(--text);">Switchboard</h4>
+          <p style="font-size:14px; font-weight:500; letter-spacing:0.04em; color:var(--switchboard-gold);">API & Integration Hub</p>
+          <p class="sub" style="font-size:18px; line-height:1.6;">GraphQL + MCP endpoints. Data scoping per integration. Authorization and real-time&nbsp;sync.</p>
+        </div>
+        <!-- Row 2: Connect, Fusion -->
+        <div class="surface-card" style="padding:32px; display:flex; flex-direction:column; gap:12px; border-top:3px solid var(--connect-purple);">
+          <img src="assets/logos/connect-icon-light.svg" alt="" style="width:36px; height:36px;">
+          <h4 style="font-size:24px; font-weight:700; color:var(--text);">Connect</h4>
+          <p style="font-size:14px; font-weight:500; letter-spacing:0.04em; color:var(--connect-purple);">Operator Workspace</p>
+          <p class="sub" style="font-size:18px; line-height:1.6;">Browser-based environment for business data. Workflow views with human oversight of AI&nbsp;actions.</p>
+        </div>
+        <div class="surface-card" style="padding:32px; display:flex; flex-direction:column; gap:12px; border-top:3px solid var(--fusion-pink);">
+          <img src="assets/logos/fusion-icon-light.svg" alt="" style="width:36px; height:36px;">
+          <h4 style="font-size:24px; font-weight:700; color:var(--text);">Fusion</h4>
+          <p style="font-size:14px; font-weight:500; letter-spacing:0.04em; color:var(--fusion-pink);">Internal Enterprise Platform</p>
+          <p class="sub" style="font-size:18px; line-height:1.6;">Branded portal for dashboards, AI outputs, and workflows. Per-department views. Replaces legacy&nbsp;intranet.</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-num">11</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 12 — ARCHITECTURE DIAGRAM
+       Site v3 arch-diagram style with surface cards
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="This is the slide the enterprise architect will study. Walk through the flow left to right. Key point: data boundaries are defined at the integration level, not layered on as policy.">
+    <div class="illust-glow tr" style="--glow-color: rgba(0,212,255,0.08);"></div>
+    <div class="slide-pad" style="gap:24px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <h3 style="font-size:36px; font-weight:700; letter-spacing:-0.02em;">From existing systems to AI-native operations</h3>
+      <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+        <div class="surface-card-lg" style="padding:48px; width:100%; position:relative; overflow:hidden;">
+          <!-- Subtle glow inside the card -->
+          <div style="position:absolute; top:-40px; right:-40px; width:50%; height:120%; background:radial-gradient(ellipse at 80% 20%, rgba(0,212,255,0.06), transparent 70%); pointer-events:none;"></div>
+          <div style="position:relative; z-index:1; display:grid; grid-template-columns:180px 1fr 1fr 1fr; gap:20px; align-items:stretch;">
+            <!-- Existing Systems -->
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:var(--text-dim); margin-bottom:6px;">Your Systems</div>
+              <div style="border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; font-size:17px; font-weight:500; background:rgba(255,255,255,0.02);">ERP</div>
+              <div style="border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; font-size:17px; font-weight:500; background:rgba(255,255,255,0.02);">HRIS</div>
+              <div style="border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; font-size:17px; font-weight:500; background:rgba(255,255,255,0.02);">Doc Mgmt</div>
+              <div style="border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; font-size:17px; font-weight:500; background:rgba(255,255,255,0.02);">Email</div>
+              <div style="border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; font-size:17px; font-weight:500; background:rgba(255,255,255,0.02);">Financial</div>
+            </div>
+            <!-- Switchboard -->
+            <div style="border:1px solid rgba(242,203,41,0.3); border-radius:14px; padding:28px; display:flex; flex-direction:column; justify-content:center;">
+              <div style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:var(--switchboard-gold); margin-bottom:12px;">Switchboard</div>
+              <ul style="list-style:none; font-size:16px; color:var(--text-muted); line-height:1.8;">
+                <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--switchboard-gold); flex-shrink:0;"></span>Standards-based APIs</li>
+                <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--switchboard-gold); flex-shrink:0;"></span>Data scoping per integration</li>
+                <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--switchboard-gold); flex-shrink:0;"></span>Authorization & sync</li>
+              </ul>
+              <div style="margin-top:12px; font-size:13px; font-weight:600; color:var(--switchboard-gold); opacity:0.7;">GraphQL + MCP</div>
+            </div>
+            <!-- Clint + Connect -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div style="border:1px solid rgba(0,212,255,0.25); border-radius:14px; padding:24px; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                <div style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:var(--accent-cyan); margin-bottom:8px;">Clint</div>
+                <ul style="list-style:none; font-size:15px; color:var(--text-muted); line-height:1.7;">
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--accent-cyan); flex-shrink:0;"></span>Multi-agent workflows</li>
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--accent-cyan); flex-shrink:0;"></span>Sandboxed permissions</li>
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--accent-cyan); flex-shrink:0;"></span>Local + commercial models</li>
+                </ul>
+              </div>
+              <div style="border:1px solid rgba(141,69,250,0.25); border-radius:14px; padding:24px; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                <div style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:var(--connect-purple); margin-bottom:8px;">Connect</div>
+                <ul style="list-style:none; font-size:15px; color:var(--text-muted); line-height:1.7;">
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--connect-purple); flex-shrink:0;"></span>Operator workspace</li>
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--connect-purple); flex-shrink:0;"></span>Human oversight</li>
+                </ul>
+              </div>
+            </div>
+            <!-- Fusion + Renown -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div style="border:1px solid rgba(244,62,129,0.25); border-radius:14px; padding:24px; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                <div style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:var(--fusion-pink); margin-bottom:8px;">Fusion</div>
+                <ul style="list-style:none; font-size:15px; color:var(--text-muted); line-height:1.7;">
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--fusion-pink); flex-shrink:0;"></span>Dashboards & reports</li>
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--fusion-pink); flex-shrink:0;"></span>Per-department views</li>
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--fusion-pink); flex-shrink:0;"></span>Branded, on your infra</li>
+                </ul>
+              </div>
+              <div style="border:1px solid rgba(33,255,180,0.25); border-radius:14px; padding:24px; flex:1; display:flex; flex-direction:column; justify-content:center;">
+                <div style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:var(--renown-green); margin-bottom:8px;">Renown</div>
+                <ul style="list-style:none; font-size:15px; color:var(--text-muted); line-height:1.7;">
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--renown-green); flex-shrink:0;"></span>Unified identity</li>
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--renown-green); flex-shrink:0;"></span>Humans + agents</li>
+                  <li style="display:flex; gap:8px; align-items:center;"><span style="width:4px; height:4px; border-radius:50%; background:var(--renown-green); flex-shrink:0;"></span>Scoped permissions</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">12</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 13 — INTEGRATION & DATA ISOLATION
+       Two-column with surface cards
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Two key messages: (1) Parallel adoption — runs alongside existing systems. (2) Every integration is a data boundary — isolation is structural, not policy.">
+    <div class="illust-glow bl" style="--glow-color: rgba(0,180,220,0.1);"></div>
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <h3 style="font-size:40px; font-weight:700; letter-spacing:-0.02em;">Connect everything. Expose nothing.</h3>
+      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:32px; align-content:center;">
+        <div class="surface-card-lg" style="padding:40px;">
+          <h4 style="font-size:24px; font-weight:700; color:var(--accent-cyan); margin-bottom:24px;">Parallel adoption</h4>
+          <ul class="bullet-list" style="gap:16px;">
+            <li><strong>Runs alongside</strong> your existing systems</li>
+            <li><strong>No rip-and-replace</strong> — AI-native layer adds capabilities&nbsp;on&nbsp;top</li>
+            <li>Your existing workflows <strong>continue unchanged</strong></li>
+            <li>Start with one department, <strong>expand at your pace</strong></li>
+          </ul>
+        </div>
+        <div class="surface-card-lg" style="padding:40px;">
+          <h4 style="font-size:24px; font-weight:700; color:var(--accent-cyan); margin-bottom:24px;">Every integration is a data boundary</h4>
+          <ul class="bullet-list" style="gap:16px;">
+            <li><strong>HR agent</strong> sees personnel records — not financials</li>
+            <li><strong>Procurement agent</strong> sees vendor data — not employee&nbsp;records</li>
+            <li><strong>Legal agent</strong> accesses contracts — not compensation&nbsp;details</li>
+            <li>Isolation defined <strong>at integration level</strong>, not layered as policy</li>
+          </ul>
+        </div>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">13</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 14 — TIERED AI MODEL ACCESS
+       Site v3 tier-card style with colored dots
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="This is the slide that wins the DPO. Three tiers. Key phrase: 'Your DPO defines the tiers. The architecture enforces them.'">
+    <div class="illust-glow tl" style="--glow-color: rgba(122,58,255,0.15);"></div>
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <h3 style="font-size:40px; font-weight:700; letter-spacing:-0.02em;">Not all data should reach the same model.</h3>
+      <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+        <div class="surface-card-lg" style="padding:48px; width:100%; max-width:1400px;">
+          <div style="display:flex; flex-direction:column; gap:0;">
+            <!-- Tier 1 -->
+            <div style="display:flex; gap:24px; padding:28px 0; border-bottom:1px solid var(--surface-border);">
+              <div style="width:12px; height:12px; border-radius:50%; background:var(--accent-cyan); margin-top:8px; flex-shrink:0;"></div>
+              <div style="flex:1;">
+                <h4 style="font-size:24px; font-weight:700; margin-bottom:6px; color:var(--text);">Local models <span style="font-size:16px; font-weight:500; color:var(--text-dim);">— Most sensitive</span></h4>
+                <p style="font-size:20px; line-height:1.6; color:var(--text-muted);">Privileged legal communications, raw personnel files, board-level financials, trade secrets. Open-source models on your hardware. Nothing leaves your network.</p>
+              </div>
+            </div>
+            <!-- Tier 2 -->
+            <div style="display:flex; gap:24px; padding:28px 0; border-bottom:1px solid var(--surface-border);">
+              <div style="width:12px; height:12px; border-radius:50%; background:var(--accent-purple); margin-top:8px; flex-shrink:0;"></div>
+              <div style="flex:1;">
+                <h4 style="font-size:24px; font-weight:700; margin-bottom:6px; color:var(--text);">Frontier commercial <span style="font-size:16px; font-weight:500; color:var(--text-dim);">— Confidential, censored</span></h4>
+                <p style="font-size:20px; line-height:1.6; color:var(--text-muted);">Redacted extracts, sanitized summaries, pre-approved data shapes. The integration layer controls what reaches the external model.</p>
+              </div>
+            </div>
+            <!-- Tier 3 -->
+            <div style="display:flex; gap:24px; padding:28px 0;">
+              <div style="width:12px; height:12px; border-radius:50%; background:var(--text-dim); margin-top:8px; flex-shrink:0;"></div>
+              <div style="flex:1;">
+                <h4 style="font-size:24px; font-weight:700; margin-bottom:6px; color:var(--text);">General-purpose <span style="font-size:16px; font-weight:500; color:var(--text-dim);">— Non-confidential</span></h4>
+                <p style="font-size:20px; line-height:1.6; color:var(--text-muted);">Drafting, formatting, research, translation. Standard commercial APIs for tasks with no sensitivity constraint.</p>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--surface-border); font-size:18px; font-weight:600; color:var(--accent-cyan);">Your DPO defines the tiers. The architecture enforces them.</div>
+        </div>
+      </div>
+    </div>
+    <span class="slide-num">14</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 15 — LEGAL & HR USE CASES
+       Site v3 use-case-card style with colored icons
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Pick the vertical closest to the audience's industry and lead with it. Don't read every bullet — pick two and give a concrete example.">
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <p class="muted kicker">Use Cases</p>
+      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:24px; align-content:center;">
+        <div class="surface-card-lg" style="padding:44px; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:-20px; left:-20px; width:60%; height:200px; background:radial-gradient(ellipse at 20% 0%, rgba(0,212,255,0.12), transparent 70%); pointer-events:none;"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="icon-square" style="background:rgba(0,212,255,0.12); color:var(--accent-cyan); margin-bottom:20px; font-size:24px;">&#9878;</div>
+            <h3 style="font-size:32px; font-weight:700; margin-bottom:16px;">Legal</h3>
+            <ul class="bullet-list" style="font-size:22px; gap:14px;">
+              <li style="font-size:22px;">Contract review, due diligence, compliance monitoring on <strong>local models</strong></li>
+              <li style="font-size:22px;">Multi-agent workflows: review, risk, and compliance agents <strong>coordinate on the same matter</strong></li>
+              <li style="font-size:22px;">Each agent scoped to the data it needs — <strong>nothing more</strong></li>
+              <li style="font-size:22px;">Full audit trail — <strong>defensible before any regulator</strong></li>
+            </ul>
+          </div>
+        </div>
+        <div class="surface-card-lg" style="padding:44px; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:-20px; left:-20px; width:60%; height:200px; background:radial-gradient(ellipse at 20% 0%, rgba(33,255,180,0.1), transparent 70%); pointer-events:none;"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="icon-square" style="background:rgba(33,255,180,0.12); color:var(--renown-green); margin-bottom:20px; font-size:24px;">&#9829;</div>
+            <h3 style="font-size:32px; font-weight:700; margin-bottom:16px;">HR</h3>
+            <ul class="bullet-list" style="font-size:22px; gap:14px;">
+              <li style="font-size:22px;">Recruitment screening, employee records, performance analysis, policy compliance</li>
+              <li style="font-size:22px;">Personnel data <strong>never processed by external AI</strong></li>
+              <li style="font-size:22px;">PII never leaves your environment — <strong>GDPR compliance is structural</strong></li>
+              <li style="font-size:22px;">Agents sandboxed to scoped data with <strong>human oversight</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="slide-num">15</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 16 — PROCUREMENT & FINANCE USE CASES
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Key messages — procurement: negotiation positions stay on local models. Finance: append-only history makes every AI action audit-ready by default.">
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <p class="muted kicker">Use Cases</p>
+      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:24px; align-content:center;">
+        <div class="surface-card-lg" style="padding:44px; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:-20px; left:-20px; width:60%; height:200px; background:radial-gradient(ellipse at 20% 0%, rgba(242,203,41,0.1), transparent 70%); pointer-events:none;"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="icon-square" style="background:rgba(242,203,41,0.12); color:var(--switchboard-gold); margin-bottom:20px; font-size:24px;">&#9733;</div>
+            <h3 style="font-size:32px; font-weight:700; margin-bottom:16px;">Procurement</h3>
+            <ul class="bullet-list" style="font-size:22px; gap:14px;">
+              <li style="font-size:22px;">Vendor evaluation, contract negotiation support, spend analysis, supplier&nbsp;risk</li>
+              <li style="font-size:22px;">Negotiation positions and pricing data <strong>stay on local models</strong></li>
+              <li style="font-size:22px;">Commercial AI models only see <strong>sanitized summaries</strong></li>
+              <li style="font-size:22px;">Agents monitor contract terms, <strong>flag anomalies</strong>, prepare negotiation&nbsp;briefs</li>
+            </ul>
+          </div>
+        </div>
+        <div class="surface-card-lg" style="padding:44px; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:-20px; left:-20px; width:60%; height:200px; background:radial-gradient(ellipse at 20% 0%, rgba(141,69,250,0.1), transparent 70%); pointer-events:none;"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="icon-square" style="background:rgba(141,69,250,0.12); color:var(--connect-purple); margin-bottom:20px; font-size:24px;">&#9670;</div>
+            <h3 style="font-size:32px; font-weight:700; margin-bottom:16px;">Finance</h3>
+            <ul class="bullet-list" style="font-size:22px; gap:14px;">
+              <li style="font-size:22px;">Reporting, forecasting, expense management, audit preparation</li>
+              <li style="font-size:22px;">Board-level financials processed by <strong>local AI models</strong></li>
+              <li style="font-size:22px;">Append-only, <strong>cryptographically signed</strong> operation history</li>
+              <li style="font-size:22px;">Every AI-assisted operation <strong>audit-ready by default — SOX-ready</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="slide-num">16</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 17 — PRIVACY & COMPLIANCE (DIVIDER)
+       Gradient corner bg from illustrations
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Frame this section as 'what you'll forward to your DPO, legal counsel, and compliance team.' The next two slides are designed to be self-contained.">
+    <div class="slide-pad" style="justify-content:center; align-items:center; text-align:center;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <p style="font-size:16px; font-weight:600; text-transform:uppercase; letter-spacing:5px; color:var(--accent-cyan); margin-bottom:20px;">Trust & Compliance</p>
+      <h2 style="font-size:56px; font-weight:700; line-height:1.1; letter-spacing:-0.02em;">Built into the architecture.<br>Not bolted on.</h2>
+      <p class="sub" style="font-size:24px; margin-top:28px; max-width:45%; line-height:1.6;">The section you forward to your DPO.</p>
+    </div>
+    <span class="slide-num">17</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 18 — COMPLIANCE BY CONSTRUCTION
+       Site v3 privacy-card grid
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Four structural guarantees. Emphasize: 'The audit trail is not a log — it IS the data structure.' On regulatory readiness: EU AI Act requires transparency. Powerhouse is already there.">
+    <div class="slide-pad" style="gap:32px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <h3 style="font-size:36px; font-weight:700; letter-spacing:-0.02em;">Compliance by construction</h3>
+      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:20px; align-content:center;">
+        <div class="surface-card" style="padding:40px; display:flex; flex-direction:column; gap:14px;">
+          <div class="icon-square" style="background:rgba(0,212,255,0.12); color:var(--accent-cyan); font-size:20px;">&#9632;</div>
+          <h4 style="font-size:26px; font-weight:700; color:var(--text);">Data residency</h4>
+          <p style="font-size:22px; line-height:1.6; color:var(--text-muted);">All data stored on infrastructure you control. Self-host on your servers, or Vetra Cloud with contractual data sovereignty guarantees.</p>
+        </div>
+        <div class="surface-card" style="padding:40px; display:flex; flex-direction:column; gap:14px;">
+          <div class="icon-square" style="background:rgba(4,193,97,0.12); color:var(--vetra-green); font-size:20px;">&#9632;</div>
+          <h4 style="font-size:26px; font-weight:700; color:var(--text);">Immutable audit trail</h4>
+          <p style="font-size:22px; line-height:1.6; color:var(--text-muted);">Every operation — human or AI — cryptographically signed and timestamped. The audit trail is not a log — it <em style="color:var(--text); font-style:normal; font-weight:600;">is</em> the data structure.</p>
+        </div>
+        <div class="surface-card" style="padding:40px; display:flex; flex-direction:column; gap:14px;">
+          <div class="icon-square" style="background:rgba(141,69,250,0.12); color:var(--connect-purple); font-size:20px;">&#9632;</div>
+          <h4 style="font-size:26px; font-weight:700; color:var(--text);">Data portability</h4>
+          <p style="font-size:22px; line-height:1.6; color:var(--text-muted);">JSON data. TypeScript schemas. Open-source code. If you leave, everything comes with you. No proprietary format, no lock-in.</p>
+        </div>
+        <div style="padding:40px; display:flex; flex-direction:column; gap:14px; border-radius:var(--card-radius-sm); background:linear-gradient(135deg, rgba(0,212,255,0.04), rgba(122,58,255,0.04)); border:1px solid var(--surface-border);">
+          <div class="icon-square" style="background:rgba(122,58,255,0.12); color:var(--accent-purple); font-size:20px;">&#9632;</div>
+          <h4 style="font-size:26px; font-weight:700; color:var(--text);">Regulatory readiness</h4>
+          <p style="font-size:22px; line-height:1.6; color:var(--text-muted);">EU AI Act transparency, provenance tracking, algorithmic accountability — structurally ready now. No retrofit needed when regulation arrives.</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-num">18</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 19 — HOW THIS COMPARES
+       Site v3 comparison-table style
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="This is the slide they'll photograph. Name the real alternative: Microsoft, Salesforce, SAP. Don't say they're bad — say the architecture is fundamentally different.">
+    <div class="slide-pad" style="gap:28px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <h3 style="font-size:36px; font-weight:700; letter-spacing:-0.02em;">How this compares</h3>
+      <p style="font-size:20px; max-width:70%; color:var(--text-muted); line-height:1.7;">Your existing vendors are adding AI to their platforms. But they're bolting it onto architectures never designed for machine interaction — and processing your data on their&nbsp;infrastructure.</p>
+      <div style="flex:1; display:flex; align-items:center;">
+        <table class="slide-table">
+          <thead>
+            <tr>
+              <th style="width:22%;"></th>
+              <th style="width:39%;">Cloud AI + Legacy Systems</th>
+              <th style="width:39%;">Powerhouse</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Data privacy</td><td>Data sent to external AI services</td><td>Stays on your infra; local models for sensitive work</td></tr>
+            <tr><td>AI readiness</td><td>Separate integration per system</td><td>Structured data layer; AI endpoints from schemas</td></tr>
+            <tr><td>Agent control</td><td>Prompt-based; unpredictable scope</td><td>Specification-driven; sandboxed; full history</td></tr>
+            <tr><td>Compliance</td><td>Audit trails reconstructed after the fact</td><td>Cryptographically signed; immutable by design</td></tr>
+            <tr><td>Regulation</td><td>Retrofit required when AI regulation arrives</td><td>Architecture meets EU AI Act requirements now</td></tr>
+            <tr><td>Lock-in</td><td>Multi-year contracts; proprietary formats</td><td>Open source; JSON data; portable schemas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <span class="slide-num">19</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 20 — WHO WE ARE
+       Light beam bg illustration
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Honest, not salesy. MakerDAO is the credibility anchor. Dogfooding: Achra and Vetra are production Powerhouse applications. 'When we demo the platform, we're showing you our production systems.'">
+    <div class="illust-glow tl" style="--glow-color: rgba(0,180,220,0.2);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-light-beam.png'); background-position: center bottom; background-size: 110%; opacity: 0.15;"></div>
+    <div class="slide-pad" style="justify-content:center; gap:40px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div class="gradient-bar"></div>
+      <h2 style="font-size:52px; font-weight:700; line-height:1.1; letter-spacing:-0.02em;">We build on what we ship.</h2>
+      <div style="display:flex; flex-direction:column; gap:28px; max-width:72%;">
+        <p style="font-size:24px; line-height:1.7; color:var(--text-muted);">Powerhouse grew out of building operational infrastructure for <strong style="color:var(--text);">MakerDAO</strong> — one of the most complex decentralized organizations in the world. We've been building open-source tools for AI-native operations since&nbsp;2021.</p>
+        <div class="surface-card-lg" style="padding:28px 36px; display:flex; gap:20px; align-items:center;">
+          <div style="display:flex; gap:12px; align-items:center;">
+            <img src="assets/logos/achra-icon.svg" alt="" style="width:28px; height:28px;">
+            <span style="font-size:16px; font-weight:600;">Achra</span>
+          </div>
+          <span style="color:var(--text-dim);">+</span>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <img src="assets/logos/vetra-icon.svg" alt="" style="width:28px; height:28px;">
+            <span style="font-size:16px; font-weight:600;">Vetra</span>
+          </div>
+          <span style="color:var(--text-dim); font-size:16px; margin-left:12px;">are Powerhouse applications — same architecture, same components. When we demo, we show production.</span>
+        </div>
+      </div>
+    </div>
+    <span class="slide-num">20</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 21 — YOUR TEAM ALREADY KNOWS THE STACK
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Addresses the 'can I hire people who know this?' concern. Your team already knows TypeScript, React, GraphQL. The Powerhouse-specific layer is a design pattern, not a new language.">
+    <div class="illust-glow bl" style="--glow-color: rgba(4,193,97,0.15);"></div>
+    <div class="slide-pad" style="gap:40px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div>
+        <p class="muted kicker">Your Team</p>
+        <h3 style="font-size:48px; font-weight:700; letter-spacing:-0.02em;"><span class="gradient-text">TypeScript. React. GraphQL. Node.js.</span></h3>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:32px; max-width:72%;">
+        <p style="font-size:26px; line-height:1.7; color:var(--text-muted);">The Powerhouse architecture is a design pattern on top of technologies your engineers use daily. No exotic language, no proprietary runtime. The talent pool already exists.</p>
+        <div class="surface-card" style="padding:32px 40px; border-left:4px solid var(--accent-cyan);">
+          <p style="font-size:24px; font-weight:600; line-height:1.6; color:var(--text);">Open source is your insurance policy.</p>
+          <p style="font-size:20px; line-height:1.6; color:var(--text-muted); margin-top:8px;">JSON data, TypeScript schemas, your code. If you leave, everything comes with you.</p>
+        </div>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">21</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 22 — EARLY MEANS ADVANTAGE
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Be honest about where we are. Frontier technology. What you get: direct access, feature requests go to the roadmap, your deployment becomes a reference architecture.">
+    <div class="illust-glow tr" style="--glow-color: rgba(122,58,255,0.2);"></div>
+    <div class="illust-bg" style="background-image: url('assets/illustrations/powerhouse-crystalline.png'); background-position: right -200px bottom -300px; background-size: 80%; opacity: 0.1;"></div>
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div>
+        <p style="font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:4px; color:var(--accent-cyan); margin-bottom:12px;">Partnership</p>
+        <h3 style="font-size:48px; font-weight:700; letter-spacing:-0.02em;">Early means advantage.</h3>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+        <ul class="bullet-list" style="max-width:80%;">
+          <li>Your feature requests go <strong>directly to the engineering roadmap</strong></li>
+          <li>Your deployment becomes <strong>a reference architecture for your industry</strong></li>
+          <li><strong>Direct access</strong> to the team that builds the platform — not a support ticket queue</li>
+          <li>Enterprise support through <strong>BAI with contractual SLAs</strong></li>
+          <li>A <strong>head start</strong> before your competitors adopt the same approach</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>Powerhouse — Enterprise AI Infrastructure</span></div>
+    </div>
+    <span class="slide-num">22</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 23 — THREE WAYS TO MOVE
+       Site v3 cta-option card style
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Three options, but steer toward option 2 — the BAI assessment. 'Most CTOs start here because it answers the board's question with a concrete, defensible plan.'">
+    <div class="illust-glow center" style="--glow-color: rgba(0,180,220,0.1);"></div>
+    <div class="slide-pad" style="gap:40px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <h3 style="font-size:44px; font-weight:700; letter-spacing:-0.02em;">Three ways to move.</h3>
+      <div style="flex:1; display:grid; grid-template-columns:repeat(3,1fr); gap:24px; align-content:center;">
+        <div class="surface-card-lg" style="padding:44px; display:flex; flex-direction:column; gap:20px;">
+          <div class="icon-circle" style="background:rgba(0,212,255,0.12); color:var(--accent-cyan); font-weight:700; font-size:22px;">1</div>
+          <h4 style="font-size:28px; font-weight:700; color:var(--text);">See it live</h4>
+          <p style="font-size:24px; line-height:1.6; color:var(--text-muted);">Request a demo. We'll show the platform running in production and map the architecture to your operations.</p>
+        </div>
+        <div style="padding:44px; display:flex; flex-direction:column; gap:20px; border-radius:var(--card-radius); border:2px solid var(--accent-cyan); background:var(--surface);">
+          <div class="icon-circle" style="background:rgba(0,212,255,0.12); color:var(--accent-cyan); font-weight:700; font-size:22px;">2</div>
+          <h4 style="font-size:28px; font-weight:700; color:var(--text);">Assess your readiness</h4>
+          <p style="font-size:24px; line-height:1.6; color:var(--text-muted);">AI readiness assessment from the BAI team. 2–3 week data flow audit. Produces a prioritized roadmap.</p>
+          <p style="font-size:20px; font-weight:600; color:var(--accent-cyan); margin-top:auto;">No commitment beyond the assessment.</p>
+        </div>
+        <div class="surface-card-lg" style="padding:44px; display:flex; flex-direction:column; gap:20px;">
+          <div class="icon-circle" style="background:rgba(0,212,255,0.12); color:var(--accent-cyan); font-weight:700; font-size:22px;">3</div>
+          <h4 style="font-size:28px; font-weight:700; color:var(--text);">Explore the platform</h4>
+          <p style="font-size:24px; line-height:1.6; color:var(--text-muted);">Developer environment, packages, and documentation at vetra.io. Implementation partners at achra.com.</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-num">23</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 24 — THE BAI ENGAGEMENT
+       Process/timeline from design system
+       ═══════════════════════════════════════════ -->
+  <div class="slide" data-notes="Walk through the phases quickly. 'Start with the assessment — it's 2-3 weeks, and it answers the board's question with a concrete plan. No commitment beyond the assessment.'">
+    <div class="slide-pad" style="gap:36px;">
+      <img src="assets/logos/powerhouse-icon-light.svg" alt="" class="slide-icon">
+      <div>
+        <p class="muted kicker">BAI</p>
+        <h3 style="font-size:44px; font-weight:700; letter-spacing:-0.02em;">From assessment to operation.</h3>
+      </div>
+      <div style="flex:1; display:flex; align-items:center;">
+        <div style="width:100%; display:flex; align-items:flex-start; gap:12px;">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;">
+            <div class="icon-circle" style="background:rgba(0,212,255,0.15); color:var(--accent-cyan); font-weight:700; font-size:22px;">1</div>
+            <h5 style="font-size:24px; font-weight:700;">Audit</h5>
+            <p style="font-size:20px; line-height:1.5; color:var(--text-muted);">Map data flows, classify sensitivity, identify AI-ready&nbsp;processes</p>
+          </div>
+          <div style="flex:0; height:2px; width:48px; background:var(--surface-border); margin-top:28px;"></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;">
+            <div class="icon-circle" style="background:rgba(50,157,255,0.15); color:#329DFF; font-weight:700; font-size:22px;">2</div>
+            <h5 style="font-size:24px; font-weight:700;">Assess</h5>
+            <p style="font-size:20px; line-height:1.5; color:var(--text-muted);">Score AI readiness, identify integration points, evaluate privacy&nbsp;tiers</p>
+          </div>
+          <div style="flex:0; height:2px; width:48px; background:var(--surface-border); margin-top:28px;"></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;">
+            <div class="icon-circle" style="background:rgba(4,193,97,0.15); color:var(--vetra-green); font-weight:700; font-size:22px;">3</div>
+            <h5 style="font-size:24px; font-weight:700;">Roadmap</h5>
+            <p style="font-size:20px; line-height:1.5; color:var(--text-muted);">Prioritized implementation plan with timeline and resource&nbsp;requirements</p>
+          </div>
+          <div style="flex:0; height:2px; width:48px; background:var(--surface-border); margin-top:28px;"></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;">
+            <div class="icon-circle" style="background:rgba(242,203,41,0.15); color:var(--switchboard-gold); font-weight:700; font-size:22px;">4</div>
+            <h5 style="font-size:24px; font-weight:700;">Implement</h5>
+            <p style="font-size:20px; line-height:1.5; color:var(--text-muted);">Hands-on deployment with your team, parallel to existing systems</p>
+          </div>
+          <div style="flex:0; height:2px; width:48px; background:var(--surface-border); margin-top:28px;"></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;">
+            <div class="icon-circle" style="background:rgba(122,58,255,0.15); color:var(--accent-purple); font-weight:700; font-size:22px;">5</div>
+            <h5 style="font-size:24px; font-weight:700;">Operate</h5>
+            <p style="font-size:20px; line-height:1.5; color:var(--text-muted);">Ongoing support with SLAs, Achra marketplace for additional services</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer"><span style="color:var(--accent-cyan); font-weight:600; font-size:22px;">Start with the assessment. No commitment beyond that.</span></div>
+    </div>
+    <span class="slide-num">24</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SLIDE 25 — CLOSE
+       Gradient bg + wordmark
+       ═══════════════════════════════════════════ -->
+  <div class="slide gradient-bg" data-notes="End clean. Let the contact information sit on screen during Q&A. If the room is warm, offer to schedule the assessment call right there.">
+    <img src="assets/illustrations/powerhouse-wordmark-gradient.svg" alt="" class="slide-wordmark">
+    <div class="slide-pad" style="justify-content:center; align-items:center; text-align:center; z-index:1;">
+      <img src="assets/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse" style="height:36px; position:absolute; top:48px; left:80px;">
+      <h1 style="font-size:68px; font-weight:700; line-height:1.08; letter-spacing:-0.02em; margin-bottom:56px;">Start the conversation.</h1>
+      <div style="display:flex; gap:64px; font-size:20px; font-weight:500;">
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+          <span class="muted" style="font-size:13px; text-transform:uppercase; letter-spacing:2px;">Contact</span>
+          <span>hello@powerhouse.inc</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+          <span class="muted" style="font-size:13px; text-transform:uppercase; letter-spacing:2px;">Assessment</span>
+          <span>bai.powerhouse.io</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+          <span class="muted" style="font-size:13px; text-transform:uppercase; letter-spacing:2px;">Platform</span>
+          <span>vetra.io</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+          <span class="muted" style="font-size:13px; text-transform:uppercase; letter-spacing:2px;">Marketplace</span>
+          <span>achra.com</span>
+        </div>
+      </div>
+      <div class="slide-footer" style="position:absolute; bottom:40px; left:100px; right:100px;"><span>Powerhouse</span><span>2026</span></div>
+    </div>
+    <span class="slide-num">25</span>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Speaker Notes Panel -->
+<div class="notes-panel" id="notesPanel">
+  <h4>Speaker Notes</h4>
+  <p id="notesContent"></p>
+</div>
+
+<div class="nav-hint" id="navHint">Arrow keys or click to navigate &middot; <b>N</b> for speaker notes</div>
+
+<script>
+(function() {
+  var SLIDE_W = 1920;
+  var SLIDE_H = 1080;
+  var slides = document.querySelectorAll('.slide');
+  var progress = document.getElementById('progress');
+  var notesPanel = document.getElementById('notesPanel');
+  var notesContent = document.getElementById('notesContent');
+  var navHint = document.getElementById('navHint');
+  var current = 0;
+  var notesVisible = false;
+
+  /* ── Scale slides to fit viewport ── */
+  function rescale() {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var s = Math.min(vw / SLIDE_W, vh / SLIDE_H);
+    for (var i = 0; i < slides.length; i++) {
+      slides[i].style.transform = 'scale(' + s + ')';
+    }
+  }
+  window.addEventListener('resize', rescale);
+  rescale();
+
+  /* ── Navigation ── */
+  function goTo(index) {
+    if (index < 0 || index >= slides.length) return;
+    slides[current].classList.remove('active');
+    current = index;
+    slides[current].classList.add('active');
+    progress.style.width = ((current + 1) / slides.length * 100) + '%';
+    updateNotes();
+  }
+
+  function updateNotes() {
+    var note = slides[current].getAttribute('data-notes') || '';
+    notesContent.textContent = note;
+  }
+
+  function toggleNotes() {
+    notesVisible = !notesVisible;
+    notesPanel.classList.toggle('visible', notesVisible);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); goTo(current - 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault(); goTo(0);
+    } else if (e.key === 'End') {
+      e.preventDefault(); goTo(slides.length - 1);
+    } else if (e.key === 'n' || e.key === 'N') {
+      toggleNotes();
+    }
+    if (navHint.style.opacity !== '0') navHint.style.opacity = '0';
+  });
+
+  document.addEventListener('click', function(e) {
+    if (notesPanel.contains(e.target)) return;
+    if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+    else goTo(current - 1);
+  });
+
+  var touchStartX = 0;
+  document.addEventListener('touchstart', function(e) { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', function(e) {
+    var diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) goTo(current + 1);
+      else goTo(current - 1);
+    }
+  });
+
+  updateNotes();
+  setTimeout(function() { navHint.style.opacity = '0'; }, 5000);
+})();
+</script>
+
+</body>
+</html>

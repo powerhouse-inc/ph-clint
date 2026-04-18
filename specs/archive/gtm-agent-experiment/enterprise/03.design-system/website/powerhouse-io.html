@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powerhouse.io — Website Recreation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0B0D0F;
+      --surface: #141719;
+      --surface-border: rgba(255,255,255,0.06);
+      --text: #F0F2F4;
+      --text-muted: rgba(240,242,244,0.55);
+      --text-dim: rgba(240,242,244,0.35);
+      --achra-purple: #7A3AFF;
+      --vetra-green: #04C161;
+      --accent-cyan: #00D4FF;
+      --card-radius: 20px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* =============================================
+       HERO SECTION
+       ============================================= */
+    .hero {
+      padding: 40px 0 60px;
+    }
+
+    .hero-card {
+      background-color: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      top: -30px; left: -30px;
+      width: 60%;
+      height: 120%;
+      background: radial-gradient(ellipse at 20% 20%, rgba(0,180,220,0.4), transparent 70%);
+      pointer-events: none;
+      filter: blur(30px);
+      z-index: 0;
+    }
+
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      top: -350px; right: -100px;
+      width: 784px; height: 784px;
+      background: url('../illustrations/powerhouse-icon-dithered-cyan.png') no-repeat center / contain;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.8;
+    }
+
+    .hero-content {
+      padding: 48px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      max-width: 55%;
+    }
+
+    .hero-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 24px;
+    }
+
+    .hero-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-body {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 480px;
+    }
+
+    /* =============================================
+       PILLAR CARDS
+       ============================================= */
+    .pillars {
+      padding: 0 0 80px;
+    }
+
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .pillar-card {
+      background-color: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--card-radius);
+      padding: 36px 32px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      min-height: 520px;
+    }
+
+    .pillar-card::before {
+      content: '';
+      position: absolute;
+      top: -30px; left: -30px; right: -30px;
+      height: 280px;
+      opacity: 1;
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(30px);
+    }
+
+    .pillar-card.local-first::before {
+      background: radial-gradient(ellipse at 20% 0%, rgba(180,50,220,0.55), transparent 70%);
+    }
+    .pillar-card.decentralized::before {
+      background: radial-gradient(ellipse at 20% 0%, rgba(20,60,180,0.4), transparent 70%);
+    }
+    .pillar-card.open-source::before {
+      background: radial-gradient(ellipse at 60% -10%, rgba(40,50,150,0.3), transparent 70%);
+    }
+
+    .pillar-icon {
+      width: 36px;
+      height: 36px;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+      object-fit: contain;
+      opacity: 0.7;
+    }
+
+    .pillar-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      line-height: 1.25;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pillar-body {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pillar-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-repeat: no-repeat;
+      opacity: 0.8;
+    }
+    .pillar-card.local-first::after {
+      background-image: url('../illustrations/powerhouse-halftone-sphere.png');
+      background-position: right -220px bottom -180px;
+      background-size: 180%;
+    }
+    .pillar-card.decentralized::after {
+      background-image: url('../illustrations/powerhouse-crystalline.png');
+      background-position: right -220px bottom -360px;
+      background-size: 170%;
+    }
+    .pillar-card.open-source::after {
+      background-image: url('../illustrations/powerhouse-flowing.png');
+      background-position: right -60px bottom -140px;
+      background-size: 100%;
+      opacity: 1;
+    }
+
+    /* =============================================
+       PRODUCTS SECTION
+       ============================================= */
+    .products {
+      padding: 0 0 80px;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .product-card {
+      border: 1px solid var(--surface-border);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--surface);
+      min-height: 540px;
+    }
+
+    .product-card::before {
+      content: '';
+      position: absolute;
+      top: -30px; left: -30px; right: -30px;
+      height: 350px;
+      pointer-events: none;
+      z-index: 0;
+      border-radius: 50%;
+      filter: blur(20px);
+    }
+
+    .product-card.achra::before {
+      background: radial-gradient(ellipse at 70% -20%, rgba(122,58,255,0.6), transparent 70%);
+    }
+
+    .product-card.vetra::before {
+      background: radial-gradient(ellipse at 70% -20%, rgba(4,193,97,0.5), transparent 70%);
+    }
+
+    .product-content {
+      padding: 36px 36px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .product-icon {
+      width: 35px;
+      height: 35px;
+      margin-bottom: 16px;
+    }
+
+    .product-name {
+      height: 26px;
+      margin-bottom: 16px;
+    }
+
+    .product-name img {
+      height: 100%;
+      width: auto;
+    }
+
+    .product-desc {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 420px;
+      margin-bottom: 24px;
+    }
+
+    .product-btn {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      color: #fff;
+      transition: opacity 0.2s;
+    }
+    .product-btn:hover { opacity: 0.85; }
+
+    .product-card.achra .product-btn {
+      background: var(--achra-purple);
+    }
+    .product-card.vetra .product-btn {
+      background: var(--vetra-green);
+    }
+
+    .product-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-repeat: no-repeat;
+      opacity: 0.65;
+    }
+    .product-card.achra::after {
+      background-image: url('../illustrations/achra-icon-halftone.png');
+      background-position: right -40px bottom -280px;
+      background-size: 100%;
+    }
+    .product-card.vetra::after {
+      background-image: url('../illustrations/vetra-icon-halftone.png');
+      background-position: right -100px bottom -260px;
+      background-size: 100%;
+    }
+
+    /* =============================================
+       CTA SECTION
+       ============================================= */
+    .cta {
+      padding: 0 0 80px;
+    }
+
+    .cta-card {
+      border-radius: var(--card-radius);
+      border: 1px solid var(--surface-border);
+      overflow: hidden;
+      position: relative;
+      padding: 60px 40px;
+      text-align: center;
+      background: linear-gradient(180deg, #0e1e38 0%, #0b1425 40%, #0B0D0F 100%);
+    }
+
+    /* Horizontal light beam — image-based */
+    .cta-beam {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .cta-beam img {
+      position: absolute;
+      top: 58%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 110%;
+      object-fit: contain;
+    }
+
+    /* Glass wireframe decoration (top-right corner of CTA) */
+    .cta-decoration {
+      position: absolute;
+      top: 10px; right: 40px;
+      width: 140px;
+      height: 180px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .cta-decoration::before {
+      content: '';
+      position: absolute;
+      top: 10px; left: 20px;
+      width: 110px;
+      height: 160px;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
+      transform: rotate(-12deg);
+    }
+    .cta-decoration::after {
+      content: '';
+      position: absolute;
+      top: 0px; left: 0px;
+      width: 100px;
+      height: 140px;
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 18px;
+      transform: rotate(-5deg);
+    }
+
+    .cta-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 48px;
+      font-weight: 400;
+      font-style: normal;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 2;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .cta-subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .cta-form {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 6px 6px 6px 16px;
+      gap: 12px;
+      position: relative;
+      z-index: 2;
+      max-width: 520px;
+      width: 100%;
+    }
+
+    .cta-form-icon {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      opacity: 0.5;
+    }
+
+    .cta-input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      min-width: 0;
+    }
+    .cta-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .cta-submit {
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .cta-submit:hover {
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* =============================================
+       FOOTER WORDMARK
+       ============================================= */
+    .footer-wordmark {
+      position: relative;
+      height: 130px;
+      overflow: hidden;
+    }
+
+    .footer-wordmark img {
+      position: absolute;
+      top: 0;
+      left: -5%;
+      width: 110%;
+      height: auto;
+      pointer-events: none;
+    }
+
+    /* =============================================
+       RESPONSIVE
+       ============================================= */
+    @media (max-width: 900px) {
+      .hero-card { grid-template-columns: 1fr; }
+      .hero-illustration { min-height: 250px; }
+      .pillars-grid { grid-template-columns: 1fr; }
+      .products-grid { grid-template-columns: 1fr; }
+      .cta-title { font-size: 32px; }
+      .container { padding: 0 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ==========================================
+         HERO SECTION
+         ========================================== -->
+    <section class="hero">
+      <div class="hero-card">
+        <div class="hero-content">
+          <img class="hero-icon" src="../logos/powerhouse-logo-pearl.png" alt="Powerhouse">
+          <h1 class="hero-title">The internet is broken.</h1>
+          <p class="hero-body">
+            Big Tech captured every layer of the stack. Our apps, our data, our platforms. The result isn't just market share. It's architectural control. And with AI accelerating, the window to change course is closing.<br>
+            Three technologies can reopen it.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         PILLAR CARDS
+         ========================================== -->
+    <section class="pillars">
+      <div class="pillars-grid">
+
+        <div class="pillar-card local-first">
+          <img class="pillar-icon" src="../logos/powerhouse-logo-pearl.png" alt="Powerhouse">
+          <h2 class="pillar-title">Local First</h2>
+          <p class="pillar-body">
+            Own your data. Work offline. Sync when you're ready. Local-first means your documents, tools, and workflows live on your device first and the network second. No landlord. No lock-in.
+          </p>
+        </div>
+
+        <div class="pillar-card decentralized">
+          <img class="pillar-icon" src="../logos/powerhouse-logo-pearl.png" alt="Powerhouse">
+          <h2 class="pillar-title">Decentralized Technologies</h2>
+          <p class="pillar-body">
+            Real-time collaboration without a central server requires peer-to-peer protocols and decentralized networks. These systems let users and devices sync directly, turning documents into live communication channels and applications into collaborative tools.
+          </p>
+        </div>
+
+        <div class="pillar-card open-source">
+          <img class="pillar-icon" src="../logos/powerhouse-logo-pearl.png" alt="Powerhouse">
+          <h2 class="pillar-title">Open Source AI</h2>
+          <p class="pillar-body">
+            AI will either concentrate power or distribute it. The question isn't which model. It's who controls the infrastructure it runs on and the data it touches. We build software that lets AI agents work alongside teams and communities on sovereign infrastructure, plugging into real workflows with any model. Open models matter. Open infrastructure matters more.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         PRODUCTS: ACHRA & VETRA
+         ========================================== -->
+    <section class="products">
+      <div class="products-grid">
+
+        <div class="product-card achra">
+          <div class="product-content">
+            <img class="product-icon" src="../logos/achra-icon.svg" alt="Achra">
+            <div class="product-name"><img src="../logos/achra-logo-light-text.svg" alt="ACHRA"></div>
+            <p class="product-desc">
+              The coordination hub for global teams. Scope work, choose providers, pay in stablecoins, and track results in one place.
+            </p>
+            <a href="#" class="product-btn">Visit Achra</a>
+          </div>
+        </div>
+
+        <div class="product-card vetra">
+          <div class="product-content">
+            <img class="product-icon" src="../logos/vetra-icon.svg" alt="Vetra">
+            <div class="product-name"><img src="../logos/vetra-logo-dark-text.svg" alt="VETRA"></div>
+            <p class="product-desc">
+              The infrastructure layer that gives networks sovereignty over their data and workflows. Portable by design; runs on open cloud.
+            </p>
+            <a href="#" class="product-btn">Visit Vetra</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         CTA SECTION
+         ========================================== -->
+    <section class="cta">
+      <div class="cta-card">
+        <div class="cta-beam"><img src="../illustrations/powerhouse-light-beam.png" alt=""></div>
+        <div class="cta-decoration"></div>
+        <h2 class="cta-title">Join the new era of operations</h2>
+        <p class="cta-subtitle">Sign up for exclusive early updates and launch news.</p>
+        <div class="cta-form">
+          <img class="cta-form-icon" src="../logos/powerhouse-icon-light.svg" alt="">
+          <input class="cta-input" type="email" placeholder="Drop your email for launch updates.">
+          <button class="cta-submit">Get Notified &nbsp;&rarr;</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==========================================
+       FOOTER WORDMARK
+       ========================================== -->
+  <section class="footer-wordmark">
+    <img src="../illustrations/powerhouse-wordmark-gradient.svg" alt="">
+  </section>
+
+</body>
+</html>

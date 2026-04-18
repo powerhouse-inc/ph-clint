@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Illustrated Card Design Guidelines</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #E8E8E8;
+      padding: 40px;
+      transition: background 0.3s, color 0.3s;
+      color: #141414;
+      line-height: 1.7;
+    }
+    body.dark { background: #111318; color: #FAFAFA; }
+
+    .page-header {
+      max-width: 820px; margin: 0 auto 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .page-header-left { display: flex; align-items: center; gap: 12px; }
+    .page-header-left img { height: 28px; }
+    .page-header-title {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 2px; color: #9EA0A1;
+    }
+    .logo-light-mode, .logo-dark-mode { display: none; }
+    body:not(.dark) .logo-light-mode { display: block; }
+    body.dark .logo-dark-mode { display: block; }
+
+    .theme-toggle {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 500; color: #888; cursor: pointer; user-select: none;
+    }
+    .theme-toggle input { display: none; }
+    .toggle-track {
+      width: 40px; height: 22px; background: #D7D8D9; border-radius: 11px;
+      position: relative; transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; background: #32373B; border-radius: 50%; transition: transform 0.2s;
+    }
+    .theme-toggle input:checked + .toggle-track { background: #485265; }
+    .theme-toggle input:checked + .toggle-track::after { transform: translateX(18px); background: #F3F5F7; }
+
+    .content {
+      max-width: 820px; margin: 0 auto;
+    }
+
+    .intro {
+      font-size: 14px; color: #9EA0A1; margin-bottom: 40px;
+    }
+
+    h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 20px; font-weight: 700;
+      margin: 48px 0 16px;
+      letter-spacing: -0.01em;
+    }
+    h2:first-of-type { margin-top: 0; }
+
+    h3 {
+      font-size: 15px; font-weight: 600;
+      margin: 32px 0 8px;
+      color: #9EA0A1;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    p { font-size: 14px; margin-bottom: 12px; }
+
+    .rule-card {
+      border-radius: 12px; padding: 24px 28px; margin: 16px 0 24px;
+      background: #fff; border: 1px solid #E0E0E0;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    body.dark .rule-card { background: #1B1E24; border-color: #2A2D33; }
+
+    .rule-card p { margin-bottom: 8px; }
+    .rule-card p:last-child { margin-bottom: 0; }
+
+    code {
+      font-size: 12.5px; padding: 2px 6px; border-radius: 4px;
+      background: rgba(0,0,0,0.06);
+    }
+    body.dark code { background: rgba(255,255,255,0.08); }
+
+    pre {
+      font-size: 12.5px; padding: 16px 20px; border-radius: 8px;
+      background: #1B1E24; color: #C8CCD4;
+      overflow-x: auto; margin: 12px 0 20px;
+      line-height: 1.6;
+    }
+    body:not(.dark) pre { background: #2A2D33; color: #C8CCD4; }
+
+    ul {
+      font-size: 14px; margin: 8px 0 16px 20px;
+    }
+    li { margin-bottom: 6px; }
+
+    table {
+      width: 100%; border-collapse: collapse; margin: 12px 0 20px;
+      font-size: 13px;
+    }
+    th, td {
+      text-align: left; padding: 10px 14px;
+      border-bottom: 1px solid #E0E0E0;
+    }
+    body.dark th, body.dark td { border-color: #2A2D33; }
+    th { font-weight: 600; color: #9EA0A1; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .color-dot {
+      display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+      vertical-align: middle; margin-right: 6px;
+    }
+  </style>
+</head>
+<body class="dark">
+  <div class="page-header">
+    <div class="page-header-left">
+      <img class="logo-light-mode" src="logos/powerhouse-icon-dark.svg" alt="Powerhouse">
+      <img class="logo-dark-mode" src="logos/powerhouse-icon-light.svg" alt="Powerhouse">
+      <span class="page-header-title">Card Design Guidelines</span>
+    </div>
+    <label class="theme-toggle">
+      <input type="checkbox" checked onchange="document.body.classList.toggle('dark', this.checked); document.documentElement.classList.toggle('dark', this.checked);">
+      <span class="toggle-track"></span>
+      Dark
+    </label>
+  </div>
+
+  <div class="content">
+    <p class="intro">
+      Design rules for illustrated cards used across the Powerhouse brand. These guidelines ensure visual consistency when creating new card layouts with background illustrations and gradient overlays.
+    </p>
+
+    <!-- ============================================= -->
+    <h2>Card Structure</h2>
+
+    <p>Every illustrated card uses a three-layer system built with CSS pseudo-elements:</p>
+
+    <div class="rule-card">
+      <p><strong>Layer 0 — Gradient overlay</strong> (<code>::before</code>): A radial gradient glow that sets the card's color mood. Positioned behind content but above the background.</p>
+      <p><strong>Layer 0 — Illustration</strong> (<code>::after</code>): A large background illustration, partially cropped by the card boundaries. Sits at the same z-level as the gradient.</p>
+      <p><strong>Layer 1 — Content</strong> (child elements): Text, icons, and buttons. Set <code>position: relative; z-index: 1</code> on content wrappers to keep them above the pseudo-elements.</p>
+    </div>
+
+    <p>The card container requires:</p>
+    <ul>
+      <li><code>position: relative</code> — anchor point for pseudo-element positioning</li>
+      <li><code>overflow: hidden</code> — crops illustrations at card edges</li>
+      <li><code>border-radius: 20px</code> — standard card radius</li>
+      <li><code>background-color</code> — solid dark surface color (e.g. <code>#141719</code>)</li>
+      <li><code>border: 1px solid rgba(255,255,255,0.06)</code> — subtle surface border</li>
+    </ul>
+
+    <!-- ============================================= -->
+    <h2>Background Illustrations</h2>
+
+    <h3>Positioning Rules</h3>
+
+    <p>Illustrations are tucked into the <strong>bottom-right corner</strong> of the card, with most of the image cropped off-screen. Only a portion of the illustration is visible — enough to add texture without competing with content.</p>
+
+    <div class="rule-card">
+      <p><strong>Key principle:</strong> The illustration should feel like it's emerging from behind the bottom-right edge. Use large negative offsets in <code>background-position</code> to push the image beyond the card boundaries. The <code>overflow: hidden</code> on the card handles the cropping.</p>
+    </div>
+
+    <pre>.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-image: url('path/to/illustration.png');
+  background-position: right -220px bottom -180px;
+  background-size: 180%;
+  opacity: 0.8;
+}</pre>
+
+    <h3>Sizing and Offsets</h3>
+
+    <p>The <code>background-size</code> controls how much of the illustration is visible. Larger sizes mean more cropping. Negative offsets in <code>background-position</code> push the image further off-screen.</p>
+
+    <table>
+      <tr><th>Card Type</th><th>background-size</th><th>background-position</th><th>Notes</th></tr>
+      <tr><td>Pillar (tall)</td><td>170–180%</td><td><code>right -220px bottom -180px</code> to <code>-360px</code></td><td>Large images, heavily cropped. Only upper-left quadrant visible.</td></tr>
+      <tr><td>Product (medium)</td><td>100%</td><td><code>right -40px</code> to <code>-100px bottom -260px</code> to <code>-280px</code></td><td>Icon-based illustrations, smaller offsets.</td></tr>
+      <tr><td>Hero (wide)</td><td>Fixed dimensions (784×784px)</td><td><code>top: -350px; right: -100px</code></td><td>Uses absolute positioning instead of background-position. Top half hidden.</td></tr>
+    </table>
+
+    <h3>Opacity</h3>
+
+    <div class="rule-card">
+      <p><strong>Default: 0.8</strong> — Standard for pillar cards and hero cards. Illustrations are visible but don't overpower the gradient and content.</p>
+      <p><strong>Product cards: 0.65</strong> — Slightly more subdued to keep focus on the brand logos and CTAs.</p>
+      <p><strong>Exception: 1.0</strong> — Some illustrations with inherently low contrast (e.g. flowing/organic shapes) can use full opacity.</p>
+    </div>
+
+    <!-- ============================================= -->
+    <h2>Gradient Overlays</h2>
+
+    <h3>Gradient Type</h3>
+
+    <p>Always use <code>radial-gradient</code> with an ellipse shape. This creates an organic, focused glow rather than a flat wash of color.</p>
+
+    <h3>Positioning</h3>
+
+    <div class="rule-card">
+      <p><strong>Pillar and hero cards:</strong> Gradient originates from the <strong>top-left</strong> corner. Use <code>ellipse at 20% 0%</code> or <code>ellipse at 20% 20%</code>.</p>
+      <p><strong>Product cards:</strong> Gradient originates from the <strong>top-right</strong> area. Use <code>ellipse at 70% -20%</code>. This counterbalances the illustration in the bottom-right.</p>
+    </div>
+
+    <h3>Implementation</h3>
+
+    <pre>.card::before {
+  content: '';
+  position: absolute;
+  top: -30px; left: -30px; right: -30px;
+  height: 280px;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(30px);
+  background: radial-gradient(ellipse at 20% 0%, rgba(R, G, B, 0.4–0.55), transparent 70%);
+}</pre>
+
+    <h3>Color Reference</h3>
+
+    <table>
+      <tr><th>Card</th><th>Gradient Color</th><th>Opacity</th></tr>
+      <tr><td><span class="color-dot" style="background: rgb(180,50,220)"></span>Local First</td><td><code>rgba(180, 50, 220, 0.55)</code></td><td>Pink-purple</td></tr>
+      <tr><td><span class="color-dot" style="background: rgb(20,60,180)"></span>Decentralized</td><td><code>rgba(20, 60, 180, 0.4)</code></td><td>Deep blue</td></tr>
+      <tr><td><span class="color-dot" style="background: rgb(40,50,150)"></span>Open Source AI</td><td><code>rgba(40, 50, 150, 0.3)</code></td><td>Subtle indigo</td></tr>
+      <tr><td><span class="color-dot" style="background: rgb(0,180,220)"></span>Hero</td><td><code>rgba(0, 180, 220, 0.4)</code></td><td>Cyan</td></tr>
+      <tr><td><span class="color-dot" style="background: rgb(122,58,255)"></span>Achra</td><td><code>rgba(122, 58, 255, 0.6)</code></td><td>Purple</td></tr>
+      <tr><td><span class="color-dot" style="background: rgb(4,193,97)"></span>Vetra</td><td><code>rgba(4, 193, 97, 0.5)</code></td><td>Green</td></tr>
+    </table>
+
+    <!-- ============================================= -->
+    <h2>Content Layer</h2>
+
+    <div class="rule-card">
+      <p>All text and interactive elements must sit above the illustration and gradient layers. Wrap content in a container with <code>position: relative; z-index: 1</code>.</p>
+      <p>For hero cards, limit content width to <code>max-width: 55%</code> to prevent text from overlapping the illustration on the right side.</p>
+    </div>
+
+    <!-- ============================================= -->
+    <h2>Illustration Assets</h2>
+
+    <p>Source illustrations should be large (2048px+) PNG files for crisp rendering at all card sizes. Each brand's illustrations live in their respective <code>illustrations/</code> directory.</p>
+
+    <table>
+      <tr><th>Asset</th><th>Dimensions</th><th>Used In</th></tr>
+      <tr><td>powerhouse-icon-dithered-cyan.png</td><td>2048 × 2048</td><td>Hero card</td></tr>
+      <tr><td>powerhouse-halftone-sphere.png</td><td>2048 × 1434</td><td>Local First pillar</td></tr>
+      <tr><td>powerhouse-crystalline.png</td><td>2324 × 2324</td><td>Decentralized pillar</td></tr>
+      <tr><td>powerhouse-flowing.png</td><td>2048 × 1649</td><td>Open Source AI pillar</td></tr>
+      <tr><td>achra-icon-halftone.png</td><td>1965 × 1965</td><td>Achra product card</td></tr>
+      <tr><td>vetra-icon-halftone.png</td><td>1965 × 1965</td><td>Vetra product card</td></tr>
+      <tr><td>powerhouse-wordmark-gradient.svg</td><td>3000 × 381</td><td>Footer wordmark</td></tr>
+      <tr><td>powerhouse-light-beam.png</td><td>2048 × 664</td><td>CTA beam</td></tr>
+    </table>
+
+    <!-- ============================================= -->
+    <h2>Footer Wordmark</h2>
+
+    <p>The gradient wordmark SVG is used as a large-scale background branding element at the very bottom of the page. It renders "POWERHOUSE" in outlined letters with a holographic gradient stroke.</p>
+
+    <div class="rule-card">
+      <p><strong>Placement:</strong> Outside any padded container — directly on the <code>body</code> so it spans the full viewport width.</p>
+      <p><strong>Container:</strong> Fixed height (~130px) with <code>overflow: hidden</code>. Image is positioned at <code>top: 0</code> — the container height controls how much of the letters is visible.</p>
+      <p><strong>Width:</strong> <code>110%</code> with <code>left: -5%</code> — slightly oversized to push the first letter (P) off-screen, matching the reference.</p>
+      <p><strong>Crop level:</strong> The bottom edge of the container should sit just above the horizontal crossbar of the H — only the tops of the letters are visible.</p>
+      <p><strong>Dark backgrounds only:</strong> The SVG's gradient stroke (gray outlines with purple-to-blue iridescent accents) is designed for dark surfaces.</p>
+    </div>
+
+    <pre>.footer-wordmark {
+  position: relative;
+  height: 130px;
+  overflow: hidden;
+}
+
+.footer-wordmark img {
+  position: absolute;
+  top: 0;
+  left: -5%;
+  width: 110%;
+  height: auto;
+  pointer-events: none;
+}</pre>
+
+    <!-- ============================================= -->
+    <h2>Checklist for New Cards</h2>
+
+    <div class="rule-card">
+      <p>When creating a new illustrated card, verify each of these:</p>
+    </div>
+    <ul>
+      <li>Card has <code>position: relative; overflow: hidden</code></li>
+      <li><code>::before</code> used for radial gradient with <code>filter: blur(30px)</code></li>
+      <li><code>::after</code> used for illustration with appropriate opacity (0.65–1.0)</li>
+      <li>Illustration is anchored to bottom-right with negative offsets</li>
+      <li>Gradient origin matches card type (top-left for pillars/hero, top-right for products)</li>
+      <li>Content wrapper has <code>z-index: 1</code> to stay above pseudo-elements</li>
+      <li>Both pseudo-elements have <code>pointer-events: none</code></li>
+      <li>Source illustration is 2048px+ for crisp rendering</li>
+    </ul>
+
+  </div>
+</body>
+</html>

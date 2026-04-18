@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect — Operator Workspace | Powerhouse Enterprise</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="subpage.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <a href="index.html"><img src="../design-system/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"></a>
+        <span>Enterprise</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#platform">Platform</a></li>
+        <li><a href="https://bai.powerhouse.io" class="nav-cta">Request a Demo</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <section class="subpage-hero">
+      <div class="breadcrumb"><a href="index.html">Enterprise</a> <span>/</span> <a href="index.html#platform">Platform</a> <span>/</span> Connect</div>
+      <div class="subpage-hero-card" style="--glow-color: rgba(141,69,250,0.3);">
+        <div class="subpage-hero-content">
+          <img class="subpage-hero-icon" src="assets/connect-nav-icon.svg" alt="Connect">
+          <h1 class="subpage-hero-title">Connect</h1>
+          <p class="subpage-hero-role" style="color: var(--connect-purple);">The Operator Workspace</p>
+          <p class="subpage-hero-body">
+            A browser-based environment where teams create, edit, and collaborate on structured business data. Workflow-specific views, real-time collaboration, and built-in human oversight of AI agent actions&nbsp;&mdash; all on your infrastructure.
+          </p>
+          <div class="subpage-hero-actions">
+            <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+            <a href="index.html#platform" class="btn-secondary">Back to Platform</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="section-eyebrow">What Connect Does</div>
+      <h2 class="section-title">Where your teams do the work.</h2>
+
+      <div class="capability-list">
+        <div class="capability">
+          <h3>Structured Business Data</h3>
+          <p>Every business object follows a typed schema&nbsp;&mdash; invoices, contracts, expense reports, scope-of-work documents. Schemas enforce consistency: the data is always valid by construction, not by manual validation.</p>
+        </div>
+        <div class="capability">
+          <h3>Drive Apps & Workflow Views</h3>
+          <p>Drive apps overlay the file system with specialized workflow interfaces&nbsp;&mdash; standardized best-practice processes presented directly, rather than leaving operators to organize their own folder hierarchies.</p>
+        </div>
+        <div class="capability">
+          <h3>Real-Time Collaboration</h3>
+          <p>Documents synchronize across users and devices through their operation histories. Multiple team members can work on the same business objects simultaneously. Changes are attributed, versioned, and mergeable.</p>
+        </div>
+        <div class="capability">
+          <h3>Human Oversight of AI</h3>
+          <p>AI agents operating through Clint act on the same business data visible in Connect. Operators see what agents have done, can review agent-generated changes, approve or reject operations, and maintain oversight.</p>
+        </div>
+        <div class="capability">
+          <h3>Offline-Capable</h3>
+          <p>Local-first architecture means Connect works without a network connection. Operations are queued locally and synchronized when connectivity returns. No data loss, no interrupted workflows.</p>
+        </div>
+        <div class="capability">
+          <h3>Cryptographic Verification</h3>
+          <p>Every operation is signed by its author&nbsp;&mdash; human or agent. The full history is offline-verifiable without trusting a central authority. Tamper-proof audit trail as an inherent property of the data.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Pre-Built Modules</div>
+      <h2 class="section-title">Ready-to-use business modules.</h2>
+      <p class="section-subtitle">Available through the Vetra package registry. Use as-is, customize, or build your own.</p>
+
+      <div class="module-grid">
+        <div class="module-card">
+          <h3>Finance & Billing</h3>
+          <p>Chart of accounts, transaction ledgers, billing statements, payment terms, expense reporting</p>
+        </div>
+        <div class="module-card">
+          <h3>Reporting</h3>
+          <p>Invoices, expense reports, period snapshots</p>
+        </div>
+        <div class="module-card">
+          <h3>Work Management</h3>
+          <p>Scope of work, RFPs, workstreams</p>
+        </div>
+        <div class="module-card">
+          <h3>Services</h3>
+          <p>Service offerings, subscriptions, resource tracking, templates</p>
+        </div>
+        <div class="module-card">
+          <h3>Teams & Networks</h3>
+          <p>Builder profiles, registries, organizational profiles</p>
+        </div>
+        <div class="module-card">
+          <h3>Treasury</h3>
+          <p>Revenue distribution</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Technical Details</div>
+      <table class="specs-table">
+        <tbody>
+          <tr><td>Type</td><td>Browser-based workspace application</td></tr>
+          <tr><td>Data model</td><td>Typed documents (JSON) with schema-enforced operations and append-only history</td></tr>
+          <tr><td>Storage</td><td>Pluggable adapters: filesystem, PostgreSQL, pglite, in-memory, blockchain</td></tr>
+          <tr><td>Collaboration</td><td>Real-time operation-based sync; branch/merge conflict resolution</td></tr>
+          <tr><td>Security</td><td>Cryptographic operation signing; end-to-end encryption; per-drive authorization</td></tr>
+          <tr><td>Offline</td><td>Local-first&nbsp;&mdash; full functionality without network; sync on reconnect</td></tr>
+          <tr><td>Extensibility</td><td>Custom document models, editors, and drive apps via Vetra packages</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="subpage-cta">
+      <div class="subpage-cta-card">
+        <h2>Evaluate Connect for your organization</h2>
+        <p>The BAI team can assess how Connect maps to your team workflows, document types, and collaboration requirements.</p>
+        <div class="subpage-cta-actions">
+          <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+          <a href="https://vetra.io" class="btn-secondary">Browse Modules on Vetra &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="footer-wordmark">
+    <img src="../design-system/illustrations/powerhouse-wordmark-gradient.svg" alt="Powerhouse">
+  </section>
+
+</body>
+</html>

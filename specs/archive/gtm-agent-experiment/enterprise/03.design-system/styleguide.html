@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powerhouse Styleguide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="colors.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      padding: 48px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .styleguide { max-width: 1200px; margin: 0 auto; }
+
+    /* Header */
+    .sg-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 64px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sg-header-left { display: flex; align-items: center; gap: 16px; }
+    .sg-header .logo-light { display: none; }
+    .sg-header .logo-dark { display: inline-block; }
+    html:not(.dark) .sg-header .logo-light { display: inline-block; }
+    html:not(.dark) .sg-header .logo-dark { display: none; }
+    .sg-header-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted-foreground);
+    }
+
+    /* Theme toggle */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--foreground-70);
+      cursor: pointer;
+      user-select: none;
+    }
+    .theme-toggle input { display: none; }
+    .toggle-track {
+      width: 44px;
+      height: 24px;
+      background: var(--muted);
+      border-radius: 12px;
+      position: relative;
+      transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      background: var(--accent-gradient);
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .theme-toggle input:checked + .toggle-track { background: var(--accent); }
+    .theme-toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+
+    /* Sections */
+    .sg-section { margin-bottom: 64px; }
+    .sg-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--accent-cyan, #00D4FF);
+      margin-bottom: 32px;
+    }
+
+    /* Logo section */
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 24px;
+    }
+    .logo-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .logo-card img {
+      max-width: 100%;
+      height: 48px;
+      object-fit: contain;
+    }
+    .logo-card .logo-light { display: none; }
+    .logo-card .logo-dark { display: block; }
+    .light .logo-card .logo-light { display: block; }
+    .light .logo-card .logo-dark { display: none; }
+    html:not(.dark) .logo-card .logo-light { display: block; }
+    html:not(.dark) .logo-card .logo-dark { display: none; }
+    .dark .logo-card .logo-light { display: none; }
+    .dark .logo-card .logo-dark { display: block; }
+    .logo-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted-foreground);
+    }
+
+    .pearl-card {
+      background: #1A1D22 !important;
+    }
+    .pearl-card .logo-label {
+      color: rgba(255,255,255,0.5);
+    }
+
+    .pearl-animated-icon {
+      position: relative;
+      width: 64px;
+      height: 64px;
+    }
+    .pearl-animated-icon img {
+      position: relative;
+      z-index: 1;
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+    }
+    .pearl-conic-glow {
+      position: absolute;
+      inset: 2px;
+      border-radius: 9px;
+      background: conic-gradient(
+        from 0deg at 50% 50%,
+        rgb(252, 214, 255) 0deg,
+        rgb(41, 216, 255) 95.68deg,
+        rgb(255, 253, 130) 180deg,
+        rgb(158, 54, 255) 257.23deg,
+        rgb(241, 214, 255) 360deg
+      );
+      filter: blur(8px);
+      box-shadow: -2px 2px 20px 0px rgba(241, 56, 255, 0.3);
+      opacity: 0;
+      transform: rotate(0deg);
+      transition: opacity 0.6s ease, transform 1.2s ease;
+      z-index: 0;
+    }
+    .pearl-animated-icon:hover .pearl-conic-glow {
+      opacity: 0.8;
+      transform: rotate(30deg);
+    }
+    .logo-sublabel {
+      font-size: 10px;
+      color: var(--foreground-50);
+      margin-top: -8px;
+    }
+
+    /* Sub-brand logo grid */
+    .subbrand-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .subbrand-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .subbrand-card img {
+      max-width: 100%;
+      height: 28px;
+      object-fit: contain;
+    }
+    .subbrand-card .logo-light { display: none; }
+    .subbrand-card .logo-dark { display: block; }
+    html:not(.dark) .subbrand-card .logo-light { display: block; }
+    html:not(.dark) .subbrand-card .logo-dark { display: none; }
+    .dark .subbrand-card .logo-light { display: none; }
+    .dark .subbrand-card .logo-dark { display: block; }
+    .subbrand-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted-foreground);
+    }
+
+    /* Color palette */
+    .color-group-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--foreground);
+      margin-bottom: 12px;
+      margin-top: 24px;
+    }
+    .color-group-title:first-child { margin-top: 0; }
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .color-swatch {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      transition: border-color 0.3s;
+    }
+    .color-swatch-preview {
+      height: 72px;
+      position: relative;
+    }
+    .color-swatch-preview::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background-image: linear-gradient(45deg, rgba(128,128,128,0.12) 25%, transparent 25%),
+                         linear-gradient(-45deg, rgba(128,128,128,0.12) 25%, transparent 25%),
+                         linear-gradient(45deg, transparent 75%, rgba(128,128,128,0.12) 75%),
+                         linear-gradient(-45deg, transparent 75%, rgba(128,128,128,0.12) 75%);
+      background-size: 12px 12px;
+      background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+    }
+    .color-swatch-info {
+      padding: 10px 12px;
+      background: var(--card);
+      transition: background 0.3s;
+    }
+    .color-swatch-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--foreground);
+      margin-bottom: 2px;
+    }
+    .color-swatch-value {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted-foreground);
+      font-family: 'Inter', monospace;
+    }
+
+    /* Typography section */
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      gap: 32px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      transition: border-color 0.3s;
+    }
+    .type-row:last-child { border-bottom: none; }
+    .type-label {
+      width: 100px;
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-cyan, #00D4FF);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .type-sample { flex: 1; color: var(--foreground); }
+    .type-meta {
+      width: 200px;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      line-height: 1.6;
+      text-align: right;
+    }
+
+    /* Status colors */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Buttons */
+    .button-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .btn-secondary {
+      background: var(--secondary);
+      color: var(--secondary-foreground);
+    }
+    .btn-destructive {
+      background: var(--destructive);
+      color: var(--destructive-foreground);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--foreground);
+      border: 1px solid var(--border);
+    }
+    .btn-muted {
+      background: var(--muted);
+      color: var(--foreground);
+    }
+    .btn-gradient {
+      background: var(--accent-gradient);
+      color: #FFFFFF;
+    }
+
+    /* Cards demo */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .demo-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .demo-card h4 {
+      font-family: 'Inter', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--card-foreground);
+    }
+    .demo-card p {
+      font-size: 14px;
+      color: var(--card-foreground-50);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .demo-card .tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--primary-30);
+      color: var(--primary);
+    }
+
+    /* Input demo */
+    .input-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--foreground);
+    }
+    .input-field {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input);
+      color: var(--foreground);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      outline: none;
+      width: 240px;
+      transition: border-color 0.2s, background 0.3s;
+    }
+    .input-field:focus { border-color: var(--ring); }
+    .input-field::placeholder { color: var(--muted-foreground); }
+
+    /* Gradient utilities */
+    .gradient-text {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gradient-border-box {
+      position: relative;
+      border-radius: 12px;
+      padding: 24px;
+      background: var(--card);
+    }
+    .gradient-border-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      padding: 1.5px;
+      background: var(--accent-gradient);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    .gradient-showcase {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .gradient-demo-item {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .gradient-demo-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .gradient-bar {
+      height: 48px;
+      border-radius: 10px;
+      background: var(--accent-gradient);
+    }
+  </style>
+</head>
+<body>
+  <div class="styleguide">
+
+    <!-- Header -->
+    <header class="sg-header">
+      <div class="sg-header-left">
+        <img src="logos/powerhouse-full-logo-light.svg" alt="Powerhouse" height="27" class="logo-dark">
+        <img src="logos/powerhouse-full-logo-dark.svg" alt="Powerhouse" height="27" class="logo-light">
+        <span class="sg-header-title">Styleguide</span>
+      </div>
+      <label class="theme-toggle">
+        <span>Dark</span>
+        <input type="checkbox" id="themeSwitch">
+        <span class="toggle-track"></span>
+        <span>Light</span>
+      </label>
+    </header>
+
+    <!-- Logos -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Logo</h2>
+      <div class="logo-grid">
+        <div class="logo-card">
+          <img src="logos/powerhouse-icon-light.svg" alt="Powerhouse Icon" class="logo-dark">
+          <img src="logos/powerhouse-icon-dark.svg" alt="Powerhouse Icon" class="logo-light">
+          <span class="logo-label">Icon</span>
+        </div>
+        <div class="logo-card">
+          <img src="logos/powerhouse-logo-light-text.svg" alt="Powerhouse Wordmark" style="height:24px" class="logo-dark">
+          <img src="logos/powerhouse-logo-dark-text.svg" alt="Powerhouse Wordmark" style="height:24px" class="logo-light">
+          <span class="logo-label">Wordmark</span>
+        </div>
+        <div class="logo-card">
+          <img src="logos/powerhouse-full-logo-light.svg" alt="Powerhouse Full Logo" style="height:27px" class="logo-dark">
+          <img src="logos/powerhouse-full-logo-dark.svg" alt="Powerhouse Full Logo" style="height:27px" class="logo-light">
+          <span class="logo-label">Full Logo</span>
+        </div>
+        <div class="logo-card">
+          <img src="logos/powerhouse-icon-grey-light.svg" alt="Powerhouse Icon Grey" class="logo-dark">
+          <img src="logos/powerhouse-icon-grey-dark.svg" alt="Powerhouse Icon Grey" class="logo-light">
+          <span class="logo-label">Icon — Grey</span>
+        </div>
+        <div class="logo-card">
+          <img src="logos/powerhouse-logo-grey-light-text.svg" alt="Powerhouse Wordmark Grey" style="height:24px" class="logo-dark">
+          <img src="logos/powerhouse-logo-grey-dark-text.svg" alt="Powerhouse Wordmark Grey" style="height:24px" class="logo-light">
+          <span class="logo-label">Wordmark — Grey</span>
+        </div>
+        <div class="logo-card">
+          <img src="logos/powerhouse-full-logo-grey-light.svg" alt="Powerhouse Full Logo Grey" style="height:27px" class="logo-dark">
+          <img src="logos/powerhouse-full-logo-grey-dark.svg" alt="Powerhouse Full Logo Grey" style="height:27px" class="logo-light">
+          <span class="logo-label">Full Logo — Grey</span>
+        </div>
+        <div class="logo-card" style="background: linear-gradient(135deg, #00D4FF, #7A3AFF);">
+          <img src="logos/powerhouse-icon-light.svg" alt="Powerhouse Icon on Gradient">
+          <span class="logo-label" style="color: rgba(255,255,255,0.7);">Icon on Gradient</span>
+        </div>
+        <div class="logo-card pearl-card">
+          <img src="logos/powerhouse-logo-pearl.png" alt="Powerhouse Pearl Icon" style="height:64px">
+          <span class="logo-label">Icon — Pearl</span>
+        </div>
+        <div class="logo-card pearl-card">
+          <div class="pearl-animated-icon">
+            <div class="pearl-conic-glow"></div>
+            <img src="logos/powerhouse-logo-pearl.png" alt="Powerhouse Pearl Icon Animated">
+          </div>
+          <span class="logo-label">Icon — Pearl (Animated)</span>
+        </div>
+      </div>
+
+      <!-- Sub-brand Logos -->
+      <h3 class="color-group-title" style="margin-top:32px;">Sub-Brand Logos</h3>
+      <div class="subbrand-grid">
+        <div class="subbrand-card">
+          <img src="logos/achra-logo-light-text.svg" alt="Achra" class="logo-dark">
+          <img src="logos/achra-logo-dark-text.svg" alt="Achra" class="logo-light">
+          <span class="subbrand-label">Achra</span>
+        </div>
+        <div class="subbrand-card">
+          <img src="logos/vetra-logo-dark-text.svg" alt="Vetra" class="logo-dark">
+          <img src="logos/vetra-logo-light-text.svg" alt="Vetra" class="logo-light">
+          <span class="subbrand-label">Vetra</span>
+        </div>
+        <div class="subbrand-card">
+          <img src="logos/connect-logo-light-text.svg" alt="Connect" class="logo-dark">
+          <img src="logos/connect-logo-dark-text.svg" alt="Connect" class="logo-light">
+          <span class="subbrand-label">Connect</span>
+        </div>
+        <div class="subbrand-card">
+          <img src="logos/fusion-logo-light-text.svg" alt="Fusion" class="logo-dark">
+          <img src="logos/fusion-logo-dark-text.svg" alt="Fusion" class="logo-light">
+          <span class="subbrand-label">Fusion</span>
+        </div>
+        <div class="subbrand-card">
+          <img src="logos/renown-logo-light-text.svg" alt="Renown" class="logo-dark">
+          <img src="logos/renown-logo-dark-text.svg" alt="Renown" class="logo-light">
+          <span class="subbrand-label">Renown</span>
+        </div>
+        <div class="subbrand-card">
+          <img src="logos/reactors-logo-light-text.svg" alt="Reactors" class="logo-dark">
+          <img src="logos/reactors-logo-dark-text.svg" alt="Reactors" class="logo-light">
+          <span class="subbrand-label">Reactors</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Color Palette -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Color Palette</h2>
+
+      <h3 class="color-group-title">Core</h3>
+      <div class="color-grid">
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--primary)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Primary</div><div class="color-swatch-value" data-light="#32373B" data-dark="#F3F5F7">#32373B</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--primary-30)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Primary 30%</div><div class="color-swatch-value">30% opacity</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--secondary)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Secondary</div><div class="color-swatch-value" data-light="#F4F4F4" data-dark="#4F596F">#F4F4F4</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--accent)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Accent</div><div class="color-swatch-value" data-light="#F3F5F7" data-dark="#2A2D33">#F3F5F7</div></div>
+        </div>
+      </div>
+
+      <h3 class="color-group-title">Gradient Accent</h3>
+      <div class="color-grid">
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--accent-gradient)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Gradient</div><div class="color-swatch-value">Cyan to Purple</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--accent-cyan)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Accent Cyan</div><div class="color-swatch-value">#00D4FF</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--accent-purple)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Accent Purple</div><div class="color-swatch-value">#7A3AFF</div></div>
+        </div>
+      </div>
+
+      <h3 class="color-group-title">Surfaces</h3>
+      <div class="color-grid">
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--background)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Background</div><div class="color-swatch-value" data-light="#FCFCFC" data-dark="#0E0E0D">#FCFCFC</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--card)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Card</div><div class="color-swatch-value" data-light="#FCFCFC" data-dark="#1A1D22">#FCFCFC</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--popover)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Popover</div><div class="color-swatch-value" data-light="#FFFFFF" data-dark="#151719">#FFFFFF</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--muted)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Muted</div><div class="color-swatch-value" data-light="#EFEFEF" data-dark="#2A2D33">#EFEFEF</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--input); border: 1px solid var(--border)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Input</div><div class="color-swatch-value" data-light="#FFFFFF" data-dark="#0E0E0D">#FFFFFF</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--border)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Border</div><div class="color-swatch-value" data-light="#D7D8D9" data-dark="#3A3F47">#D7D8D9</div></div>
+        </div>
+      </div>
+
+      <h3 class="color-group-title">Text</h3>
+      <div class="color-grid">
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--foreground)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Foreground</div><div class="color-swatch-value" data-light="#343839" data-dark="#FCFCFC">#343839</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--foreground-70)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Foreground 70%</div><div class="color-swatch-value">50% opacity</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--foreground-50)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Foreground 50%</div><div class="color-swatch-value">30% opacity</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--muted-foreground)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Muted FG</div><div class="color-swatch-value" data-light="#9EA0A1" data-dark="#6C7275">#9EA0A1</div></div>
+        </div>
+      </div>
+
+      <h3 class="color-group-title">Semantic</h3>
+      <div class="color-grid">
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--destructive)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Destructive</div><div class="color-swatch-value">#EA4335</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--success)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Success</div><div class="color-swatch-value">#4FC86F</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--progress)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Progress</div><div class="color-swatch-value">#329DFF</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--todo)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">To Do</div><div class="color-swatch-value">#FFA132</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--yellow)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Yellow</div><div class="color-swatch-value">#FAC400</div></div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-swatch-preview" style="background: var(--purple)"></div>
+          <div class="color-swatch-info"><div class="color-swatch-name">Purple</div><div class="color-swatch-value">#8E55EA</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gradient Accent -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Gradient Accent</h2>
+      <div class="gradient-showcase">
+        <div class="gradient-demo-item">
+          <span class="gradient-demo-label">Gradient Text</span>
+          <h2 style="font-family:'Poppins',sans-serif; font-size:40px; font-weight:700; line-height:1.2;" class="gradient-text">Power, Reclaimed</h2>
+        </div>
+        <div class="gradient-demo-item">
+          <span class="gradient-demo-label">Gradient Border</span>
+          <div class="gradient-border-box">
+            <p style="font-size:14px; color:var(--foreground); line-height:1.6;">A card with a gradient border using the cyan-to-purple accent. Apply via a pseudo-element mask technique.</p>
+          </div>
+        </div>
+        <div class="gradient-demo-item">
+          <span class="gradient-demo-label">Gradient Button</span>
+          <div>
+            <button class="btn btn-gradient">Get Started</button>
+          </div>
+        </div>
+        <div class="gradient-demo-item">
+          <span class="gradient-demo-label">Gradient Bar</span>
+          <div class="gradient-bar"></div>
+        </div>
+        <div class="gradient-demo-item">
+          <span class="gradient-demo-label">Gradient Text (Body)</span>
+          <p style="font-family:'Inter',sans-serif; font-size:18px; font-weight:600; line-height:1.5;" class="gradient-text">Building open-source, local-first, decentralized operations tooling.</p>
+        </div>
+        <div class="gradient-demo-item">
+          <span class="gradient-demo-label">Gradient Outline Button</span>
+          <div>
+            <button class="btn" style="background:transparent; position:relative; color:var(--foreground); overflow:hidden; border:none; padding:12px 28px;">
+              <span style="position:absolute; inset:0; border-radius:8px; padding:1.5px; background:var(--accent-gradient); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;"></span>
+              Learn More
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Typography -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Typography</h2>
+      <div class="type-row">
+        <span class="type-label">H1</span>
+        <span class="type-sample" style="font-family:'Poppins',sans-serif; font-size:64px; font-weight:700; line-height:1.2">Almost before</span>
+        <span class="type-meta">Poppins 64px / 700<br>line-height: 1.2</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">H2</span>
+        <span class="type-sample" style="font-family:'Poppins',sans-serif; font-size:40px; font-weight:600; line-height:1.2">Almost before we knew</span>
+        <span class="type-meta">Poppins 40px / 600<br>line-height: 1.2</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">H3</span>
+        <span class="type-sample" style="font-family:'Poppins',sans-serif; font-size:32px; font-weight:600; line-height:1.2">Almost before we knew it</span>
+        <span class="type-meta">Poppins 32px / 600<br>line-height: 1.2</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">H4</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:24px; font-weight:700; line-height:1.2">Almost before we knew it, we had</span>
+        <span class="type-meta">Inter 24px / 700<br>line-height: 1.2</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">H5</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:20px; font-weight:700; line-height:1.2">Almost before we knew it, we had left the ground</span>
+        <span class="type-meta">Inter 20px / 700<br>line-height: 1.2</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">H6</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:18px; font-weight:700; line-height:1.2">Almost before we knew it, we had left the ground</span>
+        <span class="type-meta">Inter 18px / 700<br>line-height: 1.2</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">Subtitle 1</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:16px; font-weight:600; line-height:24px">Almost before we knew it, we had left the ground.</span>
+        <span class="type-meta">Inter 16px / 600<br>line-height: 24px</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">Subtitle 2</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:14px; font-weight:600; line-height:22px">Almost before we knew it, we had left the ground.</span>
+        <span class="type-meta">Inter 14px / 600<br>line-height: 22px</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">Body</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:16px; font-weight:400; line-height:24px">Almost before we knew it, we had left the ground.</span>
+        <span class="type-meta">Inter 16px / 400<br>line-height: 24px</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">Small</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:14px; font-weight:400; line-height:22px">Almost before we knew it, we had left the ground.</span>
+        <span class="type-meta">Inter 14px / 400<br>line-height: 22px</span>
+      </div>
+      <div class="type-row">
+        <span class="type-label">Caption</span>
+        <span class="type-sample" style="font-family:'Inter',sans-serif; font-size:12px; font-weight:500; line-height:18px">Almost before we knew it, we had left the ground.</span>
+        <span class="type-meta">Inter 12px / 500<br>line-height: 18px</span>
+      </div>
+    </section>
+
+    <!-- Status Colors -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Status Indicators</h2>
+      <div class="status-grid">
+        <div class="status-pill" style="background: var(--success-30); color: var(--success)">
+          <span class="status-dot" style="background: var(--success)"></span> Success
+        </div>
+        <div class="status-pill" style="background: var(--progress-30); color: var(--progress)">
+          <span class="status-dot" style="background: var(--progress)"></span> In Progress
+        </div>
+        <div class="status-pill" style="background: var(--todo-30); color: var(--todo)">
+          <span class="status-dot" style="background: var(--todo)"></span> To Do
+        </div>
+        <div class="status-pill" style="background: var(--destructive-30); color: var(--destructive)">
+          <span class="status-dot" style="background: var(--destructive)"></span> Error
+        </div>
+        <div class="status-pill" style="background: var(--yellow-30); color: #b08a00">
+          <span class="status-dot" style="background: var(--yellow)"></span> Warning
+        </div>
+        <div class="status-pill" style="background: var(--purple-30); color: var(--purple)">
+          <span class="status-dot" style="background: var(--purple)"></span> Info
+        </div>
+      </div>
+    </section>
+
+    <!-- Buttons -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Buttons</h2>
+      <div class="button-row">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-secondary">Secondary</button>
+        <button class="btn btn-gradient">Gradient</button>
+        <button class="btn btn-destructive">Destructive</button>
+        <button class="btn btn-outline">Outline</button>
+        <button class="btn btn-muted">Muted</button>
+      </div>
+    </section>
+
+    <!-- Cards -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Cards</h2>
+      <div class="card-grid">
+        <div class="demo-card">
+          <h4>Component Library</h4>
+          <p>A shared set of reusable components built to the Powerhouse design system specifications.</p>
+          <span class="tag">Design System</span>
+        </div>
+        <div class="demo-card">
+          <h4>Token Integration</h4>
+          <p>Design tokens that bridge Figma variables to CSS custom properties for consistency.</p>
+          <span class="tag">Tokens</span>
+        </div>
+        <div class="demo-card">
+          <h4>Theme Support</h4>
+          <p>Dark-first design with full light mode support using CSS custom properties and semantic naming.</p>
+          <span class="tag">Theming</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Inputs -->
+    <section class="sg-section">
+      <h2 class="sg-section-title">Inputs</h2>
+      <div class="input-row">
+        <div class="input-group">
+          <label>Name</label>
+          <input class="input-field" type="text" placeholder="Enter your name">
+        </div>
+        <div class="input-group">
+          <label>Email</label>
+          <input class="input-field" type="email" placeholder="you@example.com">
+        </div>
+        <button class="btn btn-gradient">Submit</button>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const toggle = document.getElementById('themeSwitch');
+    const html = document.documentElement;
+
+    // Default is dark (unchecked = dark). Checked = light.
+    toggle.addEventListener('change', () => {
+      if (toggle.checked) {
+        // Switch to light
+        html.classList.remove('dark');
+        document.body.classList.remove('dark');
+      } else {
+        // Switch to dark
+        html.classList.add('dark');
+        document.body.classList.add('dark');
+      }
+
+      // Update swatch hex values for theme
+      const mode = toggle.checked ? 'light' : 'dark';
+      document.querySelectorAll('.color-swatch-value[data-' + mode + ']').forEach(el => {
+        el.textContent = el.dataset[mode];
+      });
+    });
+
+    // Initialize swatch values to dark theme on load
+    document.querySelectorAll('.color-swatch-value[data-dark]').forEach(el => {
+      el.textContent = el.dataset.dark;
+    });
+  </script>
+</body>
+</html>

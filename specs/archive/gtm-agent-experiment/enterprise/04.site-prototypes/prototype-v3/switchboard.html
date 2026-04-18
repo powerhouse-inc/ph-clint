@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Switchboard — API & Integration Hub | Powerhouse Enterprise</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="subpage.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <a href="index.html"><img src="../design-system/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"></a>
+        <span>Enterprise</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#platform">Platform</a></li>
+        <li><a href="https://bai.powerhouse.io" class="nav-cta">Request a Demo</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <section class="subpage-hero">
+      <div class="breadcrumb"><a href="index.html">Enterprise</a> <span>/</span> <a href="index.html#platform">Platform</a> <span>/</span> Switchboard</div>
+      <div class="subpage-hero-card" style="--glow-color: rgba(242,203,41,0.25);">
+        <div class="subpage-hero-content">
+          <img class="subpage-hero-icon" src="assets/switchboard-nav-icon.svg" alt="Switchboard">
+          <h1 class="subpage-hero-title">Switchboard</h1>
+          <p class="subpage-hero-role" style="color: var(--switchboard-gold);">API & Integration Hub</p>
+          <p class="subpage-hero-body">
+            Where your systems, AI agents, and applications interact with structured business data. GraphQL and MCP endpoints auto-generated from your schemas&nbsp;&mdash; with data scoping, per-actor authorization, and audit trail.
+          </p>
+          <div class="subpage-hero-actions">
+            <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+            <a href="index.html#platform" class="btn-secondary">Back to Platform</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="section-eyebrow">What Switchboard Does</div>
+      <h2 class="section-title">Connect everything. Control everything.</h2>
+      <p class="section-subtitle">Three audiences, one API layer.</p>
+
+      <div class="feature-grid" style="margin-top:40px;">
+        <div class="feature-card">
+          <h3>For AI Agents</h3>
+          <p>Business operations become MCP tool endpoints. Typed, permission-scoped interfaces&nbsp;&mdash; no custom adapter per agent.</p>
+        </div>
+        <div class="feature-card">
+          <h3>For Existing Systems</h3>
+          <p>GraphQL API connects ERP, HRIS, document management, and financial systems. Each integration defines exactly what data flows.</p>
+        </div>
+        <div class="feature-card">
+          <h3>For Applications</h3>
+          <p>Fusion, Connect, and custom apps consume data through Switchboard. Authorization, scoping, and sync handled at this layer.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Integration Architecture</div>
+      <h2 class="section-title">Standards-based. Auto-generated.<br>Scoped by default.</h2>
+
+      <div class="capability-list">
+        <div class="capability">
+          <h3>Standards-Based Connectivity</h3>
+          <p>GraphQL for queries, MCP for agent tool access. Both auto-generated from your schemas&nbsp;&mdash; schema evolves, API updates. No hand-written API code.</p>
+        </div>
+        <div class="capability">
+          <h3>Data Scoping per Integration</h3>
+          <p>Every connection defines a scope: accessible data types, permitted operations, data shape. No blanket access. Declarative, version-controlled, auditable.</p>
+        </div>
+        <div class="capability">
+          <h3>Multi-Layered Data Access</h3>
+          <p>Three data access patterns: operational data (current state), historical data (complete operation history), and analytical data (read models built by event-driven processors).</p>
+        </div>
+        <div class="capability">
+          <h3>Downstream Automation</h3>
+          <p>Document change events trigger agent workflows, dashboard updates, webhooks, and automated follow-ups.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Data Isolation Role</div>
+      <h2 class="section-title">The privacy enforcement layer.</h2>
+
+      <div class="value-grid">
+        <div class="value-card">
+          <h3>Tiered AI Model Routing</h3>
+          <p>Data scoping controls which data reaches which AI model tier. Confidential data stays with local models. Only sanitized outputs reach commercial APIs.</p>
+        </div>
+        <div class="value-card">
+          <h3>Agent Permission Enforcement</h3>
+          <p>Each agent's Renown identity determines accessible endpoints. Enforced at the API boundary, not by trusting the agent.</p>
+        </div>
+        <div class="value-card">
+          <h3>Cross-System Boundary</h3>
+          <p>Data from one system doesn't automatically flow to another. Every integration path is explicit, declarative, and auditable.</p>
+        </div>
+        <div class="value-card">
+          <h3>Audit at the Boundary</h3>
+          <p>Every API call logged: caller identity, operation, data accessed, timestamp.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Target Audiences</div>
+      <h2 class="section-title">Who works with Switchboard.</h2>
+
+      <table class="audience-table">
+        <thead>
+          <tr><th>Audience</th><th>How they use Switchboard</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Data engineers</td><td>Real-time organizational data. Analytical pipelines from document change events.</td></tr>
+          <tr><td>Software engineers</td><td>Structured, typed APIs for internal and external apps.</td></tr>
+          <tr><td>Integration engineers</td><td>Connect enterprise systems with declarative, scoped data boundaries.</td></tr>
+          <tr><td>AI/ML teams</td><td>Business data through MCP endpoints with privacy-tier-appropriate shapes.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Technical Details</div>
+      <table class="specs-table">
+        <tbody>
+          <tr><td>APIs</td><td>GraphQL (queries, mutations, subscriptions) + MCP (tool endpoints)</td></tr>
+          <tr><td>Schema generation</td><td>Auto-generated from business document model schemas</td></tr>
+          <tr><td>Authorization</td><td>Per-integration, per-user, per-agent scoping; Renown identity integration</td></tr>
+          <tr><td>Data access</td><td>Operational (current state), historical (operation history), analytical (read models)</td></tr>
+          <tr><td>Sync</td><td>Real-time document synchronization; multi-device, multi-user</td></tr>
+          <tr><td>Multi-tenant</td><td>Built-in tenant isolation for multi-department or multi-organization deployments</td></tr>
+          <tr><td>Event system</td><td>Document change events for downstream triggers and automation</td></tr>
+          <tr><td>Deployment</td><td>Self-hosted or Vetra Cloud</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="subpage-cta">
+      <div class="subpage-cta-card">
+        <h2>See how Switchboard connects your systems</h2>
+        <p>The BAI team can map your systems and data flows to a Switchboard integration architecture.</p>
+        <div class="subpage-cta-actions">
+          <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+          <a href="https://vetra.io" class="btn-secondary">Explore the API &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="footer-wordmark">
+    <img src="../design-system/illustrations/powerhouse-wordmark-gradient.svg" alt="Powerhouse">
+  </section>
+
+</body>
+</html>

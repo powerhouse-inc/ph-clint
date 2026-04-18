@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clint — AI Agent Infrastructure | Powerhouse Enterprise</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="subpage.css">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <a href="index.html"><img src="../design-system/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"></a>
+        <span>Enterprise</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#platform">Platform</a></li>
+        <li><a href="https://bai.powerhouse.io" class="nav-cta">Request a Demo</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- HERO -->
+    <section class="subpage-hero">
+      <div class="breadcrumb"><a href="index.html">Enterprise</a> <span>/</span> <a href="index.html#platform">Platform</a> <span>/</span> Clint</div>
+      <div class="subpage-hero-card" style="--glow-color: rgba(122,58,255,0.35);">
+        <div class="subpage-hero-content">
+          <img class="subpage-hero-icon" src="../design-system/logos/reactors-icon-light.svg" alt="Clint">
+          <h1 class="subpage-hero-title">Clint</h1>
+          <p class="subpage-hero-role">Your AI agents. Your infrastructure. Full audit trail.</p>
+          <p class="subpage-hero-body">
+            Define business processes as typed schemas. Clint produces five interfaces from one definition&nbsp;&mdash; CLI, console, MCP server, multi-agent harness, and a whitelabel product your team owns.
+          </p>
+          <div class="subpage-hero-actions">
+            <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+            <a href="index.html#platform" class="btn-secondary">Back to Platform</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT IT DOES -->
+    <section class="content-section">
+      <div class="section-eyebrow">What Clint Does</div>
+      <h2 class="section-title">One definition. Five interfaces.</h2>
+      <p class="section-subtitle">Write your business logic once as typed commands. Clint generates:</p>
+
+      <div class="feature-grid five">
+        <div class="feature-card">
+          <div class="feature-number">1</div>
+          <h3>Command-Line Interface</h3>
+          <p>Scriptable commands for automation, CI/CD pipelines, and DevOps workflows.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-number">2</div>
+          <h3>Interactive Console</h3>
+          <p>Operator-friendly REPL with auto-completion, inline help, and persistent sessions.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-number">3</div>
+          <h3>MCP Server</h3>
+          <p>Every command becomes an MCP tool endpoint&nbsp;&mdash; callable by any AI agent, IDE, or automation platform.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-number">4</div>
+          <h3>Multi-Agent Harness</h3>
+          <p>Multiple specialized agents coordinating within defined permission boundaries&nbsp;&mdash; each with its own data scope and skills.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-number">5</div>
+          <h3>Whitelabel Product</h3>
+          <p>Ship it as your own product. Your name, your brand. Operators see an internal tool, not a vendor dependency.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- CORE CAPABILITIES -->
+    <section class="content-section">
+      <div class="section-eyebrow">Core Capabilities</div>
+      <h2 class="section-title">What makes Clint different.</h2>
+
+      <div class="capability-list">
+        <div class="capability">
+          <h3>Specification-Driven AI</h3>
+          <p>Agents follow <strong>agent skills</strong>&nbsp;&mdash; structured playbooks that encode domain expertise as reproducible workflows. Each skill defines what the agent can do, in what order, and when to escalate to a human.</p>
+        </div>
+        <div class="capability">
+          <h3>Multi-Agent Orchestration</h3>
+          <p>Run specialized agents side by side on the same business data&nbsp;&mdash; each sandboxed to its own data scope, permissions, and model tier.</p>
+        </div>
+        <div class="capability">
+          <h3>Agent Sandboxing</h3>
+          <p>Declarative boundaries: what data it reads, what operations it performs, which model it uses. Enforced by the runtime, not by policy.</p>
+        </div>
+        <div class="capability">
+          <h3>Routine Loop&nbsp;&mdash; Autonomous Execution</h3>
+          <p>Autonomous workflows driven by pluggable triggers: data change events, timers, and state conditions. Each trigger produces a work item that executes through the same command infrastructure.</p>
+        </div>
+        <div class="capability">
+          <h3>Streaming Output</h3>
+          <p>Operators see agent output as it's generated. Tool calls, intermediate results, and errors render distinctly across all interfaces.</p>
+        </div>
+        <div class="capability">
+          <h3>Conversation Memory</h3>
+          <p>Thread-based history persists across sessions. Teams pick up multi-step workflows without re-explaining context.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- INTEGRATION -->
+    <section class="content-section">
+      <div class="section-eyebrow">Integration Architecture</div>
+      <h2 class="section-title">Two-way MCP. Plugs into everything.</h2>
+
+      <div class="two-col">
+        <div>
+          <h3>MCP Server</h3>
+          <p>Every command becomes an MCP tool. External agents, IDEs, and automation platforms call your operations through MCP&nbsp;&mdash; no custom adapter needed.</p>
+
+          <h3 style="margin-top:28px;">MCP Client</h3>
+          <p>Clint connects outward to external MCP servers&nbsp;&mdash; including Switchboard&nbsp;&mdash; merging their tools into the agent's toolset at runtime.</p>
+        </div>
+        <div>
+          <h3>Switchboard Integration</h3>
+          <p>Connects to Switchboard as an MCP client, gaining access to all operations your integration hub exposes. Data boundaries enforced automatically.</p>
+
+          <h3 style="margin-top:28px;">Reactor Integration</h3>
+          <p>Subscribe to document changes in real-time. Data changes trigger agent workflows automatically.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ENTERPRISE VALUE -->
+    <section class="content-section">
+      <div class="section-eyebrow">Enterprise Value</div>
+      <h2 class="section-title">Built for production. Built for scrutiny.</h2>
+
+      <div class="value-grid">
+        <div class="value-card">
+          <h3>Private AI Operations</h3>
+          <p>Agents run on your servers. Sensitive data processed by local models. Each sandbox ensures agents only touch authorized data.</p>
+        </div>
+        <div class="value-card">
+          <h3>Auditable Agent Behavior</h3>
+          <p>Every agent action is a typed operation in an append-only, cryptographically signed history. Trace any AI decision to the exact input, skill, and model that produced it.</p>
+        </div>
+        <div class="value-card">
+          <h3>Whitelabel Ownership</h3>
+          <p>Your tool, your brand. IT governance evaluates software your team owns and maintains.</p>
+        </div>
+        <div class="value-card">
+          <h3>Incremental Adoption</h3>
+          <p>Start with command automation&nbsp;&mdash; no AI required. Add agents later when your data layer is structured.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- TECH DETAILS -->
+    <section class="content-section">
+      <div class="section-eyebrow">Technical Details</div>
+      <table class="specs-table">
+        <tbody>
+          <tr><td>Language</td><td>TypeScript (ES2022, ESM)</td></tr>
+          <tr><td>Runtime</td><td>Node.js 22+</td></tr>
+          <tr><td>Schema system</td><td>Zod&nbsp;&mdash; commands, configuration, document operations</td></tr>
+          <tr><td>AI framework</td><td>Mastra (optional, lazy-loaded)&nbsp;&mdash; provider-agnostic LLM backends, thread-based memory</td></tr>
+          <tr><td>Agent skills</td><td>Handlebars templates compiled at build time; multi-step structured playbooks</td></tr>
+          <tr><td>Routine loop</td><td>Tick-based (configurable interval); event/timer/condition triggers; FIFO work queue</td></tr>
+          <tr><td>MCP</td><td>Server (auto-generated from commands) + Client (dynamic tool discovery)</td></tr>
+          <tr><td>Configuration</td><td>6-layer resolution: CLI flag > env vars > local config > user config > defaults > schema defaults</td></tr>
+          <tr><td>Testing</td><td>Three-level (unit/integration/E2E) without mocks; injectable I/O boundaries</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- CTA -->
+    <section class="subpage-cta">
+      <div class="subpage-cta-card">
+        <h2>See how Clint fits your operations</h2>
+        <p>The BAI team can map Clint's agent infrastructure to your business processes and identify where to start.</p>
+        <div class="subpage-cta-actions">
+          <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+          <a href="https://vetra.io" class="btn-secondary">Explore on Vetra &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="footer-wordmark">
+    <img src="../design-system/illustrations/powerhouse-wordmark-gradient.svg" alt="Powerhouse">
+  </section>
+
+</body>
+</html>

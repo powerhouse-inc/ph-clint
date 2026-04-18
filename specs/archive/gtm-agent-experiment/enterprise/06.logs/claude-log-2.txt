@@ -1,0 +1,1368 @@
+ ▐▛███▜▌   Claude Code v2.1.74
+▝▜█████▛▘  Opus 4.6 · Claude Max
+  ▘▘ ▝▝    ~/projects/demo-workspace/ph-clint
+
+❯ Research @"specs/20260402 - Powerhouse promo video.pdf",                      
+https://powerhouse.io , https://vetra.io/ , https://bai.powerhouse.io/ and the  
+skills packaged with the 05-ph-rupert example to gain insights in the           
+Powerhouse organization and technology. Based on these, we created the          
+positioning brief in specs/enterprise/brief, and the prototype site in          
+specs/enterprise/prototype                                                      
+                                                                                
+The prototype is "messaging + design". Instead of actual copy, its content      
+reflects WHAT we want to say, not HOW it should be said.                        
+                                                                                
+Make a prototype-v2 folder with the duplicated files. Then make an exhaustive   
+list of content paragraphs that need to be replaced by good copy and write it   
+to tasks-copywriting.md                                                         
+
+● Let me start by reading the prototype files and understanding the current
+  state.
+
+● Read 3 files (ctrl+o to expand)
+
+● Explore(Research websites and PDF)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+● Read 6 files (ctrl+o to expand)
+
+● Now let me read the full index.html and the brief files.
+
+● Read 6 files (ctrl+o to expand)
+
+● Let me read the index.html in parts.
+
+● Read 1 file (ctrl+o to expand)
+
+● Now I have a complete picture of all the content. Let me duplicate the
+  prototype folder and create the tasks file.
+
+● Bash(cp -r
+      /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/prototype
+      /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/prototype-v
+      2)
+  ⎿  Done
+
+● Now let me create the exhaustive copywriting task list.
+
+● Write(specs/enterprise/prototype-v2/tasks-copywriting.md)
+  ⎿  Wrote 421 lines to specs/enterprise/prototype-v2/tasks-copywriting.md
+     # Copywriting Tasks — prototype-v2
+
+     Every content paragraph below needs to be replaced with production
+     copy. The current text describes WHAT we want to say (messaging
+     intent); the new copy should say it HOW a CTO/VP Engineering audience
+     needs to hear it — concise, credible, no marketing fluff.
+
+     Reference the positioning brief (`../brief/`) for audience, emotional
+     drivers, and tone guidance.
+
+     ---
+
+     ## index.html
+
+     … +411 lines (ctrl+o to expand)
+
+● Done. Here's what I created:
+
+  specs/enterprise/prototype-v2/ — full duplicate of the prototype folder
+  (index.html, 5 subpages, subpage.css, assets/).
+
+  specs/enterprise/prototype-v2/tasks-copywriting.md — exhaustive inventory of
+  165 content items across all 6 HTML pages that need production copy, organized
+   by page and section:
+
+  ┌──────────────────┬───────────────────────────────────────────────────────┐
+  │       Page       │                         Items                         │
+  ├──────────────────┼───────────────────────────────────────────────────────┤
+  │                  │ 72 (hero, problem, pillars, use cases, platform,      │
+  │ index.html       │ architecture, integration, privacy, ecosystem, tech   │
+  │                  │ specs, comparison, why, CTA)                          │
+  ├──────────────────┼───────────────────────────────────────────────────────┤
+  │ clint.html       │ 24                                                    │
+  ├──────────────────┼───────────────────────────────────────────────────────┤
+  │ connect.html     │ 18                                                    │
+  ├──────────────────┼───────────────────────────────────────────────────────┤
+  │ fusion.html      │ 16                                                    │
+  ├──────────────────┼───────────────────────────────────────────────────────┤
+  │ switchboard.html │ 18                                                    │
+  ├──────────────────┼───────────────────────────────────────────────────────┤
+  │ renown.html      │ 17                                                    │
+  └──────────────────┴───────────────────────────────────────────────────────┘
+
+  Each item includes the element type, its location in the HTML, what the
+  current text intends to communicate, and notes on tone/audience considerations
+   (e.g., "Must hit emotional driver #1", "Key objection handler", "For
+  enterprise architect's evaluation doc").
+
+✻ Worked for 5m 2s
+
+● Agent "Research websites and PDF" completed
+
+● The background research agent completed as well — it confirmed the Powerhouse
+  ecosystem picture (reactive document architecture, Vetra for developers, BAI
+  for enterprise implementation, Achra for independent builders). The task list
+  already incorporates all of this context.
+
+  The tasks-copywriting.md file is ready for a copywriter to work through
+  systematically. Each of the 165 items has enough context to write against
+  without needing to reverse-engineer intent from the HTML.
+
+❯ /copy-editing                                                                 
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ /copy-editing Now work through the                                            
+@specs/enterprise/prototype-v2/tasks-copywriting.md and update the prototype-v2 
+ html files.                                                                    
+  ⎿  Read specs/enterprise/prototype-v2/tasks-copywriting.md (422 lines)
+
+● Let me check for product marketing context first, then work through the files
+  systematically.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● No product marketing context file — I'll use the positioning brief as the
+  voice/audience guide. Let me start editing the files. I'll work through
+  index.html first (the core page), then the subpages in parallel.
+
+  Starting with index.html — the hero, problem, and solution sections carry the
+  most weight.
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  File must be read first
+
+● Read 6 files (ctrl+o to expand)
+
+● Now let me read the rest of index.html.
+
+● Read 1 file (ctrl+o to expand)
+
+● Good, I have everything. Now let me work through the edits systematically.
+  I'll tackle index.html first (the biggest file), then do the subpages in
+  parallel.
+
+  Starting index.html — Sections 1-4:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      1107            <img class="hero-icon"                             
+            src="../design-system/logos/powerhouse-logo-pearl.png"       
+            alt="Powerhouse">                                            
+      1108            <h1 class="hero-title">AI-Native                   
+            Operations.<br><span class="accent">Private by               
+            Architecture.</span></h1>                                    
+      1109            <p class="hero-body">                              
+      1110 -            Your competitors are adopting AI. The question   
+           -isn't whether&nbsp;&mdash; it's whether you can do it        
+           -without compromising what makes your business yours.         
+           -Powerhouse is infrastructure for AI-native operations that   
+           -keeps your confidential data on your terms: your models,     
+           -your servers, never exposed.                                 
+      1110 +            Your board wants an AI strategy. Your legal team 
+           + won't let sensitive data leave the building. Both are       
+           +right. Powerhouse is the infrastructure layer that makes     
+           +your business data AI-native&nbsp;&mdash; on your servers,   
+           +with your models, under your control.                        
+      1111            </p>                                               
+      1112            <div class="hero-actions">                         
+      1113              <a href="https://bai.powerhouse.io"              
+            class="btn-primary">Request a Demo &rarr;</a>                
+      1114              <a href="#solution" class="btn-secondary">See    
+            How It Works</a>                                             
+      1115            </div>                                             
+      1116 -          <span class="hero-funnel">Or start with an         
+           - <a href="https://bai.powerhouse.io">                        
+           -AI readiness assessment</a></span>                           
+      1116 +          <span class="hero-funnel">Not ready                
+           +for a demo? Start with a <a href="https://bai.powerhouse.io">
+           +5-day AI readiness assessment</a></span>                     
+      1117          </div>                                               
+      1118        </div>                                                 
+      1119      </section>                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 5 lines, removed 5 lines
+      1123           ========================================== -->      
+      1124      <section class="problem">                                
+      1125        <div class="problem-content">                          
+      1126 -        <p class="problem-quote">"Every AI vendor wants your 
+           - data.<br>Your regulators say no."</p>                       
+      1126 +        <p class="problem-quote">"We need AI                 
+           +yesterday.<br>But our data can't leave the building."</p>    
+      1127          <p class="problem-text">                             
+      1128 -          Enterprise AI adoption is stalling&nbsp;&mdash;    
+           -not because the technology isn't ready, but because the      
+           -deployment model is wrong. Commercial AI services require    
+           -sending your data to external infrastructure for processing, 
+           - fine-tuning, or retrieval. For organizations handling       
+           -privileged legal communications, employee PII, financial     
+           -forecasts, or procurement negotiations, that's not a risk    
+           -assessment&nbsp;&mdash; it's a <em>non-starter</em>.         
+      1128 +          You've heard this in every leadership meeting. The 
+           + CEO wants an AI strategy. The DPO says commercial AI        
+           +services are off-limits for anything that                    
+           +matters&nbsp;&mdash; privileged legal documents, employee    
+           +PII, board-level financials, procurement negotiations.       
+           +They're right. Sending confidential data to external         
+           +infrastructure for processing isn't a calculated             
+           +risk&nbsp;&mdash; it's a <em>non-starter</em>.               
+      1129          </p>                                                 
+      1130          <p class="problem-text">                             
+      1131 -          The result: teams that urgently need AI            
+           -capabilities are stuck with either consumer-grade chatbots   
+           -that can't touch real business data, or year-long            
+           -integration projects that bolt AI onto systems never         
+           -designed for it.                                             
+      1131 +          So your teams are stuck. Consumer chatbots can't   
+           +touch real business data. Custom integration projects take a 
+           + year and bolt AI onto systems that were never designed for  
+           +machine interaction. Neither path delivers what the board is 
+           + asking for.                                                 
+      1132          </p>                                                 
+      1133          <p class="problem-text">                             
+      1134 -          There's a third path: infrastructure               
+           -that makes your business data AI-native <em>without it       
+           - ever leaving your environment</em>. Not by                  
+           -replacing your existing systems&nbsp;&mdash; but by adding a 
+           -structured layer that makes them AI-accessible               
+           -, on your infrastructure, under your control.                
+      1134 +          There's a third path: a structured data layer      
+           +that makes your existing systems AI-accessible <em>without   
+           +data ever leaving your environment</em>. Not a               
+           +rip-and-replace&nbsp;&mdash; a new layer that runs alongside 
+           +what you have, on your infrastructure, under your control.   
+      1135          </p>                                                 
+      1136 -        <a href="https://bai.powerhouse.io"                  
+           -class="funnel-link">Find out where you stand&nbsp;&mdash; get
+           - an AI readiness assessment</a>                              
+      1136 +        <a href="https://bai.powerhouse.io"                  
+           +class="funnel-link">Find out where your organization stands  
+           +&nbsp;&mdash; 5-day AI readiness assessment</a>              
+      1137        </div>                                                 
+      1138      </section>                                               
+      1139                                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 5 lines, removed 5 lines
+      1144           ========================================== -->      
+      1145      <section class="pillars" id="solution">                  
+      1146        <div class="section-eyebrow">The Solution</div>        
+      1147 -      <h2 class="section-title">Private data. AI-native.     
+           -Real-time.</h2>                                              
+      1147 +      <h2 class="section-title">Your data stays              
+           +private.<br>Your operations become intelligent.</h2>         
+      1148        <div class="pillars-grid">                             
+      1149          <div class="pillar-card private">                    
+      1150            <span class="pillar-label">Data Privacy</span>     
+      1151            <h3 class="pillar-title">Private by Default</h3>   
+      1152            <p class="pillar-body">                            
+      1153 -            Your business data stays on your                 
+           -infrastructure&nbsp;&mdash; always. AI models run locally on 
+           - your hardware for sensitive workflows. Commercial APIs are  
+           -available for general-purpose tasks, with architectural      
+           -separation ensuring confidential data never reaches external 
+           - services. No data is used for model training. No vendor     
+           -ever sees your content.                                      
+      1153 +            Your business data never leaves your             
+           +infrastructure. Sensitive workflows run on local AI models   
+           +deployed on your hardware. Commercial APIs handle only       
+           +general-purpose tasks&nbsp;&mdash; with architectural        
+           +separation that ensures confidential data never reaches      
+           +external services. No vendor ever sees your content. No data 
+           + is used for model training.                                 
+      1154            </p>                                               
+      1155          </div>                                               
+      1156          <div class="pillar-card ai-native">                  
+      1157            <span class="pillar-label">AI Integration</span>   
+      1158            <h3 class="pillar-title">AI-Native from the Data   
+            Layer Up</h3>                                                
+      1159            <p class="pillar-body">                            
+      1160 -            Your existing systems connect to a structured    
+           -data layer through standards-based integrations. AI agents   
+           -interact through typed interfaces: multi-agent workflows     
+           -coordinate across functions, each agent sandboxed to its own 
+           - scope and permissions. Specification-driven AI, not         
+           -open-ended prompts. Every autonomous operation can require   
+           -human approval.                                              
+      1160 +            Forget bolting AI onto legacy systems.           
+           +Powerhouse gives your existing data a structured layer with  
+           +typed interfaces that AI agents can operate on directly.     
+           +Multiple specialized agents coordinate across business       
+           +functions&nbsp;&mdash; each sandboxed to its own data scope, 
+           + permissions, and model tier. Agents follow structured       
+           +playbooks, not open-ended prompts. Every autonomous action   
+           +can require human approval.                                  
+      1161            </p>                                               
+      1162          </div>                                               
+      1163          <div class="pillar-card realtime">                   
+      1164            <span class="pillar-label">Architecture</span>     
+      1165 -          <h3 class="pillar-title">Real-Time and Scalable    
+           -</h3>                                                        
+      1165 +          <h3 class="pillar-title">Real-Time, Scalable       
+           +, Auditable</h3>                                             
+      1166            <p class="pillar-body">                            
+      1167 -            Built on a reactive architecture:                
+           -event sourcing, CQRS, event-driven processing                
+           -. Business data synchronizes across devices, applications,   
+           -and users in real-time. The                                  
+           -write layer scales horizontally&nbsp;&mdash; each            
+           -business object is an independent consistency boundary.      
+           -Platform-grade performance without centralized infrastructure
+           -.                                                            
+      1167 +            Built on proven patterns&nbsp;&mdash;            
+           +event sourcing, CQRS, reactive processing                    
+           +&nbsp;&mdash; composed into a single document primitive      
+           +. Business data synchronizes across devices, applications,   
+           +and users in real-time. Every                                
+           +business object is an independent consistency boundary, so   
+           +the write layer scales horizontally. No centralized          
+           +bottleneck.                                                  
+      1168            </p>                                               
+      1169          </div>                                               
+      1170        </div>                                                 
+
+● Now the use cases section:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 14 lines, removed 14 lines
+      1177           ========================================== -->      
+      1178      <section class="use-cases">                              
+      1179        <div class="section-eyebrow">Use Cases</div>           
+      1180 -      <h2 class="section-title">Built for industries         
+           -where<br>confidentiality isn't optional.</h2>                
+      1180 +      <h2 class="section-title">Built for industries         
+           +where<br>confidentiality is the job.</h2>                    
+      1181        <div class="use-cases-grid">                           
+      1182                                                               
+      1183          <div class="use-case-card legal">                    
+      1184            <div class="use-case-icon">&#9878;</div>           
+      1185            <h3 class="use-case-title">Legal</h3>              
+      1186            <p class="use-case-body">                          
+      1187 -            Contract review, due diligence, compliance       
+           -monitoring, matter management. AI agents that read and       
+           -reason over privileged legal documents&nbsp;&mdash; on local 
+           - models, on your servers. Multi-agent workflows where        
+           -review, risk assessment, and compliance agents coordinate on 
+           - the same matter. Full audit trail for every action.         
+      1187 +            AI agents that review contracts, flag risks, and 
+           + monitor compliance&nbsp;&mdash; all running on local models 
+           + on your servers, never exposing privileged communications.  
+           +A review agent, a risk agent, and a compliance agent         
+           +coordinate on the same matter simultaneously, each within    
+           +its own data scope. Every action is signed and auditable.    
+      1188            </p>                                               
+      1189            <div class="use-case-links">                       
+      1190 -            <a href="https://bai.powerhouse.io">Assess your  
+           - AI readiness for legal operations</a>                       
+      1191 -            <a href="clint.html">See how Clint powers        
+           - multi-agent legal workflows</a>                             
+      1190 +            <a href="https://bai.powerhouse.io">Get an       
+           + AI readiness assessment for legal ops</a>                   
+      1191 +            <a href="clint.html">How Clint orchestrates      
+           + multi-agent legal workflows</a>                             
+      1192            </div>                                             
+      1193          </div>                                               
+      1194                                                               
+      1195          <div class="use-case-card hr">                       
+      1196            <div class="use-case-icon">&#9823;</div>           
+      1197 -          <h3 class="use-case-title">HR</h3>                 
+      1197 +          <h3 class="use-case-title">HR & People Operations  
+           +</h3>                                                        
+      1198            <p class="use-case-body">                          
+      1199 -            Recruitment screening, employee records          
+           -management, performance analysis, policy compliance.         
+           -Personnel data stays on your infrastructure&nbsp;&mdash;     
+           -never processed by external AI services. PII never leaves    
+           -your environment. GDPR compliance is structural, not a       
+           -checkbox.                                                    
+      1199 +            Screening, records management, performance       
+           +analysis, policy compliance&nbsp;&mdash; powered by AI that  
+           +never sends employee data to external services. PII stays on 
+           + your infrastructure by architecture, not by policy. GDPR    
+           +compliance is a structural property of the data, not a       
+           +checkbox your team fills in.                                 
+      1200            </p>                                               
+      1201            <div class="use-case-links">                       
+      1202 -            <a href="https://bai.powerhouse.io">Assess your  
+           - AI readiness for HR operations</a>                          
+      1203 -            <a href="renown.html">See how                    
+           -Renown governs identity and PII access</a>                   
+      1202 +            <a href="https://bai.powerhouse.io">Get an       
+           + AI readiness assessment for HR</a>                          
+      1203 +            <a href="renown.html">How                        
+           +Renown governs identity and PII access</a>                   
+      1204            </div>                                             
+      1205          </div>                                               
+      1206                                                               
+     ...
+      1208            <div class="use-case-icon">&#9881;</div>           
+      1209            <h3 class="use-case-title">Procurement</h3>        
+      1210            <p class="use-case-body">                          
+      1211 -            Vendor evaluation, contract negotiation support, 
+           - spend analysis, supplier risk assessment. Negotiation       
+           -positions and pricing data stay on local models. AI agents   
+           -work on defined data scopes. Commercial AI models only see   
+           -sanitized summaries, never raw negotiation data.             
+      1211 +            Spend analysis, vendor evaluation, and contract  
+           +negotiation support&nbsp;&mdash; without your pricing        
+           +intelligence or negotiation positions ever reaching a        
+           +third-party AI provider. Local models process raw data.      
+           +Commercial models only see sanitized summaries. The          
+           +architecture enforces the boundary.                          
+      1212            </p>                                               
+      1213            <div class="use-case-links">                       
+      1214 -            <a href="https://bai.powerhouse.io">Assess your  
+           - AI readiness for procurement</a>                            
+      1215 -            <a href="switchboard.html">See how Switchboard   
+           -scopes data per integration</a>                              
+      1214 +            <a href="https://bai.powerhouse.io">Get an       
+           + AI readiness assessment for procurement</a>                 
+      1215 +            <a href="switchboard.html">How Switchboard       
+           +enforces data boundaries</a>                                 
+      1216            </div>                                             
+      1217          </div>                                               
+      1218                                                               
+     ...
+      1220            <div class="use-case-icon">&#9733;</div>           
+      1221            <h3 class="use-case-title">Finance</h3>            
+      1222            <p class="use-case-body">                          
+      1223 -            Financial reporting, forecasting, expense        
+           -management, audit preparation. Board-level financials        
+           -processed by local AI models on your hardware. Agents        
+           -operate within strict data boundaries. The append-only,      
+           -cryptographically signed operation history makes every       
+           -AI-assisted operation audit-ready by default.                
+      1223 +            Reporting automation, forecasting, expense       
+           +management, audit prep&nbsp;&mdash; with board-level         
+           +financials processed by local models on your hardware. Every 
+           + AI-assisted operation is a cryptographically signed entry   
+           +in an append-only history. Your auditors get a provenance    
+           +chain, not a reconstructed log.                              
+      1224            </p>                                               
+      1225            <div class="use-case-links">                       
+      1226 -            <a href="https://bai.powerhouse.io">Assess your  
+           - AI readiness for finance</a>                                
+      1227 -            <a href="connect.html">See how Connect provides  
+           - audit-ready modules</a>                                     
+      1226 +            <a href="https://bai.powerhouse.io">Get an       
+           + AI readiness assessment for finance</a>                     
+      1227 +            <a href="connect.html">How Connect delivers      
+           + audit-ready workflows</a>                                   
+      1228            </div>                                             
+      1229          </div>                                               
+      1230                                                               
+
+● Now sections 5-8 (Platform, Architecture, Integration, Privacy):
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      1238           ========================================== -->      
+      1239      <section class="platform" id="platform">                 
+      1240        <div class="section-eyebrow">The Platform</div>        
+      1241 -      <h2 class="section-title">Five components. Your        
+           - architecture.<br>Your brand.</h2>                           
+      1242 -      <p class="section-subtitle">Local, whitelabel          
+           -components you own and operate&nbsp;&mdash; on your servers, 
+           - under your control.</p>                                     
+      1241 +      <h2 class="section-title">Five components. One         
+           + architecture.<br>Your brand.</h2>                           
+      1242 +      <p class="section-subtitle">Each component runs on     
+           +your infrastructure, under your IT team's control.           
+           +Whitelabel by default&nbsp;&mdash; your operators see an     
+           +internal tool, not a vendor product.</p>                     
+      1243        <div class="platform-grid">                            
+      1244                                                               
+      1245          <div class="component-card clint">                   
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1246            <img class="component-icon"                        
+            src="../design-system/logos/reactors-icon-light.svg"         
+            alt="Clint">                                                 
+      1247            <h3 class="component-name">Clint</h3>              
+      1248            <span class="component-role">AI Agent              
+            Infrastructure</span>                                        
+      1249 -          <p class="component-desc">Define business          
+           -processes as typed schemas; Clint generates an operator      
+           -console, an MCP server, and a multi-agent harness. Agents    
+           -operate through a routine loop with pluggable triggers. Each 
+           - agent runs sandboxed with scoped permissions.</p>           
+      1249 +          <p class="component-desc">Write your business      
+           +processes as typed schemas once. Clint generates an operator 
+           + console, MCP endpoints, and a multi-agent harness from that 
+           + single definition. Agents run autonomously with scoped      
+           +permissions&nbsp;&mdash; and every action is auditable.</p>  
+      1250            <a href="clint.html" class="component-link">Learn  
+            more &rarr;</a>                                              
+      1251          </div>                                               
+      1252                                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1254            <img class="component-icon"                        
+            src="assets/fusion-nav-icon.svg" alt="Fusion">               
+      1255            <h3 class="component-name">Fusion</h3>             
+      1256            <span class="component-role">Internal Enterprise   
+            Platform</span>                                              
+      1257 -          <p class="component-desc">The modern replacement   
+           -for your intranet portal. Teams access business data,        
+           -workflows, dashboards, and AI agent outputs through a        
+           -branded internal platform. Customizable per business         
+           -unit.</p>                                                    
+      1257 +          <p class="component-desc">Your intranet, rebuilt   
+           +on live data. Teams access dashboards, workflows, and AI     
+           +agent outputs through a branded internal                     
+           +platform&nbsp;&mdash; customizable per department,           
+           +extensible by your frontend team.</p>                        
+      1258            <a href="fusion.html" class="component-link">Learn 
+             more &rarr;</a>                                             
+      1259          </div>                                               
+      1260                                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1262            <img class="component-icon"                        
+            src="assets/connect-nav-icon.svg" alt="Connect">             
+      1263            <h3 class="component-name">Connect</h3>            
+      1264            <span class="component-role">Operator              
+            Workspace</span>                                             
+      1265 -          <p class="component-desc">Browser-based            
+           -environment for creating, editing, and collaborating on      
+           -structured business objects. Workflow-specific views.        
+           -Operators and AI agents work on the same data with built-in  
+           -human oversight.</p>                                         
+      1265 +          <p class="component-desc">Where your teams create, 
+           + edit, and collaborate on structured business data. Humans   
+           +and AI agents work on the same objects&nbsp;&mdash; with     
+           +built-in review and approval flows so nothing happens        
+           +without oversight.</p>                                       
+      1266            <a href="connect.html"                             
+            class="component-link">Learn more &rarr;</a>                 
+      1267          </div>                                               
+      1268                                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1270            <img class="component-icon"                        
+            src="assets/switchboard-nav-icon.svg" alt="Switchboard">     
+      1271            <h3 class="component-name">Switchboard</h3>        
+      1272            <span class="component-role">API & Integration     
+            Hub</span>                                                   
+      1273 -          <p class="component-desc">Exposes every business   
+           -operation as GraphQL and MCP endpoints. Connects to existing 
+           - systems through standards-based APIs. Each integration      
+           -defines data scope and access boundaries.</p>                
+      1273 +          <p class="component-desc">The system boundary      
+           +where your existing systems meet AI. Auto-generates GraphQL  
+           +and MCP endpoints from your schemas. Each integration        
+           +defines exactly what data flows in, out, and to which        
+           +actors.</p>                                                  
+      1274            <a href="switchboard.html"                         
+            class="component-link">Learn more &rarr;</a>                 
+      1275          </div>                                               
+      1276                                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1278            <img class="component-icon"                        
+            src="assets/renown-nav-icon.svg" alt="Renown">               
+      1279            <h3 class="component-name">Renown</h3>             
+      1280            <span class="component-role">Identity for Agents & 
+             Users</span>                                                
+      1281 -          <p class="component-desc">Unified identity for     
+           -every actor in the system&nbsp;&mdash; human operators, AI   
+           -agents, external integrations. Every action is attributed to 
+           - a verified identity with defined permissions. Enterprise    
+           -SSO integration.</p>                                         
+      1281 +          <p class="component-desc">One identity layer for   
+           +humans, AI agents, and integrations. Every action is         
+           +cryptographically attributed to a verified identity. Your    
+           +compliance team can always answer: "who did this, and were   
+           +they authorized?"</p>                                        
+      1282            <a href="renown.html" class="component-link">Learn 
+             more &rarr;</a>                                             
+      1283          </div>                                               
+      1284                                                               
+
+● Architecture diagram and Integration sections:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1290           ========================================== -->      
+      1291      <section class="architecture">                           
+      1292        <div class="section-eyebrow">How It Fits               
+            Together</div>                                               
+      1293 -      <h2 class="section-title">From existing systems to<br> 
+           -AI-native operations.</h2>                                   
+      1293 +      <h2 class="section-title">Your systems, structured<br> 
+           +for AI operations.</h2>                                      
+      1294                                                               
+      1295        <div class="arch-diagram">                             
+      1296          <div class="arch-flow">                              
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1388                                                               
+      1389          </div>                                               
+      1390          <p class="arch-caption">                             
+      1391 -          Your existing systems connect to Switchboard       
+           -through standards-based APIs. Each integration defines a     
+           -data scope. Clint's AI agents operate on structured data     
+           -with sandboxed permissions. Connect gives human operators    
+           -hands-on access with oversight of AI actions. Fusion         
+           -surfaces everything through a branded internal platform.     
+           -Renown governs identity and permissions across every         
+           -component.                                                   
+      1391 +          Switchboard connects your existing systems through 
+           + standards-based APIs&nbsp;&mdash; each with a defined data  
+           +scope. Clint's AI agents operate on that structured data     
+           +within sandboxed permissions. Connect gives your teams       
+           +hands-on access with full oversight of what agents do.       
+           +Fusion presents it all through your branded internal         
+           +platform. Renown ensures every action&nbsp;&mdash; human or  
+           +machine&nbsp;&mdash; is attributed and authorized.           
+      1392          </p>                                                 
+      1393        </div>                                                 
+      1394      </section>                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 4 lines, removed 4 lines
+      1404                                                               
+      1405        <div class="integration-content">                      
+      1406          <div class="integration-text">                       
+      1407 -          <h3>Parallel adoption, not rip-and-replace</h3>    
+      1408 -          <p>Powerhouse doesn't replace your existing        
+           -systems&nbsp;&mdash; it runs alongside them. Switchboard     
+           -connects your ERP, HRIS, document management, email, and     
+           -financial systems to a structured data layer where AI can    
+           -operate. Your existing workflows continue unchanged.</p>     
+      1407 +          <h3>Runs alongside what you have</h3>              
+      1408 +          <p>Powerhouse doesn't replace your ERP, HRIS, or   
+           +financial systems. Switchboard connects them to a structured 
+           + data layer where AI can operate&nbsp;&mdash; without        
+           +touching your existing workflows. You adopt incrementally,   
+           +starting with the business processes that benefit most.</p>  
+      1409                                                               
+      1410 -          <h3>Every integration is a data boundary</h3>      
+      1411 -          <p>Each connection defines a scope:                
+           -what data enters, what format it takes, and who&nbsp;&mdash; 
+           -human or agent&nbsp;&mdash; can access it. An                
+           - HR agent sees personnel records but not financial forecasts.
+           - A procurement agent sees vendor negotiations                
+           - but not employee data. Isolation is defined at the          
+           -integration level, not layered on as policy.</p>             
+      1410 +          <h3>Every connection is a data boundary</h3>       
+      1411 +          <p>Each integration defines exactly                
+           +what data enters, what shape it takes, and who               
+           +can access it. Your                                          
+           + HR agent sees personnel records but not financial forecasts.
+           + Your procurement agent sees vendor data but not employee    
+           +records. This isolation is architectural, not a policy layer 
+           +you hope people follow.</p>                                  
+      1412          </div>                                               
+      1413                                                               
+      1414          <div class="tier-card">                              
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1417              <div class="tier-dot local"></div>               
+      1418              <div>                                            
+      1419                <div class="tier-item-title">Local             
+            Models</div>                                                 
+      1420 -              <div class="tier-item-desc">Most               
+           -sensitive data&nbsp;&mdash; privileged                       
+           -legal communications, raw personnel files, board-level       
+           -financials. Open-source models                               
+           -on your hardware. Nothing leaves your network.</div>         
+      1420 +              <div class="tier-item-desc">Privileged         
+           +legal communications, raw personnel files, board-level       
+           +financials. Open-source models running                       
+           +on your hardware. Nothing leaves your network.</div>         
+      1421              </div>                                           
+      1422            </div>                                             
+      1423            <div class="tier-item">                            
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1424              <div class="tier-dot frontier"></div>            
+      1425              <div>                                            
+      1426                <div class="tier-item-title">Frontier          
+            Commercial Models</div>                                      
+      1427 -              <div class="tier-item-desc">Less sensitive but 
+           - still confidential work&nbsp;&mdash; operating on censored  
+           -summaries, redacted extracts, or pre-approved data           
+           -shapes.</div>                                                
+      1427 +              <div class="tier-item-desc">Confidential but   
+           +not privileged&nbsp;&mdash; redacted summaries, sanitized    
+           +extracts, pre-approved data shapes. The best models          
+           +available, with controlled input.</div>                      
+      1428              </div>                                           
+      1429            </div>                                             
+      1430            <div class="tier-item">                            
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1431              <div class="tier-dot general"></div>             
+      1432              <div>                                            
+      1433                <div class="tier-item-title">General-Purpose   
+            Models</div>                                                 
+      1434 -              <div class="tier-item-desc">Non-confidential   
+           -tasks&nbsp;&mdash; drafting, formatting, research,           
+           -translation.</div>                                           
+      1434 +              <div class="tier-item-desc">Drafting,          
+           +formatting, research, translation&nbsp;&mdash; tasks where   
+           +speed matters more than secrecy.</div>                       
+      1435              </div>                                           
+      1436            </div>                                             
+      1437            <div class="tier-footer">Your DPO defines the      
+            tiers. The architecture enforces them.</div>                 
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1437            <div class="tier-footer">Your DPO defines the      
+            tiers. The architecture enforces them.</div>                 
+      1438          </div>                                               
+      1439        </div>                                                 
+      1440 -      <a href="https://bai.powerhouse.io" class="funnel-link"
+           - style="margin-top: 32px;">Need help mapping your data flows 
+           -and privacy tiers? Start with a BAI assessment</a>           
+      1440 +      <a href="https://bai.powerhouse.io" class="funnel-link"
+           + style="margin-top: 32px;">Not sure which data belongs in    
+           +which tier? A BAI assessment maps it for you</a>             
+      1441      </section>                                               
+      1442                                                               
+      1443      <div class="section-divider"></div>                      
+
+● Privacy & Compliance section:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1448      <section class="privacy" id="privacy">                   
+      1449        <div class="section-eyebrow">Privacy &                 
+            Compliance</div>                                             
+      1450        <h2 class="section-title">Built into the               
+            architecture.<br>Not bolted on.</h2>                         
+      1451 -      <p class="section-subtitle">The section the CTO sends  
+           -to the DPO, legal counsel, and compliance team.</p>          
+      1451 +      <p class="section-subtitle">Forward this section to    
+           +your DPO, legal counsel, and compliance team.</p>            
+      1452                                                               
+      1453        <div class="privacy-grid">                             
+      1454          <div class="privacy-card">                           
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1453        <div class="privacy-grid">                             
+      1454          <div class="privacy-card">                           
+      1455            <h3 class="privacy-card-title">Data Residency</h3> 
+      1456 -          <p class="privacy-card-body">All                   
+           -business data is stored on infrastructure you control.       
+           -Self-host on your own servers,                               
+           - or deploy on Vetra Cloud with contractual data              
+           -residency guarantees. No data replication                    
+           -to third-party systems unless you explicitly configure       
+           -it.</p>                                                      
+      1456 +          <p class="privacy-card-body">Every byte of         
+           +business data is stored on infrastructure you control.       
+           +Self-host on your own servers                                
+           + or deploy on Vetra Cloud with contractual                   
+           +residency guarantees. Nothing replicates                     
+           +to third-party systems unless you explicitly configure       
+           +it.</p>                                                      
+      1457          </div>                                               
+      1458          <div class="privacy-card">                           
+      1459            <h3 class="privacy-card-title">Immutable Audit     
+            Trail</h3>                                                   
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1457          </div>                                               
+      1458          <div class="privacy-card">                           
+      1459            <h3 class="privacy-card-title">Immutable Audit     
+            Trail</h3>                                                   
+      1460 -          <p class="privacy-card-body">Every                 
+           -operation&nbsp;&mdash; human or AI&nbsp;&mdash; is           
+           -cryptographically signed, timestamped, and appended to an    
+           -immutable history. The audit trail is not a log; it          
+           -<em>is</em> the data structure. SOX, GDPR, HIPAA:            
+           - compliance is structural.</p>                               
+      1460 +          <p class="privacy-card-body">Every                 
+           +operation&nbsp;&mdash; human or AI&nbsp;&mdash; is           
+           +cryptographically signed, timestamped, and appended to an    
+           +immutable history. This isn't a log bolted onto the side.    
+           +The audit trail                                              
+           +<em>is</em> the data structure. SOX, GDPR, HIPAA             
+           + compliance is structural, not procedural.</p>               
+      1461          </div>                                               
+      1462          <div class="privacy-card full-width">                
+      1463            <h3 class="privacy-card-title">Ready for What's    
+            Coming</h3>                                                  
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1461          </div>                                               
+      1462          <div class="privacy-card full-width">                
+      1463            <h3 class="privacy-card-title">Ready for What's    
+            Coming</h3>                                                  
+      1464 -          <p class="privacy-card-body">The EU AI Act and     
+           -emerging sector-specific AI regulations will                 
+           -require transparency into AI decision-making, data provenance
+           - tracking, and algorithmic accountability. Powerhouse's      
+           -architecture&nbsp;&mdash;                                    
+           -immutable operation history, cryptographic attribution of    
+           -every AI action, specification-driven agent behavior         
+           -&nbsp;&mdash; is structurally ready for these requirements   
+           -. Organizations adopting this infrastructure now             
+           -won't need to retrofit compliance when regulation arrives    
+           -.</p>                                                        
+      1464 +          <p class="privacy-card-body">The EU AI Act and     
+           +sector-specific regulations are coming. They'll              
+           +require transparency into AI decision-making, data provenance
+           + tracking, and algorithmic accountability. Powerhouse already
+           + meets these requirements architecturally:                   
+           +immutable operation history, cryptographic attribution of    
+           +every AI action, specification-driven agent behavior         
+           +. Organizations on this infrastructure                       
+           +won't need to retrofit compliance when regulation arrives    
+           +&nbsp;&mdash; they'll already be there.</p>                  
+      1465          </div>                                               
+      1466          <div class="privacy-card">                           
+      1467            <h3 class="privacy-card-title">Data                
+            Portability</h3>                                             
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1465          </div>                                               
+      1466          <div class="privacy-card">                           
+      1467            <h3 class="privacy-card-title">Data                
+            Portability</h3>                                             
+      1468 -          <p class="privacy-card-body">Your data is JSON.    
+           -Your schemas are typed definitions you own. Your application 
+           -code is TypeScript. If you leave, everything comes with you  
+           -. The entire stack is open source.</p>                       
+      1468 +          <p class="privacy-card-body">Your data is JSON.    
+           +Your schemas are TypeScript definitions you own. Your        
+           +code is yours. If you leave, everything comes with you       
+           +&nbsp;&mdash; no proprietary format, no extraction           
+           +negotiation. The entire stack is open source.</p>            
+      1469          </div>                                               
+      1470          <div class="privacy-card"                            
+            style="display:flex;flex-direction:column;justify-content:ce 
+            nter;align-items:flex-start;">                               
+      1471            <a href="https://bai.powerhouse.io"                
+            class="funnel-link" style="margin:0;">Get a privacy impact   
+            analysis for your AI initiative</a>                          
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1468            <p class="privacy-card-body">Your data is JSON.    
+            Your schemas are TypeScript definitions you own. Your code   
+            is yours. If you leave, everything comes with                
+            you&nbsp;&mdash; no proprietary format, no extraction        
+            negotiation. The entire stack is open source.</p>            
+      1469          </div>                                               
+      1470          <div class="privacy-card"                            
+            style="display:flex;flex-direction:column;justify-content:ce 
+            nter;align-items:flex-start;">                               
+      1471 -          <a href="https://bai.powerhouse.io"                
+           -class="funnel-link" style="margin:0;">Get a privacy impact   
+           -analysis for your AI initiative</a>                          
+      1471 +          <a href="https://bai.powerhouse.io"                
+           +class="funnel-link" style="margin:0;">Get a privacy impact   
+           +analysis for your AI initiative &rarr;</a>                   
+      1472          </div>                                               
+      1473        </div>                                                 
+      1474      </section>                                               
+
+● Cloud & Ecosystem, Tech Specs, Comparison, Why Powerhouse, CTA:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      1480           ========================================== -->      
+      1481      <section class="ecosystem">                              
+      1482        <div class="section-eyebrow">Cloud & Ecosystem</div>   
+      1483 -      <h2 class="section-title">The infrastructure and       
+           -community<br>behind the platform.</h2>                       
+      1484 -      <p class="section-subtitle">Sections above describe    
+           -what you own and run locally. This section describes the     
+           -cloud services and ecosystem that support it.</p>            
+      1483 +      <h2 class="section-title">Cloud services and           
+           +ecosystem<br>that back your deployment.</h2>                 
+      1484 +      <p class="section-subtitle">Everything above runs on   
+           +your infrastructure. These are the cloud services and        
+           +professional networks available when you need them.</p>      
+      1485                                                               
+      1486        <div class="ecosystem-grid">                           
+      1487                                                               
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 5 lines, removed 5 lines
+      1489            <div class="eco-content">                          
+      1490              <img class="eco-icon"                            
+            src="../design-system/logos/vetra-icon.svg" alt="Vetra">     
+      1491              <div class="eco-name"><img                       
+            src="../design-system/logos/vetra-logo-dark-text.svg"        
+            alt="Vetra"></div>                                           
+      1492 -            <p class="eco-desc">Platform infrastructure for  
+           -development, hosting, and the package ecosystem.</p>         
+      1492 +            <p class="eco-desc">Development platform,        
+           +managed hosting, and the package registry for Powerhouse     
+           +applications.</p>                                            
+      1493              <ul class="eco-features">                        
+      1494 -              <li>Managed cloud with data sovereignty        
+           - guarantees</li>                                             
+      1495 -              <li>Registry of reusable business modules and  
+           -agent configurations</li>                                    
+      1496 -              <li>Pre-configured business process            
+           -agents</li>                                                  
+      1497 -              <li>Development tooling, documentation, and    
+           -training</li>                                                
+      1494 +              <li>Managed cloud hosting with contractual     
+           +data sovereignty</li>                                        
+      1495 +              <li>Package registry: reusable business modules
+           +, document models, agent configs</li>                        
+      1496 +              <li>Pre-built agents for common business       
+           +processes</li>                                               
+      1497 +              <li>Documentation, API references, and         
+           +onboarding resources</li>                                    
+      1498              </ul>                                            
+      1499              <a href="https://vetra.io" class="eco-btn">Visit 
+             Vetra &rarr;</a>                                            
+      1500            </div>                                             
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 4 lines, removed 4 lines
+      1504            <div class="eco-content">                          
+      1505              <img class="eco-icon"                            
+            src="../design-system/logos/achra-icon.svg" alt="Achra">     
+      1506              <div class="eco-name"><img                       
+            src="../design-system/logos/achra-logo-light-text.svg"       
+            alt="Achra"></div>                                           
+      1507 -            <p class="eco-desc">Builder and operator         
+           -marketplace&nbsp;&mdash; where you find the people, services 
+           -, and solutions to accelerate deployment.</p>                
+      1507 +            <p class="eco-desc">Professional services        
+           +marketplace. Find the people, expertise                      
+           +, and solutions to accelerate your deployment.</p>           
+      1508              <ul class="eco-features">                        
+      1509 -              <li>Implementation                             
+           -partners and operational service providers</li>              
+      1510 -              <li>Pre-built solutions for enterprise domains 
+           -</li>                                                        
+      1511 -              <li>BAI team for AI readiness assessments      
+           -with contractual SLAs</li>                                   
+      1509 +              <li>Vetted implementation                      
+           +partners and operational service providers</li>              
+      1510 +              <li>Pre-built solutions and templates          
+           +for enterprise verticals</li>                                
+      1511 +              <li>BAI team: AI readiness assessments         
+           +and implementation with contractual SLAs</li>                
+      1512              </ul>                                            
+      1513              <a href="https://achra.com"                      
+            class="eco-btn">Visit Achra &rarr;</a>                       
+      1514            </div>                                             
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1524           ========================================== -->      
+      1525      <section class="tech-specs">                             
+      1526        <div class="section-eyebrow">Technical Reference</div> 
+      1527 -      <h2 class="section-title">Scannable reference          
+           -for<br>architecture review.</h2>                             
+      1527 +      <h2 class="section-title">For your                     
+           +architecture<br>evaluation doc.</h2>                         
+      1528        <table class="specs-table">                            
+      1529          <thead>                                              
+      1530            <tr>                                               
+
+● Now the comparison section:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      1554           ========================================== -->      
+      1555      <section class="comparison" id="comparison">             
+      1556        <div class="section-eyebrow">How This Compares</div>   
+      1557 -      <h2 class="section-title">The "safe choice" isn't safe 
+           -.</h2>                                                       
+      1557 +      <h2 class="section-title">The "safe choice" has        
+           +hidden costs.</h2>                                           
+      1558        <p class="comparison-intro">                           
+      1559 -        Your existing vendors&nbsp;&mdash; Microsoft,        
+           -Salesforce, SAP&nbsp;&mdash; are adding AI to their platforms
+           -. But they're bolting it                                     
+           - onto architectures that were never designed for machine     
+           -interaction, and they're                                     
+           -processing your data on their infrastructure.                
+      1559 +        Your existing vendors&nbsp;&mdash; Microsoft,        
+           +Salesforce, SAP&nbsp;&mdash; are adding AI features          
+           +. But they're bolting intelligence                           
+           + onto architectures that were never designed for machine     
+           +interaction&nbsp;&mdash; and                                 
+           +processing your data on their infrastructure.                
+           + Here's how the approaches compare:                          
+      1560        </p>                                                   
+      1561        <table class="comparison-table">                       
+      1562          <thead>                                              
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 8 lines, removed 8 lines
+      1567            </tr>                                              
+      1568          </thead>                                             
+      1569          <tbody>                                              
+      1570 -          <tr><td>Data privacy</td><td>Business data sent to 
+           -external AI services</td><td>Data stays on your              
+           -infrastructure; local models for sensitive                   
+           -workflows; tiered access</td></tr>                           
+      1571 -          <tr><td>AI readiness</td><td>Separate integration  
+           - per system; months of work</td><td>Structured data layer    
+           -with AI endpoints from your business schemas</td></tr>       
+      1572 -          <tr><td>Agent control</td><td>Prompt-based;        
+           -unpredictable scope</td><td>Specification-driven             
+           -; sandboxed permissions; full operation history</td></tr>    
+      1573 -          <tr><td>Integration</td><td>Point-to-point         
+           -adapters, no data scoping</td><td>Standards-based with       
+           -built-in data isolation per agent and workflow</td></tr>     
+      1574 -          <tr><td>Time to                                    
+           -value</td><td>6&ndash;18 month integration projects</td><td> 
+           -Connect existing systems, structure data, agents work        
+           - immediately</td></tr>                                       
+      1575 -          <tr><td>Compliance</td><td>Audit trails            
+           -reconstructed after the fact</td><td>Cryptographically signed
+           -, immutable                                                  
+           -&nbsp;&mdash; the history <em>is</em> the data</td></tr>     
+      1576 -          <tr><td>Regulatory readiness</td><td>Retrofit      
+           -required when AI regulations arrive                          
+           -</td><td>Architecture already meets EU AI Act transparency   
+           -and provenance requirements</td></tr>                        
+      1577 -          <tr><td>Vendor lock-in</td><td>Multi-year contracts
+           -, proprietary formats</td><td>Open source, JSON data,        
+           -portable schemas</td></tr>                                   
+      1570 +          <tr><td>Data privacy</td><td>Your data processed on
+           + vendor infrastructure</td><td>Your data stays on your       
+           +servers; local models for sensitive work</td></tr>           
+      1571 +          <tr><td>AI readiness</td><td>Custom adapter        
+           + per system; months of integration                           
+           +</td><td>Structured data layer auto-generates                
+           + AI endpoints from your schemas</td></tr>                    
+      1572 +          <tr><td>Agent control</td><td>Prompt-based; hard   
+           +to predict what the AI accesses</td><td>Specification-driven 
+           + playbooks; sandboxed permissions; full audit trail</td></tr>
+      1573 +          <tr><td>Integration</td><td>Point-to-point         
+           +connectors; no built-in isolation</td><td>Standards-based    
+           +APIs with architectural data isolation per actor</td></tr>   
+      1574 +          <tr><td>Time to AI                                 
+           +value</td><td>6&ndash;18 month integration projects</td><td> 
+           +Structure your data, connect your systems, agents operate    
+           + immediately</td></tr>                                       
+      1575 +          <tr><td>Compliance</td><td>Audit trails            
+           +reconstructed after the fact</td><td>Immutable,              
+           +cryptographically signed                                     
+           +&nbsp;&mdash; the history <em>is</em> the data</td></tr>     
+      1576 +          <tr><td>Regulation</td><td>Will require retrofit   
+           +when AI regulations take effect                              
+           +</td><td>Architecture already meets EU AI Act transparency   
+           +and provenance requirements</td></tr>                        
+      1577 +          <tr><td>Exit strategy</td><td>Multi-year contracts;
+           + proprietary formats</td><td>Open source; JSON data;         
+           +TypeScript schemas you own</td></tr>                         
+      1578          </tbody>                                             
+      1579        </table>                                               
+      1580      </section>                                               
+
+● Why Powerhouse section:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 11 lines, removed 11 lines
+      1586           ========================================== -->      
+      1587      <section class="why">                                    
+      1588        <div class="section-eyebrow">Why Powerhouse</div>      
+      1589 -      <h2 class="section-title">"We build on what we ship."  
+           -</h2>                                                        
+      1589 +      <h2 class="section-title">We run on what we ship.</h2> 
+      1590                                                               
+      1591        <div class="why-grid">                                 
+      1592          <div class="why-card origin">                        
+      1593 -          <h3 class="why-card-title">Who We Are</h3>         
+      1594 -          <p class="why-card-body">Powerhouse grew out of    
+           -building operational infrastructure for MakerDAO&nbsp;&mdash;
+           - one of the most complex decentralized organizations in the  
+           -world. That experience&nbsp;&mdash;                          
+           -coordinating multi-entity financial operations, governance,  
+           -and contributor management at global scale&nbsp;&mdash; is   
+           -where the reactive document architecture was born. We've been
+           - building open-source tools                                  
+           - for AI-native operations since 2021.</p>                    
+      1593 +          <h3 class="why-card-title">Built from              
+           +real operational complexity</h3>                             
+      1594 +          <p class="why-card-body">Powerhouse grew out of    
+           +building operational infrastructure for MakerDAO&nbsp;&mdash;
+           + coordinating multi-entity financial operations, governance, 
+           +and contributor management across a global decentralized     
+           +organization. That's                                         
+           +where the reactive document architecture was born. We've been
+           + shipping open-source infrastructure                         
+           + for AI-native operations since 2021.</p>                    
+      1595          </div>                                               
+      1596          <div class="why-card">                               
+      1597 -          <h3 class="why-card-title">We Run on Our Own Stack 
+           -</h3>                                                        
+      1598 -          <p class="why-card-body">Achra and Vetra are       
+           -Powerhouse applications&nbsp;&mdash; same architecture, same 
+           -components, same agent infrastructure. When we demo          
+           - the platform, we're showing you our production systems.</p> 
+      1597 +          <h3 class="why-card-title">We dogfood everything   
+           +</h3>                                                        
+      1598 +          <p class="why-card-body">Achra and Vetra are       
+           +production                                                   
+           +Powerhouse applications&nbsp;&mdash; same architecture, same 
+           +components, same agent infrastructure you'd deploy           
+           +. When we demo, we're showing you our own systems            
+           + running in production.</p>                                  
+      1599          </div>                                               
+      1600          <div class="why-card">                               
+      1601 -          <h3 class="why-card-title">Your Team Already Knows 
+           - the Stack</h3>                                              
+      1602 -          <p class="why-card-body">TypeScript, React,        
+           -GraphQL, Node.js. The Powerhouse architecture is a           
+           -design pattern on top of technologies your engineers use     
+           -daily.</p>                                                   
+      1601 +          <h3 class="why-card-title">Your team already knows 
+           + the stack</h3>                                              
+      1602 +          <p class="why-card-body">TypeScript, React,        
+           +GraphQL, Node.js. The Powerhouse-specific layer is a thin    
+           +design pattern on top of technologies your engineers use     
+           +daily. No exotic runtime, no proprietary language, no hiring 
+           +problem.</p>                                                 
+      1603          </div>                                               
+      1604          <div class="why-card">                               
+      1605 -          <h3 class="why-card-title">Early Means Advantage   
+           -</h3>                                                        
+      1606 -          <p class="why-card-body">Direct access to the team 
+           - that builds the platform. A co-creation partnership where   
+           -your requirements shape the product. Your first feature      
+           -requests go directly to the engineering roadmap. Your        
+           -deployment becomes a reference architecture for your         
+           -industry.</p>                                                
+      1605 +          <h3 class="why-card-title">Early adopters          
+           +shape the product</h3>                                       
+      1606 +          <p class="why-card-body">This is frontier          
+           +infrastructure, and we're honest about that. Early           
+           +enterprise partners get direct access to the core            
+           +engineering team, feature requests that go straight to the   
+           +roadmap, and a deployment that becomes the reference         
+           +architecture for their industry.</p>                         
+      1607          </div>                                               
+      1608          <div class="why-card">                               
+      1609 -          <h3 class="why-card-title">Open Source Is Your     
+           -Insurance</h3>                                               
+      1610 -          <p class="why-card-body">Your data (JSON), your    
+           -schemas (TypeScript), and your code remain yours. The entire 
+           - stack is open source. No proprietary format, no hosted      
+           -service you can't replicate.</p>                             
+      1609 +          <h3 class="why-card-title">Open source is your     
+           +exit strategy</h3>                                           
+      1610 +          <p class="why-card-body">Your data is JSON. Your   
+           +schemas are TypeScript. Your application code is standard    
+           +React and Node.js. The entire stack is open source. If       
+           +Powerhouse disappeared tomorrow, you'd keep                  
+           +everything&nbsp;&mdash; code, data, and the ability to       
+           +maintain it.</p>                                             
+      1611          </div>                                               
+      1612        </div>                                                 
+      1613      </section>                                               
+
+● CTA section:
+
+● Update(specs/enterprise/prototype-v2/index.html)
+  ⎿  Added 8 lines, removed 8 lines
+      1619        <div class="cta-card">                                 
+      1620          <div class="cta-beam"><img src="../design-system/ill 
+            ustrations/powerhouse-light-beam.png" alt=""></div>          
+      1621          <div class="cta-content">                            
+      1622 -          <h2 class="cta-title">Three ways to move.</h2>     
+      1623 -          <p class="cta-subtitle">Whether you want a live    
+           -demo, a structured assessment, or to                         
+           -start building&nbsp;&mdash; there's a clear next step.</p>   
+      1622 +          <h2 class="cta-title">Pick your starting point     
+           +.</h2>                                                       
+      1623 +          <p class="cta-subtitle">Whether you need to see    
+           +the platform live, understand your readiness, or             
+           +start building&nbsp;&mdash; each path has a concrete         
+           + next step.</p>                                              
+      1624                                                               
+      1625            <div class="cta-grid">                             
+      1626              <div class="cta-option">                         
+      1627 -              <div class="cta-option-title">See It Live</div>
+      1628 -              <p class="cta-option-desc">Request a demo.     
+           -We'll show you the platform running in production,           
+           - walk through the AI agent infrastructure and                
+           - data isolation model, and map the architecture to your      
+           -operations.</p>                                              
+      1627 +              <div class="cta-option-title">See It Running   
+           +</div>                                                       
+      1628 +              <p class="cta-option-desc">A live demo on our  
+           +production systems&nbsp;&mdash; not a sandbox. We'll         
+           + walk through the AI agent infrastructure, the               
+           + data isolation model, and map the architecture to your      
+           +specific operations.</p>                                     
+      1629                <a href="https://bai.powerhouse.io"            
+            class="cta-option-link">Request a Demo &rarr;</a>            
+      1630              </div>                                           
+      1631              <div class="cta-option">                         
+      1632                <div class="cta-option-title">Assess Your      
+            Readiness</div>                                              
+      1633 -              <p class="cta-option-desc">AI readiness        
+           -assessment from the BAI team. A 2&ndash;3                    
+           -week data flow audit that maps your systems, classifies      
+           - data sensitivity, scores your AI readiness, and produces    
+           - a prioritized implementation roadmap. No commitment beyond  
+           -the assessment.</p>                                          
+      1633 +              <p class="cta-option-desc">A 5-day data        
+           +flow audit from the BAI team. They map your systems, classify
+           + data sensitivity, score your AI readiness, and deliver      
+           + a prioritized implementation roadmap. No commitment beyond  
+           +the assessment.</p>                                          
+      1634                <a href="https://bai.powerhouse.io"            
+            class="cta-option-link">bai.powerhouse.io &rarr;</a>         
+      1635              </div>                                           
+      1636              <div class="cta-option">                         
+      1637                <div class="cta-option-title">Explore the      
+            Platform</div>                                               
+      1638 -              <p class="cta-option-desc">Developer           
+           -environment, package registry,                               
+           -documentation, and managed hosting.</p>                      
+      1638 +              <p class="cta-option-desc">Developer           
+           +environment, package registry, API                           
+           +documentation, and managed hosting. Start building today.</p>
+      1639                <a href="https://vetra.io"                     
+            class="cta-option-link">vetra.io &rarr;</a>                  
+      1640              </div>                                           
+      1641              <div class="cta-option">                         
+      1642                <div class="cta-option-title">Find             
+            Implementation Partners</div>                                
+      1643 -              <p class="cta-option-desc">Builders and        
+           -operational service providers in the Powerhouse network.</p> 
+      1643 +              <p class="cta-option-desc">Vetted builders and 
+           +service providers in the Powerhouse network                  
+           + who've shipped on this stack.</p>                           
+      1644                <a href="https://achra.com"                    
+            class="cta-option-link">achra.com &rarr;</a>                 
+      1645              </div>                                           
+      1646            </div>                                             
+      1647                                                               
+      1648 -          <p class="cta-contact">Or talk to                  
+           -us directly: <a href="mailto:hello@powerhouse.inc">hello@powe
+           -rhouse.inc</a></p>                                           
+      1648 +          <p class="cta-contact">Or reach                    
+           +us directly: <a href="mailto:hello@powerhouse.inc">hello@powe
+           +rhouse.inc</a></p>                                           
+      1649          </div>                                               
+      1650        </div>                                                 
+      1651      </section>                                               
+
+● Index.html is done. Now let me edit all five subpages in parallel using
+  agents:
+
+● 5 agents launched (ctrl+o to expand)
+   ├─ Edit clint.html copy
+   │  ⎿  Running in the background
+   ├─ Edit connect.html copy
+   │  ⎿  Running in the background
+   ├─ Edit fusion.html copy
+   │  ⎿  Running in the background
+   ├─ Edit switchboard.html copy
+   │  ⎿  Running in the background
+   └─ Edit renown.html copy
+      ⎿  Running in the background
+
+● Index.html is done. Five agents are editing the subpages in parallel:
+  - clint.html — 24 copy items (hero, capabilities, integration, enterprise
+  value, CTA)
+  - connect.html — 18 copy items (hero, features, modules, CTA)
+  - fusion.html — 16 copy items (hero, architecture, use cases, CTA)
+  - switchboard.html — 18 copy items (hero, audiences, isolation, CTA)
+  - renown.html — 17 copy items (hero, identity, agent identity, SSO, CTA)
+
+  Waiting for all five to complete.
+
+✻ Churned for 8m 41s
+
+● Agent "Edit connect.html copy" completed
+
+● Connect.html done. Waiting for the remaining four subpages.
+
+● Agent "Edit fusion.html copy" completed
+
+● Fusion.html done. Three down, two to go (clint.html, switchboard.html,
+  renown.html).
+
+● Agent "Edit clint.html copy" completed
+
+● Clint.html done. Four down — waiting for switchboard.html and renown.html.
+
+● Agent "Edit switchboard.html copy" completed
+
+● Switchboard.html done. Five down — just waiting for renown.html.
+
+● Agent "Edit renown.html copy" completed
+
+● All six files are updated. Here's the summary:
+
+  Completed — all 165 copy items across 6 files edited:
+
+  File: index.html
+  Items: 72
+  Key changes: Hero reframed around board pressure vs. legal constraint; problem
+
+    section uses CTO's inner monologue; pillars add benefit bridges; use cases
+    lead with outcomes not features; comparison table softened from "isn't safe"
+
+    to "has hidden costs"; Why section made honest about frontier positioning;
+    CTA lowered friction
+  ────────────────────────────────────────
+  File: clint.html
+  Items: 24
+  Key changes: Hero sharpened to three promises; capabilities reframed as "What
+    makes Clint different"; sandboxing described as runtime-enforced not policy;
+
+    CTA softened to collaborative walkthrough
+  ────────────────────────────────────────
+  File: connect.html
+  Items: 18
+  Key changes: Drive Apps reframed as "opinionated views for how your team
+    works"; AI oversight strengthened to "requires approval"; modules given
+    specific deliverable language
+  ────────────────────────────────────────
+  File: fusion.html
+  Items: 16
+  Key changes: Headline changed to "rebuilt on live data"; What It Replaces made
+
+    visceral (stale wikis, scattered dashboards); architecture section clarifies
+
+    automatic privacy inheritance
+  ────────────────────────────────────────
+  File: switchboard.html
+  Items: 18
+  Key changes: Reframed as "privacy enforcement layer"; agent permissions
+    described as "the agent never gets to decide"; audience table tightened
+  ────────────────────────────────────────
+  File: renown.html
+  Items: 17
+  Key changes: Agent identity section uses compliance framing ("who did this?");
+
+    SSO roadmap made honest about co-creation; current vs. roadmap clearly
+    distinguished
+
+  The copy shift throughout: from describing what the platform does (spec
+  language) to speaking to why the CTO should care (benefit language), while
+  keeping technical credibility and honest frontier positioning.
+
+❯ /export skills/enterprise/claude-log-2.txt                                    
+  ⎿  Failed to export conversation: ENOENT: no such file or directory, open
+     '/home/wouter/projects/demo-workspace/ph-clint/skills/enterprise/claude-log
+     -2.txt'
+
+❯ /export skills/enterprise/claude-log-2.txt                                    
+  ⎿  Failed to export conversation: ENOENT: no such file or directory, open
+     '/home/wouter/projects/demo-workspace/ph-clint/skills/enterprise/claude-log
+     -2.txt'

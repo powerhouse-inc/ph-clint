@@ -1,0 +1,2060 @@
+ ▐▛███▜▌   Claude Code v2.1.74
+▝▜█████▛▘  Opus 4.6 · Claude Max
+  ▘▘ ▝▝    ~/projects/demo-workspace/ph-clint
+
+❯ Research @"specs/20260402 - Powerhouse promo video.pdf",                      
+https://powerhouse.io , https://vetra.io/ , https://bai.powerhouse.io/ and the  
+skills packaged with the 05-ph-rupert example to gain insights in the           
+Powerhouse organization and technology. Based on these, we will work on a new   
+https://enterprise.powerhouse.io site to explain what we (Powerhouse) are doing 
+ in a language that enterprise clients can understand. Give a preliminary       
+suggestion for the outline for the new site based on your research.             
+  ⎿  Read specs/20260402 - Powerhouse promo video.pdf (115.4KB)
+
+● Let me research all these sources in parallel.
+
+● Read 1 file (ctrl+o to expand)
+
+● 4 agents finished (ctrl+o to expand)
+   ├─ Explore (Explore 05-ph-rupert skills) · 23 tool uses · 66.8k tokens
+   │  ⎿  Done
+   ├─ Agent (Fetch powerhouse.io website) · 11 tool uses · 18.4k tokens
+   │  ⎿  Done
+   ├─ Agent (Fetch vetra.io website) · 3 tool uses · 13.1k tokens
+   │  ⎿  Done
+   └─ Agent (Fetch bai.powerhouse.io website) · 11 tool uses · 30.4k tokens
+      ⎿  Done
+
+● Now let me also check the two spec files mentioned in the git status for
+  additional context.
+
+● Read 2 files (ctrl+o to expand)
+
+● Research Summary
+
+  Here's what I found across all sources:
+
+  Powerhouse has a clear technology story told three different ways depending on
+   audience:
+
+  ┌───────────────────┬─────────────────┬───────────────────────────────────┐
+  │       Site        │    Audience     │             Language              │
+  ├───────────────────┼─────────────────┼───────────────────────────────────┤
+  │                   │ Builders,       │ "Reclaim the internet from Big    │
+  │ powerhouse.io     │ Web3/DAO        │ Tech," sovereignty, open-source   │
+  │                   │ community       │ capitalism                        │
+  ├───────────────────┼─────────────────┼───────────────────────────────────┤
+  │                   │                 │ Reactive document architecture,   │
+  │ vetra.io          │ Developers      │ local-first, CQRS, GraphQL,       │
+  │                   │                 │ packages                          │
+  ├───────────────────┼─────────────────┼───────────────────────────────────┤
+  │                   │ Companies       │ Data sovereignty, AI readiness    │
+  │ bai.powerhouse.io │ adopting AI     │ score, 65% efficiency gains, no   │
+  │                   │                 │ vendor lock-in                    │
+  └───────────────────┴─────────────────┴───────────────────────────────────┘
+
+  The promo video script frames everything as a three-layer story: personal data
+   sovereignty → peer collaboration → global coordination. The 05-ph-rupert
+  skills reveal the depth of the tech (document models, editors, Fusion
+  platforms, AI agents). The enterprise proposal specs show how this maps to ERP
+   replacement and process automation.
+
+  The gap: None of these sites speak the language of an enterprise CTO/CIO
+  evaluating infrastructure. powerhouse.io is ideological, vetra.io is
+  developer-centric, and bai.powerhouse.io is a consulting pitch for AI
+  integration specifically. There's no site that says "here's what Powerhouse
+  does for your organization" in enterprise terms.
+
+  ---
+  Proposed Outline: enterprise.powerhouse.io
+
+  1. Hero Section
+
+  Headline: "Own Your Business Infrastructure. Make It AI-Native."
+  Subhead: Enterprise-grade document architecture that keeps your data,
+  processes, and intelligence in-house — while making them accessible to AI
+  agents and automation.
+  CTA: "Talk to Us" / "See How It Works"
+
+  Enterprise translation of: "local-first, decentralized operating system for an
+   AI-powered world"
+
+  2. The Problem
+
+  "Your Systems Weren't Built for AI"
+  - Business logic locked in opaque ERP modules and proprietary formats
+  - Process changes require expensive vendor engagements
+  - AI adoption forces a false choice: hand data to cloud vendors or bolt
+  chatbots onto legacy systems
+  - Operational knowledge lives in tribal know-how, not machine-readable
+  structures
+
+  Adapts BAI's "most AI implementations fail because they skip the data layer" 
+  framing, broadened beyond just AI to general digital transformation.
+
+  3. The Approach — Three concise panels
+
+  "Data Layer First. Then Intelligence."
+
+  a) Structure — Model your business processes as typed, versioned documents
+  with built-in audit trails. Every change is signed, timestamped, and
+  append-only. Your data becomes AI-readable without leaving your
+  infrastructure.
+
+  b) Automate — Generate operational interfaces (CLI, chat, API, MCP) directly
+  from your data models. AI agents and human operators work on the same
+  structured data through the same typed operations. No custom integration per
+  channel.
+
+  c) Scale — Reactive document architecture built on proven patterns (event
+  sourcing, CQRS). Scales from a department pilot to millions of users.
+  Storage-agnostic: on-premise databases, cloud, or hybrid.
+
+  4. Platform Components
+
+  "The Stack — Modular, Open, Yours"
+
+  ┌──────────────┬──────────────────────────────────────────────────────────┐
+  │  Component   │                   Enterprise function                    │
+  ├──────────────┼──────────────────────────────────────────────────────────┤
+  │ Document     │ Typed business objects with schema-enforced operations,  │
+  │ Models       │ cryptographic verification, and complete audit history   │
+  ├──────────────┼──────────────────────────────────────────────────────────┤
+  │ Connect      │ Document management UI — the operator workspace for      │
+  │              │ day-to-day business operations                           │
+  ├──────────────┼──────────────────────────────────────────────────────────┤
+  │ Switchboard  │ API layer (GraphQL + MCP) — integration point for AI     │
+  │              │ agents, external systems, and automation workflows       │
+  ├──────────────┼──────────────────────────────────────────────────────────┤
+  │              │ Custom platform builder — deploy branded,                │
+  │ Fusion       │ customer-facing applications on your document            │
+  │              │ infrastructure                                           │
+  ├──────────────┼──────────────────────────────────────────────────────────┤
+  │ Vetra Cloud  │ Managed hosting — production-ready deployment without    │
+  │              │ hyperscaler dependency                                   │
+  └──────────────┴──────────────────────────────────────────────────────────┘
+
+  5. AI Integration
+
+  "AI That Works On Your Terms"
+
+  - Provider-agnostic: Swap between local open-source models and commercial APIs
+   without architectural changes
+  - Specification-driven: AI agents follow documented process playbooks, not
+  open-ended prompts
+  - Data sovereign: Sensitive workflows run on local models; your data never
+  trains third-party models
+  - Auditable: Every AI action is a document operation — signed, logged,
+  reversible
+
+  Key proof point: "65% reduction in manual invoice review time" — Wouter Vonk, 
+  CEO
+
+  6. Pre-Built Business Modules
+
+  "Don't Start from Scratch"
+
+  22+ open-source modules across six categories, ready to customize:
+  - Finance & Billing — Chart of Accounts, Transaction Ledger, Billing
+  Statements, Expense Reporting
+  - Reporting — Invoices, Expense Reports, Period Snapshots
+  - Work Management — Scope of Work, RFPs, Workstreams
+  - Services & Subscriptions — Offerings, Contracts, Resource Tracking
+  - Teams & Networks — Builder Profiles, Registries, Organizational Profiles
+  - Treasury — Revenue Distribution, Payment Terms
+
+  Each module ships as typed data layer + GraphQL API + UI editor. Customize
+  what you need, use the rest as-is.
+
+  7. How We Engage
+
+  "From Audit to Autonomy in 10 Weeks"
+
+  ┌────────────────┬──────────┬────────────────────────────────────────────┐
+  │     Phase      │ Duration │                Deliverable                 │
+  ├────────────────┼──────────┼────────────────────────────────────────────┤
+  │ Audit & Model  │ Weeks    │ Data flow map, AI readiness score,         │
+  │                │ 1–3      │ document model schemas                     │
+  ├────────────────┼──────────┼────────────────────────────────────────────┤
+  │                │ Weeks    │ Branded operational tool with              │
+  │ Build          │ 3–5      │ auto-generated commands for every business │
+  │                │          │  process                                   │
+  ├────────────────┼──────────┼────────────────────────────────────────────┤
+  │ Add            │ Weeks    │ AI agents for process monitoring,          │
+  │ Intelligence   │ 5–8      │ conversational ops interface, workflow     │
+  │                │          │ triggers                                   │
+  ├────────────────┼──────────┼────────────────────────────────────────────┤
+  │ Operationalize │ Weeks    │ Production deployment with measurable KPIs │
+  │                │ 8–10     │  and operator training                     │
+  └────────────────┴──────────┴────────────────────────────────────────────┘
+
+  Post-engagement: you own and extend the system independently. No vendor
+  lock-in by design.
+
+  8. Why Powerhouse — Differentiators grid
+
+  "Built Different"
+
+  ┌───────────────┬───────────────────────┬─────────────────────────────────┐
+  │    Concern    │ Traditional approach  │       Powerhouse approach       │
+  ├───────────────┼───────────────────────┼─────────────────────────────────┤
+  │ Data          │ Vendor-hosted,        │ Local-first, open formats, your │
+  │ ownership     │ proprietary formats   │  infrastructure                 │
+  ├───────────────┼───────────────────────┼─────────────────────────────────┤
+  │ AI readiness  │ Bolt-on chatbots,     │ Structured document layer,      │
+  │               │ data sent to cloud    │ AI-native from the ground up    │
+  ├───────────────┼───────────────────────┼─────────────────────────────────┤
+  │ Process       │ Expensive vendor      │ Update schema, regenerate,      │
+  │ changes       │ engagements, months   │ deploy — days                   │
+  ├───────────────┼───────────────────────┼─────────────────────────────────┤
+  │ Compliance &  │ Manual UAT, paper     │ Every operation                 │
+  │ audit         │ trails                │ cryptographically signed,       │
+  │               │                       │ append-only history             │
+  ├───────────────┼───────────────────────┼─────────────────────────────────┤
+  │ Vendor        │ Multi-year contracts, │ Open source, modular, swap any  │
+  │ lock-in       │  migration pain       │ component                       │
+  ├───────────────┼───────────────────────┼─────────────────────────────────┤
+  │ Scalability   │ Vertical scaling,     │ Horizontal scaling via document │
+  │               │ expensive licenses    │  sharding, CQRS read models     │
+  └───────────────┴───────────────────────┴─────────────────────────────────┘
+
+  9. Case Study / Proof Point
+
+  "Proven at Scale"
+
+  Reference the Sky/MakerDAO deployment — one of the largest decentralized
+  organizations, running financial operations, governance, and contributor
+  management on Powerhouse infrastructure. Translate this into
+  enterprise-legible terms: multi-entity financial operations, cross-border
+  compliance, programmatic governance, transparent reporting.
+
+  10. Footer CTA
+
+  "Ready to Own Your Infrastructure?"
+  - "Book an AI Readiness Assessment" (primary)
+  - "Explore the Technology" → vetra.io (secondary)
+  - "See Pre-Built Modules" → connect.powerhouse.xyz (tertiary)
+
+  Contact: hello@powerhouse.inc
+
+  ---
+  Design/Tone Notes
+
+  - No Web3/crypto/DAO language on the main pages. The technology is the same;
+  the framing is different. Enterprises care about data sovereignty, compliance,
+   TCO, and vendor independence — not "reclaiming the internet."
+  - Lead with outcomes, not architecture. The reactive document architecture is
+  fascinating to engineers but enterprise buyers need to see business impact
+  first.
+  - The BAI framing is closest to what this site needs — expand it from "AI
+  consulting" to "enterprise infrastructure platform."
+  - Keep it concise. Enterprise buyers scan. Each section should be one screen
+  or less.
+
+  Want me to flesh out any section, or should we start building?
+
+✻ Crunched for 3m 20s
+
+❯ Propose changes to the suggested outline based on following feedback points:  
+                                                                                
+- Focus should be less on the BAI team's methodology, shift more towards        
+technology, infrastructure and support availability. The enterprise site will   
+be used in combination with bai.powerhouse.io and achra.com as the              
+builder/operators marketplace. Reduce overlap with the BAI site but add a       
+prominent references instead.                                                   
+                                                                                
+- Include Clint as the major AI technology piece, same level as Connect,        
+Switchboard, etc.                                                               
+                                                                                
+- Focus less on specific business modules, more on Vetra as the platform for    
+hosting, business modules, and AI agents (note that the current vetra.io site   
+is incomplete but we should target the near-future version which has these      
+pillars.                                                                        
+
+● Revised Outline: enterprise.powerhouse.io
+
+  Changes marked with context where helpful.
+
+  ---
+  1. Hero Section
+
+  Headline: "Own Your Business Infrastructure. Make It AI-Native."
+  Subhead: A local-first document architecture that keeps your data, processes,
+  and intelligence in-house — with the scalability of enterprise SaaS and native
+   AI integration.
+  CTA: "Talk to Us" / "Explore the Platform"
+
+  Unchanged — this framing works for technology-led positioning.
+
+  2. The Problem
+
+  "Your Systems Weren't Built for AI"
+
+  Same as before but trimmed to three sharp bullets:
+  - Business logic locked in opaque ERP modules; process changes require
+  expensive vendor engagements
+  - AI adoption forces a false choice: hand your data to cloud vendors, or bolt
+  chatbots onto systems that weren't designed for machine interaction
+  - Operational knowledge lives in tribal know-how and spreadsheets — not in
+  machine-readable, auditable structures
+
+  Shorter, punchier. Sets up the technology answer rather than a consulting 
+  engagement.
+
+  3. The Architecture — "Reactive Document Architecture"
+
+  "Documents as Data Primitives"
+
+  This replaces the previous "approach" section with a technology-first
+  explanation. Three panels:
+
+  a) Structured, Versioned, Verifiable — Every business object is a typed
+  document with schema-enforced operations. Changes are append-only,
+  cryptographically signed, and offline-verifiable. Git-like branching and
+  merging for structured business data.
+
+  b) Storage-Agnostic, Sync-Native — Documents live wherever you need them:
+  on-premise databases, browser storage, cloud, or blockchain. Synchronization
+  is built into the data primitive — collaboration across devices, apps, and
+  users without custom sync infrastructure.
+
+  c) Scales Like a Platform — Built on proven patterns (event sourcing, CQRS,
+  event-driven architecture). Documents are self-contained and independently
+  scalable. Processors build read models into traditional databases, search
+  indexes, and caches. The same architecture that powers million-user platforms
+  — owned by you.
+
+  This is the promo video's Part 1–2 story translated for enterprise architects.
+
+  4. The Platform
+
+  "The Stack — Modular, Open, Yours"
+
+  Six components, presented as equals:
+
+  Component: Connect
+  Function: Document management workspace — the operator UI for creating,
+    editing, and collaborating on business documents. Drive apps overlay file
+    systems with specialized workflow interfaces.
+  ────────────────────────────────────────
+  Component: Switchboard
+  Function: API and integration layer — GraphQL and MCP endpoints that make
+  every
+    document operation available to external systems, automation workflows, and
+    AI agents.
+  ────────────────────────────────────────
+  Component: Clint
+  Function: AI-native command infrastructure — a framework that turns document
+    models into CLI tools, REPL interfaces, MCP servers, and agent harnesses
+  from
+     a single set of schemas. Natural language, typed commands, and autonomous
+    processing through one codebase.
+  ────────────────────────────────────────
+  Component: Fusion
+  Function: Custom platform builder — deploy branded, customer-facing
+    applications on your document infrastructure. Next.js-based,
+    Switchboard-backed, fully customizable.
+  ────────────────────────────────────────
+  Component: Renown
+  Function: Identity and reputation — verified contributor profiles and
+    contribution tracking across your organization and partner networks.
+  ────────────────────────────────────────
+  Component: Vetra
+  Function: Platform hosting and ecosystem — development environment, package
+    registry, managed cloud hosting, and the marketplace for document models,
+    editors, and AI agent configurations.
+
+  Key change: Clint is now a first-class platform component. Vetra moves from 
+  "just hosting" to the overarching platform/ecosystem layer.
+
+  5. AI Integration
+
+  "AI That Works On Your Terms"
+
+  - Specification-driven: AI agents follow structured process playbooks defined
+  as documents — not open-ended prompts. Fine-grained control where it matters,
+  automation where it doesn't.
+  - Provider-agnostic: Swap between local open-source models and commercial APIs
+   without architectural changes. Sensitive workflows stay on your
+  infrastructure.
+  - Native, not bolted on: Every document is automatically an MCP endpoint. AI
+  agents read and write through the same typed operations as human users — no
+  custom integration layer.
+  - Auditable: Every AI action is a document operation — signed, timestamped,
+  reversible, part of the same append-only history as human edits.
+
+  Removed the BAI proof point quote — that belongs on the BAI site. Kept the 
+  technology story.
+
+  6. Vetra: Your Platform Home
+
+  "Build, Host, Scale"
+
+  Rather than listing 22 modules, position Vetra as three pillars:
+
+  Packages — A growing library of reusable document models, editors, and read
+  models for common business domains (finance, billing, work management,
+  reporting, and more). Use them as-is or customize. Publish your own.
+
+  Hosting — Managed cloud infrastructure for independent operators who want
+  production-ready deployment without hyperscaler dependency. Real-time sync,
+  enterprise SLA, your data sovereignty preserved.
+
+  AI Agents — Pre-configured agent skills and workflow automations built on the
+  document architecture. Deploy business process agents from the Vetra
+  ecosystem, or build and publish your own.
+
+  CTA: "Explore Vetra" → vetra.io
+
+  Shifts from enumerating modules to positioning Vetra as the ecosystem. The 
+  specific module catalog lives on vetra.io itself.
+
+  7. How It Fits Together — Architecture Diagram Section
+
+  "From Personal Tools to Global Platforms"
+
+  A visual showing the three-level story (echoing the promo video structure, but
+   in enterprise terms):
+
+  - Individual — Connect workspace with document editors, offline-capable,
+  local-first
+  - Team — Document sync across devices and users, Switchboard APIs,
+  Clint-powered agent assistants
+  - Organization — Fusion-based customer platforms, Vetra-hosted infrastructure,
+   Renown identity layer
+
+  This replaces the old "engagement model" section. The architecture sells 
+  itself; the engagement methodology belongs on bai.powerhouse.io.
+
+  8. Differentiators Grid
+
+  "Built Different"
+
+  ┌───────────────┬───────────────────────┬────────────────────────────────┐
+  │    Concern    │ Traditional approach  │           Powerhouse           │
+  ├───────────────┼───────────────────────┼────────────────────────────────┤
+  │ Data          │ Vendor-hosted,        │ Local-first, open formats,     │
+  │ ownership     │ proprietary formats   │ your infrastructure            │
+  ├───────────────┼───────────────────────┼────────────────────────────────┤
+  │ AI readiness  │ Bolt-on chatbots,     │ Every document is an AI-native │
+  │               │ data sent to cloud    │  endpoint from day one         │
+  ├───────────────┼───────────────────────┼────────────────────────────────┤
+  │ Process       │ Expensive vendor      │ Update the document model,     │
+  │ changes       │ engagements, months   │ regenerate interfaces, deploy  │
+  ├───────────────┼───────────────────────┼────────────────────────────────┤
+  │ Compliance &  │ Manual UAT, paper     │ Cryptographically signed,      │
+  │ audit         │ trails                │ append-only operation history  │
+  ├───────────────┼───────────────────────┼────────────────────────────────┤
+  │ Vendor        │ Multi-year contracts, │ Open source, modular, swap any │
+  │ lock-in       │  migration pain       │  component                     │
+  ├───────────────┼───────────────────────┼────────────────────────────────┤
+  │ Scalability   │ Vertical scaling,     │ Horizontal scaling via         │
+  │               │ expensive licenses    │ document sharding and CQRS     │
+  └───────────────┴───────────────────────┴────────────────────────────────┘
+
+  Unchanged — this section works for the technology-led framing.
+
+  9. Proof Point
+
+  "Proven at Scale"
+
+  Brief reference to Sky/MakerDAO: multi-entity financial operations,
+  cross-border compliance, programmatic governance, and contributor management —
+   running on Powerhouse infrastructure. Keep it to 2–3 sentences; this is
+  credibility, not a case study.
+
+  10. Getting Started — Three Paths
+
+  "Start Where You Are"
+
+  ┌───────────────┬─────────────────────────────────────┬───────────────────┐
+  │     Path      │              For whom               │       Link        │
+  ├───────────────┼─────────────────────────────────────┼───────────────────┤
+  │               │ Organizations evaluating the        │                   │
+  │ Assess your   │ transition — get a data flow audit, │ bai.powerhouse.io │
+  │ AI readiness  │  AI readiness score, and            │                   │
+  │               │ implementation roadmap              │                   │
+  ├───────────────┼─────────────────────────────────────┼───────────────────┤
+  │ Build on the  │ Technical teams ready to start —    │                   │
+  │ platform      │ explore the developer platform,     │ vetra.io          │
+  │               │ packages, and hosting               │                   │
+  ├───────────────┼─────────────────────────────────────┼───────────────────┤
+  │ Find builders │ Organizations looking for           │                   │
+  │  and          │ implementation partners and         │ achra.com         │
+  │ operators     │ operational services                │                   │
+  └───────────────┴─────────────────────────────────────┴───────────────────┘
+
+  Contact: hello@powerhouse.inc
+
+  This is the key structural change: enterprise.powerhouse.io becomes the hub 
+  that routes to BAI (consulting), Vetra (platform), and Achra (marketplace) 
+  without duplicating their content.
+
+  ---
+  Summary of Changes
+
+  1. BAI methodology removed — No 10-week engagement phases. Instead, a clean
+  link to bai.powerhouse.io as one of three "getting started" paths.
+  2. Clint elevated to a platform component alongside Connect, Switchboard,
+  Fusion, Renown, and Vetra.
+  3. Vetra repositioned as the ecosystem layer (packages + hosting + AI agents)
+  rather than a list of 22 modules.
+  4. Three-site architecture made explicit: enterprise.powerhouse.io (what &
+  why) → bai.powerhouse.io (assessment & consulting) / vetra.io (build & host) /
+   achra.com (find partners & operators).
+
+✻ Worked for 56s
+
+❯ Good improvement. Let's iterate from a different angle: who would you say is  
+the specific audience for enterprise.powerhouse.io ? I mean: which individuals  
+are we talking to?                                                              
+
+● Good question. Based on the current outline, there's a tension — it's trying
+  to speak to multiple personas simultaneously and landing somewhere in between.
+
+  The people who would actually visit enterprise.powerhouse.io:
+
+  Primary: CTO / VP of Engineering / Head of IT
+  The person evaluating whether to adopt new infrastructure. They care about:
+  architecture soundness, integration with existing systems, vendor risk,
+  scalability, and whether their team can actually build on this. They'll read
+  the architecture section and the differentiators grid. They need to be
+  convinced this is real engineering, not marketing.
+
+  Secondary: CIO / CDO / Digital Transformation Lead
+  The person with budget authority for "modernize our operations" or "make us
+  AI-ready." They care about: business outcomes, data sovereignty, compliance,
+  and strategic positioning. They skim the hero and problem section, look at the
+   proof point, and click through to BAI for an assessment. They won't read
+  about CQRS.
+
+  Tertiary: Innovation Lead / Enterprise Architect
+  The person doing the research before recommending to the CTO/CIO. They'll read
+   everything, compare against alternatives, and want to understand exactly how
+  the pieces fit. They're the ones who'll click through to vetra.io and actually
+   try things.
+
+  The tension in the current outline:
+
+  - Sections 3 (architecture) and 4 (platform components) are written for the
+  CTO/architect — technical, specific, pattern-level
+  - Sections 2 (problem) and 5 (AI integration) try to speak to the CIO —
+  strategic, outcome-oriented
+  - Nobody is clearly "the reader" the page is written for
+
+  My recommendation:
+
+  Write for the CTO/VP Engineering as the primary reader — the technical
+  decision-maker who needs to understand what this actually is before they'll
+  champion it internally. This person is the gateway: if they don't buy in, the
+  CIO never sees it.
+
+  This means:
+  - Lead with architecture credibility, not business pain
+  - Keep the language precise and technical but not developer-level (no code
+  samples, but yes to "CQRS," "event sourcing," "append-only")
+  - The CIO's concerns (outcomes, compliance, TCO) live in the differentiators
+  grid and the proof point — scannable sections, not the main narrative
+  - The enterprise architect gets depth through the platform component
+  descriptions and the link to vetra.io
+
+  Does that targeting feel right, or are you thinking of a different primary
+  reader?
+
+❯ Sounds exactly right. Write the next iteration with this audience in mind.    
+
+● Let me save the audience decision to memory first, then write the iteration.
+
+● Recalled 1 memory, wrote 2 memories (ctrl+o to expand)
+
+● Now the full revised outline, written for a CTO/VP Engineering evaluating
+  infrastructure.
+
+  ---
+  enterprise.powerhouse.io — v3
+
+  ---
+  1. Hero
+
+  Headline: "A Document Architecture for AI-Native Business Infrastructure"
+
+  Subhead: Powerhouse is a local-first, reactive document platform. It gives
+  your organization a structured, versioned, cryptographically verifiable data
+  layer — with native APIs for AI agents, human operators, and system
+  integrations. Open source. Storage-agnostic. Yours to run.
+
+  CTA: "How It Works" (scroll) / "Talk to Our Team"
+
+  No pain points yet. A CTO wants to know what this is before being told what's 
+  wrong with their current stack. The subhead is a technical thesis statement — 
+  every claim is expanded below.
+
+  ---
+  2. Core Concept: Documents as Data Primitives
+
+  "One data abstraction. Every business object."
+
+  A Powerhouse document is a typed, self-contained data structure defined by a
+  document model — a schema that specifies its shape and the exact operations
+  that can modify it. Under the hood, it's JSON. On the wire, it's an
+  append-only sequence of signed operations.
+
+  What this gives you:
+
+  - Schema-enforced consistency — Operations have well-defined parameters and
+  built-in business logic. The document state is always valid by construction,
+  not by validation after the fact.
+  - Cryptographic verification — Every operation is signed by its author. The
+  full history is offline-verifiable without trusting a central authority.
+  - Git-like version control — Branching, merging, undo, and history traversal
+  come free from the append-only model. No additional development needed.
+  - Storage-agnostic persistence — The same document can live as a file, in a
+  browser (pglite), in PostgreSQL, or on-chain. Append-only histories work in
+  both mutable and immutable repositories.
+  - AI-native by default — Every document model automatically generates GraphQL
+  and MCP endpoints. The same operations available to human editors are
+  available to AI agents and integration workflows — no adapter layer.
+
+  This section establishes architectural credibility. A CTO reading this should 
+  think: "These people understand event sourcing and have built something 
+  principled on top of it."
+
+  ---
+  3. Architecture: Reactive Document Infrastructure
+
+  "Event-sourced. CQRS. Horizontally scalable. Local-first."
+
+  The reactive document architecture is the infrastructure layer that turns
+  documents from individual files into a platform-grade backend.
+
+  Write path — All mutations are document operations. Because documents are
+  self-contained and independent, the write layer scales horizontally by adding
+  nodes. There's no shared-state bottleneck; each document is its own
+  consistency boundary.
+
+  Read path — Specialized processors subscribe to document update events and
+  build denormalized read models. Store aggregated data wherever it fits:
+  relational databases, search indexes, data warehouses, caches. Read and write
+  concerns are fully separated (CQRS).
+
+  Sync layer — Documents synchronize across devices, apps, and users via their
+  operation histories. This turns every document into a real-time collaboration
+  channel and every editor into a collaborative application — without custom
+  sync code.
+
+  Result: The same architecture pattern that powers large-scale platforms
+  (millions of users, real-time, eventually consistent) — but local-first, open
+  source, and running on your infrastructure.
+
+  No analogies to products they might already use. Just the patterns, clearly 
+  stated. An enterprise architect can evaluate this against their existing 
+  event-driven infrastructure.
+
+  ---
+  4. The Platform
+
+  "Six components. Each independent. Stronger together."
+
+  Connect
+
+  The document management workspace. Operators create, edit, and collaborate on
+  business documents through a browser-based UI. Drive apps overlay the file
+  system with specialized workflow interfaces — standardized best-practice
+  processes directly available, rather than leaving operators to organize their
+  own folder hierarchies.
+
+  Switchboard
+
+  The API and integration layer. Exposes every document and operation as GraphQL
+   queries/mutations and MCP tool endpoints. This is the system boundary where
+  external applications, automation workflows, and AI agents interact with your
+  document infrastructure. Handles authorization, sync, and multi-tenant access.
+
+  Clint
+
+  AI-native command infrastructure. A single set of Zod-based command
+  definitions — derived directly from your document models — produces a CLI
+  (command mode and interactive REPL), an MCP server, and an AI agent harness.
+  Operators use typed commands or natural language; autonomous agents use the
+  same operations through the routine loop — a tick-based execution engine with
+  pluggable triggers for event-driven, timer-based, or condition-based
+  processing. One codebase, every interaction surface.
+
+  Fusion
+
+  Custom platform builder. A Next.js-based framework for deploying branded,
+  customer-facing applications on top of your document infrastructure.
+  Switchboard-backed, fully customizable. Build the equivalent of a SaaS product
+   — with the backend entirely in your hands.
+
+  Renown
+
+  Identity and reputation layer. Verified contributor profiles and contribution
+  tracking across your organization and partner networks. Provides the identity
+  substrate for authorization, audit trails, and cross-organizational
+  collaboration.
+
+  Vetra
+
+  The platform ecosystem. Three pillars:
+  - Packages — A registry of reusable document models, editors, read models, and
+   agent configurations. Use pre-built modules for common business domains or
+  publish your own.
+  - Hosting — Managed cloud infrastructure with real-time sync. Production-ready
+   deployment without hyperscaler dependency. Your data sovereignty is
+  preserved.
+  - AI Agents — Pre-configured business process agents built on the document
+  architecture. Deploy from the ecosystem or build custom agents with Clint.
+
+  Development tooling (Vetra Studio IDE, PH-CLI) and a learning platform (Vetra
+  Academy) support teams building on the stack.
+
+  Each component gets enough depth for a CTO to understand its role and evaluate
+   whether it replaces or complements something in their current architecture. 
+  Clint stands alongside the others as a peer, not an add-on.
+
+  ---
+  5. AI Integration Model
+
+  "Native, Not Bolted On"
+
+  Most enterprise AI integrations require building a translation layer between
+  the AI and the business system. Powerhouse eliminates this by making documents
+   the shared interface for humans and machines.
+
+  How it works:
+  - Document models generate MCP endpoints automatically. Any MCP-compatible AI
+  agent can read and write business data through the same typed operations that
+  human editors use.
+  - Clint's agent skills are structured process playbooks (not open-ended
+  prompts) that encode domain expertise as step-by-step workflows. Agents follow
+   specifications, not guesses.
+  - The routine loop enables autonomous processing: agents monitor document
+  changes, evaluate triggers, and execute operations on a continuous cycle —
+  with or without human oversight.
+  - Provider-agnostic: Sensitive workflows run on local open-source models (your
+   infrastructure, your GPU). General-purpose tasks use commercial APIs. Swap
+  providers without architectural changes.
+
+  What stays in your control:
+  - All data — documents never leave your infrastructure for model training
+  - All operations — every AI action is a signed document operation in the
+  append-only history
+  - All logic — business rules live in document model reducers, not in prompt
+  engineering
+
+  A CTO evaluating AI strategy needs to know: how does AI plug in, what does it 
+  have access to, and what guardrails exist? This section answers all three 
+  without marketing language.
+
+  ---
+  6. Technical Characteristics
+
+  A scannable reference for architecture review.
+
+  ┌─────────────────┬───────────────────────────────────────────────────────┐
+  │ Characteristic  │                        Detail                         │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │                 │ Typed documents (JSON) with Zod schemas,              │
+  │ Data model      │ GraphQL-based schema definition, custom scalars for   │
+  │                 │ business types (monetary amounts, identifiers,        │
+  │                 │ timestamps)                                           │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │                 │ Append-only operation history; pure reducers          │
+  │ Mutation model  │ (deterministic, no side effects); operation-level     │
+  │                 │ error handling                                        │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │                 │ Pluggable adapters: filesystem, PostgreSQL, pglite    │
+  │ Storage         │ (browser), in-memory, blockchain. Same document, any  │
+  │                 │ backend                                               │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │                 │ Operation-based synchronization across devices, apps, │
+  │ Sync            │  and users. Conflict resolution via branch/merge      │
+  │                 │ semantics                                             │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │ APIs            │ GraphQL (Switchboard) + MCP (Switchboard & Clint).    │
+  │                 │ Auto-generated from document model schemas            │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │ Auth            │ Cryptographic operation signing; per-drive            │
+  │                 │ authorization; Renown identity integration            │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │ Scalability     │ Horizontal write scaling (documents are independent   │
+  │ pattern         │ consistency boundaries); CQRS read models;            │
+  │                 │ event-driven processors                               │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │ Stack           │ TypeScript, React, GraphQL, Node.js 22+, Zod 4. Open  │
+  │                 │ source                                                │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │                 │ Mastra-based agent integration; provider-agnostic LLM │
+  │ AI framework    │  backends; thread-based conversation memory; MCP tool │
+  │                 │  discovery                                            │
+  ├─────────────────┼───────────────────────────────────────────────────────┤
+  │ Deployment      │ Self-hosted or Vetra Cloud managed hosting            │
+  └─────────────────┴───────────────────────────────────────────────────────┘
+
+  This is the section an enterprise architect will screenshot and put in their 
+  evaluation doc. Dense, factual, no prose.
+
+  ---
+  7. Differentiators
+
+  "How This Compares"
+
+  ┌─────────────┬────────────────────────────┬─────────────────────────────┐
+  │             │   Traditional ERP / SaaS   │         Powerhouse          │
+  ├─────────────┼────────────────────────────┼─────────────────────────────┤
+  │ Data        │ Vendor-hosted, proprietary │ Local-first, open formats,  │
+  │ location    │  formats                   │ your infrastructure         │
+  ├─────────────┼────────────────────────────┼─────────────────────────────┤
+  │ AI          │ Separate integration layer │ Every document is an MCP    │
+  │ integration │  per system                │ endpoint from day one       │
+  ├─────────────┼────────────────────────────┼─────────────────────────────┤
+  │ Process     │ Vendor engagement, months, │ Update the document model   │
+  │ changes     │  regression risk           │ schema, regenerate          │
+  │             │                            │ interfaces                  │
+  ├─────────────┼────────────────────────────┼─────────────────────────────┤
+  │             │ Application-level logging, │ Cryptographically signed,   │
+  │ Audit trail │  reconstructed after the   │ append-only — the history   │
+  │             │ fact                       │ is the data                 │
+  ├─────────────┼────────────────────────────┼─────────────────────────────┤
+  │ Vendor      │ Multi-year contracts,      │ Open source,                │
+  │ lock-in     │ proprietary data formats   │ storage-agnostic, modular   │
+  │             │                            │ components                  │
+  ├─────────────┼────────────────────────────┼─────────────────────────────┤
+  │ Scaling     │ Vertical (bigger servers,  │ Horizontal (document        │
+  │ model       │ more expensive licenses)   │ sharding, CQRS read models) │
+  └─────────────┴────────────────────────────┴─────────────────────────────┘
+
+  CIO-relevant content in a format a CTO will actually forward. Scannable, 
+  comparative, no fluff.
+
+  ---
+  8. Proven at Scale
+
+  One paragraph. No case study format — just credibility.
+
+  Powerhouse infrastructure runs the operational backbone of the Sky ecosystem 
+  (formerly MakerDAO) — one of the largest decentralized organizations in the 
+  world. Multi-entity financial operations, cross-border contributor payments, 
+  programmatic governance, and transparent reporting — all built on the same 
+  document architecture, Switchboard APIs, and Connect workspace available in 
+  this platform.
+
+  ---
+  9. Get Started
+
+  Three paths, clearly differentiated:
+
+  Evaluate — Get an AI readiness assessment: a data flow audit, readiness score,
+   and prioritized implementation roadmap from the BAI team.
+  → bai.powerhouse.io
+
+  Build — Start building on the platform: explore the developer environment,
+  package registry, and managed hosting.
+  → vetra.io
+
+  Find Partners — Connect with implementation partners and operational service
+  providers in the Powerhouse network.
+  → achra.com
+
+  Or talk to us directly: hello@powerhouse.inc
+
+  ---
+  Page-Level Design Notes
+
+  - Single page, no subpages. Everything above fits on one well-structured
+  scroll. The depth lives on the linked sites.
+  - No hero image/video. Lead with text. An architecture diagram in section 3 is
+   the primary visual. Component icons in section 4.
+  - Monochrome + one accent color. Enterprise credibility, not startup energy.
+  Let the technology speak.
+  - Mobile: sections collapse to headline + first sentence, expandable. The
+  technical characteristics table becomes a card stack.
+
+✻ Sautéed for 2m 5s
+
+❯ Write this to specs/enterprise/v1.md and we'll continue to iterate.           
+
+● Read 1 file (ctrl+o to expand)
+
+● Bash(mkdir -p /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise)
+  ⎿  Done
+
+● Write(specs/enterprise/v1.md)
+  ⎿  Wrote 172 lines to specs/enterprise/v1.md
+     # enterprise.powerhouse.io — Site Outline v1
+
+     **Primary audience:** CTO / VP of Engineering — the technical
+     decision-maker evaluating whether to adopt Powerhouse as
+     infrastructure. Architecture credibility first, business outcomes in
+     scannable sections.
+
+     **Secondary audiences:** CIO / CDO (scannable differentiators and
+     proof point), Enterprise Architect (technical characteristics table,
+     links to vetra.io for depth).
+
+     **Site role:** Technology hub that routes to bai.powerhouse.io
+     (assessment & consulting), vetra.io (platform, packages, hosting,
+     agents), and achra.com (builders & operators marketplace). No overlap
+     with those sites — link out instead.
+
+     ---
+
+     … +162 lines (ctrl+o to expand)
+
+● Written to specs/enterprise/v1.md. Ready to iterate.
+
+✻ Crunched for 1m 15s
+
+❯ For the next iteration, we want to pay attention to the primary concerns of   
+our audience. Taken from the BAI site, what would you say the greatest          
+concerns/fear drivers we are targetting? Consider if the v1 outline honors      
+this.                                                                           
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ Identify the concerns first and confirm with me.                              
+
+● Based on the BAI site's messaging, the core fears being targeted:
+
+  1. Intelligence outsourcing — "Companies risk outsourcing the intelligence
+  that makes them unique." The fear that adopting AI means handing your
+  proprietary processes and data to third parties who will commoditize your
+  differentiators.
+  2. Data sovereignty loss — Sensitive business data flowing to cloud AI vendors
+   for training and inference. Once it's out, you can't take it back.
+  3. The data layer gap — "Most AI implementations fail because they skip the
+  data layer." The fear of investing in AI and getting nothing back because your
+   data isn't structured for machines to work with.
+  4. Vendor lock-in deepening — Already trapped in ERP/SaaS vendor
+  relationships. AI adoption threatens to add another layer of dependency on
+  top.
+  5. Falling behind — Competitors are adopting AI. The window to act is closing.
+   But acting recklessly (see fears 1–4) is worse than not acting.
+
+  How v1 handles these:
+
+  - Fear 3 (data layer gap) is well served — sections 2 and 3 are essentially
+  the answer to this
+  - Fear 4 (vendor lock-in) is covered in the differentiators grid
+  - Fear 1 (intelligence outsourcing) is touched in section 5 but not named
+  directly
+  - Fear 2 (data sovereignty) is mentioned but scattered across multiple
+  sections
+  - Fear 5 (falling behind) is entirely absent — the v1 outline has no urgency
+  driver
+
+  Does this match your read, or would you weight these differently?
+
+❯ Fear 5 is top of the list for the business, the rest are subjugate to that.   
+Especially from the audience's pov: their CEO/business owner's greatest concern 
+ is that the business is not adapting to this massively disruptive trend. The   
+CTO's concern is: keeping the CEO happy in a few that doesn't lead to disaster. 
+                                                                                
+                                                                                
+There's also a secondary concern missing: compliance and regulatory             
+requirements. Why do you think that is?                                         
+Rephrase the concerns hierarchy from this pov.                                  
+
+● You're right. Compliance is missing from BAI's messaging because BAI is
+  positioned for the crypto/DAO ecosystem where regulatory frameworks are still
+  forming. Enterprise clients live in the opposite world — SOX, GDPR,
+  industry-specific regulation — where compliance isn't optional, it's the
+  floor.
+
+  Revised concern hierarchy, from the CTO's seat:
+
+  1. "We need to move on AI — now" — The CEO/board is asking what our AI
+  strategy is. Competitors are announcing AI initiatives. The pressure to act is
+   real, and the cost of being seen as slow is career-level. This is the driver 
+  that gets budget approved.
+  2. "But if I move wrong, it's my neck" — Adopting AI recklessly means data
+  breaches, compliance violations, vendor lock-in that takes years to unwind, or
+   an expensive implementation that delivers nothing. The CTO needs to move fast
+   and not create a disaster. This is the constraint that shapes every decision.
+  3. "Our data isn't ready" — Business logic is buried in legacy systems,
+  operational knowledge lives in people's heads, data is scattered across
+  proprietary formats. AI can't work with any of it. Before intelligence, you
+  need structure. This is the blocker they discover when they actually try.
+  4. "We can't hand our IP to a vendor" — The processes and data that
+  differentiate the business can't flow to third-party AI providers. Once your
+  competitive intelligence trains someone else's model, it's gone. This is the 
+  risk the legal team flags.
+  5. "We can't add another lock-in layer" — Already dependent on ERP and SaaS
+  vendors. Adding an AI vendor on top makes the stack even harder to change.
+  Whatever they adopt needs an exit path. This is the lesson learned from past 
+  platform decisions.
+  6. "We need to prove this is auditable" — Regulators, auditors, and internal
+  compliance teams need to see who did what, when, and why — including what the
+  AI did. If AI actions aren't traceable and reversible, the legal exposure is
+  unacceptable. This is the requirement that kills most AI pilots in regulated 
+  industries.
+
+  The story arc becomes: urgency (1) → caution (2) → the real problem (3) → the 
+  guardrails (4, 5, 6).
+
+  Does this hierarchy feel right?
+
+❯ Yes. Write this to specs/emotional-drivers.md and review the v1 outline based 
+ on this hierarchy.                                                             
+
+● Write(specs/enterprise/emotional-drivers.md)
+  ⎿  Wrote 53 lines to specs/enterprise/emotional-drivers.md
+     # enterprise.powerhouse.io — Emotional Drivers
+
+     **Audience:** CTO / VP of Engineering at an enterprise organization
+     evaluating AI infrastructure.
+
+     **Core dynamic:** The CEO/board is demanding an AI strategy. The CTO
+     must move fast enough to satisfy that pressure, while not creating a
+     disaster that's on their head. Every decision is shaped by this
+     tension between urgency and caution.
+
+     ---
+
+     ## Concern Hierarchy
+
+     … +43 lines (ctrl+o to expand)
+
+● Now let me review v1 against this hierarchy.
+
+  Review: how v1 maps to the emotional drivers
+
+  Driver: 1. Urgency
+  Where v1 addresses it: Nowhere
+  Assessment: Missing entirely. v1 opens with architecture. A CTO under board
+    pressure sees no acknowledgment that time matters. No reason to keep reading
+
+    over the next vendor's site that says "deploy AI in weeks."
+  ────────────────────────────────────────
+  Driver: 2. Caution
+  Where v1 addresses it: Implied in differentiators grid (section 7)
+  Assessment: Too late, too passive. The CTO's central tension — speed vs.
+  safety
+    — is never named. v1 treats Powerhouse as a technology to evaluate, not as
+    the answer to a problem they're losing sleep over.
+  ────────────────────────────────────────
+  Driver: 3. Data readiness
+  Where v1 addresses it: Sections 2–3 (documents, architecture)
+  Assessment: Well covered but poorly framed. The content is strong but it reads
+
+    as "here's our data model" rather than "here's why your AI initiatives keep
+    stalling." The CTO knows their data isn't ready — v1 doesn't connect that
+    pain to the solution.
+  ────────────────────────────────────────
+  Driver: 4. IP protection
+  Where v1 addresses it: Section 5, bullet points
+  Assessment: Present but scattered. "Documents never leave your infrastructure"
+
+    appears as one bullet among many. For a CTO whose legal team just flagged
+    this, it should be louder.
+  ────────────────────────────────────────
+  Driver: 5. Vendor lock-in
+  Where v1 addresses it: Section 7 (differentiators grid)
+  Assessment: Adequate. The comparison table makes this point clearly. But it's
+    section 7 — most readers won't get there.
+  ────────────────────────────────────────
+  Driver: 6. Compliance/audit
+  Where v1 addresses it: Section 2 (crypto verification), section 5 (signed
+    operations)
+  Assessment: Technically present, emotionally absent. The append-only, signed
+    operation history is a powerful compliance story. But v1 never says "audit"
+    or "compliance" as a headline concern. A CTO searching for "can my auditors
+    work with this" finds nothing at scan depth.
+
+  The structural problem: v1 is organized by what Powerhouse is (documents →
+  architecture → platform → AI). The emotional drivers suggest it should be
+  organized by what the CTO needs (urgency → safety → the real blocker →
+  guardrails → here's how it works).
+
+  The technology sections (2, 3, 4) are solid content — they just need to come
+  after the CTO feels understood, not before. The hero should acknowledge the
+  pressure. A short "problem" section should name drivers 1–2. Then the
+  architecture sections answer driver 3. Then drivers 4–6 get explicit,
+  scannable treatment before the detailed platform breakdown.
+
+  Want me to write v2 with this restructuring?
+
+✻ Sautéed for 32s
+
+❯ Go ahead.                                                                     
+
+● Read 1 file (ctrl+o to expand)
+
+● Write(specs/enterprise/v2.md)
+  ⎿  Wrote 233 lines to specs/enterprise/v2.md
+     # enterprise.powerhouse.io — Site Outline v2
+
+     **Primary audience:** CTO / VP of Engineering under board-level
+     pressure to deliver an AI strategy — fast, without creating a
+     disaster.
+
+     **Secondary audiences:** CIO / CDO (scannable guardrails and proof
+     point), Enterprise Architect (technical characteristics, links to
+     vetra.io for depth).
+
+     **Site role:** Technology hub that routes to bai.powerhouse.io
+     (assessment & consulting), vetra.io (platform, packages, hosting,
+     agents), and achra.com (builders & operators marketplace). No overlap
+     with those sites — link out instead.
+
+     **Narrative arc:** Urgency -> Caution -> The real blocker ->
+     Guardrails -> Here's how it works -> Get moving.
+
+     … +223 lines (ctrl+o to expand)
+
+● Written to specs/enterprise/v2.md.
+
+  The key structural shift: v1 said "here's what we built, evaluate it." v2 says
+   "you're under pressure, you're right to be careful, here's why it's hard,
+  here's why this is safe, and here's how it works." Same technology content,
+  reordered around what the CTO is actually thinking when they land on the page.
+
+✻ Sautéed for 1m 45s
+
+❯ Now let's take the next angle: is Powerhouse a reliable stack / provider to   
+work with? What would you say is the mental checklist that our audience will go 
+ through? How do we score (flag genuine weaknesses we may need to work around)  
+and does the v2 address the checklist?                                          
+                                                                                
+Do the scoring first and confirm. I'll tell you what Powerhouse can provide and 
+ what we cannot, and how to deal with it.                                       
+
+● CTO reliability checklist — how Powerhouse scores:
+
+  #: 1
+  Question: Is the technology proven in production?
+  Score: Medium
+  Assessment: Sky/MakerDAO is real and substantial, but it's one reference
+  client
+    in the crypto space. Enterprise CTOs want to see peers in their industry. No
+
+    Fortune 500 logos.
+  ────────────────────────────────────────
+  #: 2
+  Question: Will the company exist in 3 years?
+  Score: Unknown
+  Assessment: No visible information on funding, revenue model, team size, or
+    financial stability. A CTO betting infrastructure on this needs to know
+    Powerhouse isn't a grant-funded project that evaporates.
+  ────────────────────────────────────────
+  #: 3
+  Question: Can I hire people who know this?
+  Score: Weak
+  Assessment: Proprietary stack. No established talent pool. "Reactive document
+    architecture" isn't a skill people have on their resume. The CTO is
+  thinking:
+     "If the consultants leave, can my team maintain this?"
+  ────────────────────────────────────────
+  #: 4
+  Question: Is there real documentation and learning material?
+  Score: Medium
+  Assessment: Vetra Academy exists. But for an enterprise CTO, "academy"
+  suggests
+    early-stage. They want comprehensive API docs, architecture guides,
+  migration
+     playbooks. Unclear how mature these are.
+  ────────────────────────────────────────
+  #: 5
+  Question: What's the support model?
+  Score: Unclear
+  Assessment: No mention of enterprise support tiers, SLAs, incident response,
+  or
+    dedicated support channels anywhere in v2. Enterprise procurement requires
+    this.
+  ────────────────────────────────────────
+  #: 6
+  Question: Is the open source healthy?
+  Score: Unknown
+  Assessment: No mention of community size, contributor count, release cadence,
+    governance model. "Open source" is a claim — a CTO will check GitHub stars,
+    commit frequency, issue response times.
+  ────────────────────────────────────────
+  #: 7
+  Question: Can it integrate with what we already have?
+  Score: Medium
+  Assessment: GraphQL and MCP are standards-based, which is good. But no mention
+
+    of connectors to SAP, Salesforce, ServiceNow, or other systems enterprises
+    actually run. "Storage-agnostic" addresses databases but not application
+    integration.
+  ────────────────────────────────────────
+  #: 8
+  Question: What's the migration path?
+  Score: Weak
+  Assessment: v2 says "structure your data, agents work immediately" but doesn't
+
+    address how you get from legacy systems to Powerhouse documents. Migration
+  is
+     the hardest part and it's handwaved.
+  ────────────────────────────────────────
+  #: 9
+  Question: Are there reference architectures for my use case?
+  Score: Weak
+  Assessment: One proof point (Sky). No industry-specific examples, no "here's
+    how a manufacturing company / financial services firm / logistics operation
+    would deploy this."
+  ────────────────────────────────────────
+  #: 10
+  Question: Who do I call when it breaks at 2am?
+  Score: Absent
+  Assessment: No operational support story whatsoever.
+
+  Genuine weaknesses (not just messaging gaps):
+  - Items 2, 3, 5, 10 are likely real constraints, not just things v2 forgot to
+  mention
+  - Items 1, 9 take time to build — you can't manufacture reference clients
+  - Items 7, 8 may be partially addressable through BAI engagements but that's
+  not visible
+
+  How v2 handles this checklist: Barely. Section 10 (proof point) touches item
+  1. The rest is unaddressed. The site builds trust in the technology but not in
+   Powerhouse as a vendor to depend on.
+
+  How does this land? What can Powerhouse actually offer on the weak items?
+
+❯ Let's expand the list with arguments.                                         
+                                                                                
+These are our immediate-term strengths:                                         
+- The usage of open-source comes with (1) independence to continue with the     
+tech even if the vendor stops and (2) a community of open-source builders with  
+packages and AI agents on achra and vetra.                                      
+- We can add a documentation section to Vetra. Let's assume we'll have that and 
+ include it -- a first version is a matter of compiling Academy and skills      
+information in a different format with generative AI                            
+- Achra.com and BAI team are the professionals to hire. They will offer support 
+ not just development and agree on SLAs. It's not operating today but can be    
+set up for the first client.                                                    
+
+● Expanded checklist with arguments:
+
+  #: 1
+  Concern: Proven in production?
+  Score: Medium
+  Argument for: Sky/MakerDAO is a real, complex, multi-entity deployment — not a
+
+    demo. Financial operations, governance, cross-border payments at scale.
+  Argument against: One reference client, crypto-native. No traditional
+    enterprise logos. A CTO in manufacturing or financial services can't point
+  to
+     a peer.
+  Net: Honest about it. Sky is impressive on merits — position it in enterprise
+    terms, don't oversell breadth.
+  ────────────────────────────────────────
+  #: 2
+  Concern: Will the company exist in 3 years?
+  Score: Medium
+  Argument for: Open source neutralizes this concern architecturally — if
+    Powerhouse disappears, the code, your data (JSON), and your document models
+    remain. You're not locked to a vendor's hosted service.
+  Argument against: Doesn't fully eliminate the concern: who maintains the open
+    source? Community is early-stage. A CTO still prefers a vendor that's
+  clearly
+     funded and growing.
+  Net: Lead with the architectural argument (open source = insurance).
+    Acknowledge the company is early but growing. Don't fabricate stability
+    signals that aren't there yet.
+  ────────────────────────────────────────
+  #: 3
+  Concern: Can I hire people who know this?
+  Score: Medium
+  Argument for: The stack is TypeScript, React, GraphQL, Node.js, Zod — all
+    mainstream. The Powerhouse-specific layer (document models, reducers) is
+  thin
+     and learnable. BAI and Achra network provide access to experienced
+    practitioners and implementation partners.
+  Argument against: "Reactive document architecture" is proprietary terminology.
+
+    No one has it on their LinkedIn. The CTO's team can learn it, but there's a
+    ramp-up cost and a key-person risk during early adoption.
+  Net: Frame it as "your team already knows the stack — the Powerhouse layer is
+  a
+    pattern, not a new language." BAI/Achra as the bridge for the learning
+  curve.
+  ────────────────────────────────────────
+  #: 4
+  Concern: Documentation and learning material?
+  Score: Medium+
+  Argument for: Vetra Academy exists. Vetra Docs (forthcoming) will compile API
+    references, architecture guides, and skill-based tutorials. The same
+  document
+     model specifications that drive the platform also generate reference
+    documentation.
+  Argument against: Not mature yet. Enterprise CTOs expect Stripe-level docs.
+    "Forthcoming" is a flag.
+  Net: Include Vetra Docs as a real section in the site. Having something live
+    before the first enterprise conversation is a prerequisite, not a
+    nice-to-have.
+  ────────────────────────────────────────
+  #: 5
+  Concern: Support model?
+  Score: Medium
+  Argument for: BAI team offers professional support with agreed SLAs — not just
+
+    project delivery but ongoing operational support. Achra marketplace connects
+
+    to additional service providers. This is not "file a GitHub issue and hope."
+  Argument against: Not operating today as a formal support offering. First
+    client will be the proving ground. No existing support infrastructure
+    (ticketing, on-call rotation, escalation paths) to point to.
+  Net: Position it honestly: "Enterprise support through BAI with contractual
+    SLAs." Don't pretend there's a 24/7 NOC. The first clients are buying a
+    partnership, not a commodity support contract.
+  ────────────────────────────────────────
+  #: 6
+  Concern: Is the open source healthy?
+  Score: Weak-Medium
+  Argument for: Active development, real production usage (Sky), open
+    repositories. The Achra/Vetra ecosystem is designed to grow the contributor
+    base through package publishing and marketplace incentives.
+  Argument against: Community is small. Compared to established open-source
+    infrastructure projects (Kubernetes, PostgreSQL), this is early. A CTO
+    checking GitHub will see a small contributor count.
+  Net: Don't overclaim community size. Focus on the architecture's independence
+    from community health: you can fork, you own your data, the format is JSON.
+    The community is a bonus, not the safety net.
+  ────────────────────────────────────────
+  #: 7
+  Concern: Integration with existing systems?
+  Score: Medium
+  Argument for: GraphQL and MCP are standards-based — any system that speaks
+  HTTP
+    can interact with Switchboard. Clint generates MCP servers from document
+    models, making Powerhouse data available to any MCP-compatible tool
+    (including enterprise AI platforms). Document models can be designed to
+    mirror existing data structures, easing migration.
+  Argument against: No pre-built connectors for SAP, Salesforce, ServiceNow.
+    "Standards-based" means the client or BAI builds the integration. That's
+  work
+     and cost.
+  Net: Be honest: Powerhouse is the new data layer, not a drop-in replacement.
+    Integration with legacy systems is a BAI engagement deliverable, not an
+    out-of-the-box feature.
+  ────────────────────────────────────────
+  #: 8
+  Concern: Migration path?
+  Score: Medium
+  Argument for: BAI's Phase 1 (audit & model) explicitly addresses this: map
+    existing data flows, design document models that mirror the client's domain,
+
+    build migration tooling. The document model approach means you can run
+    Powerhouse alongside legacy systems — you don't have to rip and replace.
+  Argument against: Migration is always hard and always client-specific. No
+    generic migration tools or connectors. Each engagement is bespoke.
+  Net: Position as "parallel adoption, not rip-and-replace." The data layer can
+    coexist with legacy systems. BAI handles the migration planning. Don't
+    promise automated migration.
+  ────────────────────────────────────────
+  #: 9
+  Concern: Reference architectures?
+  Score: Weak
+  Argument for: The enterprise proposal spec and feature-business mapping show
+    the thinking exists. BAI has the methodology. Sky is a real architecture
+    reference even if the domain is different.
+  Argument against: No published reference architectures for traditional
+    enterprise verticals. A CTO wants "here's how a company like mine deployed
+    this."
+  Net: This is a content gap that can be filled. Create 2–3 reference
+    architectures (financial services back-office, supply chain operations,
+    professional services automation) based on the existing document model
+    library and BAI methodology. They don't need to be real clients — they need
+    to be credible blueprints.
+  ────────────────────────────────────────
+  #: 10
+  Concern: Operational support (2am call)?
+  Score: Medium
+  Argument for: BAI offers contractual SLAs for operational support. The
+    architecture itself reduces 2am scenarios: local-first means no single point
+
+    of failure, append-only means no data corruption, document independence
+  means
+     failures are isolated.
+  Argument against: No existing on-call infrastructure. First client is the
+    proving ground. "The architecture reduces incidents" is not the same as
+    "here's who picks up the phone."
+  Net: Split the answer: (1) the architecture is inherently more resilient than
+    centralized systems, (2) BAI provides operational support with SLAs for what
+
+    does go wrong. Don't pretend the support org is mature — be honest that
+  early
+     clients get white-glove attention from the core team.
+
+  Summary — three tiers:
+
+  Can argue confidently: 1 (production proof), 3 (mainstream stack), 4 (docs
+  coming), 7 (standards-based APIs), 8 (parallel adoption)
+
+  Can argue honestly: 2 (open source as insurance), 5 (BAI support with SLAs), 6
+   (architecture independence > community size), 10 (resilient architecture +
+  BAI support)
+
+  Need to build before first client: 9 (reference architectures — content work,
+  not engineering)
+
+  Does this match reality? Anything I'm over- or under-scoring?
+
+✻ Cogitated for 48s
+
+❯ Production proof is weaker in practice: Sky has dabbled with Powerhouse tech  
+but is not using it in production. Dogfooding is the real proof here:           
+Powerhouse is using its own stack internally, importantly it powers Achra and   
+Vetra itself, and we can demo it. It's the demos that will need to do the real  
+convincing here.                                                                
+
+● Updated assessment for item 1:
+
+  #: 1
+  Concern: Proven in production?
+  Score: Weak-Medium
+  Argument for: Powerhouse dogfoods its own stack: Achra and Vetra are built on
+    the reactive document architecture, Connect, and Switchboard. This is real
+    production usage — not a side project, but the company's own commercial
+    platforms. Demos can show this concretely. Sky/MakerDAO has engaged with the
+
+    technology (validates market interest from a major org) but is not a
+    production deployment to cite.
+  Argument against: No external production clients. Dogfooding is credible for
+    developer tools (Atlassian, GitLab did this) but a CTO will note the gap
+    between "the vendor uses it" and "a company like mine uses it." Demos
+    convince in a meeting; they don't survive a procurement committee's
+  reference
+     check call.
+  Net: Lead with dogfooding and live demos. Achra and Vetra are the reference
+    deployments — show the architecture, the data flows, the scale. Mention Sky
+    as an engagement relationship, not as a production case study. Be honest
+  that
+     early enterprise clients are design partners, not buyers of a proven
+    commodity. The demo needs to be exceptional — it carries the weight that
+    reference clients would normally carry.
+
+  This changes the site strategy meaningfully:
+
+  - The "Proven at Scale" section (v2 section 10) needs rewriting — it currently
+   oversells Sky as a production deployment
+  - A demo CTA should be more prominent than "Talk to Our Team" — "See It Live"
+  or "Request a Demo" becomes the primary conversion action
+  - The dogfooding story is actually compelling if told right: "We don't just
+  sell this infrastructure — we run our business on it. Achra and Vetra are
+  Powerhouse applications." That's a trust signal enterprise CTOs respect,
+  especially from an infrastructure company.
+
+  Want me to fold this correction and the full checklist arguments into v3, or
+  are there more adjustments first?
+
+❯ This the brutally honest reality. One more adjustment on how to sell it: this 
+ is frontier technology -- that's what the client wants in light of their       
+concerns. They need to be cutting edge. An up-and-coming co-creation partner is 
+ what may help them figure this out.                                            
+
+● That reframes the weakness as the value proposition. The CTO isn't buying a
+  mature vendor with 500 enterprise clients — they're buying early access to
+  infrastructure that their competitors don't have yet, with a team that will
+  build alongside them.
+
+  This flips item 1 from "we don't have production clients" to "you'd be the
+  first enterprise on a stack that's about to matter." That's a different sale
+  entirely — it's the pitch that got early Snowflake, Databricks, and Vercel
+  customers to move before those platforms were "safe."
+
+  The updated framing:
+
+  - Not: "We're proven at scale" (we're not, and CTOs will see through it)
+  - Not: "We're early but trust us" (no CTO buys infrastructure on trust)
+  - Instead: "This is frontier infrastructure for AI-native operations. We're
+  building it, we run on it, and we're looking for enterprise co-creation
+  partners who want to lead rather than follow."
+
+  What this means for the audience filter: The CTO we're talking to isn't the
+  risk-averse one who needs 10 reference clients. It's the one whose CEO is
+  saying "we need to be ahead on AI" and who knows that waiting for the safe
+  choice means being late. Driver 1 (urgency) does the work here — the pressure
+  to move makes "co-creation partner" attractive rather than scary.
+
+  How this plays on the checklist:
+
+  ┌────────────────┬────────────────────┬──────────────────────────────────┐
+  │    Concern     │    Old framing     │           New framing            │
+  ├────────────────┼────────────────────┼──────────────────────────────────┤
+  │ Production     │ "Sky runs on it"   │ "We run on it. Come see it.      │
+  │ proof          │ (oversell)         │ Build with us."                  │
+  ├────────────────┼────────────────────┼──────────────────────────────────┤
+  │                │ "Open source       │ "We're investing in this because │
+  │ Company        │ protects you"      │  it's the future. Your           │
+  │ longevity      │ (defensive)        │ engagement accelerates the       │
+  │                │                    │ ecosystem we both benefit from." │
+  ├────────────────┼────────────────────┼──────────────────────────────────┤
+  │ Hire people    │ "The stack is      │ "Early movers build in-house     │
+  │ who know it    │ mainstream"        │ expertise before the talent      │
+  │                │ (minimizing)       │ market catches up."              │
+  ├────────────────┼────────────────────┼──────────────────────────────────┤
+  │                │                    │ "Your team works directly with   │
+  │ Support model  │ "BAI offers SLAs"  │ the people who built the         │
+  │                │ (corporate)        │ platform. That's the advantage   │
+  │                │                    │ of being early."                 │
+  ├────────────────┼────────────────────┼──────────────────────────────────┤
+  │ Reference      │ "We'll create      │ "We co-create your reference     │
+  │ architectures  │ blueprints"        │ architecture. It's bespoke, not  │
+  │                │ (aspirational)     │ templated."                      │
+  └────────────────┴────────────────────┴──────────────────────────────────┘
+
+  The risk this introduces: It narrows the audience. The "safe choice" CTO won't
+   buy this. But that CTO was never going to buy this anyway — not at this
+  stage. The CTO who will buy is the one who sees being first as competitive
+  advantage, not risk. The site should qualify for that person, not try to
+  convince the other one.
+
+  Shall I write v3 with this positioning?
+
+❯ Go ahead.                                                                     
+
+● Read 1 file (ctrl+o to expand)
+
+● Write(specs/enterprise/v3.md)
+  ⎿  Wrote 251 lines to specs/enterprise/v3.md
+     # enterprise.powerhouse.io — Site Outline v3
+
+     **Primary audience:** The CTO / VP of Engineering whose board is
+     demanding an AI strategy — and who knows that waiting for the "safe
+     choice" means being late. Not the risk-averse buyer who needs 10
+     reference clients. The one who sees being first as competitive
+     advantage.
+
+     **Secondary audiences:** CIO / CDO (scannable guardrails and proof
+     point), Enterprise Architect (technical depth, links to vetra.io).
+
+     **Site role:** Technology hub that routes to bai.powerhouse.io
+     (assessment & consulting), vetra.io (platform, packages, hosting,
+     agents), and achra.com (builders & operators marketplace).
+
+     **Positioning:** Frontier infrastructure for AI-native operations. Not
+     a mature vendor with 500 logos — a co-creation partner for enterprises
+     that want to lead.
+
+
+
+     … +241 lines (ctrl+o to expand)
+
+● Now let me also save the vendor checklist since v3 references it.
+
+● Write(specs/enterprise/vendor-checklist.md)
+  ⎿  Wrote 135 lines to specs/enterprise/vendor-checklist.md
+     # enterprise.powerhouse.io — Vendor Reliability Checklist
+
+     **Context:** The CTO's mental checklist when evaluating whether
+     Powerhouse is a reliable stack/provider. Scored honestly with
+     arguments for and against, plus how enterprise.powerhouse.io should
+     address each concern.
+
+     ---
+
+     ## 1. Proven in production?
+
+     **Score:** Weak-Medium
+
+     … +125 lines (ctrl+o to expand)
+
+● Written to specs/enterprise/v3.md and specs/enterprise/vendor-checklist.md.
+
+  The big moves from v2 to v3:
+  - "Proven at Scale" is gone. Replaced by "Why Powerhouse" — five honest
+  arguments (dogfooding, mainstream stack, early-mover advantage, direct
+  support, open-source insurance)
+  - Demo is the primary conversion event, not "talk to us"
+  - Hero says "frontier" up front — qualifies the right buyer, filters the wrong
+   one
+  - Technology sections unchanged — they were already solid
+
+✻ Brewed for 3m 7s
+
+❯ Write a SWOT analysis to specs/swot.md based on our v3 iteration              
+considerations.                                                                 
+
+● Write(specs/enterprise/swot.md)
+  ⎿  Wrote 111 lines to specs/enterprise/swot.md
+     # Powerhouse Enterprise Positioning — SWOT Analysis
+
+     Based on the research and iterations behind enterprise.powerhouse.io
+     v3. Assessed from the perspective of Powerhouse entering the enterprise
+      market with a frontier co-creation positioning.
+
+     ---
+
+     ## Strengths
+
+     **Architectural differentiation**
+     The reactive document architecture is genuinely novel in the enterprise
+      space. Event sourcing, CQRS, and local-first combined into a single
+     document primitive — with AI-native APIs generated automatically. No
+     incumbent offers this. Enterprise architects will recognize the
+     patterns as proven (individually) but the composition as unique.
+
+
+     … +101 lines (ctrl+o to expand)
+
+● Written to specs/enterprise/swot.md. The key strategic takeaway: the biggest
+  threat isn't a competitor — it's the CTO deciding to wait. Everything on the
+  site needs to make waiting feel like the riskier choice.
+
+✻ Churned for 1m 13s
+
+❯ For v4, we want to rebalance the vanguard technical selling points to better  
+match the enterprise CTO pre-conceptions and expectations.                      
+                                                                                
+We're improving on these weaknesses and strengths:                              
+                                                                                
+```                                                                             
+W: Proprietary terminology "Reactive document architecture," "document models," 
+ "drive apps," "Switchboard," "Clint" — none of these are terms an enterprise   
+architect has encountered before. The concepts map to known patterns (event     
+sourcing, CQRS, schema-driven APIs) but the vocabulary creates a learning curve 
+ and makes the platform harder to evaluate at a glance.                         
+```                                                                             
+                                                                                
+```                                                                             
+S: Compliance built into the primitive Append-only, cryptographically signed    
+operation history is not a feature — it's how the data structure works. Every   
+change (human or AI) is auditable by default. This is a structural advantage    
+over systems where audit trails are application-level afterthoughts.            
+```                                                                             
+                                                                                
+1. AI is front of mind that should come first: in the sections, in the          
+components, everywhere.                                                         
+                                                                                
+2. Data ownership and regulatory concerns -- not just auditability but          
+critically data privacy: working with local AI models and not uploading         
+GDPR/PII/*confidential* client data to the cloud  -- is the follow-up concern   
+that scores credibility points: we've thought of it, this _IS_ the primary      
+concern, we got you covered.                                                    
+                                                                                
+3. Emphasize the data privacy aspect more as we're targeting specifically       
+industries that feel the heat of AI but have data confidentiality as a top      
+priority always: legal and HR as the primary examples, business secretive:      
+finance and procurement too. Local-first: data and local AI models, and the     
+ability to self-host is our selling point here.                                 
+                                                                                
+4. Reduce the prominence of document models / documents as the primitive,       
+reposition as: private data, AI-native, and real-time thanks to the Reactive    
+Document Architecture.                                                          
+
+● Read 1 file (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ For 1. we want to mention: multi-agent workflows, sandboxing and data         
+privacy.                                                                        
+
+● Write(specs/enterprise/v4.md)
+  ⎿  Wrote 252 lines to specs/enterprise/v4.md
+     # enterprise.powerhouse.io — Site Outline v4
+
+     **Primary audience:** CTO / VP of Engineering at organizations where
+     data confidentiality is non-negotiable — legal, HR, finance,
+     procurement — and the board is demanding AI adoption. The CTO who
+     knows the opportunity is real but can't afford a data privacy
+     incident.
+
+     **Secondary audiences:** CIO / CDO / DPO (scannable privacy and
+     compliance sections), Enterprise Architect (technical depth, links to
+     vetra.io).
+
+     **Site role:** Technology hub that routes to bai.powerhouse.io
+     (assessment & consulting), vetra.io (platform, packages, hosting,
+     agents), and achra.com (builders & operators marketplace).
+
+     **Positioning:** Frontier AI infrastructure for industries where data
+     can't leave the building. Private, AI-native, real-time — built on a
+     reactive document architecture.
+
+     … +242 lines (ctrl+o to expand)
+
+● Written to specs/enterprise/v4.md.
+
+  The major shifts:
+
+  - AI + privacy is now one proposition, not a trade-off. The hero says both in
+  one breath.
+  - "Document models" disappear from the surface. The CTO sees "private data,
+  AI-native, real-time" — the architecture that delivers this is explained in
+  terms of patterns they already know (event sourcing, CQRS), not proprietary
+  vocabulary.
+  - Multi-agent workflows, sandboxing, and local AI models are lead capabilities
+   in both the solution section and the Clint component description.
+  - Privacy & Compliance gets its own section with five sub-topics (residency,
+  model isolation, agent sandboxing, audit trail, portability) — designed to be
+  forwarded to the DPO and legal team.
+  - Target industries named: legal, HR, finance, procurement. The hero
+  references their actual data types: contracts, personnel records, financials,
+  negotiations.
+
+✻ Cooked for 2m 17s
+
+❯ Propose a list of v5 changes including these points:                          
+                                                                                
+- Fusion in the enterprise case is not primarily meant as a consumer-facing     
+platform. It's the internal platform that replaces "the intranet portal" of the 
+ legacy stack.                                                                  
+                                                                                
+- The part about "no integrations" is wrong - integrations with existing        
+systems are plenty and easy to set up, and they play a major part in sandboxing 
+ the data: every agent only works on the data they should be able to read.      
+Local AI models to access the most sensitive information. Frontier commercial   
+models operating only on censored data / summaries. Add a section about         
+integration and sandboxing/isolation.                                           
+                                                                                
+- Move the Vetra platform paragraph to a separate section together with Achra.  
+This is the cloud infrastructure and ecosystem. All the others are local        
+whitelabel architecture components.                                             
+                                                                                
+- Position Renown as the customizable identity solution for agents and users.   
+We don't have enterprise SSO adapters yet, but this is where we will put them   
+for the clients.                                                                
+
+● Proposed v5 Changes
+
+  1. Fusion repositioned as internal enterprise platform
+
+  Current (v4): "Build branded, customer-facing applications... Deploy the
+  equivalent of a SaaS product."
+
+  Change: Reposition as the internal platform layer — the modern replacement for
+   the corporate intranet, internal portals, and legacy SharePoint-style
+  dashboards. Internal teams access business data, workflows, and AI agent
+  outputs through a branded web application. Next.js-based, Switchboard-backed,
+  customizable per department or business unit. The external/consumer use case
+  is secondary — mention it as possible, not primary.
+
+  2. New section: Integration & Data Isolation
+
+  Current (v4): Section 3 ("AI-native") says "no integration layer, no custom
+  adapters" — which undersells the actual integration story and is misleading.
+
+  Change: Add a new section (between current sections 4 and 5) focused on
+  integration architecture and data sandboxing as two sides of the same coin:
+
+  - Integration is the norm, not the exception. Powerhouse connects to existing
+  systems (ERP, HRIS, document management, email) through Switchboard's
+  standards-based APIs. Integrations pull data into the structured layer where
+  AI can operate on it — but each integration defines exactly what data flows
+  where.
+  - Sandboxing through integration boundaries. Each agent, each workflow, each
+  integration operates within a defined data scope. An HR agent sees personnel
+  records but not financial forecasts. A procurement agent sees vendor
+  negotiations but not employee data. Scoping is architectural — defined in the
+  integration configuration, not enforced by hope.
+  - Tiered AI model access. The most sensitive data (privileged legal
+  communications, raw personnel files, board-level financials) stays with local
+  open-source models on your hardware. Less sensitive but still confidential
+  data is processed through frontier commercial models operating only on
+  censored summaries, redacted extracts, or pre-approved data shapes. The
+  integration layer controls what reaches which model.
+  - Result: AI gets access to the data it needs to be useful, under constraints
+  that your DPO can sign off on. Not "all or nothing" — graduated, auditable,
+  configurable.
+
+  This also changes the framing in section 3 — "AI-native" should say
+  integrations are easy and plentiful (not absent), and the value is that they
+  come with built-in data boundaries.
+
+  3. Vetra + Achra split into separate "Ecosystem & Cloud" section
+
+  Current (v4): Vetra is one of six platform components in section 4. Achra only
+   appears in section 8 (Why Powerhouse) and section 9 (Get Started).
+
+  Change: Remove Vetra and Achra from the platform component list. Create a new
+  section — "Cloud & Ecosystem" — positioned after the architecture/integration
+  sections:
+
+  - Vetra — Managed hosting (self-host or Vetra Cloud with data sovereignty),
+  package registry (reusable business modules, editors, agent configurations),
+  development tooling (Vetra Studio, PH-CLI), documentation and training (Vetra
+  Docs, Vetra Academy).
+  - Achra — The marketplace for implementation partners, operational service
+  providers, and pre-built solutions. Where you find the people and packages to
+  accelerate deployment. Where BAI (assessment and consulting) and other
+  professional services operate.
+
+  Rationale: The platform section (Connect, Switchboard, Clint, Fusion, Renown)
+  becomes the local, whitelabel architecture you own and run. Vetra and Achra
+  are the cloud and ecosystem layer that supports it. Clean conceptual
+  separation.
+
+  4. Renown repositioned as identity for agents and users
+
+  Current (v4): "Verified contributor profiles and contribution tracking...
+  identity layer for authorization, audit trails, and cross-organizational
+  collaboration."
+
+  Change: Reposition as the customizable identity solution that governs both
+  human users and AI agents:
+
+  - Unified identity for people and agents — every actor in the system (human
+  operator, AI agent, external integration) has a verified identity with defined
+   permissions.
+  - The authorization substrate: who can see what, who can do what, who did
+  what. Applies to agents the same way it applies to users.
+  - Designed for enterprise identity integration — the extension point for SSO
+  adapters (SAML, OIDC), directory services, and existing IAM infrastructure.
+  Currently supports cryptographic identity; enterprise SSO adapters are on the
+  near-term roadmap.
+  - Cross-organizational collaboration: when partners or external agents
+  interact with your data, Renown governs the trust boundary.
+
+  Honest note: Don't claim SSO is built today. Position Renown as "where
+  identity lives" and SSO as a roadmap item that the co-creation partnership can
+   prioritize.
+
+  5. Platform section restructured
+
+  After all changes, the platform section becomes four local architecture
+  components:
+
+  1. Clint — AI agent infrastructure (unchanged from v4, leads the section)
+  2. Switchboard — API & integration layer (updated to emphasize integration
+  richness)
+  3. Connect — Operator workspace (unchanged)
+  4. Fusion — Internal enterprise platform (repositioned)
+  5. Renown — Identity for agents and users (repositioned)
+
+  Followed by a separate section:
+
+  6. Cloud & Ecosystem: Vetra + Achra
+
+  6. Cascading updates
+
+  - Section 3 (AI-native pillar): Remove "no adapter layer, no custom adapters."
+   Replace with: integrations connect your existing systems to the AI-native
+  data layer, each with defined data boundaries.
+  - Section 5 (Privacy & Compliance): "AI model isolation" and "Agent
+  sandboxing" subsections can be shortened since the new Integration & Data
+  Isolation section covers this in depth. Keep them as summary references that
+  point to the fuller treatment.
+  - Section 7 (How This Compares): Add a row for "Integration model" — comparing
+   "point-to-point adapters with no data scoping" vs. "standards-based
+  integration with built-in data isolation per agent and workflow."
+  - Technical characteristics table: Add "Integration" row covering
+  standards-based connectors, data scoping per integration, tiered model access.
+
+  ---
+  Want me to write v5?
+
+✻ Worked for 43s
+
+❯ For the platform section, reorder:                                            
+                                                                                
+1. Clint                                                                        
+2. Fusion                                                                       
+3. Connect                                                                      
+4. Switchboard                                                                  
+5. Renown                                                                       
+                                                                                
+Proceed with the rewrite.                                                       
+
+● Write(specs/enterprise/v5.md)
+  ⎿  Wrote 268 lines to specs/enterprise/v5.md
+     # enterprise.powerhouse.io — Site Outline v5
+
+     **Primary audience:** CTO / VP of Engineering at organizations where
+     data confidentiality is non-negotiable — legal, HR, finance,
+     procurement — and the board is demanding AI adoption.
+
+     **Secondary audiences:** CIO / CDO / DPO (privacy, compliance, and
+     integration sections), Enterprise Architect (technical depth, links to
+     vetra.io).
+
+     **Site role:** Technology hub that routes to bai.powerhouse.io
+     (assessment & consulting), vetra.io (platform, packages, hosting,
+     agents), and achra.com (builders & operators marketplace).
+
+     **Positioning:** Frontier AI infrastructure for industries where data
+     can't leave the building. Private, AI-native, real-time — with deep
+     integration into existing systems and architectural data isolation.
+
+
+     … +258 lines (ctrl+o to expand)
+
+● Written to specs/enterprise/v5.md.
+
+  Key structural moves:
+
+  - Platform = local whitelabel (Clint → Fusion → Connect → Switchboard →
+  Renown), Cloud & Ecosystem = Vetra + Achra — clean ownership boundary
+  - Integration & Data Isolation is the new anchor section — connects the "how
+  does this work with our existing systems" question directly to the "how do we
+  keep AI safe" question, with tiered model access as the concrete mechanism
+  - Fusion is now the intranet replacement, not a consumer platform
+  - Renown governs both human and agent identity, with SSO as an honest roadmap
+  item
+
+✻ Worked for 2m 36s
+
+❯ Core messaging is on point. For v6 we make it complete and add detail. Write  
+v6-homepage and v6-{subpage} md files:                                          
+                                                                                
+Add a use cases section listing our 4 target markets:                           
+- Legal                                                                         
+- HR                                                                            
+- Procurement                                                                   
+- Finance                                                                       
+                                                                                
+Just sections for now. We'll expand to subpages later.                          
+                                                                                
+Add a documentation references section to the homepage                          
+- Reference architecture (link to subpage placeholder)                          
+- Vetra documentation (external link)                                           
+- Vetra academy for devs (external link)                                        
+                                                                                
+Add subpages links and subpages for the components:                             
+- Clint / Fusion / Connect / Switchboard / Renown                               
+- For Clint, study ./ph-clint and create a quick subpage outline                
+- For Fusion, Connect, Switchboard and Renown: research https://powerhouse.inc  
+                                                                                
+Ensure sufficient funnel links to bai.powerhouse.io in the relevant places. The 
+ entire point of the enterprise site is to convince and forward to BAI.         
+
+● 2 agents finished (ctrl+o to expand)
+   ├─ Agent (Research powerhouse.inc products) · 14 tool uses · 61.4k tokens
+   │  ⎿  Done
+   └─ Explore (Explore ph-clint for Clint subpage) · 33 tool uses · 74.1k tokens
+      ⎿  Done
+
+❯ Powerhouse Switchboard - getDrives() (MCP) is irrelevant for this task.       
+
+● Understood — I won't use the MCP tools. Now let me write the v6 files.
+
+● Write(specs/enterprise/v6-homepage.md)
+  ⎿  Wrote 314 lines to specs/enterprise/v6-homepage.md
+     # enterprise.powerhouse.io — Homepage v6
+
+     **Primary audience:** CTO / VP of Engineering at organizations where
+     data confidentiality is non-negotiable — legal, HR, finance,
+     procurement — and the board is demanding AI adoption.
+
+     **Positioning:** Frontier AI infrastructure for industries where data
+     can't leave the building. Private, AI-native, real-time.
+
+     **Conversion goal:** Convince and forward to bai.powerhouse.io for
+     assessment and engagement.
+
+     **Site structure:**
+     - Homepage (this file)
+     … +304 lines (ctrl+o to expand)
+
+● Write(specs/enterprise/v6-clint.md)
+  ⎿  Wrote 159 lines to specs/enterprise/v6-clint.md
+     # enterprise.powerhouse.io/clint — Clint Subpage
+
+     **Navigation:** Enterprise Home > Platform > Clint
+
+     **Page purpose:** Technical depth on the AI agent infrastructure
+     component for CTOs and enterprise architects evaluating the platform.
+
+     ---
+
+     ## 1. Hero
+
+     … +149 lines (ctrl+o to expand)
+
+● Write(specs/enterprise/v6-fusion.md)
+  ⎿  Wrote 90 lines to specs/enterprise/v6-fusion.md
+     # enterprise.powerhouse.io/fusion — Fusion Subpage
+
+     **Navigation:** Enterprise Home > Platform > Fusion
+
+     **Page purpose:** Explain Fusion as the internal enterprise platform
+     that replaces legacy intranets and departmental portals.
+
+     ---
+
+     ## 1. Hero
+
+     … +80 lines (ctrl+o to expand)
+
+● Write(specs/enterprise/v6-connect.md)
+  ⎿  Wrote 107 lines to specs/enterprise/v6-connect.md
+     # enterprise.powerhouse.io/connect — Connect Subpage
+
+     **Navigation:** Enterprise Home > Platform > Connect
+
+     **Page purpose:** Explain Connect as the operator workspace for
+     hands-on business data management and collaboration.
+
+     ---
+
+     ## 1. Hero
+
+     … +97 lines (ctrl+o to expand)
+
+● Write(specs/enterprise/v6-switchboard.md)
+  ⎿  Wrote 117 lines to specs/enterprise/v6-switchboard.md
+     # enterprise.powerhouse.io/switchboard — Switchboard Subpage
+
+     **Navigation:** Enterprise Home > Platform > Switchboard
+
+     **Page purpose:** Explain Switchboard as the API, integration, and
+     data boundary layer for the enterprise platform.
+
+     ---
+
+     ## 1. Hero
+
+     … +107 lines (ctrl+o to expand)
+
+● Write(specs/enterprise/v6-renown.md)
+  ⎿  Wrote 115 lines to specs/enterprise/v6-renown.md
+     # enterprise.powerhouse.io/renown — Renown Subpage
+
+     **Navigation:** Enterprise Home > Platform > Renown
+
+     **Page purpose:** Explain Renown as the customizable identity solution
+     governing both human users and AI agents.
+
+     ---
+
+     ## 1. Hero
+
+
+     … +105 lines (ctrl+o to expand)
+
+● All v6 files written:
+
+  ┌───────────────────┬──────────────────────────────────────────────────────┐
+  │       File        │                       Content                        │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ v6-homepage.md    │ Full homepage with 13 sections, use cases,           │
+  │                   │ documentation references, 10+ BAI funnel links       │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ v6-clint.md       │ Deep subpage from ph-clint codebase research — agent │
+  │                   │  infrastructure, routine loop, sandboxing, MCP       │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ v6-fusion.md      │ Repositioned as internal enterprise platform         │
+  │                   │ replacing legacy intranets                           │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ v6-connect.md     │ Operator workspace — document models, drive apps,    │
+  │                   │ pre-built business modules, offline-capable          │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ v6-switchboard.md │ API & integration hub — data scoping, tiered AI      │
+  │                   │ model routing, multi-tenant                          │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ v6-renown.md      │ Identity for agents and users — unified model, SSO   │
+  │                   │ roadmap, agent-to-agent trust                        │
+  └───────────────────┴──────────────────────────────────────────────────────┘
+
+  Key additions from v5:
+  - Use cases section with four industry verticals (legal, HR, procurement,
+  finance), each with a BAI funnel link
+  - Documentation section with reference architecture placeholder, Vetra Docs,
+  and Vetra Academy links
+  - BAI funnel links in 10+ locations across the homepage — hero, problem, each
+  use case, integration, privacy, "Why Powerhouse," and get started
+  - Five component subpages with consistent structure (hero, capabilities,
+  architecture, technical details, BAI-linked get started)
+
+✻ Cooked for 7m 27s
+
+❯ /export @specs/enterprise/claude-log.md                                       
+  ⎿  Failed to export conversation: ENOENT: no such file or directory, open
+     '/home/wouter/projects/demo-workspace/ph-clint/@specs/enterprise/claude-log
+     .txt'
+
+❯ /export @specs/enterprise/claude-log.txt                                      
+  ⎿  Failed to export conversation: ENOENT: no such file or directory, open
+     '/home/wouter/projects/demo-workspace/ph-clint/@specs/enterprise/claude-log
+     .txt'

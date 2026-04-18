@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powerhouse Illustrations &amp; Brand Assets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #E8E8E8;
+      padding: 40px;
+      transition: background 0.3s, color 0.3s;
+      color: #141414;
+    }
+    body.dark { background: #111318; color: #FAFAFA; }
+
+    .page-header {
+      max-width: 960px; margin: 0 auto 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .page-header-left { display: flex; align-items: center; gap: 12px; }
+    .page-header-left img { height: 28px; }
+    .page-header-title {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 2px; color: #9EA0A1;
+    }
+    .logo-light-mode, .logo-dark-mode { display: none; }
+    body:not(.dark) .logo-light-mode { display: block; }
+    body.dark .logo-dark-mode { display: block; }
+
+    .theme-toggle {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 500; color: #888; cursor: pointer; user-select: none;
+    }
+    .theme-toggle input { display: none; }
+    .toggle-track {
+      width: 40px; height: 22px; background: #D7D8D9; border-radius: 11px;
+      position: relative; transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; background: #32373B; border-radius: 50%; transition: transform 0.2s;
+    }
+    .theme-toggle input:checked + .toggle-track { background: #485265; }
+    .theme-toggle input:checked + .toggle-track::after { transform: translateX(18px); background: #F3F5F7; }
+
+    .section-title {
+      max-width: 960px; margin: 0 auto 16px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #00D4FF, #7A3AFF);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .grid {
+      max-width: 960px; margin: 0 auto 40px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      border-radius: 12px; overflow: hidden;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    body.dark .card {
+      background: #1B1E24;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+
+    .card a { display: block; text-decoration: none; }
+
+    .card img {
+      width: 100%; display: block;
+      background: repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+    }
+    body.dark .card img {
+      background: repeating-conic-gradient(#2a2d33 0% 25%, #1B1E24 0% 50%) 0 0 / 16px 16px;
+    }
+
+    .card-info {
+      padding: 12px 16px;
+      border-top: 1px solid #E0E0E0;
+      transition: border-color 0.3s;
+    }
+    body.dark .card-info { border-color: #2A2D33; }
+
+    .card-label {
+      font-size: 13px; font-weight: 600; margin-bottom: 4px;
+      color: inherit;
+    }
+    .card-meta {
+      font-size: 11px; color: #9EA0A1;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .card.wide { grid-column: 1 / -1; }
+
+    /* SVG cards need dark bg to show white SVGs */
+    .svg-preview {
+      padding: 32px;
+      display: flex; align-items: center; justify-content: center;
+      background: #1B1E24;
+      min-height: 120px;
+    }
+    body:not(.dark) .svg-preview { background: #1A1D22; }
+
+    .svg-preview img {
+      max-width: 100%; max-height: 200px;
+      background: none;
+    }
+
+    /* Design guidelines */
+    .guideline {
+      max-width: 960px; margin: 0 auto 40px;
+      border-radius: 12px; padding: 24px 28px;
+      background: #fff; border: 1px solid #E0E0E0;
+      transition: background 0.3s, border-color 0.3s;
+      font-size: 14px; line-height: 1.7;
+    }
+    body.dark .guideline { background: #1B1E24; border-color: #2A2D33; }
+    .guideline h3 {
+      font-size: 13px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1px; color: #9EA0A1; margin-bottom: 12px;
+    }
+    .guideline p { margin-bottom: 8px; }
+    .guideline p:last-child { margin-bottom: 0; }
+    .guideline code {
+      font-size: 12px; padding: 2px 5px; border-radius: 3px;
+      background: rgba(0,0,0,0.06);
+    }
+    body.dark .guideline code { background: rgba(255,255,255,0.08); }
+    .guideline ul { margin: 8px 0 8px 20px; }
+    .guideline li { margin-bottom: 4px; }
+  </style>
+</head>
+<body class="dark">
+  <div class="page-header">
+    <div class="page-header-left">
+      <img class="logo-light-mode" src="logos/powerhouse-icon-dark.svg" alt="Powerhouse">
+      <img class="logo-dark-mode" src="logos/powerhouse-icon-light.svg" alt="Powerhouse">
+      <span class="page-header-title">Illustrations &amp; Brand Assets</span>
+    </div>
+    <label class="theme-toggle">
+      <input type="checkbox" checked onchange="document.body.classList.toggle('dark', this.checked); document.documentElement.classList.toggle('dark', this.checked);">
+      <span class="toggle-track"></span>
+      Dark
+    </label>
+  </div>
+
+  <div class="section-title">Decorative Illustrations</div>
+  <div class="grid">
+    <div class="card">
+      <a href="illustrations/powerhouse-icon-dithered-cyan.png" target="_blank">
+        <img src="illustrations/powerhouse-icon-dithered-cyan.png" alt="Icon Dithered Cyan" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Icon Dithered Cyan</div>
+        <div class="card-meta">powerhouse-icon-dithered-cyan.png &middot; 2048 &times; 2048</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/powerhouse-halftone-sphere.png" target="_blank">
+        <img src="illustrations/powerhouse-halftone-sphere.png" alt="Halftone Sphere" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Halftone Sphere</div>
+        <div class="card-meta">powerhouse-halftone-sphere.png &middot; 2048 &times; 1434</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/powerhouse-crystalline.png" target="_blank">
+        <img src="illustrations/powerhouse-crystalline.png" alt="Crystalline" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Crystalline</div>
+        <div class="card-meta">powerhouse-crystalline.png &middot; 2324 &times; 2324</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/powerhouse-flowing.png" target="_blank">
+        <img src="illustrations/powerhouse-flowing.png" alt="Flowing" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Flowing</div>
+        <div class="card-meta">powerhouse-flowing.png &middot; 2048 &times; 1649</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Typography &amp; Wordmarks</div>
+  <div class="grid">
+    <div class="card wide">
+      <a href="illustrations/powerhouse-wordmark-gradient.svg" target="_blank">
+        <div class="svg-preview">
+          <img src="illustrations/powerhouse-wordmark-gradient.svg" alt="Gradient Wordmark" loading="lazy">
+        </div>
+      </a>
+      <div class="card-info">
+        <div class="card-label">Gradient Wordmark</div>
+        <div class="card-meta">powerhouse-wordmark-gradient.svg &middot; 3000 &times; 381</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/sns-logo.svg" target="_blank">
+        <div class="svg-preview">
+          <img src="illustrations/sns-logo.svg" alt="SNS Logo" loading="lazy">
+        </div>
+      </a>
+      <div class="card-info">
+        <div class="card-label">SNS Logo</div>
+        <div class="card-meta">sns-logo.svg &middot; 312 &times; 91</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/open-source-participation.svg" target="_blank">
+        <div class="svg-preview">
+          <img src="illustrations/open-source-participation.svg" alt="Open Source Participation" loading="lazy">
+        </div>
+      </a>
+      <div class="card-info">
+        <div class="card-label">Open Source Participation</div>
+        <div class="card-meta">open-source-participation.svg &middot; 356 &times; 32</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Design Guideline: Footer Wordmark</div>
+  <div class="guideline">
+    <h3>Usage</h3>
+    <p>The gradient wordmark SVG (<code>powerhouse-wordmark-gradient.svg</code>) is used as a large-scale background element at the very bottom of the page. It spells "POWERHOUSE" in outlined letters with a holographic gradient stroke — subtle gray outlines accented by iridescent purple-to-blue light streaks at select letter junctions.</p>
+    <h3>Implementation</h3>
+    <p>The wordmark spans the full viewport width and is partially cropped so only the top portion of the letters is visible, creating a dramatic ground-level branding element.</p>
+    <ul>
+      <li>Place outside any padded container — directly on the <code>body</code> so it spans the full viewport width</li>
+      <li>Container: <code>overflow: hidden</code> with a fixed height (~130px)</li>
+      <li>Image position: <code>top: 0</code> — the container height controls how much of the letters is visible</li>
+      <li>Width: <code>110%</code> with <code>left: -5%</code> — slightly oversized to push the first letter (P) off-screen, matching the reference</li>
+      <li>Crop level: the bottom edge of the container should sit just above the horizontal crossbar of the H — only the tops of the letters are visible</li>
+      <li>No opacity reduction needed — the SVG stroke is already rendered at low contrast against dark backgrounds</li>
+      <li>Works exclusively on dark backgrounds (<code>#0B0D0F</code> or similar)</li>
+    </ul>
+    <h3>Do not</h3>
+    <ul>
+      <li>Use on light backgrounds — the gradient stroke is designed for dark surfaces</li>
+      <li>Add additional opacity — the SVG's built-in transparency is calibrated</li>
+      <li>Scale below 100% viewport width — the text should always feel oversized and immersive</li>
+    </ul>
+  </div>
+
+  <div class="section-title">Backgrounds</div>
+  <div class="grid">
+    <div class="card wide">
+      <a href="illustrations/powerhouse-electric-flow.png" target="_blank">
+        <img src="illustrations/powerhouse-electric-flow.png" alt="Electric Flow" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Electric Flow</div>
+        <div class="card-meta">powerhouse-electric-flow.png &middot; 1440 &times; 900</div>
+      </div>
+    </div>
+    <div class="card wide">
+      <a href="illustrations/powerhouse-light-beam.png" target="_blank">
+        <img src="illustrations/powerhouse-light-beam.png" alt="Light Beam" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Light Beam</div>
+        <div class="card-meta">powerhouse-light-beam.png &middot; 2048 &times; 664</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/powerhouse-gradient-corner-bg.png" target="_blank">
+        <img src="illustrations/powerhouse-gradient-corner-bg.png" alt="Gradient Corner" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Gradient Corner</div>
+        <div class="card-meta">powerhouse-gradient-corner-bg.png &middot; 1920 &times; 1080</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/powerhouse-flow-light-bg.png" target="_blank">
+        <img src="illustrations/powerhouse-flow-light-bg.png" alt="Flow Light" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Flow Light</div>
+        <div class="card-meta">powerhouse-flow-light-bg.png &middot; 1920 &times; 1080</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Slide Templates</div>
+  <div class="grid">
+    <div class="card">
+      <a href="illustrations/slide-cover.svg" target="_blank">
+        <img src="illustrations/slide-cover.svg" alt="Slide Cover" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Slide Cover</div>
+        <div class="card-meta">slide-cover.svg &middot; 960 &times; 540</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/slide-content.svg" target="_blank">
+        <img src="illustrations/slide-content.svg" alt="Slide Content" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Slide Content</div>
+        <div class="card-meta">slide-content.svg &middot; 960 &times; 540</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/slide-divider.svg" target="_blank">
+        <img src="illustrations/slide-divider.svg" alt="Slide Divider" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Slide Divider</div>
+        <div class="card-meta">slide-divider.svg &middot; 960 &times; 540</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="illustrations/slide-back.svg" target="_blank">
+        <img src="illustrations/slide-back.svg" alt="Slide Back" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Slide Back</div>
+        <div class="card-meta">slide-back.svg &middot; 960 &times; 540</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Sub-Brand Halftones</div>
+  <div class="grid">
+    <div class="card">
+      <a href="../achra/illustrations/achra-icon-halftone.png" target="_blank">
+        <img src="../achra/illustrations/achra-icon-halftone.png" alt="Achra Icon Halftone" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Achra Icon Halftone</div>
+        <div class="card-meta">achra-icon-halftone.png &middot; 1965 &times; 1965</div>
+      </div>
+    </div>
+    <div class="card">
+      <a href="../vetra/illustrations/vetra-icon-halftone.png" target="_blank">
+        <img src="../vetra/illustrations/vetra-icon-halftone.png" alt="Vetra Icon Halftone" loading="lazy">
+      </a>
+      <div class="card-info">
+        <div class="card-label">Vetra Icon Halftone</div>
+        <div class="card-meta">vetra-icon-halftone.png &middot; 1965 &times; 1965</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

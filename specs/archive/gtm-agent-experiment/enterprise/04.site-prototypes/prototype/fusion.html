@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fusion — Internal Enterprise Platform | Powerhouse Enterprise</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="subpage.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <a href="index.html"><img src="../design-system/logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"></a>
+        <span>Enterprise</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#platform">Platform</a></li>
+        <li><a href="https://bai.powerhouse.io" class="nav-cta">Request a Demo</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <section class="subpage-hero">
+      <div class="breadcrumb"><a href="index.html">Enterprise</a> <span>/</span> <a href="index.html#platform">Platform</a> <span>/</span> Fusion</div>
+      <div class="subpage-hero-card" style="--glow-color: rgba(244,62,129,0.3);">
+        <div class="subpage-hero-content">
+          <img class="subpage-hero-icon" src="assets/fusion-nav-icon.svg" alt="Fusion">
+          <h1 class="subpage-hero-title">Fusion</h1>
+          <p class="subpage-hero-role" style="color: var(--fusion-pink);">Your Internal Platform, AI-Integrated</p>
+          <p class="subpage-hero-body">
+            Replace your legacy intranet, departmental portals, and scattered internal tools with a unified, branded platform&nbsp;&mdash; built on your own data infrastructure, integrated with AI agents, and customizable per business unit.
+          </p>
+          <div class="subpage-hero-actions">
+            <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+            <a href="index.html#platform" class="btn-secondary">Back to Platform</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="section-eyebrow">What Fusion Does</div>
+      <h2 class="section-title">The modern enterprise intranet&nbsp;&mdash;<br>except it actually works.</h2>
+      <p class="section-subtitle">Fusion is a Next.js-based internal platform framework. It connects to your Powerhouse data infrastructure through Switchboard and presents business data, workflows, dashboards, and AI agent outputs to your teams.</p>
+
+      <div class="two-col" style="margin-top:48px;">
+        <div>
+          <h3>What It Replaces</h3>
+          <p>Legacy SharePoint-style intranet portals. Scattered departmental dashboards and internal wikis. Custom-built internal tools that nobody maintains. The gap between "where the data lives" and "where people work."</p>
+        </div>
+        <div>
+          <h3>What It Provides</h3>
+          <p>Unified workspace across departments. Per-department customization. AI agent outputs surfaced alongside live business data. Fully whitelabel&nbsp;&mdash; runs on your infrastructure, your IT team owns and extends it.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Architecture</div>
+      <h2 class="section-title">Switchboard-backed. Standards-based.</h2>
+
+      <div class="capability-list">
+        <div class="capability">
+          <h3>Switchboard-Backed</h3>
+          <p>Fusion reads and writes through Switchboard's GraphQL API. All authorization, data scoping, and audit trail enforcement happens at the Switchboard layer. Fusion inherits every privacy and compliance guarantee of the underlying architecture.</p>
+        </div>
+        <div class="capability">
+          <h3>Customizable Modules</h3>
+          <p>Build department-specific modules: finance dashboards, HR self-service portals, procurement tracking views, legal matter summaries. Each module connects to relevant business data through scoped Switchboard queries.</p>
+        </div>
+        <div class="capability">
+          <h3>Verification and Audit</h3>
+          <p>Users can inspect the verification trail of any data they see&nbsp;&mdash; who changed it, when, and through what operation. AI-generated content is clearly attributed and traceable.</p>
+        </div>
+        <div class="capability">
+          <h3>Extensible</h3>
+          <p>Standard Next.js development. Your frontend team builds custom pages, widgets, and integrations using the same React/TypeScript skills they already have. No proprietary component framework.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Use Cases</div>
+      <h2 class="section-title">Enterprise-grade internal applications.</h2>
+
+      <div class="value-grid">
+        <div class="value-card">
+          <h3>Executive Dashboards</h3>
+          <p>Real-time organizational overview: financials, headcount, project status, compliance metrics. AI-generated summaries and anomaly detection surfaced alongside live data.</p>
+        </div>
+        <div class="value-card">
+          <h3>Department Portals</h3>
+          <p>HR self-service, procurement request tracking, legal matter status, finance reporting. Each department sees what's relevant, scoped by Switchboard authorization.</p>
+        </div>
+        <div class="value-card">
+          <h3>Audit & Compliance Views</h3>
+          <p>Inspectable operation history for any business object. Export audit trails for regulatory review.</p>
+        </div>
+        <div class="value-card">
+          <h3>Stakeholder Reporting</h3>
+          <p>When needed, Fusion can also serve external-facing views&nbsp;&mdash; investor dashboards, partner portals, client-facing status pages&nbsp;&mdash; with appropriate data scoping.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="content-section">
+      <div class="section-eyebrow">Technical Details</div>
+      <table class="specs-table">
+        <tbody>
+          <tr><td>Framework</td><td>Next.js (React, TypeScript)</td></tr>
+          <tr><td>Data source</td><td>Switchboard GraphQL API&nbsp;&mdash; all data access through the integration hub</td></tr>
+          <tr><td>Authorization</td><td>Inherited from Switchboard&nbsp;&mdash; per-user, per-role, per-department scoping</td></tr>
+          <tr><td>Deployment</td><td>Self-hosted or Vetra Cloud</td></tr>
+          <tr><td>Customization</td><td>Standard React/Next.js development; no proprietary component framework</td></tr>
+          <tr><td>AI integration</td><td>Displays agent outputs, insights, and recommendations from Clint-managed agents</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="subpage-cta">
+      <div class="subpage-cta-card">
+        <h2>Evaluate Fusion for your organization</h2>
+        <p>The BAI team can assess how Fusion maps to your internal platform needs, departmental workflows, and reporting requirements.</p>
+        <div class="subpage-cta-actions">
+          <a href="https://bai.powerhouse.io" class="btn-primary">Request a Demo &rarr;</a>
+          <a href="https://vetra.io" class="btn-secondary">Explore on Vetra &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="footer-wordmark">
+    <img src="../design-system/illustrations/powerhouse-wordmark-gradient.svg" alt="Powerhouse">
+  </section>
+
+</body>
+</html>

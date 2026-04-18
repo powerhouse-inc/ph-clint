@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powerhouse.io Website Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #E8E8E8;
+      padding: 40px;
+      transition: background 0.3s, color 0.3s;
+      color: #141414;
+    }
+    body.dark { background: #111318; color: #FAFAFA; }
+
+    .page-header {
+      max-width: 1000px; margin: 0 auto 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .page-header-left { display: flex; align-items: center; gap: 12px; }
+    .page-header-left img { height: 28px; }
+    .page-header-title {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 2px; color: #9EA0A1;
+    }
+    .logo-light-mode, .logo-dark-mode { display: none; }
+    body:not(.dark) .logo-light-mode { display: block; }
+    body.dark .logo-dark-mode { display: block; }
+
+    .theme-toggle {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 500; color: #888; cursor: pointer; user-select: none;
+    }
+    .theme-toggle input { display: none; }
+    .toggle-track {
+      width: 40px; height: 22px; background: #D7D8D9; border-radius: 11px;
+      position: relative; transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; background: #32373B; border-radius: 50%; transition: transform 0.2s;
+    }
+    .theme-toggle input:checked + .toggle-track { background: #485265; }
+    .theme-toggle input:checked + .toggle-track::after { transform: translateX(18px); background: #F3F5F7; }
+
+    .subtitle {
+      max-width: 1000px; margin: 0 auto 32px;
+      font-size: 14px; color: #9EA0A1; line-height: 1.6;
+    }
+
+    .screens {
+      max-width: 1000px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+
+    .screen-card {
+      border-radius: 12px; overflow: hidden;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    body.dark .screen-card {
+      background: #1B1E24;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+
+    .screen-label {
+      padding: 12px 16px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1.5px; color: #9EA0A1;
+      border-bottom: 1px solid #E0E0E0;
+      transition: border-color 0.3s;
+    }
+    body.dark .screen-label { border-color: #2A2D33; }
+
+    .screen-card img {
+      width: 100%; display: block;
+    }
+  </style>
+</head>
+<body class="dark">
+  <div class="page-header">
+    <div class="page-header-left">
+      <img class="logo-light-mode" src="logos/powerhouse-icon-dark.svg" alt="Powerhouse">
+      <img class="logo-dark-mode" src="logos/powerhouse-icon-light.svg" alt="Powerhouse">
+      <span class="page-header-title">Website Reference</span>
+    </div>
+    <label class="theme-toggle">
+      <input type="checkbox" checked onchange="document.body.classList.toggle('dark', this.checked); document.documentElement.classList.toggle('dark', this.checked);">
+      <span class="toggle-track"></span>
+      Dark
+    </label>
+  </div>
+
+  <p class="subtitle">
+    Screenshots captured from powerhouse.io (March 2026). These serve as design reference for the Powerhouse parent brand website patterns, layout structures, and visual language.
+  </p>
+
+  <div class="screens">
+    <div class="screen-card">
+      <div class="screen-label">Hero Section</div>
+      <img src="website-reference/01-hero.jpg" alt="Hero Section" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Pillar: Local First</div>
+      <img src="website-reference/02-local-first.jpg" alt="Local First" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Pillar: Decentralized Technologies</div>
+      <img src="website-reference/03-decentralized.jpg" alt="Decentralized Technologies" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Pillar: Open Source AI</div>
+      <img src="website-reference/04-open-source-ai.jpg" alt="Open Source AI" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Technology Stack &mdash; Local First Layer</div>
+      <img src="website-reference/05-stack-local-first.jpg" alt="Stack: Local First" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Technology Stack &mdash; Scalable Infrastructure</div>
+      <img src="website-reference/06-stack-infrastructure.jpg" alt="Stack: Infrastructure" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Technology Stack &mdash; Collaboration at Scale</div>
+      <img src="website-reference/07-stack-collaboration.jpg" alt="Stack: Collaboration" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Products: Achra &amp; Vetra</div>
+      <img src="website-reference/08-products.jpg" alt="Products" loading="lazy">
+    </div>
+    <div class="screen-card">
+      <div class="screen-label">Call to Action</div>
+      <img src="website-reference/09-cta.jpg" alt="CTA" loading="lazy">
+    </div>
+  </div>
+</body>
+</html>

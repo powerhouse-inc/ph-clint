@@ -1,0 +1,2079 @@
+╭─── Claude Code v2.1.74 ──────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting        │
+│                Welcome back Wouter!                │ started                 │
+│                                                    │ Run /init to create a … │
+│                       ▐▛███▜▌                      │ ─────────────────────── │
+│                      ▝▜█████▛▘                     │ Recent activity         │
+│                        ▘▘ ▝▝                       │ No recent activity      │
+│  Opus 4.6 · Claude Max · wouter@powerhouse.inc's   │                         │
+│  Organization                                      │                         │
+│    ~/…/demo-workspace/ph-clint/specs/enterprise    │                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+✻ Conversation compacted (ctrl+o for history)
+
+
+❯ /compact                                                                      
+  ⎿  Compacted (ctrl+o to see full summary)
+  ⎿  Read ../../CLAUDE.md (115 lines)
+  ⎿  Referenced file 05.deck/draft/index.html
+  ⎿  Read 03.design-system/colors.css (116 lines)
+  ⎿  Read 05.deck/slide-copy.md (296 lines)
+  ⎿  Read 05.deck/speaker-notes.md (61 lines)
+
+❯ /playwright-cli Use npx serve and chromium to create screenshots of           
+05.deck/draft . Pay attention to line endings/orphaned words and text contrast. 
+ Change the slides for a better visual result.                                  
+
+● Let me serve the deck and take screenshots to review visual quality.
+
+● Bash(npx serve 05.deck/draft -p 3847 &
+      sleep 2…)
+  ⎿   INFO  Accepting connections at http://localhost:3847
+     Server started
+
+● Bash(which playwright-cli 2>/dev/null || npx --no-install playwright-cli
+      --version 2>/dev/null || echo "need to check installation")
+  ⎿  /home/wouter/.local/share/pnpm/playwright-cli
+
+● Bash(playwright-cli open http://localhost:3847 --browser=chromium 2>&1 | tail
+      -5)
+  ⎿  - Console: 18 errors, 0 warnings
+     ### Snapshot
+     - [Snapshot](.playwright-cli/page-2026-04-14T11-37-54-266Z.yml)
+     … +3 lines (ctrl+o to expand)
+
+● Bash(playwright-cli resize 1920 1080 2>&1 | tail -3)
+  ⎿  ```js
+     await page.setViewportSize({ width: 1920, height: 1080 });
+     ```
+
+● Now let me screenshot each slide systematically. I'll navigate through them
+  and capture each one.
+
+● Bash(mkdir -p /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/0
+      5.deck/screenshots)
+  ⎿  Done
+
+● Bash(playwright-cli screenshot --filename=/home/wouter/projects/demo-workspace
+      /ph-clint/specs/enterprise/05.deck/screenshots/slide-01.png 2>&1 | tail
+      -3)
+  ⎿    type: 'png'
+     });
+     ```
+
+● Read 1 file (ctrl+o to expand)
+
+● I can see the logo image is broken on slide 1. Let me screenshot all slides
+  efficiently with a script.
+
+● Bash(for i in $(seq 1 25); do
+        playwright-cli press ArrowRight 2>&1 | tail -1…)
+  ⎿  Interrupted · What should Claude do instead?
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ First move all image and style references that fall outside the npx serve     
+root directory to 05.deck/assets . Then proceed                                 
+
+● Good call — the images reference paths outside the serve root. Let me find all
+   external references and copy the assets locally.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Now let me identify the unique files needed and copy them.
+
+● Bash(mkdir -p /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/0
+      5.deck/draft/assets/logos
+      /home/wouter/projects/demo-workspace/ph-clint/specs/enterpris…)
+  ⎿  Done
+
+● Bash(cd /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise…)
+  ⎿  copied illustrations/powerhouse-icon-dithered-cyan.png
+     copied illustrations/powerhouse-electric-flow.png
+     copied illustrations/powerhouse-halftone-sphere.png
+     … +13 lines (ctrl+o to expand)
+
+● Good. Now update all paths in the HTML file.
+
+● Read 1 file (ctrl+o to expand)
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+       7    <link rel="preconnect" href="https://fonts.googleapis.com">  
+       8    <link rel="preconnect" href="https://fonts.gstatic.com"      
+          crossorigin>                                                   
+       9    <link                                                        
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300; 
+          400;500;600;700&family=Poppins:wght@500;600;700&display=swap"  
+          rel="stylesheet">                                              
+      10 -  <link rel="stylesheet" href="../../03.design-system/         
+         -colors.css">                                                   
+      10 +  <link rel="stylesheet" href="assets/colors.css">             
+      11    <style>                                                      
+      12      *, *::before, *::after { box-sizing: border-box; margin:   
+          0; padding: 0; }                                               
+      13                                                                 
+
+● Bash(cp /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/03.desi
+      gn-system/colors.css
+      /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/05.…)
+  ⎿  Done
+
+● Now replace all the image/illustration paths.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 11 lines, removed 11 lines
+      334    <div class="slide active" data-notes="Open with energy.     
+           This is the first thing they see — let the headline land,     
+           then transition quickly.">                                    
+      335      <div class="illust-glow tl" style="--glow-color:          
+           rgba(0,180,220,0.45);"></div>                                 
+      336      <div class="illust-glow tr" style="--glow-color:          
+           rgba(122,58,255,0.3);"></div>                                 
+      337 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-icon-dithered-cyan.png');            
+          -background-position: right -200px bottom -300px;              
+          -background-size: 75%; opacity: 0.6;"></div>                   
+      337 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-icon-dithered-cyan.png');     
+          +background-position: right -200px bottom -300px;              
+          +background-size: 75%; opacity: 0.6;"></div>                   
+      338      <div class="slide-pad">                                   
+      339        <img src="../../03.design-system/logos/powerhouse-logo- 
+           light-mark.svg" alt="Powerhouse" class="slide-logo">          
+      340        <div style="flex:1; display:flex;                       
+           flex-direction:column; justify-content:center; gap:28px;      
+           max-width:62%;">                                              
+     ...
+      352         Illustrated: electric flow full-bleed                  
+      353         ═══════════════════════════════════════════ -->        
+      354    <div class="slide" data-notes="Don't lecture — validate.    
+           Every CTO in the room already feels this pressure. Make eye   
+           contact, let the room nod. This slide earns trust by naming   
+           what they're living.">                                        
+      355 -    <div class="illust-fullbleed" style="background-image:    
+          -url('../../03.design-system/                                  
+          -illustrations/powerhouse-electric-flow.png');"></div>         
+      355 +    <div class="illust-fullbleed" style="background-image:    
+          +url('assets/                                                  
+          +illustrations/powerhouse-electric-flow.png');"></div>         
+      356      <div class="slide-pad" style="justify-content:center;     
+           align-items:center; text-align:center; z-index:1;">           
+      357        <p style="font-size:16px; font-weight:600;              
+           text-transform:uppercase; letter-spacing:5px;                 
+           color:var(--accent-cyan); margin-bottom:20px;">The            
+           Pressure</p>                                                  
+      358        <h2 style="font-size:56px; font-weight:700;             
+           line-height:1.12; max-width:80%;                              
+           letter-spacing:-0.02em;">Your competitors are adopting        
+           AI.<br>The board wants a strategy.</h2>                       
+     ...
+      407         ═══════════════════════════════════════════ -->        
+      408    <div class="slide" data-notes="This is the 'name the enemy' 
+            slide. The enemy isn't a competitor — it's the deployment    
+           model. Every AI vendor requires your data to leave your       
+           environment. Pause after 'non-starter.'">                     
+      409      <div class="illust-glow tl" style="--glow-color:          
+           rgba(180,50,220,0.3);"></div>                                 
+      410 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-halftone-sphere.png');               
+          -background-position: right -280px bottom -200px;              
+          -background-size: 90%; opacity: 0.25;"></div>                  
+      410 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-halftone-sphere.png');        
+          +background-position: right -280px bottom -200px;              
+          +background-size: 90%; opacity: 0.25;"></div>                  
+      411      <div class="slide-pad" style="justify-content:center;     
+           gap:40px;">                                                   
+      412        <img                                                    
+           src="../../03.design-system/logos/powerhouse-icon-light.svg"  
+           alt="" class="slide-icon">                                    
+      413        <div class="gradient-bar"></div>                        
+     ...
+      426         ═══════════════════════════════════════════ -->        
+      427    <div class="slide" data-notes="Transition slide. Shift tone 
+            from problem to solution. Emphasize 'parallel adoption' —    
+           not rip-and-replace. This is what lowers the perceived        
+           risk.">                                                       
+      428      <div class="illust-glow center" style="--glow-color:      
+           rgba(0,180,220,0.2);"></div>                                  
+      429 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-icon-dithered-cyan.png');            
+          -background-position: center; background-size: 120%; opacity:  
+          -0.06;"></div>                                                 
+      429 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-icon-dithered-cyan.png');     
+          +background-position: center; background-size: 120%; opacity:  
+          +0.06;"></div>                                                 
+      430      <div class="slide-pad" style="justify-content:center;     
+           align-items:center; text-align:center; gap:32px;">            
+      431        <div class="slide-pearl">                               
+      432          <div class="slide-pearl-glow"></div>                  
+     ...
+      458         ═══════════════════════════════════════════ -->        
+      459    <div class="slide" data-notes="Key message: data never      
+           leaves. The DPO defines the tiers — the architecture enforces 
+            them. Mention local model deployment explicitly. If they ask 
+            'which models?' — open-source models (Llama, Mistral, etc.)  
+           on their own hardware.">                                      
+      460      <div class="illust-glow tl" style="--glow-color:          
+           rgba(0,212,255,0.35);"></div>                                 
+      461 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-halftone-sphere.png');               
+          -background-position: right -200px bottom -180px;              
+          -background-size: 100%; opacity: 0.2;"></div>                  
+      461 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-halftone-sphere.png');        
+          +background-position: right -200px bottom -180px;              
+          +background-size: 100%; opacity: 0.2;"></div>                  
+      462      <div class="slide-pad" style="gap:36px;">                 
+      463        <img                                                    
+           src="../../03.design-system/logos/powerhouse-icon-light.svg"  
+           alt="" class="slide-icon">                                    
+      464        <div>                                                   
+     ...
+      485         ═══════════════════════════════════════════ -->        
+      486    <div class="slide" data-notes="This is NOT 'add a chatbot   
+           to your intranet.' Every business object automatically        
+           becomes an AI endpoint. Agents follow structured playbooks —  
+           specification-driven, not open-ended prompts. Emphasize human 
+            oversight.">                                                 
+      487      <div class="illust-glow tl" style="--glow-color:          
+           rgba(122,58,255,0.35);"></div>                                
+      488 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-crystalline.png');                   
+          -background-position: right -300px bottom -400px;              
+          -background-size: 110%; opacity: 0.2;"></div>                  
+      488 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-crystalline.png');            
+          +background-position: right -300px bottom -400px;              
+          +background-size: 110%; opacity: 0.2;"></div>                  
+      489      <div class="slide-pad" style="gap:36px;">                 
+      490        <img                                                    
+           src="../../03.design-system/logos/powerhouse-icon-light.svg"  
+           alt="" class="slide-icon">                                    
+      491        <div>                                                   
+     ...
+      512         ═══════════════════════════════════════════ -->        
+      513    <div class="slide" data-notes="Enterprise architects will   
+           recognize event sourcing and CQRS as individually proven      
+           patterns. The composition is the novel part. 'Independent     
+           consistency boundaries' means no global lock, no single point 
+            of failure.">                                                
+      514      <div class="illust-glow tl" style="--glow-color:          
+           rgba(4,193,97,0.3);"></div>                                   
+      515 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-flowing.png'); background-position:  
+          -right -100px bottom -200px; background-size: 80%; opacity:    
+          -0.15;"></div>                                                 
+      515 +    <div class="illust-bg" style="background-image: url('     
+          +assets/                                                       
+          +illustrations/powerhouse-flowing.png'); background-position:  
+          +right -100px bottom -200px; background-size: 80%; opacity:    
+          +0.15;"></div>                                                 
+      516      <div class="slide-pad" style="gap:36px;">                 
+      517        <img                                                    
+           src="../../03.design-system/logos/powerhouse-icon-light.svg"  
+           alt="" class="slide-icon">                                    
+      518        <div>                                                   
+     ...
+      539         ═══════════════════════════════════════════ -->        
+      540    <div class="slide" data-notes="Quick divider. Emphasize     
+           'your architecture, your brand' — these are whitelabel        
+           components they own and operate. Not a SaaS they subscribe    
+           to.">                                                         
+      541      <div class="illust-glow tl" style="--glow-color:          
+           rgba(0,180,220,0.25);"></div>                                 
+      542 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-icon-dithered-cyan.png');            
+          -background-position: right -180px bottom -280px;              
+          -background-size: 65%; opacity: 0.35;"></div>                  
+      542 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-icon-dithered-cyan.png');     
+          +background-position: right -180px bottom -280px;              
+          +background-size: 65%; opacity: 0.35;"></div>                  
+      543      <div class="slide-pad" style="justify-content:center;     
+           align-items:flex-start;">                                     
+      544        <img src="../../03.design-system/logos/powerhouse-logo- 
+           light-mark.svg" alt="Powerhouse" style="position:absolute;    
+           top:48px; left:80px; height:32px;">                           
+      545        <div class="gradient-bar"                               
+           style="margin-bottom:32px;"></div>                            
+     ...
+      914         ═══════════════════════════════════════════ -->        
+      915    <div class="slide" data-notes="Honest, not salesy. MakerDAO 
+            is the credibility anchor. Dogfooding: Achra and Vetra are   
+           production Powerhouse applications. 'When we demo the         
+           platform, we're showing you our production systems.'">        
+      916      <div class="illust-glow tl" style="--glow-color:          
+           rgba(0,180,220,0.2);"></div>                                  
+      917 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-light-beam.png');                    
+          -background-position: center bottom; background-size: 110%;    
+          -opacity: 0.15;"></div>                                        
+      917 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-light-beam.png');             
+          +background-position: center bottom; background-size: 110%;    
+          +opacity: 0.15;"></div>                                        
+      918      <div class="slide-pad" style="justify-content:center;     
+           gap:40px;">                                                   
+      919        <img                                                    
+           src="../../03.design-system/logos/powerhouse-icon-light.svg"  
+           alt="" class="slide-icon">                                    
+      920        <div class="gradient-bar"></div>                        
+     ...
+      966         ═══════════════════════════════════════════ -->        
+      967    <div class="slide" data-notes="Be honest about where we     
+           are. Frontier technology. What you get: direct access,        
+           feature requests go to the roadmap, your deployment becomes a 
+            reference architecture.">                                    
+      968      <div class="illust-glow tr" style="--glow-color:          
+           rgba(122,58,255,0.2);"></div>                                 
+      969 -    <div class="illust-bg" style="background-image: url('../  
+          -../03.design-system/                                          
+          -illustrations/powerhouse-crystalline.png');                   
+          -background-position: right -200px bottom -300px;              
+          -background-size: 80%; opacity: 0.1;"></div>                   
+      969 +    <div class="illust-bg" style="background-image: url('     
+          +assets/illustrations/powerhouse-crystalline.png');            
+          +background-position: right -200px bottom -300px;              
+          +background-size: 80%; opacity: 0.1;"></div>                   
+      970      <div class="slide-pad" style="gap:36px;">                 
+      971        <img                                                    
+           src="../../03.design-system/logos/powerhouse-icon-light.svg"  
+           alt="" class="slide-icon">                                    
+      972        <div>                                                   
+     ...
+      1072         Gradient bg + wordmark                                
+      1073         ═══════════════════════════════════════════ -->       
+      1074    <div class="slide gradient-bg" data-notes="End clean. Let  
+            the contact information sit on screen during Q&A. If the     
+            room is warm, offer to schedule the assessment call right    
+            there.">                                                     
+      1075 -    <img src="../../03.design-system/                        
+           -illustrations/powerhouse-wordmark-gradient.svg" alt=""       
+           -class="slide-wordmark">                                      
+      1075 +    <img src="assets/                                        
+           +illustrations/powerhouse-wordmark-gradient.svg" alt=""       
+           +class="slide-wordmark">                                      
+      1076      <div class="slide-pad" style="justify-content:center;    
+            align-items:center; text-align:center; z-index:1;">          
+      1077        <img src="../../03.design-system/logos/powerhouse-logo 
+            -light-mark.svg" alt="Powerhouse" style="height:36px;        
+            position:absolute; top:48px; left:80px;">                    
+      1078        <h1 style="font-size:68px; font-weight:700;            
+            line-height:1.08; letter-spacing:-0.02em;                    
+            margin-bottom:56px;">Start the conversation.</h1>            
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 31 lines, removed 31 lines
+      336      <div class="illust-glow tr" style="--glow-color:          
+           rgba(122,58,255,0.3);"></div>                                 
+      337      <div class="illust-bg" style="background-image: url('asse 
+           ts/illustrations/powerhouse-icon-dithered-cyan.png');         
+           background-position: right -200px bottom -300px;              
+           background-size: 75%; opacity: 0.6;"></div>                   
+      338      <div class="slide-pad">                                   
+      339 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"        
+          -class="slide-logo">                                           
+      339 +      <img src="assets/                                       
+          +logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"        
+          +class="slide-logo">                                           
+      340        <div style="flex:1; display:flex;                       
+           flex-direction:column; justify-content:center; gap:28px;      
+           max-width:62%;">                                              
+      341          <p class="muted" style="font-size:16px;               
+           font-weight:600; text-transform:uppercase;                    
+           letter-spacing:5px;">Enterprise AI Infrastructure</p>         
+      342          <h1 style="font-size:68px; font-weight:700;           
+           line-height:1.08; letter-spacing:-0.02em;">AI-Native          
+           Operations.<br><span class="gradient-text">Private by         
+           Architecture.</span></h1>                                     
+     ...
+      368    <div class="slide" data-notes="Walk through each pressure   
+           in order. Pause on #3 — 'our data isn't ready' — this is the  
+           one they didn't expect to be the biggest problem. It's the    
+           insight that earns credibility.">                             
+      369      <div class="illust-glow bl" style="--glow-color:          
+           rgba(0,180,220,0.15);"></div>                                 
+      370      <div class="slide-pad" style="gap:40px;">                 
+      371 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      371 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      372        <div>                                                   
+      373          <p class="muted kicker">The Reality</p>               
+      374          <h3 style="font-size:44px; font-weight:700;           
+           letter-spacing:-0.02em;">Three pressures. One decision.</h3>  
+     ...
+      409      <div class="illust-glow tl" style="--glow-color:          
+           rgba(180,50,220,0.3);"></div>                                 
+      410      <div class="illust-bg" style="background-image:           
+           url('assets/illustrations/powerhouse-halftone-sphere.png');   
+           background-position: right -280px bottom -200px;              
+           background-size: 90%; opacity: 0.25;"></div>                  
+      411      <div class="slide-pad" style="justify-content:center;     
+           gap:40px;">                                                   
+      412 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      412 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      413        <div class="gradient-bar"></div>                        
+      414        <h2 style="font-size:52px; font-weight:700;             
+           line-height:1.12; max-width:75%;                              
+           letter-spacing:-0.02em;">Every AI vendor wants your data.     
+           Your regulators say no.</h2>                                  
+      415        <div style="max-width:70%; display:flex;                
+           flex-direction:column; gap:20px;">                            
+     ...
+      430      <div class="slide-pad" style="justify-content:center;     
+           align-items:center; text-align:center; gap:32px;">            
+      431        <div class="slide-pearl">                               
+      432          <div class="slide-pearl-glow"></div>                  
+      433 -        <img src="../../03.design-system/                     
+          -logos/powerhouse-logo-pearl.png" alt="Powerhouse">            
+      433 +        <img src="assets/                                     
+          +logos/powerhouse-logo-pearl.png" alt="Powerhouse">            
+      434        </div>                                                  
+      435        <h2 style="font-size:52px; font-weight:700;             
+           line-height:1.12; max-width:80%;                              
+           letter-spacing:-0.02em;"><span class="gradient-text">Make     
+           your data AI-native</span> —<br>without it ever leaving your  
+           environment.</h2>                                             
+      436        <p class="sub" style="font-size:26px; line-height:1.6;  
+           max-width:55%;">Not by replacing your existing systems. By    
+           adding a structured layer that makes them AI-accessible.</p>  
+     ...
+      445         ═══════════════════════════════════════════ -->        
+      446    <div class="slide gradient-bg" data-notes="Quick divider —  
+           let it breathe. Read the three words, then advance.">         
+      447      <div class="slide-pad" style="justify-content:center;     
+           align-items:center; text-align:center;">                      
+      448 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"        
+          -style="height:32px; position:absolute; top:48px; left:80px;"> 
+      448 +      <img src="assets/                                       
+          +logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"        
+          +style="height:32px; position:absolute; top:48px; left:80px;"> 
+      449        <p class="muted" style="font-size:16px;                 
+           font-weight:600; text-transform:uppercase;                    
+           letter-spacing:5px; margin-bottom:24px;">The Solution</p>     
+      450        <h1 style="font-size:80px; font-weight:700;             
+           line-height:1.05; letter-spacing:-0.02em;">Private.           
+           AI-Native.<br>Real-Time.</h1>                                 
+      451      </div>                                                    
+     ...
+      460      <div class="illust-glow tl" style="--glow-color:          
+           rgba(0,212,255,0.35);"></div>                                 
+      461      <div class="illust-bg" style="background-image:           
+           url('assets/illustrations/powerhouse-halftone-sphere.png');   
+           background-position: right -200px bottom -180px;              
+           background-size: 100%; opacity: 0.2;"></div>                  
+      462      <div class="slide-pad" style="gap:36px;">                 
+      463 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      463 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      464        <div>                                                   
+      465          <p style="font-size:14px; font-weight:600;            
+           text-transform:uppercase; letter-spacing:4px;                 
+           color:var(--accent-cyan); margin-bottom:12px;">Pillar 1</p>   
+      466          <h3 style="font-size:48px; font-weight:700;           
+           letter-spacing:-0.02em;">Private by default</h3>              
+     ...
+      487      <div class="illust-glow tl" style="--glow-color:          
+           rgba(122,58,255,0.35);"></div>                                
+      488      <div class="illust-bg" style="background-image:           
+           url('assets/illustrations/powerhouse-crystalline.png');       
+           background-position: right -300px bottom -400px;              
+           background-size: 110%; opacity: 0.2;"></div>                  
+      489      <div class="slide-pad" style="gap:36px;">                 
+      490 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      490 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      491        <div>                                                   
+      492          <p style="font-size:14px; font-weight:600;            
+           text-transform:uppercase; letter-spacing:4px; color:#a77bff;  
+           margin-bottom:12px;">Pillar 2</p>                             
+      493          <h3 style="font-size:48px; font-weight:700;           
+           letter-spacing:-0.02em;">AI-native from the data layer        
+           up</h3>                                                       
+     ...
+      514      <div class="illust-glow tl" style="--glow-color:          
+           rgba(4,193,97,0.3);"></div>                                   
+      515      <div class="illust-bg" style="background-image:           
+           url('assets/illustrations/powerhouse-flowing.png');           
+           background-position: right -100px bottom -200px;              
+           background-size: 80%; opacity: 0.15;"></div>                  
+      516      <div class="slide-pad" style="gap:36px;">                 
+      517 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      517 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      518        <div>                                                   
+      519          <p style="font-size:14px; font-weight:600;            
+           text-transform:uppercase; letter-spacing:4px;                 
+           color:var(--vetra-green); margin-bottom:12px;">Pillar 3</p>   
+      520          <h3 style="font-size:48px; font-weight:700;           
+           letter-spacing:-0.02em;">Real-time and scalable</h3>          
+     ...
+      541      <div class="illust-glow tl" style="--glow-color:          
+           rgba(0,180,220,0.25);"></div>                                 
+      542      <div class="illust-bg" style="background-image: url('asse 
+           ts/illustrations/powerhouse-icon-dithered-cyan.png');         
+           background-position: right -180px bottom -280px;              
+           background-size: 65%; opacity: 0.35;"></div>                  
+      543      <div class="slide-pad" style="justify-content:center;     
+           align-items:flex-start;">                                     
+      544 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"        
+          -style="position:absolute; top:48px; left:80px; height:32px;"> 
+      544 +      <img src="assets/                                       
+          +logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"        
+          +style="position:absolute; top:48px; left:80px; height:32px;"> 
+      545        <div class="gradient-bar"                               
+           style="margin-bottom:32px;"></div>                            
+      546        <h2 style="font-size:56px; font-weight:700;             
+           line-height:1.1; letter-spacing:-0.02em;">Five                
+           components.<br>Your architecture. Your brand.</h2>            
+      547        <p class="sub" style="font-size:26px; margin-top:24px;  
+           max-width:55%; line-height:1.6;">Local, whitelabel components 
+            you own and operate — on your servers, under your            
+           control.</p>                                                  
+     ...
+      555         ═══════════════════════════════════════════ -->        
+      556    <div class="slide" data-notes="Don't read every card — hit  
+           Clint and Switchboard as the most technically interesting,    
+           then gesture at the rest.">                                   
+      557      <div class="slide-pad" style="gap:32px;">                 
+      558 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      558 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      559        <h3 style="font-size:36px; font-weight:700;             
+           letter-spacing:-0.02em;">The Powerhouse Platform</h3>         
+      560        <div style="flex:1; display:grid;                       
+           grid-template-columns:repeat(3,1fr); gap:20px;                
+           align-content:center;">                                       
+      561          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--accent-cyan);">                                  
+      562 -          <img src="../../03.design-system/                   
+          -logos/connect-icon-light.svg" alt="" style="width:36px;       
+          -height:36px;">                                                
+      562 +          <img src="assets/                                   
+          +logos/connect-icon-light.svg" alt="" style="width:36px;       
+          +height:36px;">                                                
+      563            <h4 style="font-size:22px; font-weight:700;         
+           color:var(--text);">Clint</h4>                                
+      564            <p style="font-size:13px; font-weight:500;          
+           letter-spacing:0.04em; color:var(--accent-cyan);">AI Agent    
+           Infrastructure</p>                                            
+      565            <p class="sub" style="font-size:16px;               
+           line-height:1.6;">Multi-agent workflows, sandboxed agents,    
+           local + commercial model access. Every business schema        
+           becomes an MCP endpoint.</p>                                  
+      566          </div>                                                
+      567          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--fusion-pink);">                                  
+      568 -          <img src="../../03.design-system/                   
+          -logos/fusion-icon-light.svg" alt="" style="width:36px;        
+          -height:36px;">                                                
+      568 +          <img src="assets/                                   
+          +logos/fusion-icon-light.svg" alt="" style="width:36px;        
+          +height:36px;">                                                
+      569            <h4 style="font-size:22px; font-weight:700;         
+           color:var(--text);">Fusion</h4>                               
+      570            <p style="font-size:13px; font-weight:500;          
+           letter-spacing:0.04em; color:var(--fusion-pink);">Internal    
+           Enterprise Platform</p>                                       
+      571            <p class="sub" style="font-size:16px;               
+           line-height:1.6;">Branded portal for dashboards, AI outputs,  
+           and workflows. Per-department views. Replaces legacy          
+           intranet.</p>                                                 
+      572          </div>                                                
+      573          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--connect-purple);">                               
+      574 -          <img src="../../03.design-system/                   
+          -logos/connect-icon-light.svg" alt="" style="width:36px;       
+          -height:36px;">                                                
+      574 +          <img src="assets/                                   
+          +logos/connect-icon-light.svg" alt="" style="width:36px;       
+          +height:36px;">                                                
+      575            <h4 style="font-size:22px; font-weight:700;         
+           color:var(--text);">Connect</h4>                              
+      576            <p style="font-size:13px; font-weight:500;          
+           letter-spacing:0.04em; color:var(--connect-purple);">Operator 
+            Workspace</p>                                                
+      577            <p class="sub" style="font-size:16px;               
+           line-height:1.6;">Browser-based environment for business      
+           data. Workflow views with human oversight of AI actions.</p>  
+      578          </div>                                                
+      579          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--switchboard-gold);">                             
+      580 -          <img src="../../03.design-system/                   
+          -logos/reactors-icon-light.svg" alt="" style="width:36px;      
+          -height:36px;">                                                
+      580 +          <img src="assets/                                   
+          +logos/reactors-icon-light.svg" alt="" style="width:36px;      
+          +height:36px;">                                                
+      581            <h4 style="font-size:22px; font-weight:700;         
+           color:var(--text);">Switchboard</h4>                          
+      582            <p style="font-size:13px; font-weight:500;          
+           letter-spacing:0.04em; color:var(--switchboard-gold);">API &  
+           Integration Hub</p>                                           
+      583            <p class="sub" style="font-size:16px;               
+           line-height:1.6;">GraphQL + MCP endpoints. Data scoping per   
+           integration. Authorization and real-time sync.</p>            
+      584          </div>                                                
+      585          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--renown-green);">                                 
+      586 -          <img src="../../03.design-system/                   
+          -logos/renown-icon.svg" alt="" style="width:36px;              
+          -height:36px;">                                                
+      586 +          <img src="assets/                                   
+          +logos/renown-icon.svg" alt="" style="width:36px;              
+          +height:36px;">                                                
+      587            <h4 style="font-size:22px; font-weight:700;         
+           color:var(--text);">Renown</h4>                               
+      588            <p style="font-size:13px; font-weight:500;          
+           letter-spacing:0.04em;                                        
+           color:var(--renown-green);">Identity</p>                      
+      589            <p class="sub" style="font-size:16px;               
+           line-height:1.6;">Unified identity for humans + agents.       
+           Scoped permissions. Cryptographic attribution. Enterprise SSO 
+            integration point.</p>                                       
+     ...
+      600    <div class="slide" data-notes="This is the slide the        
+           enterprise architect will study. Walk through the flow left   
+           to right. Key point: data boundaries are defined at the       
+           integration level, not layered on as policy.">                
+      601      <div class="illust-glow tr" style="--glow-color:          
+           rgba(0,212,255,0.08);"></div>                                 
+      602      <div class="slide-pad" style="gap:24px;">                 
+      603 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      603 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      604        <h3 style="font-size:36px; font-weight:700;             
+           letter-spacing:-0.02em;">From existing systems to AI-native   
+           operations</h3>                                               
+      605        <div style="flex:1; display:flex; align-items:center;   
+           justify-content:center;">                                     
+      606          <div class="surface-card-lg" style="padding:48px;     
+           width:100%; position:relative; overflow:hidden;">             
+     ...
+      678    <div class="slide" data-notes="Two key messages: (1)        
+           Parallel adoption — runs alongside existing systems. (2)      
+           Every integration is a data boundary — isolation is           
+           structural, not policy.">                                     
+      679      <div class="illust-glow bl" style="--glow-color:          
+           rgba(0,180,220,0.1);"></div>                                  
+      680      <div class="slide-pad" style="gap:36px;">                 
+      681 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      681 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      682        <h3 style="font-size:40px; font-weight:700;             
+           letter-spacing:-0.02em;">Connect everything. Expose           
+           nothing.</h3>                                                 
+      683        <div style="flex:1; display:grid;                       
+           grid-template-columns:1fr 1fr; gap:32px;                      
+           align-content:center;">                                       
+      684          <div class="surface-card-lg" style="padding:40px;">   
+     ...
+      712    <div class="slide" data-notes="This is the slide that wins  
+           the DPO. Three tiers. Key phrase: 'Your DPO defines the       
+           tiers. The architecture enforces them.'">                     
+      713      <div class="illust-glow tl" style="--glow-color:          
+           rgba(122,58,255,0.15);"></div>                                
+      714      <div class="slide-pad" style="gap:36px;">                 
+      715 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      715 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      716        <h3 style="font-size:40px; font-weight:700;             
+           letter-spacing:-0.02em;">Not all data should reach the same   
+           model.</h3>                                                   
+      717        <div style="flex:1; display:flex; align-items:center;   
+           justify-content:center;">                                     
+      718          <div class="surface-card-lg" style="padding:48px;     
+           width:100%; max-width:1400px;">                               
+     ...
+      755         ═══════════════════════════════════════════ -->        
+      756    <div class="slide" data-notes="Pick the vertical closest to 
+            the audience's industry and lead with it. Don't read every   
+           bullet — pick two and give a concrete example.">              
+      757      <div class="slide-pad" style="gap:36px;">                 
+      758 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      758 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      759        <p class="muted kicker">Use Cases</p>                   
+      760        <div style="flex:1; display:grid;                       
+           grid-template-columns:1fr 1fr; gap:24px;                      
+           align-content:center;">                                       
+      761          <div class="surface-card-lg" style="padding:44px;     
+           position:relative; overflow:hidden;">                         
+     ...
+      794         ═══════════════════════════════════════════ -->        
+      795    <div class="slide" data-notes="Key messages — procurement:  
+           negotiation positions stay on local models. Finance:          
+           append-only history makes every AI action audit-ready by      
+           default.">                                                    
+      796      <div class="slide-pad" style="gap:36px;">                 
+      797 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      797 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      798        <p class="muted kicker">Use Cases</p>                   
+      799        <div style="flex:1; display:grid;                       
+           grid-template-columns:1fr 1fr; gap:24px;                      
+           align-content:center;">                                       
+      800          <div class="surface-card-lg" style="padding:44px;     
+           position:relative; overflow:hidden;">                         
+     ...
+      834         ═══════════════════════════════════════════ -->        
+      835    <div class="slide" data-notes="Frame this section as 'what  
+           you'll forward to your DPO, legal counsel, and compliance     
+           team.' The next two slides are designed to be                 
+           self-contained.">                                             
+      836      <div class="slide-pad" style="justify-content:center;     
+           align-items:center; text-align:center;">                      
+      837 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      837 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      838        <p style="font-size:16px; font-weight:600;              
+           text-transform:uppercase; letter-spacing:5px;                 
+           color:var(--accent-cyan); margin-bottom:20px;">Trust &        
+           Compliance</p>                                                
+      839        <h2 style="font-size:56px; font-weight:700;             
+           line-height:1.1; letter-spacing:-0.02em;">Built into the      
+           architecture.<br>Not bolted on.</h2>                          
+      840        <p class="sub" style="font-size:24px; margin-top:28px;  
+           max-width:45%; line-height:1.6;">The section you forward to   
+           your DPO.</p>                                                 
+     ...
+      848         ═══════════════════════════════════════════ -->        
+      849    <div class="slide" data-notes="Four structural guarantees.  
+           Emphasize: 'The audit trail is not a log — it IS the data     
+           structure.' On regulatory readiness: EU AI Act requires       
+           transparency. Powerhouse is already there.">                  
+      850      <div class="slide-pad" style="gap:32px;">                 
+      851 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      851 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      852        <h3 style="font-size:36px; font-weight:700;             
+           letter-spacing:-0.02em;">Compliance by construction</h3>      
+      853        <div style="flex:1; display:grid;                       
+           grid-template-columns:1fr 1fr; gap:20px;                      
+           align-content:center;">                                       
+      854          <div class="surface-card" style="padding:40px;        
+           display:flex; flex-direction:column; gap:14px;">              
+     ...
+      882         ═══════════════════════════════════════════ -->        
+      883    <div class="slide" data-notes="This is the slide they'll    
+           photograph. Name the real alternative: Microsoft, Salesforce, 
+            SAP. Don't say they're bad — say the architecture is         
+           fundamentally different.">                                    
+      884      <div class="slide-pad" style="gap:28px;">                 
+      885 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      885 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      886        <h3 style="font-size:36px; font-weight:700;             
+           letter-spacing:-0.02em;">How this compares</h3>               
+      887        <p style="font-size:20px; max-width:70%;                
+           color:var(--text-muted); line-height:1.7;">Your existing      
+           vendors are adding AI to their platforms. But they're bolting 
+            it onto architectures never designed for machine interaction 
+            — and processing your data on their infrastructure.</p>      
+      888        <div style="flex:1; display:flex; align-items:center;"> 
+     ...
+      916      <div class="illust-glow tl" style="--glow-color:          
+           rgba(0,180,220,0.2);"></div>                                  
+      917      <div class="illust-bg" style="background-image:           
+           url('assets/illustrations/powerhouse-light-beam.png');        
+           background-position: center bottom; background-size: 110%;    
+           opacity: 0.15;"></div>                                        
+      918      <div class="slide-pad" style="justify-content:center;     
+           gap:40px;">                                                   
+      919 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      919 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      920        <div class="gradient-bar"></div>                        
+      921        <h2 style="font-size:52px; font-weight:700;             
+           line-height:1.1; letter-spacing:-0.02em;">We build on what we 
+            ship.</h2>                                                   
+      922        <div style="display:flex; flex-direction:column;        
+           gap:28px; max-width:72%;">                                    
+      923          <p style="font-size:24px; line-height:1.7;            
+           color:var(--text-muted);">Powerhouse grew out of building     
+           operational infrastructure for <strong                        
+           style="color:var(--text);">MakerDAO</strong> — one of the     
+           most complex decentralized organizations in the world. We've  
+           been building open-source tools for AI-native operations      
+           since 2021.</p>                                               
+      924          <div class="surface-card-lg" style="padding:28px      
+           36px; display:flex; gap:20px; align-items:center;">           
+      925            <div style="display:flex; gap:12px;                 
+           align-items:center;">                                         
+      926 -            <img src="../../03.design-system/                 
+          -logos/achra-icon.svg" alt="" style="width:28px; height:28px;">
+      926 +            <img src="assets/                                 
+          +logos/achra-icon.svg" alt="" style="width:28px; height:28px;">
+      927              <span style="font-size:16px;                      
+           font-weight:600;">Achra</span>                                
+      928            </div>                                              
+      929            <span style="color:var(--text-dim);">+</span>       
+      930            <div style="display:flex; gap:12px;                 
+           align-items:center;">                                         
+      931 -            <img src="../../03.design-system/                 
+          -logos/vetra-icon.svg" alt="" style="width:28px; height:28px;">
+      931 +            <img src="assets/                                 
+          +logos/vetra-icon.svg" alt="" style="width:28px; height:28px;">
+      932              <span style="font-size:16px;                      
+           font-weight:600;">Vetra</span>                                
+      933            </div>                                              
+      934            <span style="color:var(--text-dim); font-size:16px; 
+            margin-left:12px;">are Powerhouse applications — same        
+           architecture, same components. When we demo, we show          
+           production.</span>                                            
+     ...
+      944    <div class="slide" data-notes="Addresses the 'can I hire    
+           people who know this?' concern. Your team already knows       
+           TypeScript, React, GraphQL. The Powerhouse-specific layer is  
+           a design pattern, not a new language.">                       
+      945      <div class="illust-glow bl" style="--glow-color:          
+           rgba(4,193,97,0.15);"></div>                                  
+      946      <div class="slide-pad" style="gap:40px;">                 
+      947 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      947 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      948        <div>                                                   
+      949          <p class="muted kicker">Your Team</p>                 
+      950          <h3 style="font-size:48px; font-weight:700;           
+           letter-spacing:-0.02em;"><span                                
+           class="gradient-text">TypeScript. React. GraphQL.             
+           Node.js.</span></h3>                                          
+     ...
+      968      <div class="illust-glow tr" style="--glow-color:          
+           rgba(122,58,255,0.2);"></div>                                 
+      969      <div class="illust-bg" style="background-image:           
+           url('assets/illustrations/powerhouse-crystalline.png');       
+           background-position: right -200px bottom -300px;              
+           background-size: 80%; opacity: 0.1;"></div>                   
+      970      <div class="slide-pad" style="gap:36px;">                 
+      971 -      <img src="../../03.design-system/                       
+          -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      971 +      <img src="assets/                                       
+          +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">   
+      972        <div>                                                   
+      973          <p style="font-size:14px; font-weight:600;            
+           text-transform:uppercase; letter-spacing:4px;                 
+           color:var(--accent-cyan);                                     
+           margin-bottom:12px;">Partnership</p>                          
+      974          <h3 style="font-size:48px; font-weight:700;           
+           letter-spacing:-0.02em;">Early means advantage.</h3>          
+     ...
+       994    <div class="slide" data-notes="Three options, but steer    
+            toward option 2 — the BAI assessment. 'Most CTOs start here  
+            because it answers the board's question with a concrete,     
+            defensible plan.'">                                          
+       995      <div class="illust-glow center" style="--glow-color:     
+            rgba(0,180,220,0.1);"></div>                                 
+       996      <div class="slide-pad" style="gap:40px;">                
+       997 -      <img src="../../03.design-system/                      
+           -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">  
+       997 +      <img src="assets/                                      
+           +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">  
+       998        <h3 style="font-size:44px; font-weight:700;            
+            letter-spacing:-0.02em;">Three ways to move.</h3>            
+       999        <div style="flex:1; display:grid;                      
+            grid-template-columns:repeat(3,1fr); gap:24px;               
+            align-content:center;">                                      
+      1000          <div class="surface-card-lg" style="padding:44px;    
+            display:flex; flex-direction:column; gap:20px;">             
+     ...
+      1024         ═══════════════════════════════════════════ -->       
+      1025    <div class="slide" data-notes="Walk through the phases     
+            quickly. 'Start with the assessment — it's 2-3 weeks, and it 
+             answers the board's question with a concrete plan. No       
+            commitment beyond the assessment.'">                         
+      1026      <div class="slide-pad" style="gap:36px;">                
+      1027 -      <img src="../../03.design-system/                      
+           -logos/powerhouse-icon-light.svg" alt="" class="slide-icon">  
+      1027 +      <img src="assets/                                      
+           +logos/powerhouse-icon-light.svg" alt="" class="slide-icon">  
+      1028        <div>                                                  
+      1029          <p class="muted kicker">BAI</p>                      
+      1030          <h3 style="font-size:44px; font-weight:700;          
+            letter-spacing:-0.02em;">From assessment to operation.</h3>  
+     ...
+      1074    <div class="slide gradient-bg" data-notes="End clean. Let  
+            the contact information sit on screen during Q&A. If the     
+            room is warm, offer to schedule the assessment call right    
+            there.">                                                     
+      1075      <img                                                     
+            src="assets/illustrations/powerhouse-wordmark-gradient.svg"  
+            alt="" class="slide-wordmark">                               
+      1076      <div class="slide-pad" style="justify-content:center;    
+            align-items:center; text-align:center; z-index:1;">          
+      1077 -      <img src="../../03.design-system/                      
+           -logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"       
+           -style="height:36px; position:absolute; top:48px; left:80px;">
+      1077 +      <img src="assets/                                      
+           +logos/powerhouse-logo-light-mark.svg" alt="Powerhouse"       
+           +style="height:36px; position:absolute; top:48px; left:80px;">
+      1078        <h1 style="font-size:68px; font-weight:700;            
+            line-height:1.08; letter-spacing:-0.02em;                    
+            margin-bottom:56px;">Start the conversation.</h1>            
+      1079        <div style="display:flex; gap:64px; font-size:20px;    
+            font-weight:500;">                                           
+      1080          <div style="display:flex; flex-direction:column;     
+            gap:10px; align-items:center;">                              
+
+● Good. Now verify no external references remain, then reload and screenshot all
+   slides.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● All references updated. Now reload and take screenshots of all slides.
+
+● Bash(playwright-cli goto http://localhost:3847 2>&1 | tail -3)
+  ⎿  - Page Title: Powerhouse — Enterprise AI Infrastructure
+     ### Snapshot
+     - [Snapshot](.playwright-cli/page-2026-04-14T11-39-53-229Z.yml)
+
+● Bash(playwright-cli resize 1920 1080 2>&1 | tail -1
+      playwright-cli screenshot --filename=/home/wouter/projects/demo-workspace/
+      ph-clint/specs/enterprise/05.deck/scree…)
+  ⎿  ```
+     ```
+
+● Read 1 file (ctrl+o to expand)
+
+● Logo and illustration are now loading correctly. Let me now screenshot all 25
+  slides in batch.
+
+● Bash(SDIR=/home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/05.de
+      ck/screenshots
+      for i in $(seq 2 25); do…)
+  ⎿  slide 2 done
+     slide 3 done
+     slide 4 done
+     … +21 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● Now let me review all slides for issues. I'll read them in batches.
+
+● Read 5 files (ctrl+o to expand)
+
+● I can see a major issue — slides are bleeding through each other during
+  transitions. Previous/next slide content is visible behind the current slide.
+  Let me review more slides and then fix everything.
+
+● Read 6 files (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ This is a timing issue. You need to wait a little for the fade animations to  
+finish.                                                                         
+
+● Good point. Let me add a short delay after each arrow press to let the CSS
+  transitions complete.
+
+● Bash(playwright-cli goto http://localhost:3847 2>&1 | tail -1
+      sleep 1…)
+  ⎿  - [Snapshot](.playwright-cli/page-2026-04-14T11-41-19-700Z.yml)
+     ```
+
+● Bash(SDIR=/home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/05.de
+      ck/screenshots
+      sleep 1…)
+  ⎿  slide 1 done
+     slide 2 done
+     slide 3 done
+     … +22 lines (ctrl+o to expand)
+  ⎿  (timeout 5m)
+
+● Now let me review all slides in batches.
+
+● Read 5 files (ctrl+o to expand)
+
+● Good, transitions are clean now. Slides 1-5 look solid. Let me continue
+  reviewing.
+
+● Read 5 files (ctrl+o to expand)
+
+● Slides 6-10 look clean. Continuing review.
+
+● Read 5 files (ctrl+o to expand)
+
+❯ Also consider font-size changes to fix readabilty and line ending issues      
+
+● Slides 11-15 look good. Let me finish reviewing the rest.
+
+● Read 10 files (ctrl+o to expand)
+
+● Good, all 25 slides render cleanly now. Let me compile the issues I've
+  spotted:
+
+  Issues to fix:
+
+  1. Slide 1: Subtitle "on your terms." orphans onto its own line — rewrite to
+  avoid the break
+  2. Slide 4: Headline "say no." orphaned on second line — needs wider max-width
+   or shorter copy
+  3. Slide 12: Architecture diagram text is quite small (the bullet items inside
+   cards)
+  4. Slide 13: "on top" orphaned on bullet 2 left column; "records" orphaned on
+  bullet 2 right; "details" orphaned on bullet 3 right
+  5. Slide 14: Tier description text is low contrast (muted on dark surface)
+  6. Slide 16: "supplier risk" orphaned; "briefs" orphaned on last bullet
+  7. Slide 19: Comparison table text could be slightly larger for readability
+  8. Slide 20: Body text breaks "since 2021." as orphan
+  9. Slide 24: Step descriptions are small and low contrast
+
+  Let me read the relevant HTML sections and fix these issues.
+
+● Read 1 file (ctrl+o to expand)
+
+● Now let me read slides 16 and 19-24 for the remaining issues.
+
+● Read 1 file (ctrl+o to expand)
+
+● Now I have a complete picture. Let me make all the fixes. Key issues:
+
+  1. Slide 1: "on your terms." orphaned — add non-breaking space
+  2. Slide 4: "say no." orphaned — increase max-width
+  3. Slide 12: Diagram text too small (11px labels, 13-14px bullets) — bump up
+  4. Slide 13: Orphaned words — rewrite bullets to avoid breaks
+  5. Slide 16: "supplier risk" and "briefs" orphaned — rewrite
+  6. Slide 19: Table text small — bump font sizes
+  7. Slide 20: "since 2021." orphaned — use non-breaking spaces
+  8. Slide 24: Step descriptions low contrast — bump to brighter color
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      340        <div style="flex:1; display:flex;                       
+           flex-direction:column; justify-content:center; gap:28px;      
+           max-width:62%;">                                              
+      341          <p class="muted" style="font-size:16px;               
+           font-weight:600; text-transform:uppercase;                    
+           letter-spacing:5px;">Enterprise AI Infrastructure</p>         
+      342          <h1 style="font-size:68px; font-weight:700;           
+           line-height:1.08; letter-spacing:-0.02em;">AI-Native          
+           Operations.<br><span class="gradient-text">Private by         
+           Architecture.</span></h1>                                     
+      343 -        <p class="sub" style="font-size:24px;                 
+          -line-height:1.6;">Infrastructure for AI-native enterprise     
+          -operations that keeps your confidential data on your          
+          -terms.</p>                                                    
+      343 +        <p class="sub" style="font-size:24px;                 
+          +line-height:1.6;">Infrastructure for AI-native enterprise     
+          +operations that keeps your confidential data on&nbsp;your     
+          +&nbsp;terms.</p>                                              
+      344        </div>                                                  
+      345        <div class="slide-footer"><span>Powerhouse</span><span> 
+           2026</span></div>                                             
+      346      </div>                                                    
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      411      <div class="slide-pad" style="justify-content:center;     
+           gap:40px;">                                                   
+      412        <img src="assets/logos/powerhouse-icon-light.svg"       
+           alt="" class="slide-icon">                                    
+      413        <div class="gradient-bar"></div>                        
+      414 -      <h2 style="font-size:52px; font-weight:700;             
+          -line-height:1.12; max-width:75%;                              
+          -letter-spacing:-0.02em;">Every AI vendor wants your data.     
+          -Your regulators say no.</h2>                                  
+      414 +      <h2 style="font-size:52px; font-weight:700;             
+          +line-height:1.12; max-width:75%;                              
+          +letter-spacing:-0.02em;">Every AI vendor wants your data.<br> 
+          +Your regulators say&nbsp;no.</h2>                             
+      415        <div style="max-width:70%; display:flex;                
+           flex-direction:column; gap:20px;">                            
+      416          <p class="sub" style="font-size:24px;                 
+           line-height:1.7;">Commercial AI requires sending data to      
+           external infrastructure. For organizations handling           
+           privileged legal communications, employee PII, financial      
+           forecasts, or procurement negotiations — that's a <strong     
+           style="color:var(--text);">non-starter</strong>.</p>          
+      417          <p style="font-size:22px; line-height:1.6;            
+           color:var(--text-dim);">The result: teams stuck between       
+           consumer-grade chatbots that can't touch real business data,  
+           and 18-month integration projects that bolt AI onto systems   
+           never designed for it.</p>                                    
+
+● Now fix slide 12 — bump architecture diagram text sizes.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 6 lines, removed 6 lines
+      609            <div style="position:relative; z-index:1;           
+           display:grid; grid-template-columns:180px 1fr 1fr 1fr;        
+           gap:20px; align-items:stretch;">                              
+      610              <!-- Existing Systems -->                         
+      611              <div style="display:flex; flex-direction:column;  
+           gap:10px;">                                                   
+      612 -              <div style="font-size:11px                      
+          -; font-weight:600; text-transform:uppercase;                  
+          -letter-spacing:2px; color:var(--text-dim);                    
+          -margin-bottom:6px;">Your Systems</div>                        
+      613 -              <div style="border:1px solid                    
+          -rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          -font-size:15px; font-weight:500;                              
+          -background:rgba(255,255,255,0.02);">ERP</div>                 
+      614 -              <div style="border:1px solid                    
+          -rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          -font-size:15px; font-weight:500;                              
+          -background:rgba(255,255,255,0.02);">HRIS</div>                
+      615 -              <div style="border:1px solid                    
+          -rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          -font-size:15px                                                
+          -; font-weight:500; background:rgba(255,255,255,0.02);">Doc    
+          -Mgmt</div>                                                    
+      616 -              <div style="border:1px solid                    
+          -rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          -font-size:15px; font-weight:500;                              
+          -background:rgba(255,255,255,0.02);">Email</div>               
+      617 -              <div style="border:1px solid                    
+          -rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          -font-size:15px; font-weight:500;                              
+          -background:rgba(255,255,255,0.02);">Financial</div>           
+      612 +              <div style="font-size:13px                      
+          +; font-weight:600; text-transform:uppercase;                  
+          +letter-spacing:2px; color:var(--text-dim);                    
+          +margin-bottom:6px;">Your Systems</div>                        
+      613 +              <div style="border:1px solid                    
+          +rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          +font-size:17px; font-weight:500;                              
+          +background:rgba(255,255,255,0.02);">ERP</div>                 
+      614 +              <div style="border:1px solid                    
+          +rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          +font-size:17px; font-weight:500;                              
+          +background:rgba(255,255,255,0.02);">HRIS</div>                
+      615 +              <div style="border:1px solid                    
+          +rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          +font-size:17px                                                
+          +; font-weight:500; background:rgba(255,255,255,0.02);">Doc    
+          +Mgmt</div>                                                    
+      616 +              <div style="border:1px solid                    
+          +rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          +font-size:17px; font-weight:500;                              
+          +background:rgba(255,255,255,0.02);">Email</div>               
+      617 +              <div style="border:1px solid                    
+          +rgba(255,255,255,0.1); border-radius:10px; padding:14px 18px; 
+          +font-size:17px; font-weight:500;                              
+          +background:rgba(255,255,255,0.02);">Financial</div>           
+      618              </div>                                            
+      619              <!-- Switchboard -->                              
+      620              <div style="border:1px solid                      
+           rgba(242,203,41,0.3); border-radius:14px; padding:28px;       
+           display:flex; flex-direction:column;                          
+           justify-content:center;">                                     
+
+● Now bump the component labels and bullet text in the architecture diagram.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      618              </div>                                            
+      619              <!-- Switchboard -->                              
+      620              <div style="border:1px solid                      
+           rgba(242,203,41,0.3); border-radius:14px; padding:28px;       
+           display:flex; flex-direction:column;                          
+           justify-content:center;">                                     
+      621 -              <div style="font-size:11px                      
+          -; font-weight:600; text-transform:uppercase;                  
+          -letter-spacing:2px; color:var(--switchboard-gold);            
+          -margin-bottom:12px;">Switchboard</div>                        
+      622 -              <ul style="list-style:none; font-size:14px      
+          -; color:var(--text-muted); line-height:1.8;">                 
+      621 +              <div style="font-size:13px                      
+          +; font-weight:600; text-transform:uppercase;                  
+          +letter-spacing:2px; color:var(--switchboard-gold);            
+          +margin-bottom:12px;">Switchboard</div>                        
+      622 +              <ul style="list-style:none; font-size:16px      
+          +; color:var(--text-muted); line-height:1.8;">                 
+      623                  <li style="display:flex; gap:8px;             
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--switchboard-gold);        
+           flex-shrink:0;"></span>Standards-based APIs</li>              
+      624                  <li style="display:flex; gap:8px;             
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--switchboard-gold);        
+           flex-shrink:0;"></span>Data scoping per integration</li>      
+      625                  <li style="display:flex; gap:8px;             
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--switchboard-gold);        
+           flex-shrink:0;"></span>Authorization & sync</li>              
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      624                  <li style="display:flex; gap:8px;             
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--switchboard-gold);        
+           flex-shrink:0;"></span>Data scoping per integration</li>      
+      625                  <li style="display:flex; gap:8px;             
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--switchboard-gold);        
+           flex-shrink:0;"></span>Authorization & sync</li>              
+      626                </ul>                                           
+      627 -              <div style="margin-top:12px; font-size:11px     
+          -; font-weight:600; color:var(--switchboard-gold);             
+          -opacity:0.7;">GraphQL + MCP</div>                             
+      627 +              <div style="margin-top:12px; font-size:13px     
+          +; font-weight:600; color:var(--switchboard-gold);             
+          +opacity:0.7;">GraphQL + MCP</div>                             
+      628              </div>                                            
+      629              <!-- Clint + Connect -->                          
+      630              <div style="display:flex; flex-direction:column;  
+           gap:16px;">                                                   
+
+● Now bump the Clint/Connect/Fusion/Renown labels and bullets in the arch
+  diagram (11px→13px labels, 13px→15px bullets).
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      629              <!-- Clint + Connect -->                          
+      630              <div style="display:flex; flex-direction:column;  
+           gap:16px;">                                                   
+      631                <div style="border:1px solid                    
+           rgba(0,212,255,0.25); border-radius:14px; padding:24px;       
+           flex:1; display:flex; flex-direction:column;                  
+           justify-content:center;">                                     
+      632 -                <div style="font-size:11px                    
+          -; font-weight:600; text-transform:uppercase;                  
+          -letter-spacing:2px; color:var(--accent-cyan);                 
+          -margin-bottom:8px;">Clint</div>                               
+      633 -                <ul style="list-style:none; font-size:13px    
+          -; color:var(--text-muted); line-height:1.7;">                 
+      632 +                <div style="font-size:13px                    
+          +; font-weight:600; text-transform:uppercase;                  
+          +letter-spacing:2px; color:var(--accent-cyan);                 
+          +margin-bottom:8px;">Clint</div>                               
+      633 +                <ul style="list-style:none; font-size:15px    
+          +; color:var(--text-muted); line-height:1.7;">                 
+      634                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--accent-cyan);             
+           flex-shrink:0;"></span>Multi-agent workflows</li>             
+      635                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--accent-cyan);             
+           flex-shrink:0;"></span>Sandboxed permissions</li>             
+      636                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--accent-cyan);             
+           flex-shrink:0;"></span>Local + commercial models</li>         
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      637                  </ul>                                         
+      638                </div>                                          
+      639                <div style="border:1px solid                    
+           rgba(141,69,250,0.25); border-radius:14px; padding:24px;      
+           flex:1; display:flex; flex-direction:column;                  
+           justify-content:center;">                                     
+      640 -                <div style="font-size:11px                    
+          -; font-weight:600; text-transform:uppercase;                  
+          -letter-spacing:2px; color:var(--connect-purple);              
+          -margin-bottom:8px;">Connect</div>                             
+      641 -                <ul style="list-style:none; font-size:13px    
+          -; color:var(--text-muted); line-height:1.7;">                 
+      640 +                <div style="font-size:13px                    
+          +; font-weight:600; text-transform:uppercase;                  
+          +letter-spacing:2px; color:var(--connect-purple);              
+          +margin-bottom:8px;">Connect</div>                             
+      641 +                <ul style="list-style:none; font-size:15px    
+          +; color:var(--text-muted); line-height:1.7;">                 
+      642                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--connect-purple);          
+           flex-shrink:0;"></span>Operator workspace</li>                
+      643                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--connect-purple);          
+           flex-shrink:0;"></span>Human oversight</li>                   
+      644                  </ul>                                         
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      647              <!-- Fusion + Renown -->                          
+      648              <div style="display:flex; flex-direction:column;  
+           gap:16px;">                                                   
+      649                <div style="border:1px solid                    
+           rgba(244,62,129,0.25); border-radius:14px; padding:24px;      
+           flex:1; display:flex; flex-direction:column;                  
+           justify-content:center;">                                     
+      650 -                <div style="font-size:11px                    
+          -; font-weight:600; text-transform:uppercase;                  
+          -letter-spacing:2px; color:var(--fusion-pink);                 
+          -margin-bottom:8px;">Fusion</div>                              
+      651 -                <ul style="list-style:none; font-size:13px    
+          -; color:var(--text-muted); line-height:1.7;">                 
+      650 +                <div style="font-size:13px                    
+          +; font-weight:600; text-transform:uppercase;                  
+          +letter-spacing:2px; color:var(--fusion-pink);                 
+          +margin-bottom:8px;">Fusion</div>                              
+      651 +                <ul style="list-style:none; font-size:15px    
+          +; color:var(--text-muted); line-height:1.7;">                 
+      652                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--fusion-pink);             
+           flex-shrink:0;"></span>Dashboards & reports</li>              
+      653                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--fusion-pink);             
+           flex-shrink:0;"></span>Per-department views</li>              
+      654                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--fusion-pink);             
+           flex-shrink:0;"></span>Branded, on your infra</li>            
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      655                  </ul>                                         
+      656                </div>                                          
+      657                <div style="border:1px solid                    
+           rgba(33,255,180,0.25); border-radius:14px; padding:24px;      
+           flex:1; display:flex; flex-direction:column;                  
+           justify-content:center;">                                     
+      658 -                <div style="font-size:11px                    
+          -; font-weight:600; text-transform:uppercase;                  
+          -letter-spacing:2px; color:var(--renown-green);                
+          -margin-bottom:8px;">Renown</div>                              
+      659 -                <ul style="list-style:none; font-size:13px    
+          -; color:var(--text-muted); line-height:1.7;">                 
+      658 +                <div style="font-size:13px                    
+          +; font-weight:600; text-transform:uppercase;                  
+          +letter-spacing:2px; color:var(--renown-green);                
+          +margin-bottom:8px;">Renown</div>                              
+      659 +                <ul style="list-style:none; font-size:15px    
+          +; color:var(--text-muted); line-height:1.7;">                 
+      660                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--renown-green);            
+           flex-shrink:0;"></span>Unified identity</li>                  
+      661                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--renown-green);            
+           flex-shrink:0;"></span>Humans + agents</li>                   
+      662                    <li style="display:flex; gap:8px;           
+           align-items:center;"><span style="width:4px; height:4px;      
+           border-radius:50%; background:var(--renown-green);            
+           flex-shrink:0;"></span>Scoped permissions</li>                
+
+● Now fix slide 13 orphans — rewrite bullets to avoid "on top", "records",
+  "details" orphaning.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      685            <h4 style="font-size:24px; font-weight:700;         
+           color:var(--accent-cyan); margin-bottom:24px;">Parallel       
+           adoption</h4>                                                 
+      686            <ul class="bullet-list" style="gap:16px;">          
+      687              <li><strong>Runs alongside</strong> your existing 
+            systems</li>                                                 
+      688 -            <li><strong>No rip-and-replace</strong> —         
+          -AI-native layer adds capabilities on top</li>                 
+      688 +            <li><strong>No rip-and-replace</strong> —         
+          +AI-native layer adds capabilities&nbsp;on&nbsp;top</li>       
+      689              <li>Your existing workflows <strong>continue      
+           unchanged</strong></li>                                       
+      690              <li>Start with one department, <strong>expand at  
+           your pace</strong></li>                                       
+      691            </ul>                                               
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 2 lines, removed 2 lines
+      694            <h4 style="font-size:24px; font-weight:700;         
+           color:var(--accent-cyan); margin-bottom:24px;">Every          
+           integration is a data boundary</h4>                           
+      695            <ul class="bullet-list" style="gap:16px;">          
+      696              <li><strong>HR agent</strong> sees personnel      
+           records — not financials</li>                                 
+      697 -            <li><strong>Procurement agent</strong> sees vendor
+          - data — not employee records</li>                             
+      698 -            <li><strong>Legal agent</strong> accesses         
+          -contracts — not compensation details</li>                     
+      697 +            <li><strong>Procurement agent</strong> sees vendor
+          + data — not employee&nbsp;records</li>                        
+      698 +            <li><strong>Legal agent</strong> accesses         
+          +contracts — not compensation&nbsp;details</li>                
+      699              <li>Isolation defined <strong>at integration      
+           level</strong>, not layered as policy</li>                    
+      700            </ul>                                               
+      701          </div>                                                
+
+● Fix slide 16 orphans.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      803              <div class="icon-square"                          
+           style="background:rgba(242,203,41,0.12);                      
+           color:var(--switchboard-gold); margin-bottom:20px;            
+           font-size:24px;">&#9733;</div>                                
+      804              <h3 style="font-size:32px; font-weight:700;       
+           margin-bottom:16px;">Procurement</h3>                         
+      805              <ul class="bullet-list" style="font-size:22px;    
+           gap:14px;">                                                   
+      806 -              <li style="font-size:22px;">Vendor evaluation,  
+          -contract negotiation support, spend analysis, supplier        
+          -risk</li>                                                     
+      806 +              <li style="font-size:22px;">Vendor evaluation,  
+          +contract negotiation support, spend analysis, supplier&nbsp;  
+          +risk</li>                                                     
+      807                <li style="font-size:22px;">Negotiation         
+           positions and pricing data <strong>stay on local              
+           models</strong></li>                                          
+      808                <li style="font-size:22px;">Commercial AI       
+           models only see <strong>sanitized summaries</strong></li>     
+      809                <li style="font-size:22px;">Agents monitor      
+           contract terms, <strong>flag anomalies</strong>, prepare      
+           negotiation briefs</li>                                       
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      806                <li style="font-size:22px;">Vendor evaluation,  
+           contract negotiation support, spend analysis,                 
+           supplier&nbsp;risk</li>                                       
+      807                <li style="font-size:22px;">Negotiation         
+           positions and pricing data <strong>stay on local              
+           models</strong></li>                                          
+      808                <li style="font-size:22px;">Commercial AI       
+           models only see <strong>sanitized summaries</strong></li>     
+      809 -              <li style="font-size:22px;">Agents monitor      
+          -contract terms, <strong>flag anomalies</strong>, prepare      
+          -negotiation briefs</li>                                       
+      809 +              <li style="font-size:22px;">Agents monitor      
+          +contract terms, <strong>flag anomalies</strong>, prepare      
+          +negotiation&nbsp;briefs</li>                                  
+      810              </ul>                                             
+      811            </div>                                              
+      812          </div>                                                
+
+● Now fix slide 19 — bump table text. Let me find the table styles.
+
+● Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 7 lines, removed 7 lines
+      250      /* =============================================          
+      251         TABLE (from site v3 comparison-table)                  
+      252         ============================================= */       
+      253 -    .slide-table { width: 100%; border-collapse: collapse;    
+          -font-size: 19px; }                                            
+      253 +    .slide-table { width: 100%; border-collapse: collapse;    
+          +font-size: 21px; }                                            
+      254      .slide-table th {                                         
+      255 -      text-align: left; font-weight: 600; font-size: 14px     
+          -; text-transform: uppercase;                                  
+      256 -      letter-spacing: 2px; padding: 16px                      
+          - 24px; border-bottom: 2px solid var(--surface-border);        
+      255 +      text-align: left; font-weight: 600; font-size: 15px     
+          +; text-transform: uppercase;                                  
+      256 +      letter-spacing: 2px; padding: 18px                      
+          + 24px; border-bottom: 2px solid var(--surface-border);        
+      257      }                                                         
+      258      .slide-table th:nth-child(2) { color: var(--text-dim); }  
+      259      .slide-table th:nth-child(3) { color: var(--accent-cyan); 
+            }                                                            
+      260      .slide-table td {                                         
+      261 -      padding: 16px                                           
+          - 24px; border-bottom: 1px solid var(--surface-border);        
+      262 -      vertical-align: top; line-height: 1.5;                  
+      261 +      padding: 18px                                           
+          + 24px; border-bottom: 1px solid var(--surface-border);        
+      262 +      vertical-align: top; line-height: 1.55;                 
+      263      }                                                         
+      264      .slide-table td:first-child { font-weight: 600;           
+           white-space: nowrap; color: var(--text); }                    
+      265 -    .slide-table td:nth-child(2) { color: var(--text-dim); }  
+      266 -    .slide-table td:nth-child(3) { color: var(--text-muted); }
+      265 +    .slide-table td:nth-child(2) { color: var(--text-muted); }
+      266 +    .slide-table td:nth-child(3) { color: var(--text); }      
+      267                                                                
+      268      /* =============================================          
+      269         ICON CIRCLE                                            
+
+● Fix slide 20 — prevent "since 2021." from orphaning.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      920        <div class="gradient-bar"></div>                        
+      921        <h2 style="font-size:52px; font-weight:700;             
+           line-height:1.1; letter-spacing:-0.02em;">We build on what we 
+            ship.</h2>                                                   
+      922        <div style="display:flex; flex-direction:column;        
+           gap:28px; max-width:72%;">                                    
+      923 -        <p style="font-size:24px; line-height:1.7;            
+          -color:var(--text-muted);">Powerhouse grew out of building     
+          -operational infrastructure for <strong                        
+          -style="color:var(--text);">MakerDAO</strong> — one of the most
+          - complex decentralized organizations in the world. We've been 
+          -building open-source tools for AI-native operations since     
+          -2021.</p>                                                     
+      923 +        <p style="font-size:24px; line-height:1.7;            
+          +color:var(--text-muted);">Powerhouse grew out of building     
+          +operational infrastructure for <strong                        
+          +style="color:var(--text);">MakerDAO</strong> — one of the most
+          + complex decentralized organizations in the world. We've been 
+          +building open-source tools for AI-native operations since     
+          +&nbsp;2021.</p>                                               
+      924          <div class="surface-card-lg" style="padding:28px      
+           36px; display:flex; gap:20px; align-items:center;">           
+      925            <div style="display:flex; gap:12px;                 
+           align-items:center;">                                         
+      926              <img src="assets/logos/achra-icon.svg" alt=""     
+           style="width:28px; height:28px;">                             
+
+● Now fix slide 24 — improve contrast on step descriptions by using a brighter
+  color.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1034            <div style="flex:1; display:flex;                  
+            flex-direction:column; align-items:center;                   
+            text-align:center; gap:16px;">                               
+      1035              <div class="icon-circle"                         
+            style="background:rgba(0,212,255,0.15);                      
+            color:var(--accent-cyan); font-weight:700;                   
+            font-size:22px;">1</div>                                     
+      1036              <h5 style="font-size:24px;                       
+            font-weight:700;">Audit</h5>                                 
+      1037 -            <p style="font-size:20px; line-height:1.5;       
+           -color:var(--text-muted);">Map data flows, classify           
+           -sensitivity, identify AI-ready processes</p>                 
+      1037 +            <p style="font-size:20px; line-height:1.5;       
+           +color:var(--text-muted);">Map data flows, classify           
+           +sensitivity, identify AI-ready&nbsp;processes</p>            
+      1038            </div>                                             
+      1039            <div style="flex:0; height:2px; width:48px;        
+            background:var(--surface-border); margin-top:28px;"></div>   
+      1040            <div style="flex:1; display:flex;                  
+            flex-direction:column; align-items:center;                   
+            text-align:center; gap:16px;">                               
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1040            <div style="flex:1; display:flex;                  
+            flex-direction:column; align-items:center;                   
+            text-align:center; gap:16px;">                               
+      1041              <div class="icon-circle"                         
+            style="background:rgba(50,157,255,0.15); color:#329DFF;      
+            font-weight:700; font-size:22px;">2</div>                    
+      1042              <h5 style="font-size:24px;                       
+            font-weight:700;">Assess</h5>                                
+      1043 -            <p style="font-size:20px; line-height:1.5;       
+           -color:var(--text-muted);">Score AI readiness, identify       
+           -integration points, evaluate privacy tiers</p>               
+      1043 +            <p style="font-size:20px; line-height:1.5;       
+           +color:var(--text-muted);">Score AI readiness, identify       
+           +integration points, evaluate privacy&nbsp;tiers</p>          
+      1044            </div>                                             
+      1045            <div style="flex:0; height:2px; width:48px;        
+            background:var(--surface-border); margin-top:28px;"></div>   
+      1046            <div style="flex:1; display:flex;                  
+            flex-direction:column; align-items:center;                   
+            text-align:center; gap:16px;">                               
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      1046            <div style="flex:1; display:flex;                  
+            flex-direction:column; align-items:center;                   
+            text-align:center; gap:16px;">                               
+      1047              <div class="icon-circle"                         
+            style="background:rgba(4,193,97,0.15);                       
+            color:var(--vetra-green); font-weight:700;                   
+            font-size:22px;">3</div>                                     
+      1048              <h5 style="font-size:24px;                       
+            font-weight:700;">Roadmap</h5>                               
+      1049 -            <p style="font-size:20px; line-height:1.5;       
+           -color:var(--text-muted);">Prioritized implementation plan    
+           -with timeline and resource requirements</p>                  
+      1049 +            <p style="font-size:20px; line-height:1.5;       
+           +color:var(--text-muted);">Prioritized implementation plan    
+           +with timeline and resource&nbsp;requirements</p>             
+      1050            </div>                                             
+      1051            <div style="flex:0; height:2px; width:48px;        
+            background:var(--surface-border); margin-top:28px;"></div>   
+      1052            <div style="flex:1; display:flex;                  
+            flex-direction:column; align-items:center;                   
+            text-align:center; gap:16px;">                               
+
+● Also fix platform component cards (slide 11) — the body text at 16px is small
+  and the role labels at 13px are tiny.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 3 lines, removed 3 lines
+      560        <div style="flex:1; display:grid;                       
+           grid-template-columns:repeat(3,1fr); gap:20px;                
+           align-content:center;">                                       
+      561          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--accent-cyan);">                                  
+      562            <img src="assets/logos/connect-icon-light.svg"      
+           alt="" style="width:36px; height:36px;">                      
+      563 -          <h4 style="font-size:22px                           
+          -; font-weight:700; color:var(--text);">Clint</h4>             
+      564 -          <p style="font-size:13px                            
+          -; font-weight:500; letter-spacing:0.04em;                     
+          -color:var(--accent-cyan);">AI Agent Infrastructure</p>        
+      565 -          <p class="sub" style="font-size:16px                
+          -; line-height:1.6;">Multi-agent workflows, sandboxed agents,  
+          -local + commercial model access. Every business schema becomes
+          - an MCP endpoint.</p>                                         
+      563 +          <h4 style="font-size:24px                           
+          +; font-weight:700; color:var(--text);">Clint</h4>             
+      564 +          <p style="font-size:14px                            
+          +; font-weight:500; letter-spacing:0.04em;                     
+          +color:var(--accent-cyan);">AI Agent Infrastructure</p>        
+      565 +          <p class="sub" style="font-size:18px                
+          +; line-height:1.6;">Multi-agent workflows, sandboxed agents,  
+          +local + commercial model access. Every business schema becomes
+          + an MCP&nbsp;endpoint.</p>                                    
+      566          </div>                                                
+      567          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--fusion-pink);">                                  
+      568            <img src="assets/logos/fusion-icon-light.svg"       
+           alt="" style="width:36px; height:36px;">                      
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 3 lines, removed 3 lines
+      566          </div>                                                
+      567          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--fusion-pink);">                                  
+      568            <img src="assets/logos/fusion-icon-light.svg"       
+           alt="" style="width:36px; height:36px;">                      
+      569 -          <h4 style="font-size:22px                           
+          -; font-weight:700; color:var(--text);">Fusion</h4>            
+      570 -          <p style="font-size:13px                            
+          -; font-weight:500; letter-spacing:0.04em;                     
+          -color:var(--fusion-pink);">Internal Enterprise Platform</p>   
+      571 -          <p class="sub" style="font-size:16px                
+          -; line-height:1.6;">Branded portal for dashboards, AI outputs,
+          - and workflows. Per-department views. Replaces legacy         
+          -intranet.</p>                                                 
+      569 +          <h4 style="font-size:24px                           
+          +; font-weight:700; color:var(--text);">Fusion</h4>            
+      570 +          <p style="font-size:14px                            
+          +; font-weight:500; letter-spacing:0.04em;                     
+          +color:var(--fusion-pink);">Internal Enterprise Platform</p>   
+      571 +          <p class="sub" style="font-size:18px                
+          +; line-height:1.6;">Branded portal for dashboards, AI outputs,
+          + and workflows. Per-department views. Replaces legacy&nbsp;   
+          +intranet.</p>                                                 
+      572          </div>                                                
+      573          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--connect-purple);">                               
+      574            <img src="assets/logos/connect-icon-light.svg"      
+           alt="" style="width:36px; height:36px;">                      
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 3 lines, removed 3 lines
+      572          </div>                                                
+      573          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--connect-purple);">                               
+      574            <img src="assets/logos/connect-icon-light.svg"      
+           alt="" style="width:36px; height:36px;">                      
+      575 -          <h4 style="font-size:22px                           
+          -; font-weight:700; color:var(--text);">Connect</h4>           
+      576 -          <p style="font-size:13px                            
+          -; font-weight:500; letter-spacing:0.04em;                     
+          -color:var(--connect-purple);">Operator Workspace</p>          
+      577 -          <p class="sub" style="font-size:16px                
+          -; line-height:1.6;">Browser-based environment for business    
+          -data. Workflow views with human oversight of AI actions.</p>  
+      575 +          <h4 style="font-size:24px                           
+          +; font-weight:700; color:var(--text);">Connect</h4>           
+      576 +          <p style="font-size:14px                            
+          +; font-weight:500; letter-spacing:0.04em;                     
+          +color:var(--connect-purple);">Operator Workspace</p>          
+      577 +          <p class="sub" style="font-size:18px                
+          +; line-height:1.6;">Browser-based environment for business    
+          +data. Workflow views with human oversight of AI&nbsp;         
+          +actions.</p>                                                  
+      578          </div>                                                
+      579          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--switchboard-gold);">                             
+      580            <img src="assets/logos/reactors-icon-light.svg"     
+           alt="" style="width:36px; height:36px;">                      
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 3 lines, removed 3 lines
+      578          </div>                                                
+      579          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--switchboard-gold);">                             
+      580            <img src="assets/logos/reactors-icon-light.svg"     
+           alt="" style="width:36px; height:36px;">                      
+      581 -          <h4 style="font-size:22px                           
+          -; font-weight:700; color:var(--text);">Switchboard</h4>       
+      582 -          <p style="font-size:13px                            
+          -; font-weight:500; letter-spacing:0.04em;                     
+          -color:var(--switchboard-gold);">API & Integration Hub</p>     
+      583 -          <p class="sub" style="font-size:16px                
+          -; line-height:1.6;">GraphQL + MCP endpoints. Data scoping per 
+          -integration. Authorization and real-time sync.</p>            
+      581 +          <h4 style="font-size:24px                           
+          +; font-weight:700; color:var(--text);">Switchboard</h4>       
+      582 +          <p style="font-size:14px                            
+          +; font-weight:500; letter-spacing:0.04em;                     
+          +color:var(--switchboard-gold);">API & Integration Hub</p>     
+      583 +          <p class="sub" style="font-size:18px                
+          +; line-height:1.6;">GraphQL + MCP endpoints. Data scoping per 
+          +integration. Authorization and real-time&nbsp;sync.</p>       
+      584          </div>                                                
+      585          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--renown-green);">                                 
+      586            <img src="assets/logos/renown-icon.svg" alt=""      
+           style="width:36px; height:36px;">                             
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 3 lines, removed 3 lines
+      584          </div>                                                
+      585          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--renown-green);">                                 
+      586            <img src="assets/logos/renown-icon.svg" alt=""      
+           style="width:36px; height:36px;">                             
+      587 -          <h4 style="font-size:22px                           
+          -; font-weight:700; color:var(--text);">Renown</h4>            
+      588 -          <p style="font-size:13px                            
+          -; font-weight:500; letter-spacing:0.04em;                     
+          -color:var(--renown-green);">Identity</p>                      
+      589 -          <p class="sub" style="font-size:16px                
+          -; line-height:1.6;">Unified identity for humans + agents.     
+          -Scoped permissions. Cryptographic attribution. Enterprise SSO 
+          -integration point.</p>                                        
+      587 +          <h4 style="font-size:24px                           
+          +; font-weight:700; color:var(--text);">Renown</h4>            
+      588 +          <p style="font-size:14px                            
+          +; font-weight:500; letter-spacing:0.04em;                     
+          +color:var(--renown-green);">Identity</p>                      
+      589 +          <p class="sub" style="font-size:18px                
+          +; line-height:1.6;">Unified identity for humans + agents.     
+          +Scoped permissions. Cryptographic attribution. Enterprise SSO 
+          +integration&nbsp;point.</p>                                   
+      590          </div>                                                
+      591        </div>                                                  
+      592      </div>                                                    
+
+● Also improve contrast on slide 19 comparison table — the "Cloud AI" column was
+   --text-dim which is very low contrast. Already fixed to --text-muted. And the
+   Powerhouse column is now --text (full white). Let me also fix the slide 19
+  intro text orphan.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 1 line, removed 1 line
+      884      <div class="slide-pad" style="gap:28px;">                 
+      885        <img src="assets/logos/powerhouse-icon-light.svg"       
+           alt="" class="slide-icon">                                    
+      886        <h3 style="font-size:36px; font-weight:700;             
+           letter-spacing:-0.02em;">How this compares</h3>               
+      887 -      <p style="font-size:20px; max-width:70%;                
+          -color:var(--text-muted); line-height:1.7;">Your existing      
+          -vendors are adding AI to their platforms. But they're bolting 
+          -it onto architectures never designed for machine interaction —
+          - and processing your data on their infrastructure.</p>        
+      887 +      <p style="font-size:20px; max-width:70%;                
+          +color:var(--text-muted); line-height:1.7;">Your existing      
+          +vendors are adding AI to their platforms. But they're bolting 
+          +it onto architectures never designed for machine interaction —
+          + and processing your data on their&nbsp;infrastructure.</p>   
+      888        <div style="flex:1; display:flex; align-items:center;"> 
+      889          <table class="slide-table">                           
+      890            <thead>                                             
+
+● Now let me retake screenshots to verify all fixes.
+
+● Bash(playwright-cli goto http://localhost:3847 2>&1 | tail -1
+      sleep 1…)
+  ⎿  - [Snapshot](.playwright-cli/page-2026-04-14T11-47-44-469Z.yml)
+     ```
+
+● Bash(SDIR=/home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/05.de
+      ck/screenshots
+      sleep 1…)
+  ⎿  slide 1 done
+     slide 2 done
+     slide 3 done
+     … +22 lines (ctrl+o to expand)
+  ⎿  (timeout 5m)
+
+● Let me verify the key slides I fixed.
+
+● Read 4 files (ctrl+o to expand)
+
+● Good improvements. Let me verify the remaining fixed slides.
+
+● Read 5 files (ctrl+o to expand)
+
+● All fixes looking good:
+
+  - Slide 4: Headline now breaks cleanly — "Every AI vendor wants your data." /
+  "Your regulators say no."
+  - Slide 11: Component cards have larger, more readable text (24px titles, 18px
+   body)
+  - Slide 12: Architecture diagram labels and bullets bumped from 11/13px to
+  13/15-17px
+  - Slide 13: "on top", "records", "details" no longer orphan (using &nbsp;)
+  - Slide 16: "supplier risk" and "negotiation briefs" stay together
+  - Slide 19: Comparison table bigger (21px body, 15px headers), Powerhouse
+  column now full white for contrast
+  - Slide 20: "since 2021." stays on the same line
+  - Slide 24: Step descriptions readable, orphans fixed
+
+  Let me close the browser.
+
+● Bash(playwright-cli close 2>&1 | tail -1)
+  ⎿  (No output)
+
+● All done. Here's a summary of changes made:
+
+  Asset relocation: Copied all images, logos, and colors.css from
+  03.design-system/ into 05.deck/draft/assets/ and updated all paths in
+  index.html so the deck is self-contained under npx serve.
+
+  Readability & font size fixes:
+  - Slide 11 component cards: titles 22px→24px, role labels 13px→14px, body
+  16px→18px
+  - Slide 12 architecture diagram: system labels 11px→13px, system items
+  15px→17px, bullet text 13-14px→15-16px
+  - Slide 19 comparison table: body 19px→21px, headers 14px→15px, Powerhouse
+  column contrast boosted (--text-dim→--text), Cloud AI column from
+  --text-dim→--text-muted
+
+  Orphan/line-ending fixes (using &nbsp; and <br>):
+  - Slide 1: "on your terms" kept together
+  - Slide 4: Forced line break after "your data." to prevent "say no." orphan
+  - Slide 13: "on top", "employee records", "compensation details" kept together
+  - Slide 16: "supplier risk", "negotiation briefs" kept together
+  - Slide 19: "their infrastructure" kept together
+  - Slide 20: "since 2021" kept together
+  - Slide 24: "AI-ready processes", "privacy tiers", "resource requirements"
+  kept together
+
+✻ Sautéed for 8m 16s
+
+❯ On slide 11: change the order of the components to                            
+Clint - Renown - Switchboard                                                    
+Connect - Fusion                                                                
+                                                                                
+And fix the wrong icons of Clint and Switchboard based on 04.site-prototypes v3 
+
+● Explore(Find correct product icons)
+  ⎿  Done (4 tool uses · 24.1k tokens · 14s)
+  (ctrl+o to expand)
+
+● Read 1 file (ctrl+o to expand)
+
+● I can see the issues: Clint uses connect-icon-light.svg (wrong) and
+  Switchboard uses reactors-icon-light.svg (wrong — that's Clint's icon). Let me
+   copy the correct icons from the v3 prototype and reorder the cards.
+
+● Read 1 file (ctrl+o to expand)
+
+● Bash(cp /home/wouter/projects/demo-workspace/ph-clint/specs/enterprise/04.site
+      -prototypes/prototype-v3/assets/switchboard-nav-icon.svg
+      /home/wouter/projects/demo-wor…)
+  ⎿  copied switchboard icon
+
+● So the correct mapping is:
+  - Clint → reactors-icon-light.svg (already in assets/logos)
+  - Switchboard → switchboard-icon-light.svg (just copied)
+
+  Now rewrite slide 11 with correct order (Clint, Renown, Switchboard / Connect,
+   Fusion) and correct icons.
+
+● Update(05.deck/draft/index.html)
+  ⎿  Added 19 lines, removed 17 lines
+      558        <img src="assets/logos/powerhouse-icon-light.svg"       
+           alt="" class="slide-icon">                                    
+      559        <h3 style="font-size:36px; font-weight:700;             
+           letter-spacing:-0.02em;">The Powerhouse Platform</h3>         
+      560        <div style="flex:1; display:grid;                       
+           grid-template-columns:repeat(3,1fr); gap:20px;                
+           align-content:center;">                                       
+      561 +        <!-- Row 1: Clint, Renown, Switchboard -->            
+      562          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--accent-cyan);">                                  
+      563 -          <img src="assets/logos/connect                      
+          --icon-light.svg" alt="" style="width:36px; height:36px;">     
+      563 +          <img src="assets/logos/reactors                     
+          +-icon-light.svg" alt="" style="width:36px; height:36px;">     
+      564            <h4 style="font-size:24px; font-weight:700;         
+           color:var(--text);">Clint</h4>                                
+      565            <p style="font-size:14px; font-weight:500;          
+           letter-spacing:0.04em; color:var(--accent-cyan);">AI Agent    
+           Infrastructure</p>                                            
+      566            <p class="sub" style="font-size:18px;               
+           line-height:1.6;">Multi-agent workflows, sandboxed agents,    
+           local + commercial model access. Every business schema        
+           becomes an MCP&nbsp;endpoint.</p>                             
+      567          </div>                                                
+      568 -        <div class="surface-card" style="padding:32px;        
+          -display:flex; flex-direction:column; gap:12px; border-top:3px 
+          -solid var(--fusion-pink);">                                   
+      569 -          <img src="assets/logos/fusion-icon-light            
+          -.svg" alt="" style="width:36px; height:36px;">                
+      570 -          <h4 style="font-size:24px; font-weight:700;         
+          -color:var(--text);">Fusion</h4>                               
+      571 -          <p style="font-size:14px; font-weight:500;          
+          -letter-spacing:0.04em; color:var(--fusion-pink);">            
+          -Internal Enterprise Platform</p>                              
+      572 -          <p class="sub" style="font-size:18px;               
+          -line-height:1.6;">Branded portal for dashboards, AI outputs,  
+          -and workflows. Per-department views. Replaces                 
+          -legacy&nbsp;intranet.</p>                                     
+      568 +        <div class="surface-card" style="padding:32px;        
+          +display:flex; flex-direction:column; gap:12px; border-top:3px 
+          +solid var(--renown-green);">                                  
+      569 +          <img src="assets/logos/renown-icon                  
+          +.svg" alt="" style="width:36px; height:36px;">                
+      570 +          <h4 style="font-size:24px; font-weight:700;         
+          +color:var(--text);">Renown</h4>                               
+      571 +          <p style="font-size:14px; font-weight:500;          
+          +letter-spacing:0.04em; color:var(--renown-green);">Identity   
+          +</p>                                                          
+      572 +          <p class="sub" style="font-size:18px;               
+          +line-height:1.6;">Unified identity for humans + agents.       
+          +Scoped permissions. Cryptographic attribution. Enterprise SSO 
+          + integration&nbsp;point.</p>                                  
+      573          </div>                                                
+      574 +        <div class="surface-card" style="padding:32px;        
+          +display:flex; flex-direction:column; gap:12px; border-top:3px 
+          + solid var(--switchboard-gold);">                             
+      575 +          <img src="assets/logos/switchboard-icon-light.svg"  
+          +alt="" style="width:36px; height:36px;">                      
+      576 +          <h4 style="font-size:24px; font-weight:700;         
+          +color:var(--text);">Switchboard</h4>                          
+      577 +          <p style="font-size:14px; font-weight:500;          
+          +letter-spacing:0.04em; color:var(--switchboard-gold);">API &  
+          +Integration Hub</p>                                           
+      578 +          <p class="sub" style="font-size:18px;               
+          +line-height:1.6;">GraphQL + MCP endpoints. Data scoping per   
+          +integration. Authorization and real-time&nbsp;sync.</p>       
+      579 +        </div>                                                
+      580 +        <!-- Row 2: Connect, Fusion -->                       
+      581          <div class="surface-card" style="padding:32px;        
+           display:flex; flex-direction:column; gap:12px; border-top:3px 
+            solid var(--connect-purple);">                               
+      582            <img src="assets/logos/connect-icon-light.svg"      
+           alt="" style="width:36px; height:36px;">                      
+      583            <h4 style="font-size:24px; font-weight:700;         
+           color:var(--text);">Connect</h4>                              
+      584            <p style="font-size:14px; font-weight:500;          
+           letter-spacing:0.04em; color:var(--connect-purple);">Operator 
+            Workspace</p>                                                
+      585            <p class="sub" style="font-size:18px;               
+           line-height:1.6;">Browser-based environment for business      
+           data. Workflow views with human oversight of                  
+           AI&nbsp;actions.</p>                                          
+      586          </div>                                                
+      587 -        <div class="surface-card" style="padding:32px;        
+          -display:flex; flex-direction:column; gap:12px; border-top:3px 
+          -solid var(--switchboard-gold);">                              
+      588 -          <img src="assets/logos/reactors                     
+          --icon-light.svg" alt="" style="width:36px; height:36px;">     
+      589 -          <h4 style="font-size:24px; font-weight:700;         
+          -color:var(--text);">Switchboard</h4>                          
+      590 -          <p style="font-size:14px; font-weight:500;          
+          -letter-spacing:0.04em; color:var(--switchboard-gold);">API &  
+          -Integration Hub</p>                                           
+      591 -          <p class="sub" style="font-size:18px;               
+          -line-height:1.6;">GraphQL + MCP endpoints. Data scoping per   
+          -integration. Authorization and real-time&nbsp;sync.</p>       
+      587 +        <div class="surface-card" style="padding:32px;        
+          +display:flex; flex-direction:column; gap:12px; border-top:3px 
+          +solid var(--fusion-pink);">                                   
+      588 +          <img src="assets/logos/fusion                       
+          +-icon-light.svg" alt="" style="width:36px; height:36px;">     
+      589 +          <h4 style="font-size:24px; font-weight:700;         
+          +color:var(--text);">Fusion</h4>                               
+      590 +          <p style="font-size:14px; font-weight:500;          
+          +letter-spacing:0.04em; color:var(--fusion-pink);">Internal    
+          +Enterprise Platform</p>                                       
+      591 +          <p class="sub" style="font-size:18px;               
+          +line-height:1.6;">Branded portal for dashboards, AI outputs,  
+          +and workflows. Per-department views. Replaces                 
+          +legacy&nbsp;intranet.</p>                                     
+      592          </div>                                                
+      593 -        <div class="surface-card" style="padding:32px;        
+          -display:flex; flex-direction:column; gap:12px; border-top:3px 
+          - solid var(--renown-green);">                                 
+      594 -          <img src="assets/logos/renown-icon.svg" alt=""      
+          -style="width:36px; height:36px;">                             
+      595 -          <h4 style="font-size:24px; font-weight:700;         
+          -color:var(--text);">Renown</h4>                               
+      596 -          <p style="font-size:14px; font-weight:500;          
+          -letter-spacing:0.04em;                                        
+          -color:var(--renown-green);">Identity</p>                      
+      597 -          <p class="sub" style="font-size:18px;               
+          -line-height:1.6;">Unified identity for humans + agents.       
+          -Scoped permissions. Cryptographic attribution. Enterprise SSO 
+          - integration&nbsp;point.</p>                                  
+      598 -        </div>                                                
+      593        </div>                                                  
+      594      </div>                                                    
+      595      <span class="slide-num">11</span>                         
+
+● Now let me verify with a screenshot.
+
+● Bash(playwright-cli open http://localhost:3847 --browser=chromium 2>&1 | tail
+      -1
+      sleep 1…)
+  ⎿  - [Snapshot](.playwright-cli/page-2026-04-14T11-52-11-748Z.yml)
+     - New console entries: .playwright-cli/console-2026-04-14T11-52-11-274
+     Z.log#L1
+
+● Bash(# Navigate to slide 11 (press right 10 times)
+      for i in $(seq 1 10); do playwright-cli press ArrowRight 2>&1 > /dev/null;
+       sleep 0.3; done…)
+  ⎿  ```
+
+● Read 1 file (ctrl+o to expand)
+
+● Order is now Clint / Renown / Switchboard on top, Connect / Fusion on bottom.
+  Icons are correct — Clint has the reactor/gear icon, Renown has the diamond
+  star, Switchboard has the orange arrow icon, Connect has the mesh globe,
+  Fusion has the asterisk.
+
+● Bash(playwright-cli close 2>&1 | tail -1)
+  ⎿  (No output)
+
+● Done. Changes made:
+
+  - Reordered to: Clint / Renown / Switchboard (row 1), Connect / Fusion (row 2)
+  - Fixed Clint icon: was connect-icon-light.svg → now reactors-icon-light.svg
+  - Fixed Switchboard icon: was reactors-icon-light.svg → now
+  switchboard-icon-light.svg (copied from prototype v3)
+
+✻ Worked for 1m 50s
