@@ -6,7 +6,7 @@ import {
   createReplSession,
   createMemoryWorkdirStore,
 } from '../src/index.js';
-import type { ReplSession, CommandContext, AgentProvider, StreamChunk } from '../src/index.js';
+import type { ReplSession, CommandContext, AgentProvider, StreamChunk, ServiceManager } from '../src/index.js';
 
 describe('createReplSession', () => {
   const greet = defineCommand({
@@ -985,5 +985,216 @@ describe('session edge cases', () => {
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
+  });
+});
+
+describe('outputWindow', () => {
+  it('exposes outputWindow on session with default value', () => {
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [],
+      interactive: { welcome: '' },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const session = createReplSession({ cli, context });
+
+    expect(session.outputWindow).toBe(6);
+  });
+
+  it('respects custom outputWindow from interactive config', () => {
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [],
+      interactive: { welcome: '', outputWindow: 3 },
+    });
+
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const session = createReplSession({ cli, context });
+
+    expect(session.outputWindow).toBe(3);
+  });
+
+  it('head-crops verbose tool-result output in streaming mode', async () => {
+    // Agent that produces a tool-result with many lines of output
+    const verboseResult = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join('\n');
+    const agent: AgentProvider = {
+      id: 'test',
+      async *stream() {
+        yield { type: 'tool-call' as const, toolName: 'install', args: {} };
+        yield { type: 'tool-result' as const, toolName: 'install', result: { text: verboseResult }, isError: false };
+        yield { type: 'text-delta' as const, text: 'Done.' };
+      },
+    };
+
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [],
+      interactive: { welcome: '', outputWindow: 3 },
+    });
+    cli.configureAgent(async () => agent);
+
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const result = await session.processInput('install stuff');
+    expect(result.type).toBe('result');
+    // The output should contain the truncation indicator
+    expect(result.text).toContain('more lines');
+    // Should contain the first few body lines
+    expect(result.text).toContain('line 1');
+    expect(result.text).toContain('line 3');
+    // Should NOT contain lines beyond the window
+    expect(result.text).not.toContain('line 20');
+  });
+
+  it('does not crop text-delta output', async () => {
+    const longText = Array.from({ length: 20 }, (_, i) => `paragraph ${i + 1}`).join('\n');
+    const agent: AgentProvider = {
+      id: 'test',
+      async *stream() {
+        yield { type: 'text-delta' as const, text: longText };
+      },
+    };
+
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [],
+      interactive: { welcome: '', outputWindow: 3 },
+    });
+    cli.configureAgent(async () => agent);
+
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const result = await session.processInput('write something long');
+    expect(result.type).toBe('result');
+    // All text should be present — no cropping
+    expect(result.text).toContain('paragraph 1');
+    expect(result.text).toContain('paragraph 20');
+    expect(result.text).not.toContain('more lines');
+  });
+
+  it('does not crop short tool-result output', async () => {
+    const agent: AgentProvider = {
+      id: 'test',
+      async *stream() {
+        yield { type: 'tool-call' as const, toolName: 'ping', args: {} };
+        yield { type: 'tool-result' as const, toolName: 'ping', result: 'pong', isError: false };
+      },
+    };
+
+    const cli = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [],
+      interactive: { welcome: '', outputWindow: 6 },
+    });
+    cli.configureAgent(async () => agent);
+
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const session = createReplSession({ cli, context, agentProvider: agent });
+
+    const result = await session.processInput('ping');
+    expect(result.type).toBe('result');
+    expect(result.text).toContain('pong');
+    expect(result.text).not.toContain('more lines');
+  });
+
+  it('exit message includes active services when services are running', () => {
+    const noop = defineCommand({
+      id: 'noop',
+      description: 'noop',
+      inputSchema: z.object({}),
+      execute: async () => undefined,
+    });
+
+    const stubServices: ServiceManager = {
+      start: async () => 'id',
+      stop: async () => {},
+      list: () => [
+        { serviceId: 'db', instanceId: 'i1', name: 'Database', status: 'ready' as const, pid: 123, workdir: '/app' },
+      ],
+      getDefinition: () => undefined,
+      logs: () => '',
+      watchLogs: () => () => {},
+      scanProjects: () => [],
+      purgeStoppedInstances: () => {},
+    };
+
+    const ctx: CommandContext = {
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      workdir: '',
+      stdout: () => {},
+      services: stubServices,
+    };
+
+    const svcCli = defineCli({
+      name: 'svc-exit',
+      version: '1.0.0',
+      description: 'Service exit test',
+      commands: [noop],
+      interactive: { welcome: 'hi' },
+    });
+
+    const sess = createReplSession({ cli: svcCli, context: ctx });
+    expect(sess.exitMessage).toContain('Database still active');
+    expect(sess.exitMessage).toContain('/app');
+    expect(sess.exitMessage).toContain('svc-exit db-stop');
+  });
+
+  it('-manage command returns error when service definition is missing', async () => {
+    const { defineService } = await import('../src/index.js');
+
+    // Create a CLI with a real service so the -manage command exists
+    const manageCli = defineCli({
+      name: 'manage-test',
+      version: '1.0.0',
+      description: 'Manage test',
+      commands: [],
+      interactive: { welcome: 'hi' },
+      services: [
+        defineService({
+          id: 'my-svc',
+          name: 'My Service',
+          command: 'echo hi',
+        }),
+      ],
+    });
+
+    // Provide a stub ServiceManager that returns undefined for getDefinition
+    const stubServices: ServiceManager = {
+      start: async () => 'id',
+      stop: async () => {},
+      list: () => [],
+      getDefinition: () => undefined,
+      logs: () => '',
+      watchLogs: () => () => {},
+      scanProjects: () => [],
+      purgeStoppedInstances: () => {},
+    };
+
+    const ctx: CommandContext = {
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      workdir: '',
+      stdout: () => {},
+      services: stubServices,
+    };
+
+    const sess = createReplSession({ cli: manageCli, context: ctx });
+    const result = await sess.processInput('/my-svc-manage');
+    expect(result.type).toBe('error');
+    expect(result.text).toContain('Unknown service: my-svc');
   });
 });
