@@ -2,9 +2,10 @@ import type { Logger, ServiceManager } from '../../core/types.js';
 
 /**
  * Module-level cache of MCPClient instances keyed by endpoint URL.
- * Stale clients (endpoint no longer in running services) are disconnected on each call.
+ * Tracks the instanceId so that same-URL restarts (stop instance A, start instance B
+ * on the same port) correctly invalidate the stale client.
  */
-const clients = new Map<string, any>();
+const clients = new Map<string, { client: any; instanceId: string }>();
 
 /**
  * Info about an active MCP endpoint discovered from running services.
@@ -51,12 +52,15 @@ export async function discoverMcpTools(
     }
   }
 
-  const activeUrls = new Set(activeEndpoints.map((ep) => ep.url));
+  // Build a map of active URL → instanceId for staleness checks
+  const activeUrlInstances = new Map(activeEndpoints.map((ep) => [ep.url, ep.instanceId]));
 
-  // Disconnect stale clients
-  for (const [url, client] of clients) {
-    if (!activeUrls.has(url)) {
-      try { await client.disconnect(); } catch { /* ignore */ }
+  // Disconnect stale clients: URL no longer active, or instance behind the URL changed
+  for (const [url, entry] of clients) {
+    const activeInstanceId = activeUrlInstances.get(url);
+    if (!activeInstanceId || activeInstanceId !== entry.instanceId) {
+      log?.debug(`[mcp-discover] Disconnecting stale client for ${url} (was: ${entry.instanceId}, now: ${activeInstanceId ?? 'gone'})`);
+      try { await entry.client.disconnect(); } catch { /* ignore */ }
       clients.delete(url);
     }
   }
@@ -83,13 +87,13 @@ export async function discoverMcpTools(
   const allTools: Record<string, any> = {};
 
   for (const ep of activeEndpoints) {
-    let client = clients.get(ep.url);
+    let entry = clients.get(ep.url);
 
-    if (!client) {
+    if (!entry) {
       // Use serviceId as the server key for clean tool naming
       const serverKey = ep.serviceId;
-      log?.debug(`[mcp-discover] Connecting to ${ep.url} (service: ${ep.serviceId})`);
-      client = new MCPClient({
+      log?.debug(`[mcp-discover] Connecting to ${ep.url} (service: ${ep.serviceId}, instance: ${ep.instanceId})`);
+      const client = new MCPClient({
         id: `ph-clint-mcp-${ep.serviceId}`,
         servers: {
           [serverKey]: {
@@ -97,11 +101,12 @@ export async function discoverMcpTools(
           },
         },
       });
-      clients.set(ep.url, client);
+      entry = { client, instanceId: ep.instanceId };
+      clients.set(ep.url, entry);
     }
 
     try {
-      const tools = await client.listTools();
+      const tools = await entry.client.listTools();
       log?.debug(`[mcp-discover] Got ${Object.keys(tools).length} tools from ${ep.url}`);
 
       // Determine prefix: serviceId-mcp, or serviceId-instanceSuffix-mcp for multi-instance
@@ -133,8 +138,8 @@ export async function discoverMcpTools(
  * Disconnect all cached MCP clients. Call during teardown.
  */
 export async function disconnectAllMcp(): Promise<void> {
-  for (const [url, client] of clients) {
-    try { await client.disconnect(); } catch { /* ignore */ }
+  for (const [url, entry] of clients) {
+    try { await entry.client.disconnect(); } catch { /* ignore */ }
     clients.delete(url);
   }
 }
