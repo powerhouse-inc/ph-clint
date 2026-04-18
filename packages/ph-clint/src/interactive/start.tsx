@@ -16,6 +16,13 @@ export interface StartInkReplOptions {
  * This function renders the Repl component and waits until the user exits.
  */
 export async function startInkRepl(session: ReplSession, opts?: StartInkReplOptions): Promise<void> {
+  // Suppress exit-hook's "SYNCHRONOUS TERMINATION NOTICE" on process.exit()
+  const origError = console.error;
+  console.error = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('SYNCHRONOUS TERMINATION NOTICE')) return;
+    origError.apply(console, args);
+  };
+
   const app = render(
     <Repl
       session={session}

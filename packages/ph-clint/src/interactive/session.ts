@@ -568,8 +568,17 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     outputWindow: (cli.interactive && 'outputWindow' in cli.interactive ? (cli.interactive as { outputWindow?: number }).outputWindow : undefined) ?? 6,
     abortCurrentStream() {
       if (currentAbortController) {
+        // Temporarily suppress Mastra's internal "Error in LLM execution" console.error
+        const origError = console.error;
+        console.error = (...args: unknown[]) => {
+          const first = args[0];
+          if (typeof first === 'string' && first.includes('Error in LLM execution')) return;
+          origError.apply(console, args);
+        };
         currentAbortController.abort();
         currentAbortController = null;
+        // Restore after a tick (Mastra logs asynchronously)
+        setTimeout(() => { console.error = origError; }, 100);
       }
     },
   };
