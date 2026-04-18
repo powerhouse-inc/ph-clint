@@ -101,6 +101,40 @@ describe('defineCli', () => {
     });
   });
 
+  describe('secrets schema', () => {
+    it('merges secretsSchema into configSchema and marks fields as sensitive', async () => {
+      const secretsCli = defineCli({
+        name: 'sec-cli',
+        version: '0.0.1',
+        description: 'Secrets test',
+        configSchema: z.object({
+          host: z.string().default('localhost').describe('Server host'),
+        }),
+        secretsSchema: z.object({
+          apiKey: z.string().default('test-key').describe('API key'),
+        }),
+        commands: [
+          defineCommand({
+            id: 'show',
+            description: 'Show config',
+            inputSchema: z.object({}),
+            execute: async (_input, ctx) => ctx.config,
+          }),
+        ],
+      });
+
+      // Secrets should be merged into config
+      const result = await secretsCli.execute('show', {}) as Record<string, unknown>;
+      expect(result).toEqual({ host: 'localhost', apiKey: 'test-key' });
+
+      // Metadata should mark apiKey as sensitive
+      const meta = secretsCli.getMetadata();
+      expect(meta.config).toBeDefined();
+      expect(meta.config!['apiKey'].sensitive).toBe(true);
+      expect(meta.config!['host'].sensitive).toBe(false);
+    });
+  });
+
   describe('parseArgs', () => {
     it('parses string and boolean flags', () => {
       const parsed = cli.parseArgs('echo', ['--message', 'hello']);
@@ -507,6 +541,67 @@ describe('defineCli', () => {
       });
       const help = noDescCli.generateCommandHelp('cmd');
       expect(help).toContain('--value');
+    });
+
+    it('includes routine service commands in help when routine.id is set', () => {
+      const routineCli = defineCli({
+        name: 'rt-help',
+        version: '1.0.0',
+        description: 'Routine help test',
+        commands: [echo],
+        triggers: [
+          defineTrigger({
+            id: 'watcher',
+            type: 'condition',
+            poll: async () => null,
+          }),
+        ],
+        routine: {
+          id: 'my-routine',
+          name: 'My Routine',
+          tickInterval: 1000,
+          idleInterval: 1000,
+        },
+      });
+      const help = routineCli.generateHelp();
+      expect(help).toContain('My Routine:');
+      expect(help).toContain('my-routine-start');
+      expect(help).toContain('my-routine-stop');
+      expect(help).toContain('my-routine-ps');
+    });
+
+    it('groups service commands under their service name in help', () => {
+      const svcCli = defineCli({
+        name: 'svc-help',
+        version: '1.0.0',
+        description: 'Service help grouping test',
+        commands: [echo],
+        services: [
+          defineService({
+            id: 'db',
+            name: 'Database',
+            description: 'PostgreSQL database',
+            command: 'pg_ctl start',
+          }),
+          defineService({
+            id: 'cache',
+            name: 'Cache',
+            command: 'redis-server',
+          }),
+        ],
+      });
+      const help = svcCli.generateHelp();
+      // Service group headers should appear
+      expect(help).toContain('Database:');
+      expect(help).toContain('PostgreSQL database');
+      expect(help).toContain('Cache:');
+      // Service commands should be listed under groups
+      expect(help).toContain('db-start');
+      expect(help).toContain('db-stop');
+      expect(help).toContain('cache-start');
+      // Regular commands should still appear under Commands:
+      expect(help).toContain('Commands:');
+      expect(help).toContain('echo');
     });
   });
 
@@ -932,6 +1027,102 @@ describe('defineCli', () => {
         'mcp-a': 'multi-mcp-a-mcp__',
         'mcp-b': 'multi-mcp-b-mcp__',
       });
+    });
+
+    it('--meta includes config metadata with env vars when configSchema is set', async () => {
+      const configCli = defineCli({
+        name: 'cfg-meta',
+        version: '1.0.0',
+        description: 'Config metadata test',
+        commands: [echo],
+        configSchema: z.object({
+          apiKey: z.string().default('').describe('API key'),
+          port: z.number().default(3000).describe('Server port'),
+          debug: z.boolean().optional().describe('Enable debug mode'),
+        }),
+      });
+      const cap = capture();
+      await configCli.run(['node', 'test', '--meta'], cap.options);
+      expect(cap.exitCode).toBe(0);
+      const json = JSON.parse(cap.output.join('\n'));
+      expect(json.config).toBeDefined();
+      expect(json.config.apiKey).toMatchObject({
+        id: 'apiKey',
+        description: 'API key',
+        type: 'string',
+        sensitive: false,
+      });
+      expect(json.config.apiKey.env).toBe('CFG_META_API_KEY');
+      expect(json.config.port).toMatchObject({
+        id: 'port',
+        optional: true,
+        type: 'number',
+        default: 3000,
+      });
+      expect(json.config.port.env).toBe('CFG_META_PORT');
+      expect(json.config.debug).toMatchObject({
+        id: 'debug',
+        optional: true,
+        type: 'boolean',
+      });
+    });
+
+    it('--meta includes prompts metadata when skills are configured', async () => {
+      const tmp = await mkdtemp(join(tmpdir(), 'meta-skills-'));
+      try {
+        const skillDir = join(tmp, 'my-skill');
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, 'SKILL.md'),
+          '---\nname: my-skill\ndescription: "A test skill"\n---\n\nContent.\n',
+        );
+
+        const skillCli = defineCli({
+          name: 'skill-meta',
+          version: '1.0.0',
+          description: 'Skills metadata test',
+          commands: [echo],
+          prompts: { sources: [tmp] },
+        });
+        const cap = capture();
+        await skillCli.run(['node', 'test', '--meta'], cap.options);
+        expect(cap.exitCode).toBe(0);
+        const json = JSON.parse(cap.output.join('\n'));
+        expect(json.prompts).toBeDefined();
+        expect(json.prompts.resolved['my-skill']).toEqual({
+          id: 'my-skill',
+          description: 'A test skill',
+        });
+        expect(json.prompts.sources).toEqual([tmp]);
+      } finally {
+        await rm(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('--meta includes mcpPrefix for service with flat readiness captures', async () => {
+      const svcCli = defineCli({
+        name: 'flat-mcp',
+        version: '1.0.0',
+        description: 'Flat readiness MCP test',
+        commands: [echo],
+        services: [
+          defineService({
+            id: 'flat-svc',
+            name: 'Flat Service',
+            command: 'echo hi',
+            readiness: {
+              pattern: /MCP at (https?:\/\/\S+)/,
+              captures: { 'mcp-url': { group: 1, type: 'api-mcp' } },
+              timeout: 5000,
+            },
+          }),
+        ],
+      });
+      const cap = capture();
+      await svcCli.run(['node', 'test', '--meta'], cap.options);
+      expect(cap.exitCode).toBe(0);
+      const json = JSON.parse(cap.output.join('\n'));
+      expect(json.services['flat-svc'].mcpPrefix).toBe('flat-svc-mcp__');
     });
 
     it('exits non-zero on missing required arg', async () => {
