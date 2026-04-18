@@ -1,4 +1,4 @@
-import { mkdirSync, appendFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import type { AgentSetupContext, AgentProvider, StreamChunk } from '../../core/types.js';
 import { createWorkdirStore } from '../../core/store.js';
 import { mapMastraStream } from './stream.js';
@@ -99,10 +99,6 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
         ? new MarkdownConversationLogger({ directory: options.logDirectory })
         : undefined;
 
-      // Debug logging to /tmp/agent-logs/
-      const debugDir = '/tmp/agent-logs';
-      let callSeq = 0;
-
       return {
         id: agentId,
         async *stream(prompt: string, opts?) {
@@ -137,32 +133,7 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
             logger.logUserMessage(sessionId, prompt);
           }
 
-          // Dump invocation to debug log
-          const callId = ++callSeq;
-          const ts = new Date().toISOString().replace(/[:.]/g, '-');
-          const debugFile = `${debugDir}/${ts}_${agentId}_${callId}.json`;
-          try {
-            mkdirSync(debugDir, { recursive: true });
-            writeFileSync(debugFile, JSON.stringify({
-              timestamp: new Date().toISOString(),
-              callId,
-              agentId,
-              agentName,
-              prompt: prompt.slice(0, 500),
-              streamOpts: { ...streamOpts, abortSignal: opts?.abortSignal ? '(AbortSignal)' : undefined },
-              model: agent.model ?? agent.modelId ?? '(unknown)',
-            }, null, 2));
-          } catch { /* debug logging is best-effort */ }
-
           const streamResult = await agent.stream(prompt, streamOpts);
-
-          // Append usage/metadata after stream is created
-          try {
-            const usage = await streamResult.usage?.catch?.(() => null) ?? streamResult.usage ?? null;
-            if (usage) {
-              appendFileSync(debugFile, `\n--- usage ---\n${JSON.stringify(usage, null, 2)}\n`);
-            }
-          } catch { /* best-effort */ }
 
           const rawStream = mapMastraStream(streamResult.fullStream as any);
 
@@ -179,8 +150,6 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
               if (logger) {
                 logger.logError(sessionId, 'Stream aborted by user');
               }
-              // Log abort in debug file
-              try { appendFileSync(debugFile, `\n--- aborted ---\n${new Date().toISOString()}\n`); } catch { /* best-effort */ }
               return; // Clean exit — not an error
             }
             if (logger) {
@@ -189,11 +158,6 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
             throw err;
           }
 
-          // Append final usage after stream completes
-          try {
-            const usage = await streamResult.usage?.catch?.(() => null) ?? streamResult.usage ?? null;
-            appendFileSync(debugFile, `\n--- final usage ---\n${JSON.stringify(usage, null, 2)}\n`);
-          } catch { /* best-effort */ }
         },
       };
     },

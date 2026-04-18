@@ -1,30 +1,4 @@
-import { mkdirSync, appendFileSync } from 'node:fs';
 import type { StreamChunk } from '../../core/types.js';
-
-const DEBUG_DIR = '/tmp/agent-logs';
-const DEBUG_STREAM_FILE = `${DEBUG_DIR}/raw-stream-chunks.jsonl`;
-
-function debugChunk(chunk: { type: string; [key: string]: unknown }): void {
-  try {
-    mkdirSync(DEBUG_DIR, { recursive: true });
-    const summary: Record<string, unknown> = { ts: new Date().toISOString(), type: chunk.type };
-    if (chunk.toolName) summary.toolName = chunk.toolName;
-    if (chunk.toolCallId) summary.toolCallId = chunk.toolCallId;
-    if (chunk.isError !== undefined) summary.isError = chunk.isError;
-    if (chunk.payload) {
-      const p = chunk.payload as Record<string, unknown>;
-      if (p.toolName) summary['payload.toolName'] = p.toolName;
-      if (p.toolCallId) summary['payload.toolCallId'] = p.toolCallId;
-      if (p.isError !== undefined) summary['payload.isError'] = p.isError;
-      if (p.type) summary['payload.type'] = p.type;
-    }
-    // For unknown types, capture all keys
-    if (!['text-delta', 'tool-call', 'tool-result', 'error'].includes(chunk.type)) {
-      summary.keys = Object.keys(chunk);
-    }
-    appendFileSync(DEBUG_STREAM_FILE, JSON.stringify(summary) + '\n');
-  } catch { /* best-effort */ }
-}
 
 /**
  * Map a Mastra Agent fullStream to ph-clint StreamChunks.
@@ -37,8 +11,6 @@ export async function* mapMastraStream(
   fullStream: AsyncIterable<{ type: string; [key: string]: unknown }>,
 ): AsyncGenerator<StreamChunk> {
   for await (const chunk of fullStream) {
-    debugChunk(chunk);
-
     switch (chunk.type) {
       case 'text-delta':
         yield {
