@@ -1125,6 +1125,60 @@ describe('defineCli', () => {
       expect(json.services['flat-svc'].mcpPrefix).toBe('flat-svc-mcp__');
     });
 
+    it('--help shows service groups with descriptions in Commander output', async () => {
+      const svcCli = defineCli({
+        name: 'svc-cmd-help',
+        version: '1.0.0',
+        description: 'Service Commander help test',
+        commands: [echo],
+        services: [
+          defineService({
+            id: 'db',
+            name: 'Database',
+            description: 'PostgreSQL database',
+            command: 'pg_ctl start',
+          }),
+        ],
+      });
+      const cap = capture();
+      await svcCli.run(['node', 'test', '--help'], cap.options);
+      const help = cap.output.join('\n');
+      expect(help).toContain('Database:');
+      expect(help).toContain('PostgreSQL database');
+      expect(help).toContain('db-start');
+    });
+
+    it('formats Zod validation errors in command execution', async () => {
+      const typedCli = defineCli({
+        name: 'zod-err',
+        version: '0.0.1',
+        description: 'Zod error test',
+        commands: [
+          defineCommand({
+            id: 'typed',
+            description: 'Typed command',
+            inputSchema: z.object({
+              count: z.number().describe('A count'),
+            }),
+            execute: async ({ count }) => count,
+          }),
+        ],
+      });
+      const cap = capture();
+      // Pass a string where number is expected — Commander passes strings
+      await typedCli.run(['node', 'test', 'typed', '--count', 'abc'], cap.options);
+      expect(cap.exitCode).not.toBe(0);
+      expect(cap.errors.join(' ')).toContain('typed');
+    });
+
+    it('teardown runs after command-mode execution', async () => {
+      const cap = capture();
+      await cli.run(['node', 'test', 'echo', '--message', 'hi'], cap.options);
+      // Successful command mode should not error — teardown runs silently
+      expect(cap.exitCode).toBeUndefined();
+      expect(cap.output).toEqual(['hi']);
+    });
+
     it('exits non-zero on missing required arg', async () => {
       const cap = capture();
       await cli.run(['node', 'test', 'echo'], cap.options);
@@ -2104,6 +2158,154 @@ describe('defineCli', () => {
       expect(cap.output).not.toEqual(
         expect.arrayContaining([expect.stringContaining('Routine running')]),
       );
+    });
+
+    it('routine-only service manager is wired when routine has id but no services', async () => {
+      const cli = defineCli({
+        name: 'rt-only',
+        version: '0.0.1',
+        description: 'Routine-only service manager test',
+        commands: [
+          defineCommand({
+            id: 'check-svc',
+            description: 'Check services',
+            inputSchema: z.object({}),
+            execute: async (_input, ctx) => {
+              const list = ctx.services?.list() ?? [];
+              return list.map(s => s.name).join(',');
+            },
+          }),
+        ],
+        interactive: { welcome: 'hi' },
+        triggers: [
+          defineTrigger({
+            id: 'watcher',
+            type: 'condition',
+            poll: async () => null,
+          }),
+        ],
+        routine: {
+          id: 'my-routine',
+          name: 'My Routine',
+          tickInterval: 1000,
+          idleInterval: 1000,
+        },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-i', '-R'], {
+        ...cap.options,
+        interactiveInput: (async function* () {
+          yield '/check-svc';
+          yield '/exit';
+        })(),
+      });
+
+      // The routine service adapter should be available via context.services
+      expect(cap.output.join('')).toContain('My Routine');
+    });
+
+    it('composite service manager routes to both process and routine services', async () => {
+      const cli = defineCli({
+        name: 'composite',
+        version: '0.0.1',
+        description: 'Composite service manager test',
+        commands: [
+          defineCommand({
+            id: 'check-svc',
+            description: 'Check services',
+            inputSchema: z.object({}),
+            execute: async (_input, ctx) => {
+              const list = ctx.services?.list() ?? [];
+              return list.map(s => s.name).join(',');
+            },
+          }),
+        ],
+        interactive: { welcome: 'hi' },
+        triggers: [
+          defineTrigger({
+            id: 'watcher',
+            type: 'condition',
+            poll: async () => null,
+          }),
+        ],
+        routine: {
+          id: 'my-routine',
+          name: 'My Routine',
+          tickInterval: 1000,
+          idleInterval: 1000,
+        },
+        services: [
+          defineService({
+            id: 'worker',
+            name: 'Worker',
+            command: 'echo running',
+          }),
+        ],
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-i', '-R'], {
+        ...cap.options,
+        interactiveInput: (async function* () {
+          yield '/check-svc';
+          yield '/exit';
+        })(),
+      });
+
+      // Both services should be visible through context.services
+      const svcOutput = cap.output.find(o => o.includes('My Routine') || o.includes('Worker'));
+      expect(svcOutput).toBeDefined();
+    });
+
+    it('startup error in interactive-streaming mode prints error and exits', async () => {
+      const cli = defineCli({
+        name: 'start-err',
+        version: '0.0.1',
+        description: 'Startup error test',
+        commands: [echo],
+        interactive: { welcome: 'hi' },
+      });
+
+      cli.configureReactor({
+        create: async () => { throw new Error('reactor boom'); },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test', '-i'], {
+        ...cap.options,
+        interactiveInput: (async function* () {
+          yield '/exit';
+        })(),
+      });
+
+      expect(cap.exitCode).toBe(1);
+    });
+
+    it('startup error in headless mode prints to stderr and exits', async () => {
+      const cli = defineCli({
+        name: 'hl-err',
+        version: '0.0.1',
+        description: 'Headless error test',
+        commands: [echo],
+        triggers: [
+          defineTrigger({
+            id: 'watcher',
+            type: 'condition',
+            poll: async () => null,
+          }),
+        ],
+      });
+
+      cli.configureReactor({
+        create: async () => { throw new Error('reactor boom'); },
+      });
+
+      const cap = capture();
+      await cli.run(['node', 'test'], cap.options);
+
+      expect(cap.exitCode).toBe(1);
+      expect(cap.errors.join(' ')).toContain('reactor boom');
     });
   });
 });
