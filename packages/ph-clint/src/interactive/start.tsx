@@ -26,7 +26,7 @@ export async function startInkRepl(session: ReplSession, opts?: StartInkReplOpti
       onStart={opts?.onStart}
       onMessage={opts?.onMessage}
     />,
-    { exitOnCtrlC: false },
+    { exitOnCtrlC: false, kittyKeyboard: { mode: 'auto' } },
   );
   await app.waitUntilExit();
 }

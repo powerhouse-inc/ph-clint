@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Text, useInput, useStdin } from 'ink';
 
+/** Test whether a character is a word boundary (whitespace). */
+const isWordBoundary = (ch: string) => ch === ' ' || ch === '\n' || ch === '\t';
+
 export interface TextInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -53,14 +56,21 @@ export function TextInput({
 
   const cursorOffset = internalOffset;
 
-  // Track physical Delete key (\x1b[3~) via raw stdin since Ink maps both
-  // Backspace (\x7f) and Delete (\x1b[3~) to key.delete
+  // Track raw stdin sequences that Ink can't distinguish:
+  // - Delete (\x1b[3~) vs Backspace (\x7f): both map to key.delete
+  // - Ctrl+Backspace (\x17 = Ctrl+W): Ink sees as input='w', ctrl=true
+  // - Ctrl+Delete (\x1b[3;5~): Ink may not parse the modifier
   const { stdin } = useStdin();
   const isForwardDelete = useRef(false);
+  const isCtrlBackspace = useRef(false);
+  const isCtrlDelete = useRef(false);
   useEffect(() => {
     const onData = (data: Buffer) => {
       const s = data.toString();
-      isForwardDelete.current = s === '\x1b[3~';
+
+      isForwardDelete.current = s === '\x1b[3~' || s === '\x1b[3;5~';
+      isCtrlBackspace.current = s === '\x17'; // Ctrl+W = Ctrl+Backspace
+      isCtrlDelete.current = s === '\x1b[3;5~' || s === '\x1bd'; // ESC+d = Ctrl+Delete
     };
     stdin.on('data', onData);
     return () => { stdin.off('data', onData); };
@@ -73,10 +83,8 @@ export function TextInput({
         return;
       }
 
-      // Pass through keys handled by parent
+      // Pass through keys handled by parent (Ctrl+C, Tab)
       if (
-        key.upArrow ||
-        key.downArrow ||
         (key.ctrl && input === 'c') ||
         key.tab ||
         (key.shift && key.tab)
@@ -84,7 +92,77 @@ export function TextInput({
         return;
       }
 
+      // Ctrl+Backspace (\x17): Ink sees as ctrl+w — intercept for word delete
+      if (isCtrlBackspace.current) {
+        isCtrlBackspace.current = false;
+        if (cursorOffset > 0) {
+          let i = cursorOffset - 1;
+          while (i > 0 && isWordBoundary(originalValue[i - 1]!)) i--;
+          while (i > 0 && !isWordBoundary(originalValue[i - 1]!)) i--;
+          const nextValue = originalValue.slice(0, i) + originalValue.slice(cursorOffset);
+          setInternalOffset(i);
+          if (nextValue !== originalValue) onChange(nextValue);
+        }
+        return;
+      }
+
+      // Ctrl+Delete (\x1b[3;5~): Ink may misparse — intercept for word delete
+      if (isCtrlDelete.current) {
+        isCtrlDelete.current = false;
+        if (cursorOffset < originalValue.length) {
+          let i = cursorOffset;
+          while (i < originalValue.length && isWordBoundary(originalValue[i]!)) i++;
+          while (i < originalValue.length && !isWordBoundary(originalValue[i]!)) i++;
+          const nextValue = originalValue.slice(0, cursorOffset) + originalValue.slice(i);
+          if (nextValue !== originalValue) onChange(nextValue);
+        }
+        return;
+      }
+
+      // Up/Down: navigate lines within multi-line input, or pass through to parent
+      if (key.upArrow || key.downArrow) {
+        const lines = originalValue.split('\n');
+        if (lines.length <= 1) return; // single-line — let parent handle
+
+        // Find which line the cursor is on and column within that line
+        let charCount = 0;
+        let cursorLine = 0;
+        for (let i = 0; i < lines.length; i++) {
+          if (cursorOffset <= charCount + lines[i]!.length) {
+            cursorLine = i;
+            break;
+          }
+          charCount += lines[i]!.length + 1; // +1 for '\n'
+        }
+        const colInLine = cursorOffset - charCount;
+
+        if (key.upArrow) {
+          if (cursorLine === 0) return; // top line — pass through to parent
+          // Move to same column on previous line (clamped)
+          const prevLineStart = charCount - lines[cursorLine - 1]!.length - 1;
+          const newCol = Math.min(colInLine, lines[cursorLine - 1]!.length);
+          setInternalOffset(prevLineStart + newCol);
+        } else {
+          if (cursorLine === lines.length - 1) return; // bottom line — pass through
+          // Move to same column on next line (clamped)
+          const nextLineStart = charCount + lines[cursorLine]!.length + 1;
+          const newCol = Math.min(colInLine, lines[cursorLine + 1]!.length);
+          setInternalOffset(nextLineStart + newCol);
+        }
+        return;
+      }
+
       if (key.return) {
+        // Alt+Enter or Shift+Enter (Kitty protocol): insert newline
+        if (key.meta || key.shift) {
+          const nextVal =
+            originalValue.slice(0, cursorOffset) +
+            '\n' +
+            originalValue.slice(cursorOffset);
+          setInternalOffset(cursorOffset + 1);
+          onChange(nextVal);
+          return;
+        }
         onSubmit?.(originalValue);
         return;
       }
@@ -101,8 +179,8 @@ export function TextInput({
           if (key.ctrl) {
             // Jump to previous word boundary
             let i = cursorOffset - 1;
-            while (i > 0 && originalValue[i - 1] === ' ') i--;
-            while (i > 0 && originalValue[i - 1] !== ' ') i--;
+            while (i > 0 && isWordBoundary(originalValue[i - 1]!)) i--;
+            while (i > 0 && !isWordBoundary(originalValue[i - 1]!)) i--;
             nextOffset = i;
           } else {
             nextOffset--;
@@ -113,22 +191,22 @@ export function TextInput({
           if (key.ctrl) {
             // Jump to next word boundary
             let i = cursorOffset;
-            while (i < originalValue.length && originalValue[i] !== ' ') i++;
-            while (i < originalValue.length && originalValue[i] === ' ') i++;
+            while (i < originalValue.length && !isWordBoundary(originalValue[i]!)) i++;
+            while (i < originalValue.length && isWordBoundary(originalValue[i]!)) i++;
             nextOffset = i;
           } else {
             nextOffset++;
           }
         }
       } else if ((key.delete || key.backspace) && isForwardDelete.current) {
-        // Physical Delete key (\x1b[3~): forward delete
+        // Physical Delete key (\x1b[3~): forward delete single char
         if (cursorOffset < originalValue.length) {
           nextValue =
             originalValue.slice(0, cursorOffset) +
             originalValue.slice(cursorOffset + 1);
         }
       } else if (key.delete || key.backspace) {
-        // Physical Backspace (\x7f) or Ctrl+H (\b): backward delete
+        // Physical Backspace (\x7f) or Ctrl+H (\b): backward delete single char
         if (cursorOffset > 0) {
           nextValue =
             originalValue.slice(0, cursorOffset - 1) +
@@ -194,14 +272,17 @@ export function TextInput({
     }
   }
 
-  const cursorChar = !atEnd ? originalValue[cursorOffset] : ' ';
+  const rawChar = !atEnd ? originalValue[cursorOffset]! : ' ';
   const after = !atEnd ? originalValue.slice(cursorOffset + 1) : '';
+  // Newline under cursor: show visible inverse space, then the line break
+  const cursorChar = rawChar === '\n' ? ' ' : rawChar;
+  const cursorTrail = rawChar === '\n' ? '\n' : '';
 
   return (
     <Text>
       {before}
       <Text inverse>{cursorChar}</Text>
-      {after}
+      {cursorTrail}{after}
     </Text>
   );
 }

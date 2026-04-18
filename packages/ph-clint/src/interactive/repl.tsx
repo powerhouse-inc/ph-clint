@@ -161,10 +161,21 @@ function updateSegments(prev: StreamSegment[], chunk: StreamChunk): StreamSegmen
 /**
  * Main REPL component for interactive mode.
  */
+/** Track terminal column width reactively across resize events. */
+function useTerminalColumns(): { stdout: NodeJS.WriteStream; columns: number } {
+  const { stdout } = useStdout();
+  const [columns, setColumns] = useState(stdout?.columns || 80);
+  useEffect(() => {
+    const onResize = () => setColumns(stdout?.columns || 80);
+    stdout?.on('resize', onResize);
+    return () => { stdout?.off('resize', onResize); };
+  }, [stdout]);
+  return { stdout: stdout as NodeJS.WriteStream, columns };
+}
+
 export function Repl({ session, services, workdir, onStart, onMessage }: ReplProps) {
   const { exit } = useApp();
-  const { stdout } = useStdout();
-  const columns = stdout?.columns || 80;
+  const { stdout, columns } = useTerminalColumns();
 
   // Terminal focus tracking (DECSET 1004) — only on real TTYs
   const isTTY = 'isTTY' in stdout && stdout.isTTY;
