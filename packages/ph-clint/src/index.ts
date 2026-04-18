@@ -91,6 +91,7 @@ export type {
   StreamChunk,
   TextDeltaChunk,
   ToolCallChunk,
+  ToolOutputChunk,
   ToolResultChunk,
   ErrorChunk,
   AgentProvider,

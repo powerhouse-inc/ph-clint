@@ -120,6 +120,8 @@ export interface CommandContext<
   reactor?: () => Promise<ReactorContext<R> | undefined>;
   /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
   agent?: () => Promise<AgentProvider | undefined>;
+  /** @internal Hook for interactive mode to capture progressive tool output. */
+  _onToolOutput?: (toolName: string, text: string) => void;
 }
 
 /**
@@ -205,6 +207,13 @@ export interface ToolResultChunk {
   isError: boolean;
 }
 
+export interface ToolOutputChunk {
+  type: 'tool-output';
+  toolCallId?: string;
+  toolName: string;
+  text: string;
+}
+
 export interface ErrorChunk {
   type: 'error';
   error: string;
@@ -213,6 +222,7 @@ export interface ErrorChunk {
 export type StreamChunk =
   | TextDeltaChunk
   | ToolCallChunk
+  | ToolOutputChunk
   | ToolResultChunk
   | ErrorChunk;
 

@@ -432,6 +432,21 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       interface ToolSeg { index: number; toolCallId?: string; toolName: string; complete: boolean }
       const toolSegs: ToolSeg[] = [];
 
+      context._onToolOutput = (toolName: string, outputText: string) => {
+        const toolOutputChunk: StreamChunk = { type: 'tool-output', toolName, text: outputText };
+        const display = formatStreamChunk(toolOutputChunk);
+
+        // Find the incomplete tool segment to append to
+        const match = toolSegs.find(t => !t.complete && t.toolName === toolName)
+          ?? toolSegs.find(t => !t.complete);
+        if (match) {
+          segments[match.index]!.content += display;
+        }
+
+        streamParts.push(display);
+        sessionRef?.onStreamChunk?.(toolOutputChunk, streamParts.join(''));
+      };
+
       for await (const chunk of stream) {
         const isText = chunk.type === 'text-delta';
         let display: string;
@@ -481,6 +496,8 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         streamParts.push(display);
         sessionRef?.onStreamChunk?.(chunk, streamParts.join(''));
       }
+
+      context._onToolOutput = undefined;
 
       // Build final result: render only text segments as markdown,
       // keep tool segments as pre-formatted with ⎿ indentation.

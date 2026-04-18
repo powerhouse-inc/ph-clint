@@ -19,7 +19,17 @@ export async function commandsToMastraTools(
       description: cmd.description,
       inputSchema: cmd.inputSchema,
       execute: async (input: unknown) => {
-        return cmd.execute(input, context);
+        const toolCtx = {
+          ...context,
+          stdout: (text: string) => {
+            if (context._onToolOutput) {
+              context._onToolOutput(cmd.id, text);
+            } else {
+              context.stdout(text);
+            }
+          },
+        };
+        return cmd.execute(input, toolCtx);
       },
     });
   }

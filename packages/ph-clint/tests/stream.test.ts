@@ -113,6 +113,11 @@ describe('formatStreamChunk', () => {
     const result = formatStreamChunk({ type: 'tool-result', toolName: 'ping', result: null, isError: false });
     expect(result).toContain('ok');
   });
+
+  it('formats tool-output as raw text', () => {
+    const result = formatStreamChunk({ type: 'tool-output', toolName: 'build', text: 'Building step 1...\n' });
+    expect(result).toBe('Building step 1...\n');
+  });
 });
 
 describe('renderStream', () => {

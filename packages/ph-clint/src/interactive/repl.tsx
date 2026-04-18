@@ -135,6 +135,14 @@ function updateSegments(prev: StreamSegment[], chunk: StreamChunk): StreamSegmen
       }
       break;
     }
+    case 'tool-output': {
+      const toolSeg = [...next].reverse().find(s => s.type === 'tool' && !s.complete);
+      if (toolSeg) {
+        const outputLines = chunk.text.split('\n').filter(l => l !== '');
+        toolSeg.lines.push(...outputLines);
+      }
+      break;
+    }
     case 'error': {
       const errorLines = formatStreamChunk(chunk).split('\n').filter(l => l !== '');
       const last = next[next.length - 1];

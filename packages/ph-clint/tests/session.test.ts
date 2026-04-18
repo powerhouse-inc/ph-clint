@@ -879,6 +879,72 @@ describe('onStreamChunk callback', () => {
     expect(chunks[2]!.fullText).toContain('Found cats.');
     expect(chunks[2]!.fullText).toContain('search');
   });
+
+  it('emits tool-output chunks when _onToolOutput is triggered during agent streaming', async () => {
+    // Command that writes progressive output via ctx.stdout
+    const verboseCmd = defineCommand({
+      id: 'build',
+      description: 'Build project',
+      inputSchema: z.object({}),
+      execute: async (_input, ctx) => {
+        ctx.stdout('Compiling...\n');
+        ctx.stdout('Linking...\n');
+        return { text: 'Build complete' };
+      },
+    });
+
+    // Agent that calls the verbose command (simulated via tool-call/result)
+    // But the actual _onToolOutput hook is set by session.handleAgentPrompt,
+    // so we need an agent that triggers tool execution through Mastra's loop.
+    // Since we can't easily test the full Mastra loop here, we test the hook
+    // directly by simulating what happens: the session sets _onToolOutput on context,
+    // and during the stream loop, tool execution fires it.
+
+    // We simulate this by having the agent yield chunks and manually triggering
+    // the _onToolOutput callback during the stream.
+    let contextRef: CommandContext | null = null;
+    const agent: AgentProvider = {
+      id: 'test',
+      async *stream() {
+        yield { type: 'tool-call' as const, toolName: 'build', args: {} };
+        // Simulate tool execution triggering _onToolOutput
+        if (contextRef?._onToolOutput) {
+          contextRef._onToolOutput('build', 'Compiling...\n');
+          contextRef._onToolOutput('build', 'Linking...\n');
+        }
+        yield { type: 'tool-result' as const, toolName: 'build', result: 'Build complete', isError: false };
+      },
+    };
+
+    const cli2 = defineCli({
+      name: 'test',
+      version: '1.0.0',
+      description: 'Test',
+      commands: [verboseCmd],
+      interactive: { welcome: '' },
+    });
+    cli2.configureAgent(async () => agent);
+
+    const context2: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    contextRef = context2;
+    const session2 = createReplSession({ cli: cli2, context: context2, agentProvider: agent });
+
+    const chunks: { type: string; text?: string }[] = [];
+    session2.onStreamChunk = (chunk) => {
+      chunks.push({ type: chunk.type, text: 'text' in chunk ? (chunk as any).text : undefined });
+    };
+
+    await session2.processInput('build my project');
+
+    // Should have: tool-call, tool-output x2, tool-result
+    const toolOutputChunks = chunks.filter(c => c.type === 'tool-output');
+    expect(toolOutputChunks.length).toBe(2);
+    expect(toolOutputChunks[0]!.text).toBe('Compiling...\n');
+    expect(toolOutputChunks[1]!.text).toBe('Linking...\n');
+
+    // _onToolOutput should be cleaned up after streaming
+    expect(context2._onToolOutput).toBeUndefined();
+  });
 });
 
 describe('session edge cases', () => {

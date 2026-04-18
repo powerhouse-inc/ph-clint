@@ -389,4 +389,61 @@ describe('commandsToMastraTools', () => {
     const result = await tool.execute!({ text: 'hello' }, {} as any);
     expect(result).toEqual({ text: 'hello' });
   });
+
+  it('routes stdout through _onToolOutput hook when set', async () => {
+    const captured: { toolName: string; text: string }[] = [];
+    const stdoutCmd = defineCommand({
+      id: 'verbose',
+      description: 'Writes to stdout',
+      inputSchema: z.object({}),
+      execute: async (_input, ctx) => {
+        ctx.stdout('line 1\n');
+        ctx.stdout('line 2\n');
+        return { text: 'done' };
+      },
+    });
+
+    const context: any = {
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      workdir: '',
+      stdout: () => {},
+      _onToolOutput: (toolName: string, text: string) => {
+        captured.push({ toolName, text });
+      },
+    };
+
+    const tools = await commandsToMastraTools([stdoutCmd], context);
+    await tools.verbose.execute!({}, {} as any);
+
+    expect(captured).toEqual([
+      { toolName: 'verbose', text: 'line 1\n' },
+      { toolName: 'verbose', text: 'line 2\n' },
+    ]);
+  });
+
+  it('falls through to original stdout when _onToolOutput is not set', async () => {
+    const stdoutLines: string[] = [];
+    const stdoutCmd = defineCommand({
+      id: 'verbose',
+      description: 'Writes to stdout',
+      inputSchema: z.object({}),
+      execute: async (_input, ctx) => {
+        ctx.stdout('output\n');
+        return { text: 'done' };
+      },
+    });
+
+    const context: any = {
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      workdir: '',
+      stdout: (text: string) => { stdoutLines.push(text); },
+    };
+
+    const tools = await commandsToMastraTools([stdoutCmd], context);
+    await tools.verbose.execute!({}, {} as any);
+
+    expect(stdoutLines).toEqual(['output\n']);
+  });
 });

@@ -37,6 +37,9 @@ export function formatStreamChunk(chunk: StreamChunk): string {
       // Short/null/object results: inline summary
       return `${DIM}${GREEN_DIM}✓ ${chunk.toolName}${RESET}${DIM} → ${truncateResult(chunk.result)}${RESET}\n`;
 
+    case 'tool-output':
+      return chunk.text;
+
     case 'error':
       return `${RED}Error: ${chunk.error}${RESET}\n`;
   }
