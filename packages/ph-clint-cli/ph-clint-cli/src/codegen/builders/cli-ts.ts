@@ -81,25 +81,10 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('');
   lines.push('  // @clint:begin interactive');
   lines.push('  interactive: {');
-  const ctxArgs: string[] = [];
-  if (powerhouse.enabled && (powerhouse.switchboard || powerhouse.connect)) {
-    ctxArgs.push('config');
-  }
-  ctxArgs.push('workdir');
-  lines.push(`    welcome: ({ ${ctxArgs.join(', ')} }) =>`);
+  lines.push(`    welcome: ({ workdir }) =>`);
   lines.push('      [');
   lines.push('        `${CLI_NAME} v${CLI_VERSION}`,');
   lines.push('        `Workdir: ${workdir}`,');
-  if (powerhouse.enabled && powerhouse.switchboard) {
-    lines.push(
-      '        `Switchboard: http://localhost:${config.switchboardPort}`,',
-    );
-  }
-  if (powerhouse.enabled && powerhouse.connect) {
-    lines.push(
-      '        `Connect:     http://localhost:${config.connectPort}`,',
-    );
-  }
   lines.push("        '',");
   if (mastra.enabled) {
     lines.push(

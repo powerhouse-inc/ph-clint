@@ -22,8 +22,8 @@ import type {
   DocumentRegistry,
   AnyRegistry,
 } from '../integrations/powerhouse/types.js';
-import { checkPort } from './preflight.js';
 import { connectServiceDefinition } from '../integrations/powerhouse/connect.js';
+import { resolveReactorDefaults, resolvePort } from '../integrations/powerhouse/ports.js';
 import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
 import { getSchemaFields, slugToTitle, type FieldInfo } from './schema.js';
@@ -237,6 +237,11 @@ export function defineCli<
   function configureReactor<R extends DocumentRegistry = AnyRegistry>(
     config: ReactorConfiguration<R>,
   ): void {
+    // Stamp port/name defaults from CLI name before anything else
+    const resolved = resolveReactorDefaults(options.name, config);
+    if (resolved.switchboard) config = { ...config, switchboard: resolved.switchboard };
+    if (resolved.connect) config = { ...config, connect: resolved.connect };
+
     // Erase R at the storage site — at runtime the registry is just a dict.
     // The generic only exists to type-check the caller's `create` factory.
     reactorConfig = config as unknown as ReactorConfiguration;
@@ -906,18 +911,12 @@ export function defineCli<
     async function startSwitchboardLayer(): Promise<void> {
       if (!reactorConfig?.switchboard?.enabled || !cachedReactor?._module) return;
       const switchboardHost = reactorConfig.switchboard.host ?? 'localhost';
-      const switchboardPort = reactorConfig.switchboard.port ?? 4801;
-
-      if (reactorConfig.switchboard.preflight !== false) {
-        log.debug(`Preflight: checking port ${switchboardPort} for Switchboard`);
-        const check = checkPort(switchboardPort, 'Switchboard');
-        const result = await check({ cwd: workdir, config: typedConfig as Record<string, unknown>, command: '' });
-        if (!result.ok) {
-          const parts = [result.message];
-          if (result.hint) parts.push(`  Hint: ${result.hint}`);
-          throw new Error(parts.join('\n'));
-        }
-      }
+      const switchboardLabel = reactorConfig.switchboard.name ?? 'switchboard';
+      const switchboardPort = await resolvePort(
+        reactorConfig.switchboard.port!,
+        reactorConfig.switchboard.portRange ?? 1,
+        switchboardLabel,
+      );
 
       const dbPath = workspace.getStoreFolder('read-model.db');
       log.debug(`Starting Switchboard on ${switchboardHost}:${switchboardPort}, dbPath: ${dbPath}`);
@@ -989,8 +988,9 @@ export function defineCli<
 
         // 3. Connect (web UI child process)
         if (reactorConfig?.connect?.enabled && context.services) {
+          const connectName = reactorConfig.connect.name!; // Always stamped by resolveReactorDefaults
           const connectWorkdir = reactorConfig.connect.workdir ?? workdir;
-          const instances = context.services.list('connect');
+          const instances = context.services.list(connectName);
           const running = instances.find(
             (i) => i.status === 'ready' || i.status === 'starting',
           );
@@ -1002,20 +1002,20 @@ export function defineCli<
             // Stop instance running in wrong workdir
             if (running) {
               log.info(`Stopping Connect (wrong workdir: ${running.workdir})`);
-              await context.services.stop('connect');
+              await context.services.stop(connectName);
             }
             log.debug(`Starting Connect in ${connectWorkdir}`);
             const connectParams: Record<string, unknown> = {};
             if (reactorConfig.connect!.port) connectParams.port = reactorConfig.connect!.port;
             if (cachedReactor?.driveUrl) connectParams.driveUrl = cachedReactor.driveUrl;
-            const instanceId = await context.services.start('connect', {
+            const instanceId = await context.services.start(connectName, {
               workdir: connectWorkdir,
               cwd: connectWorkdir,
               params: Object.keys(connectParams).length > 0 ? connectParams : undefined,
             });
             // URL is captured from the service's readiness pattern
-            const status = context.services.list('connect').find((i) => i.instanceId === instanceId);
-            const connectUrl = status?.endpoints?.['connect-studio'] ?? `http://localhost:${reactorConfig.connect!.port ?? 3000}`;
+            const status = context.services.list(connectName).find((i) => i.instanceId === instanceId);
+            const connectUrl = status?.endpoints?.['connect-studio'] ?? `http://localhost:${reactorConfig.connect!.port!}`;
             output(`Connect ready at ${connectUrl}`);
           }
         }

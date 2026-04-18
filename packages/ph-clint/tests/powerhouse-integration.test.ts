@@ -8,14 +8,14 @@ import type { ReactorContext, ReactorClientModule } from '../src/integrations/po
 
 describe('connectServiceDefinition', () => {
   it('creates a service definition with correct id and name', () => {
-    const svc = connectServiceDefinition({ enabled: true, port: 3000 });
-    expect(svc.id).toBe('connect');
-    expect(svc.name).toBe('Connect Studio');
+    const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
+    expect(svc.id).toBe('test-connect');
+    expect(svc.name).toBe('test-connect');
     expect(svc.description).toBe('Powerhouse Connect web interface');
   });
 
   it('generates command string with port and driveUrl', () => {
-    const svc = connectServiceDefinition({ enabled: true, port: 3001 });
+    const svc = connectServiceDefinition({ enabled: true, port: 3001, name: 'test-connect' });
     const cmd = typeof svc.command === 'function'
       ? svc.command({ port: 3001, driveUrl: 'http://localhost:4001/d/abc' })
       : svc.command;
@@ -23,16 +23,16 @@ describe('connectServiceDefinition', () => {
     expect(cmd).toContain('--default-drives-url http://localhost:4001/d/abc');
   });
 
-  it('uses default port 3000 when not specified', () => {
-    const svc = connectServiceDefinition({ enabled: true });
+  it('uses stamped port when no params override', () => {
+    const svc = connectServiceDefinition({ enabled: true, port: 4500, name: 'my-connect' });
     const cmd = typeof svc.command === 'function'
       ? svc.command({ driveUrl: 'http://test' })
       : svc.command;
-    expect(cmd).toContain('--port 3000');
+    expect(cmd).toContain('--port 4500');
   });
 
   it('sets env vars for Connect', () => {
-    const svc = connectServiceDefinition({ enabled: true });
+    const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
     const env = svc.env?.({}, { driveUrl: 'http://localhost:4001/d/abc' });
     expect(env).toEqual({
       PH_CONNECT_DEFAULT_DRIVES_URL: 'http://localhost:4001/d/abc',
@@ -41,20 +41,20 @@ describe('connectServiceDefinition', () => {
   });
 
   it('has readiness patterns for Connect', () => {
-    const svc = connectServiceDefinition({ enabled: true });
+    const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
     expect(svc.readiness?.patterns).toHaveLength(1);
     expect(svc.readiness?.patterns?.[0].name).toBe('connect');
     expect(svc.readiness?.timeout).toBe(30_000);
   });
 
   it('has SIGTERM shutdown config', () => {
-    const svc = connectServiceDefinition({ enabled: true });
+    const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
     expect(svc.shutdown?.signal).toBe('SIGTERM');
     expect(svc.shutdown?.timeout).toBe(5_000);
   });
 
   it('has restart disabled', () => {
-    const svc = connectServiceDefinition({ enabled: true });
+    const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
     expect(svc.restart?.enabled).toBe(false);
   });
 });

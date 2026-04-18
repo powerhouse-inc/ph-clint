@@ -18,14 +18,6 @@ export const configSchema = z.object({
     .string()
     .default('anthropic/claude-haiku-4-5')
     .describe('LLM model to use'),
-  connectPort: z
-    .number()
-    .default(3001)
-    .describe('Connect UI port for ph-clint itself'),
-  switchboardPort: z
-    .number()
-    .default(4802)
-    .describe('Switchboard port for ph-clint itself'),
   devServicePort: z
     .number()
     .default(3000)

@@ -31,6 +31,7 @@ export type { InferRegistry, ActionOf } from './registry.js';
 export { defineRegistry } from './registry.js';
 
 export { connectServiceDefinition } from './connect.js';
+export { defaultPort, resolvePort, resolveReactorDefaults } from './ports.js';
 export { bridgeSubscriptions } from './subscriptions.js';
 export { ensureDrive } from './drive.js';
 export { buildReactor } from './reactor.js';

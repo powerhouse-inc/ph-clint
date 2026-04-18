@@ -1772,7 +1772,7 @@ describe('defineCli', () => {
             shutdown: async () => {},
           };
         },
-        switchboard: { enabled: true, port: 19991, preflight: false },
+        switchboard: { enabled: true, port: 19991 },
       });
 
       const cap = capture();
@@ -1807,7 +1807,7 @@ describe('defineCli', () => {
           driveId: 'test',
           shutdown: async () => {},
         }),
-        switchboard: { enabled: true, port: 19992, preflight: false },
+        switchboard: { enabled: true, port: 19992 },
       });
 
       const cap = capture();
@@ -1836,7 +1836,7 @@ describe('defineCli', () => {
           driveId: 'test',
           shutdown: async () => {},
         }),
-        switchboard: { enabled: true, port: 19993, preflight: false },
+        switchboard: { enabled: true, port: 19993 },
       });
 
       const cap = capture();
@@ -1871,7 +1871,7 @@ describe('defineCli', () => {
           driveId: 'test',
           shutdown: async () => {},
         }),
-        switchboard: { enabled: true, port: 19994, preflight: false },
+        switchboard: { enabled: true, port: 19994 },
       });
 
       const cap = capture();
@@ -1902,7 +1902,7 @@ describe('defineCli', () => {
           driveId: 'test',
           shutdown: async () => {},
         }),
-        switchboard: { enabled: true, port: 19995, preflight: false },
+        switchboard: { enabled: true, port: 19995 },
       });
 
       const cap = capture();

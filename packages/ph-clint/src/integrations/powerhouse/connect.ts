@@ -16,14 +16,15 @@ import { checkCommand, checkPort } from '../../core/preflight.js';
 export function connectServiceDefinition(
   connectConfig: ConnectConfig,
 ): ServiceDefinition {
-  const defaultPort = connectConfig.port ?? 3000;
+  const serviceName = connectConfig.name ?? 'connect';
+  const servicePort = connectConfig.port!; // Always stamped by resolveReactorDefaults
 
   return {
-    id: 'connect',
-    name: 'Connect Studio',
+    id: serviceName,
+    name: serviceName,
     description: 'Powerhouse Connect web interface',
     command: (params?: Record<string, unknown>) => {
-      const p = (params?.port as number) ?? defaultPort;
+      const p = (params?.port as number) ?? servicePort;
       const driveUrl = (params?.driveUrl as string) ?? '';
       return `ph connect --port ${p} --default-drives-url ${driveUrl}`;
     },
@@ -35,7 +36,7 @@ export function connectServiceDefinition(
       checkCommand('ph', {
         hint: 'Install the Powerhouse CLI: npm install -g ph-cli',
       }),
-      checkPort((ctx) => (ctx.params?.port as number) ?? defaultPort, 'Connect Studio'),
+      checkPort((ctx) => (ctx.params?.port as number) ?? servicePort, serviceName),
     ],
     readiness: {
       patterns: [

@@ -34,6 +34,7 @@ export { renderMarkdown } from './interactive/markdown.js';
 export { buildDefaultReactor } from './integrations/powerhouse/index.js';
 export type { BuildDefaultReactorOptions } from './integrations/powerhouse/index.js';
 export { startSwitchboard } from './integrations/powerhouse/index.js';
+export { defaultPort, resolvePort, resolveReactorDefaults } from './integrations/powerhouse/ports.js';
 export type { StartSwitchboardOptions } from './integrations/powerhouse/switchboard.js';
 export { defineRegistry } from './integrations/powerhouse/registry.js';
 export { createDocumentChangeTrigger } from './integrations/powerhouse/change-trigger.js';

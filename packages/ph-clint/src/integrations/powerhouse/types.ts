@@ -275,10 +275,12 @@ export interface SwitchboardConfig {
   enabled: boolean;
   /** Hostname/IP to bind to. Default: 'localhost'. */
   host?: string;
-  /** HTTP port. Default: 4801. */
+  /** HTTP port. Default: derived from CLI name via hash. */
   port?: number;
-  /** Run preflight port check before starting. Default: true. */
-  preflight?: boolean;
+  /** Number of ports to scan starting from `port`. Default: 1. */
+  portRange?: number;
+  /** Service label for preflight messages. Default: '{cliName}-switchboard'. */
+  name?: string;
 }
 
 /**
@@ -287,10 +289,14 @@ export interface SwitchboardConfig {
 export interface ConnectConfig {
   /** Enable Connect. Default: false. */
   enabled: boolean;
-  /** HTTP port. Default: 3000. */
+  /** HTTP port. Default: derived from CLI name via hash. */
   port?: number;
+  /** Number of ports to scan starting from `port`. Default: 1. */
+  portRange?: number;
   /** Working directory for `ph connect` (must be a Reactor Package project). */
   workdir?: string;
+  /** Service ID for ServiceManager. Default: '{cliName}-connect'. */
+  name?: string;
 }
 
 /**

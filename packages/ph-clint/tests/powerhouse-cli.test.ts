@@ -236,8 +236,8 @@ describe('configureReactor() in cli.ts', () => {
 
     // Service commands should have been injected
     const cmds = cli.listCommands().map(c => c.id);
-    expect(cmds).toContain('connect-start');
-    expect(cmds).toContain('connect-stop');
-    expect(cmds).toContain('connect-ps');
+    expect(cmds).toContain('test-ph-connect-start');
+    expect(cmds).toContain('test-ph-connect-stop');
+    expect(cmds).toContain('test-ph-connect-ps');
   });
 });

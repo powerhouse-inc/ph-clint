@@ -63,10 +63,8 @@ export const cli = defineCli({
         : 'demo mode — set PH_CLINT_API_KEY for real LLM responses';
       return [
         `ph-clint v${CLI_VERSION}`,
-        `Switchboard: http://localhost:${config.switchboardPort}`,
-        `Connect:     http://localhost:${config.connectPort}`,
-        `Model:       ${mode}`,
-        `Workdir:     ${workdir}`,
+        `Model:   ${mode}`,
+        `Workdir: ${workdir}`,
         '',
         'Type a message to talk to the agent, or /help for commands.',
       ].join('\n');
@@ -82,8 +80,8 @@ cli.configureReactor({
     drive: { name: 'Clint' },
     subscriptions: { documentTypes: ['powerhouse/ph-clint-project'] },
   }),
-  switchboard: { enabled: true, port: 4802 },
-  connect: { enabled: true, port: 3001, workdir: appDir },
+  switchboard: { enabled: true },
+  connect: { enabled: true, workdir: appDir },
 });
 // @clint:end reactor
 

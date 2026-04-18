@@ -147,12 +147,12 @@ The factory returns a `ReactorContext` with `client`, `driveId`, `_module` (the 
 
 Runs only if `reactorConfig.switchboard.enabled` is true, `--no-switchboard` is not set, and the Reactor produced a `_module`. Switchboard is not a full service (no `ServiceManager`, no detached process) — it runs in-process as a NestJS HTTP server.
 
-Before starting, it runs a **preflight port check** using the same `checkPort()` function from the service infrastructure. This gives consistent error messages with hints across all port checks in the system. The preflight can be disabled via `switchboard.preflight: false` for testing.
+Before starting, it resolves the port via `resolvePort()`, which scans the configured port range for the first available port and throws with a clear error if none is free. This combines port checking and selection in one step.
 
-The Switchboard host and port are configurable via `SwitchboardConfig.host` (default `'localhost'`) and `SwitchboardConfig.port` (default `4801`). After startup, the URLs are propagated back to `ReactorContext` (`switchboardUrl`, `driveUrl`, `mcpUrl`) so that downstream consumers (Connect, agent tools) can find them.
+The Switchboard host and port are configurable via `SwitchboardConfig.host` (default `'localhost'`) and `SwitchboardConfig.port` (default derived from CLI name). After startup, the URLs are propagated back to `ReactorContext` (`switchboardUrl`, `driveUrl`, `mcpUrl`) so that downstream consumers (Connect, agent tools) can find them.
 
-**Output:** `Switchboard ready at http://localhost:4801/graphql`
-**Debug:** `drive: http://localhost:4801/d/{driveId}`, `mcp: http://localhost:4801/mcp`
+**Output:** `Switchboard ready at http://localhost:{port}/graphql`
+**Debug:** `drive: http://localhost:{port}/d/{driveId}`, `mcp: http://localhost:{port}/mcp`
 
 ### Step 3: Connect
 
@@ -306,22 +306,45 @@ When Switchboard is configured, the Reactor needs to enable its sync channel sch
 
 ## Configuration
 
+### Port Derivation
+
+Default ports are derived deterministically from the CLI name via a DJB2 hash, so multiple CLIs (e.g. `ph-rupert` and `ph-mara`) don't collide:
+
+- `defaultPort(cliName, 'switchboard')` → range 10000–59900
+- `defaultPort(cliName, 'connect')` → range 10000–59900
+
+When `portRange > 1`, the system scans `[port, port+range-1]` for the first free port using `resolvePort()`. If no port is free, a clear error is shown.
+
+Port and name defaults are stamped synchronously in `configureReactor()` via `resolveReactorDefaults()`. The actual async port scan happens later in `startSwitchboardLayer()` / connect preflight.
+
+### Service Name Namespacing
+
+Service IDs and labels are derived from the CLI name:
+
+- Connect service ID: `{cliName}-connect` (was `'connect'`)
+- Switchboard label: `{cliName}-switchboard` (was `'Switchboard'`)
+
+Both are configurable via the `name` field on their respective configs.
+
 ### `SwitchboardConfig`
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | `boolean` | — | Whether to start Switchboard |
 | `host` | `string` | `'localhost'` | Hostname/IP to bind to |
-| `port` | `number` | `4801` | HTTP port |
-| `preflight` | `boolean` | `true` | Run port check before starting |
+| `port` | `number` | `hash(cliName, 'switchboard')` | HTTP port |
+| `portRange` | `number` | `1` | Scan port..port+range-1 for first free |
+| `name` | `string` | `'{cliName}-switchboard'` | Service label for preflight messages |
 
 ### `ConnectConfig`
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | `boolean` | — | Whether to start Connect |
-| `port` | `number` | `3000` | HTTP port (passed to `ph connect --port`) |
+| `port` | `number` | `hash(cliName, 'connect')` | HTTP port (passed to `ph connect --port`) |
+| `portRange` | `number` | `1` | Scan port..port+range-1 for first free |
 | `workdir` | `string` | CLI workdir | Must be a Reactor Package project |
+| `name` | `string` | `'{cliName}-connect'` | Service ID for ServiceManager |
 
 Note: Connect does not have a `host` field. The `ph connect` command (ph-cli v6) does not support `--host`. See `specs/issues/ph-connect-missing-host-flag.md`.
 
@@ -332,10 +355,12 @@ Both `switchboard` and `connect` are fields on `ReactorConfiguration`, set via `
 ```typescript
 cli.configureReactor({
   create: (ctx) => buildDefaultReactor(ctx, { ... }),
-  switchboard: { enabled: true, port: 4801 },
-  connect: { enabled: true, port: 3000, workdir: agentAppDir },
+  switchboard: { enabled: true },          // port + name derived from CLI name
+  connect: { enabled: true, workdir: agentAppDir },
 });
 ```
+
+Explicit overrides still work: `switchboard: { enabled: true, port: 4801, name: 'my-switchboard' }`.
 
 This is deliberate: Switchboard and Connect depend on the Reactor, so their config lives alongside the Reactor factory. The startup sequence reads it from `reactorConfig.switchboard` and `reactorConfig.connect`.
 

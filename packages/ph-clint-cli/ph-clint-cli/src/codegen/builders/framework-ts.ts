@@ -49,16 +49,8 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
       "  model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model to use'),",
     );
   }
-  if (powerhouse.enabled && powerhouse.switchboard) {
-    lines.push(
-      "  switchboardPort: z.number().default(4001).describe('Switchboard port'),",
-    );
-  }
-  if (powerhouse.enabled && powerhouse.connect) {
-    lines.push(
-      "  connectPort: z.number().default(3000).describe('Connect UI port'),",
-    );
-  }
+  // Ports are derived from CLI name by resolveReactorDefaults() — no config fields needed.
+  // Override via switchboard.port / connect.port in configureReactor() if required.
   lines.push('  // Add your own config fields here — this file survives regens.');
   lines.push('});');
   lines.push('');
