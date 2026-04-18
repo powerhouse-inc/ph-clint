@@ -16,6 +16,7 @@ export function formatStatus(s: ServiceInstanceStatus): string {
     s.status === 'stopped' ? '■' :
     '○';
   const parts = [`${icon} ${s.name} [${s.status}]`];
+  if (s.instanceId && s.instanceId !== s.serviceId) parts.push(`(${s.instanceId})`);
   if (s.workdir) parts.push(path.basename(s.workdir));
   if (s.pid) parts.push(`pid ${s.pid}`);
   if (s.endpoints) {
@@ -199,10 +200,8 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
   // ── logs ──
   const logsFields: Record<string, z.ZodTypeAny> = {
     lines: z.coerce.number().default(50).describe('Number of log lines to show'),
+    instance: z.string().optional().describe('Instance ID (use -ps to find it)'),
   };
-  if (isMultiInstance) {
-    logsFields.instance = z.string().optional().describe('Instance ID');
-  }
 
   commands.push({
     id: `${id}-logs`,

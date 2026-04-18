@@ -706,25 +706,44 @@ export function createServiceManager(
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
 
-    // Resolve instance ID: if not provided, find the most recent instance on disk
+    // Resolve instance ID: if not provided, prefer running instances
     let resolvedInstanceId = instanceId;
+    let warning = '';
     if (!resolvedInstanceId) {
       const instances = scanInstances(servicesDir, id);
-      if (instances.length > 0) {
-        resolvedInstanceId = instances[instances.length - 1]!.instanceId;
+      const running = instances.filter(
+        (s) => s.status === 'ready' || s.status === 'starting',
+      );
+      if (running.length === 1) {
+        resolvedInstanceId = running[0]!.instanceId;
+      } else if (running.length > 1) {
+        warning = `⚠ Multiple running instances — showing logs for ${running[0]!.instanceId}. Use --instance to specify: ${running.map((r) => r.instanceId).join(', ')}\n`;
+        resolvedInstanceId = running[0]!.instanceId;
+      } else if (instances.length > 0) {
+        // No running instances — fall back to most recent log file or last state file
+        resolvedInstanceId = mostRecentLogInstance(servicesDir, id) ?? instances[instances.length - 1]!.instanceId;
       } else {
-        // No state files (e.g. after stop) — find the most recent .log file by mtime
+        // No state files at all — find the most recent .log file by mtime
         resolvedInstanceId = mostRecentLogInstance(servicesDir, id) ?? id;
       }
     }
     const logPath = logFilePath(servicesDir, id, resolvedInstanceId);
+
+    // Build informational footer showing which instance log was printed
+    const instances = instanceId ? null : scanInstances(servicesDir, id);
+    const instanceState = instances?.find((s) => s.instanceId === resolvedInstanceId);
+    const statusTag = instanceState ? ` [${instanceState.status}]` : '';
+    const instanceTag = resolvedInstanceId !== id ? ` (${resolvedInstanceId})` : '';
+    const workdirLine = instanceState?.workdir ? `\n  (dir: ${instanceState.workdir})` : '';
+    const footer = `\n— ${resolveServiceName(def)}${instanceTag}${statusTag} log${workdirLine}`;
+
     try {
       const content = fs.readFileSync(logPath, 'utf-8');
       const allLines = content.split('\n');
       // Return last N lines
-      return allLines.slice(-lines).join('\n');
+      return warning + allLines.slice(-lines).join('\n') + footer;
     } catch {
-      return '';
+      return warning;
     }
   }
 

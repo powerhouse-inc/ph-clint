@@ -133,6 +133,21 @@ describe('formatStatus', () => {
     expect(result).toContain('pid 456');
     expect(result).toContain('url=http://localhost:3000');
   });
+
+  it('shows instanceId when it differs from serviceId', () => {
+    const result = formatStatus({
+      serviceId: 'svc', instanceId: 'svc:abc12345', name: 'My Svc', status: 'ready',
+      pid: 789,
+    });
+    expect(result).toContain('(svc:abc12345)');
+  });
+
+  it('omits instanceId when it matches serviceId', () => {
+    const result = formatStatus({
+      serviceId: 'svc', instanceId: 'svc', name: 'My Svc', status: 'ready',
+    });
+    expect(result).not.toContain('(svc)');
+  });
 });
 
 describe('createServiceCommands', () => {
@@ -470,7 +485,7 @@ describe('createServiceCommands — with real services', () => {
   });
 
   describe('logs command', () => {
-    it('shows logs for a service', async () => {
+    it('shows logs for a service with informational footer', async () => {
       await mgr.start('test-svc');
       trackedPids.push(...collectPids(servicesDir));
 
@@ -478,6 +493,8 @@ describe('createServiceCommands — with real services', () => {
       const logsCmd = cmds.find((c) => c.id === 'test-svc-logs')!;
       const result = await logsCmd.execute({ lines: 50 }, makeContext()) as any;
       expect(result.text).toContain('listening');
+      expect(result.text).toContain('— Test Service');
+      expect(result.text).toContain('log');
     });
 
     it('shows "No logs available" when no logs exist', async () => {
@@ -485,6 +502,19 @@ describe('createServiceCommands — with real services', () => {
       const logsCmd = cmds.find((c) => c.id === 'test-svc-logs')!;
       const result = await logsCmd.execute({ lines: 50 }, makeContext()) as any;
       expect(result.text).toBe('No logs available');
+    });
+
+    it('always exposes instance field in logs command schema', () => {
+      const singleInstanceDef: ServiceDefinition = {
+        id: 'single',
+        name: 'Single Service',
+        command: 'echo hi',
+        readiness: { pattern: /ready/, timeout: 1000 },
+      };
+      const cmds = createServiceCommands(singleInstanceDef);
+      const logsCmd = cmds.find((c) => c.id === 'single-logs')!;
+      const shape = (logsCmd.inputSchema as z.ZodObject<any>).shape;
+      expect(shape.instance).toBeDefined();
     });
   });
 
