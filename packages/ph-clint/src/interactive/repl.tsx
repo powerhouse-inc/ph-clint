@@ -8,6 +8,7 @@ import { renderMarkdown } from './markdown.js';
 import { applyCompletion } from './completions.js';
 import { TextInput } from './text-input.js';
 import { ServicePanel } from './service-panel.js';
+import { useOutputThrottle } from './output-throttle.js';
 
 interface ReplProps {
   session: ReplSession;
@@ -28,6 +29,36 @@ type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
 
 /** Default number of trailing lines shown in the rolling output window during streaming. */
 const DEFAULT_OUTPUT_WINDOW = 6;
+
+/** Number of lines revealed per chunk. */
+const LINES_PER_CHUNK = 2;
+
+/** Snap clip position to reveal lines in groups of LINES_PER_CHUNK.
+ *  The last line (no trailing \n, i.e. actively streaming) renders char-by-char. */
+function snapToLine(text: string, pos: number): number {
+  if (pos <= 0) return 0;
+  if (pos >= text.length) return text.length;
+  // Count how many complete lines the budget covers
+  let lines = 0;
+  let idx = 0;
+  while (idx < pos) {
+    const nl = text.indexOf('\n', idx);
+    if (nl < 0 || nl >= pos) break;
+    lines++;
+    idx = nl + 1;
+  }
+  // Round down to nearest multiple of LINES_PER_CHUNK
+  const visibleLines = Math.floor(lines / LINES_PER_CHUNK) * LINES_PER_CHUNK;
+  if (visibleLines === 0) return 0;
+  // Find the position after the last visible line
+  let end = 0;
+  for (let i = 0; i < visibleLines; i++) {
+    const nl = text.indexOf('\n', end);
+    if (nl < 0) return end;
+    end = nl + 1;
+  }
+  return end;
+}
 
 /** Prefix for the first line of indented tool output. */
 const INDENT_FIRST = ' ⎿ ';
@@ -185,11 +216,13 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
   }, [stdout, isTTY]);
 
   const [phase, setPhase] = useState<'starting' | 'idle' | 'executing' | 'panel'>(onStart ? 'starting' : 'idle');
-  const [systemMessages, setSystemMessages] = useState<string[]>([]);
-  // Run onStart callback after mount — shows spinner + system messages, then transitions to idle
+  // Run onStart callback after mount — appends system messages to history, then transitions to idle
   useEffect(() => {
     if (!onStart) return;
-    const append = (msg: string) => setSystemMessages((prev) => [...prev, msg]);
+    const append = (msg: string) => setHistory((prev) => [
+      ...prev,
+      { id: -(prev.length + 1), input: '', output: msg, type: 'result' },
+    ]);
     onStart(append).then(
       () => setPhase('idle'),
       (err) => {
@@ -201,13 +234,22 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
   }, []);
 
   const [activePanelId, setActivePanelId] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  // Seed history with welcome + system messages so they scroll with content
+  const [history, setHistory] = useState<HistoryEntry[]>(() => {
+    const initial: HistoryEntry[] = [];
+    if (session.welcome) {
+      initial.push({ id: -1, input: '', output: session.welcome, type: 'result' });
+    }
+    return initial;
+  });
   const [input, setInput] = useState('');
   const [cursorOffset, setCursorOffset] = useState<number | undefined>(undefined);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [promptLabel, setPromptLabel] = useState<string | null>(null);
   const [segments, setSegments] = useState<StreamSegment[]>([]);
   const streamingFullRef = useRef('');
+  const throttle = useOutputThrottle();
+  const clipHighWaterRef = useRef(0);
   const [currentInput, setCurrentInput] = useState('');
   const nextId = useRef(0);
   const interruptedRef = useRef(false);
@@ -253,6 +295,8 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
       setPhase('executing');
       setSegments([]);
       streamingFullRef.current = '';
+      throttle.reset();
+      clipHighWaterRef.current = 0;
       setCurrentInput(trimmed);
       interruptedRef.current = false;
 
@@ -260,12 +304,17 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
       session.onStreamChunk = (chunk, fullText) => {
         streamingFullRef.current = fullText;
         setSegments(prev => updateSegments(prev, chunk));
+        const chunkLen = chunk.type === 'text-delta' || chunk.type === 'tool-output'
+          ? chunk.text.length
+          : formatStreamChunk(chunk).length;
+        throttle.addChars(chunkLen);
       };
 
       const result = await session.processInput(trimmed);
 
-      // Clear streaming callback
+      // Wait for throttled output to finish rendering before clearing
       session.onStreamChunk = undefined;
+      await throttle.waitForDrain();
       setSegments([]);
       streamingFullRef.current = '';
 
@@ -533,32 +582,21 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
 
   return (
     <Box flexDirection="column">
-      {/* Welcome message — shown only if there's no history yet */}
-      {history.length === 0 && session.welcome && (
-        <Box marginTop={1} marginBottom={1}>
-          <Text bold>{session.welcome}</Text>
-        </Box>
-      )}
-
-      {/* System messages from onStart (e.g. "Reactor ready", "Switchboard ready") */}
-      {systemMessages.length > 0 && (
-        <Box flexDirection="column">
-          {systemMessages.map((msg, i) => (
-            <Text key={i} dimColor>{msg}</Text>
-          ))}
-        </Box>
-      )}
-
-      {/* Immutable history */}
+      {/* Immutable history — welcome, system messages, and conversation entries */}
       <Static items={history}>
         {(entry) => (
           <Box key={entry.id} flexDirection="column" marginBottom={1}>
-            <Text>{' '}</Text>
-            <Text backgroundColor="#333333" color="#eeeeee">{' > '}{entry.input}{' '}</Text>
-            <Text>{' '}</Text>
+            {entry.input ? (
+              <>
+                <Text>{' '}</Text>
+                <Text backgroundColor="#333333" color="#eeeeee">{' > '}{entry.input}{' '}</Text>
+                <Text>{' '}</Text>
+              </>
+            ) : null}
             {entry.output ? (
               <Text
                 color={entry.type === 'error' ? 'red' : undefined}
+                bold={entry.id < 0}
               >
                 {entry.output}
               </Text>
@@ -592,42 +630,58 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
           <Text>{' '}</Text>
           {segments.length > 0 ? (
             <Box flexDirection="column">
-              {segments.map((seg, i) => {
-                const isLast = i === segments.length - 1;
-                const windowSize = session.outputWindow ?? DEFAULT_OUTPUT_WINDOW;
+              {(() => {
+                let charBudget = throttle.visibleChars;
+                return segments.map((seg, i) => {
+                  if (charBudget <= 0) return null;
+                  const isLast = i === segments.length - 1;
+                  const windowSize = session.outputWindow ?? DEFAULT_OUTPUT_WINDOW;
 
-                if (seg.type === 'text') {
-                  if (!isLast) {
-                    // Earlier text block: first line only, dimmed
-                    return <Text key={i} dimColor>{seg.lines[0]}</Text>;
+                  if (seg.type === 'text') {
+                    if (!isLast) {
+                      // Earlier text block: first line only, dimmed
+                      const line = seg.lines[0] ?? '';
+                      charBudget -= line.length;
+                      return <Text key={i} dimColor>{line}</Text>;
+                    }
+                    // Active text segment: clip to remaining budget (whole lines), render markdown
+                    const rawText = seg.lines.join('\n');
+                    const snapped = snapToLine(rawText, Math.ceil(charBudget));
+                    const clipPos = Math.max(snapped, clipHighWaterRef.current);
+                    clipHighWaterRef.current = clipPos;
+                    const clipped = rawText.slice(0, clipPos);
+                    charBudget -= Math.min(Math.ceil(charBudget), rawText.length);
+                    return <Text key={i}>{renderMarkdown(clipped) || clipped}</Text>;
                   }
-                  // Active text segment: render markdown incrementally
-                  const rawText = seg.lines.join('\n');
-                  return <Text key={i}>{renderMarkdown(rawText) || rawText}</Text>;
-                }
 
-                // Tool segment: header unindented, body indented with ⎿
-                const header = seg.lines.slice(0, seg.headerLines);
-                const body = seg.lines.slice(seg.headerLines);
-                const visibleBody = body.slice(-windowSize);
-                const hiddenCount = body.length - visibleBody.length;
+                  // Tool segment: header unindented, body indented with ⎿
+                  const header = seg.lines.slice(0, seg.headerLines);
+                  const body = seg.lines.slice(seg.headerLines);
+                  const visibleBody = body.slice(-windowSize);
+                  const hiddenCount = body.length - visibleBody.length;
 
-                const parts: string[] = [];
-                parts.push(...header);
-                if (hiddenCount > 0) {
-                  // ⎿ on the indicator, continuation indent on visible lines
-                  parts.push(INDENT_FIRST + `\x1b[2m... (${hiddenCount} more lines)\x1b[0m`);
-                  parts.push(...visibleBody.map(l => INDENT_REST + l));
-                } else {
-                  // ⎿ on first body line, continuation indent on rest
-                  parts.push(...formatToolLines(visibleBody, columns));
-                }
+                  const parts: string[] = [];
+                  parts.push(...header);
+                  if (hiddenCount > 0) {
+                    parts.push(INDENT_FIRST + `\x1b[2m... (${hiddenCount} more lines)\x1b[0m`);
+                    parts.push(...visibleBody.map(l => INDENT_REST + l));
+                  } else {
+                    parts.push(...formatToolLines(visibleBody, columns));
+                  }
 
-                const dimmed = seg.complete && !isLast;
-                const leading = '\n';
-                const trailing = seg.complete && !isLast ? '\n' : '';
-                return <Text key={i} dimColor={dimmed}>{leading}{parts.join('\n')}{trailing}</Text>;
-              })}
+                  const fullText = parts.join('\n');
+                  const snapped = snapToLine(fullText, Math.ceil(charBudget));
+                  const clipPos = Math.max(snapped, clipHighWaterRef.current);
+                  clipHighWaterRef.current = clipPos;
+                  const clipped = fullText.slice(0, clipPos);
+                  charBudget -= Math.min(Math.ceil(charBudget), fullText.length);
+
+                  const dimmed = seg.complete && !isLast;
+                  const leading = '\n';
+                  const trailing = seg.complete && !isLast ? '\n' : '';
+                  return <Text key={i} dimColor={dimmed}>{leading}{clipped}{trailing}</Text>;
+                });
+              })()}
             </Box>
           ) : (
             <Box>
@@ -638,7 +692,10 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
             </Box>
           )}
         </Box>
-      ) : (
+      ) : null}
+
+      {/* Input field — visible during idle and executing (deactivated while executing) */}
+      {(phase === 'idle' || phase === 'executing') && (
         <Box flexDirection="column">
           <Text color="green">{'─'.repeat(columns)}</Text>
           <Box>
@@ -650,12 +707,12 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
               onChange={handleChange}
               onSubmit={handleSubmit}
               cursorOffset={cursorOffset}
-              focus={terminalFocused}
-              suggestion={inlineSuggestion}
+              focus={terminalFocused && phase === 'idle'}
+              suggestion={phase === 'idle' ? inlineSuggestion : undefined}
             />
           </Box>
           <Text color="green">{'─'.repeat(columns)}</Text>
-          {suggestions.length > 1 && (
+          {phase === 'idle' && suggestions.length > 1 && (
             <Box marginLeft={2}>
               <Text dimColor>{suggestions.join('  ')}</Text>
             </Box>
