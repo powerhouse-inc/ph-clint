@@ -105,6 +105,100 @@ describe('createReplSession', () => {
       expect(result.text).toContain('Hello World');
     });
 
+    it('captures ctx.stdout() output during direct command execution', async () => {
+      const stdoutCmd = defineCommand({
+        id: 'verbose',
+        description: 'Writes progressive output',
+        inputSchema: z.object({}),
+        execute: async (_input, ctx) => {
+          ctx.stdout('Step 1\n');
+          ctx.stdout('Step 2\n');
+          return { text: 'Done' };
+        },
+      });
+
+      const cli2 = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Test',
+        commands: [stdoutCmd],
+        interactive: { welcome: '' },
+      });
+
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+      const s = createReplSession({ cli: cli2, context: ctx });
+      const result = await s.processInput('/verbose');
+
+      expect(result.type).toBe('result');
+      expect(result.text).toContain('Step 1');
+      expect(result.text).toContain('Step 2');
+      expect(result.text).toContain('Done');
+    });
+
+    it('streams ctx.stdout() progressively via onStreamChunk during direct command execution', async () => {
+      const stdoutCmd = defineCommand({
+        id: 'build',
+        description: 'Build with progress',
+        inputSchema: z.object({}),
+        execute: async (_input, ctx) => {
+          ctx.stdout('Compiling...\n');
+          ctx.stdout('Linking...\n');
+          return { text: 'Build complete' };
+        },
+      });
+
+      const cli2 = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Test',
+        commands: [stdoutCmd],
+        interactive: { welcome: '' },
+      });
+
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+      const s = createReplSession({ cli: cli2, context: ctx });
+
+      const streamed: { type: string; text?: string }[] = [];
+      s.onStreamChunk = (chunk) => {
+        streamed.push({ type: chunk.type, text: 'text' in chunk ? (chunk as any).text : undefined });
+      };
+
+      await s.processInput('/build');
+
+      // Each stdout call should have emitted a text-delta chunk
+      expect(streamed).toHaveLength(2);
+      expect(streamed[0]).toEqual({ type: 'text-delta', text: 'Compiling...\n' });
+      expect(streamed[1]).toEqual({ type: 'text-delta', text: 'Linking...\n' });
+    });
+
+    it('does not leak captured stdout to process.stdout', async () => {
+      const leaked: string[] = [];
+      const stdoutCmd = defineCommand({
+        id: 'leaky',
+        description: 'Writes to stdout',
+        inputSchema: z.object({}),
+        execute: async (_input, ctx) => {
+          ctx.stdout('captured\n');
+          return { text: 'ok' };
+        },
+      });
+
+      const cli2 = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Test',
+        commands: [stdoutCmd],
+        interactive: { welcome: '' },
+      });
+
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: (t) => { leaked.push(t); } };
+      const s = createReplSession({ cli: cli2, context: ctx });
+      await s.processInput('/leaky');
+
+      // Original stdout should NOT have been called — output was captured
+      expect(leaked).toEqual([]);
+    });
+
     it('returns error for unknown command', async () => {
       const result = await session.processInput('/nonexistent');
       expect(result.type).toBe('error');

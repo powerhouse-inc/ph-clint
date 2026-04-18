@@ -183,6 +183,39 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   // buildExitMessage() is called lazily — services may start after session creation
 
   /**
+   * Execute a command while capturing ctx.stdout() calls.
+   * Streams output progressively via onStreamChunk (no rolling window),
+   * and returns the captured output prepended to the formatted result.
+   */
+  async function executeCommandWithCapture(commandId: string, args: Record<string, unknown>): Promise<ReplOutput> {
+    const captured: string[] = [];
+    const streamParts: string[] = [];
+    const origStdout = context.stdout;
+    context.stdout = (text: string) => {
+      captured.push(text);
+      // Stream progressively through the REPL
+      const chunk: StreamChunk = { type: 'text-delta', text };
+      streamParts.push(text);
+      sessionRef?.onStreamChunk?.(chunk, streamParts.join(''));
+    };
+    try {
+      const result = await cli.execute(commandId, args, context);
+      context.stdout = origStdout;
+      if (isSkillInvocation(result)) {
+        return handleAgentPrompt(renderSkillPromptFromInvocation(result));
+      }
+      const text = formatResult(result);
+      const rendered = renderMarkdown(text);
+      const prefix = captured.length > 0 ? captured.join('') : '';
+      const combined = prefix && rendered ? prefix + rendered : prefix + rendered;
+      return { text: combined, type: 'result' };
+    } catch (err: unknown) {
+      context.stdout = origStdout;
+      throw err;
+    }
+  }
+
+  /**
    * Return the next prompt output for the current prompting state,
    * or execute the command if all fields are collected.
    */
@@ -194,12 +227,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       prompting = null;
       try {
         const args = cli.parseArgs(commandId, argsToArgv(collectedArgs));
-        const result = await cli.execute(commandId, args, context);
-        if (isSkillInvocation(result)) {
-          return handleAgentPrompt(renderSkillPromptFromInvocation(result));
-        }
-        const text = formatResult(result);
-        return { text: renderMarkdown(text), type: 'result' };
+        return await executeCommandWithCapture(commandId, args);
       } catch (err: unknown) {
         const msg = formatZodError(err, commandId);
         return { text: msg, type: 'error' };
@@ -311,12 +339,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
           }
 
           // No prompting needed — execute directly
-          const result = await cli.execute(parsed.commandId!, args, context);
-          if (isSkillInvocation(result)) {
-            return handleAgentPrompt(renderSkillPromptFromInvocation(result));
-          }
-          const text = formatResult(result);
-          return { text: renderMarkdown(text), type: 'result' };
+          return await executeCommandWithCapture(parsed.commandId!, args);
         } catch (err: unknown) {
           const msg = formatZodError(err, parsed.commandId!);
 
