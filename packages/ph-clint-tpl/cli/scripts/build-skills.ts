@@ -28,5 +28,6 @@ buildSkills({
     path.join(PROJECT_ROOT, 'gen'),
     path.join(PROJECT_ROOT, 'dist', 'gen'),
   ],
+  clean: true,
   cli,
 });

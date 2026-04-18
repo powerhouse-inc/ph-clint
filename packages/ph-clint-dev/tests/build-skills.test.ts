@@ -47,6 +47,7 @@ function makeResolved(overrides?: Partial<ResolvedBuildConfig>): ResolvedBuildCo
     context: { workspaceDir: '/test/workspace', connectPort: '3000' },
     agentProfiles: [],
     skillDescriptions: {},
+    clean: false,
     logger: () => {},
     ...overrides,
   };
@@ -244,6 +245,26 @@ describe('buildSkills (orchestrator)', () => {
     expect(result.skillsBuilt).toBe(1);
     expect(result.skillsCopied).toBe(1);
     expect(result.warnings).toEqual([]);
+  });
+
+  it('removes output directories when clean is true', () => {
+    const outputDir = path.join(tmpDir, 'output');
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.writeFileSync(path.join(outputDir, 'stale-file.txt'), 'leftover');
+
+    buildSkills(makeConfig({ clean: true }));
+
+    expect(fs.existsSync(path.join(outputDir, 'stale-file.txt'))).toBe(false);
+  });
+
+  it('preserves output directories when clean is false', () => {
+    const outputDir = path.join(tmpDir, 'output');
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.writeFileSync(path.join(outputDir, 'keep-me.txt'), 'keep');
+
+    buildSkills(makeConfig({ clean: false }));
+
+    expect(fs.existsSync(path.join(outputDir, 'keep-me.txt'))).toBe(true);
   });
 
   it('collects warnings from all steps', () => {

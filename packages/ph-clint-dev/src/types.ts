@@ -18,6 +18,8 @@ export interface BuildConfig {
     skillsTpl?: string;    // default: 'skills-tpl'
     skillsExt?: string;    // default: 'skills-ext'
   };
+  /** Remove output directories before building. Default: false */
+  clean?: boolean;
   /** Logger function. Default: console.log */
   logger?: (msg: string) => void;
 }
@@ -45,6 +47,8 @@ export interface ResolvedBuildConfig {
   };
   /** Additional Handlebars helpers. */
   customHelpers?: Record<string, (...args: unknown[]) => unknown>;
+  /** Remove output directories before building. */
+  clean: boolean;
   /** Logger function. */
   logger: (msg: string) => void;
 }

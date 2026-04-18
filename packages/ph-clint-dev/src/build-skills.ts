@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import type { BuildConfig, BuildResult, ResolvedBuildConfig } from './types.js';
 import { buildAgentProfiles } from './agent-profiles.js';
 import { buildSkillTemplates } from './skill-builder.js';
@@ -34,6 +35,7 @@ function resolve(config: BuildConfig): ResolvedBuildConfig {
     skillDescriptions,
     subdirs: config.subdirs,
     customHelpers: config.customHelpers,
+    clean: config.clean ?? false,
     logger: config.logger ?? console.log,
   };
 }
@@ -51,6 +53,16 @@ export function buildSkills(config: BuildConfig): BuildResult {
   const allWarnings: string[] = [];
 
   log(`Building skills from ${resolved.include.join(', ')}`);
+
+  // 0. Clean output directories
+  if (resolved.clean) {
+    for (const dir of resolved.output) {
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true });
+        log(`  Cleaned ${dir}`);
+      }
+    }
+  }
 
   // 1. Agent profiles
   const profiles = buildAgentProfiles(resolved);
