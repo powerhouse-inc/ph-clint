@@ -968,6 +968,23 @@ export function defineCli<
     }
 
     /**
+     * Report detached services that survive CLI exit (e.g. Connect).
+     */
+    function reportActiveServices(output: (msg: string) => void): void {
+      if (!context.services) return;
+      const dim = '\x1b[2m';
+      const reset = '\x1b[0m';
+      const active = context.services.list().filter(
+        (s) => s.status === 'ready' || s.status === 'starting',
+      );
+      for (let i = 0; i < active.length; i++) {
+        const svc = active[i];
+        const where = svc.workdir ? ` ${dim}\`${svc.workdir}\`${reset}` : '';
+        output(`${i === 0 ? '\n\n' : ''}${svc.name} still active${where}\n  ${dim}Run \`${options.name} ${svc.serviceId}-stop\` to shut it down${reset}`);
+      }
+    }
+
+    /**
      * Startup sequence — runs reactor, switchboard, connect, and routine
      * in order, reporting status via the output callback.
      *
@@ -1269,13 +1286,20 @@ export function defineCli<
           // Interactive input source: injected (testing) or piped stdin
           const { createStdinLineReader } = await import('./stdin.js');
           const source = opts.interactiveInput ?? createStdinLineReader();
+          let exitedViaCommand = false;
           for await (const line of source) {
             const result = await session!.processInput(line);
             if (result.type === 'exit') {
               if (result.text) stdout(result.text);
+              exitedViaCommand = true;
               break;
             }
             if (result.text) stdout(result.text);
+          }
+
+          // EOF without /exit — show exit message (active services, resume hint)
+          if (!exitedViaCommand) {
+            stdout(session!.exitMessage);
           }
 
           // EOF received — if keep-alive reason exists, block on signals
@@ -1315,6 +1339,7 @@ export function defineCli<
             const onSignal = async () => {
               process.removeListener('SIGINT', onSignal);
               process.removeListener('SIGTERM', onSignal);
+              reportActiveServices(stdout);
               await teardown();
               resolve();
             };
