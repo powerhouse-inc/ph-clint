@@ -279,7 +279,7 @@ export interface SwitchboardConfig {
   port?: number;
   /** Number of ports to scan starting from `port`. Default: 1. */
   portRange?: number;
-  /** Service label for preflight messages. Default: '{cliName}-switchboard'. */
+  /** Service label for preflight messages. Default: '{cliName}-api'. */
   name?: string;
 }
 
@@ -295,7 +295,7 @@ export interface ConnectConfig {
   portRange?: number;
   /** Working directory for `ph connect` (must be a Reactor Package project). */
   workdir?: string;
-  /** Service ID for ServiceManager. Default: '{cliName}-connect'. */
+  /** Service ID for ServiceManager. Default: '{cliName}-studio'. */
   name?: string;
 }
 

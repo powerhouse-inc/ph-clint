@@ -578,7 +578,11 @@ export function defineCli<
     }
 
     if (reactorConfig?.switchboard?.enabled) {
-      program.option('-S, --no-switchboard', 'Skip switchboard activation');
+      program.option('-A, --no-api', 'Skip API (switchboard) activation');
+    }
+
+    if (reactorConfig?.connect?.enabled) {
+      program.option('-S, --no-studio', 'Skip Studio (connect) activation');
     }
 
     program.option('--verbose', 'Enable debug-level logging');
@@ -772,7 +776,8 @@ export function defineCli<
     let verboseFlag = false;
     let metaFlag = false;
     let noRoutineFlag = false;
-    let noSwitchboardFlag = false;
+    let noApiFlag = false;
+    let noStudioFlag = false;
     const frameworkFlags = new Set(['--resume', '--workdir', '-w', '--config', '-c']);
     for (let i = 0; i < preCommandArgs.length; i++) {
       const arg = preCommandArgs[i]!;
@@ -784,8 +789,10 @@ export function defineCli<
         metaFlag = true;
       } else if (arg === '-R' || arg === '--no-routine') {
         noRoutineFlag = true;
-      } else if (arg === '-S' || arg === '--no-switchboard') {
-        noSwitchboardFlag = true;
+      } else if (arg === '-A' || arg === '--no-api') {
+        noApiFlag = true;
+      } else if (arg === '-S' || arg === '--no-studio') {
+        noStudioFlag = true;
       } else if (frameworkFlags.has(arg) && i + 1 < preCommandArgs.length) {
         const value = preCommandArgs[i + 1]!;
         if (arg === '--workdir' || arg === '-w') workdirFlag = value;
@@ -976,18 +983,18 @@ export function defineCli<
           output(`Reactor ready (drive: ${cachedReactor!.driveId})`);
         }
 
-        // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor) — skipped when --no-switchboard
-        if (reactorConfig?.switchboard?.enabled && !noSwitchboardFlag && cachedReactor?._module) {
+        // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor) — skipped when --no-api
+        if (reactorConfig?.switchboard?.enabled && !noApiFlag && cachedReactor?._module) {
           log.debug('Starting Switchboard...');
           await startSwitchboardLayer();
           const sb = switchboardInstance!;
-          output(`Switchboard ready at ${sb.switchboardUrl}`);
+          output(`Switchboard '${reactorConfig.switchboard.name!}' ready at ${sb.switchboardUrl}`);
           log.debug(`  drive: ${sb.driveUrl}`);
           log.debug(`  mcp:   ${sb.mcpUrl}`);
         }
 
-        // 3. Connect (web UI child process)
-        if (reactorConfig?.connect?.enabled && context.services) {
+        // 3. Connect (web UI child process) — skipped when --no-studio
+        if (reactorConfig?.connect?.enabled && !noStudioFlag && context.services) {
           const connectName = reactorConfig.connect.name!; // Always stamped by resolveReactorDefaults
           const connectWorkdir = reactorConfig.connect.workdir ?? workdir;
           const instances = context.services.list(connectName);
@@ -997,7 +1004,7 @@ export function defineCli<
 
           if (running && running.workdir === connectWorkdir) {
             const url = running.endpoints?.['connect-studio'] ?? 'unknown URL';
-            output(`Connect already running at ${url}`);
+            output(`Connect '${connectName}' already running at ${url}`);
           } else {
             // Stop instance running in wrong workdir
             if (running) {
@@ -1016,7 +1023,7 @@ export function defineCli<
             // URL is captured from the service's readiness pattern
             const status = context.services.list(connectName).find((i) => i.instanceId === instanceId);
             const connectUrl = status?.endpoints?.['connect-studio'] ?? `http://localhost:${reactorConfig.connect!.port!}`;
-            output(`Connect ready at ${connectUrl}`);
+            output(`Connect '${connectName}' ready at ${connectUrl}`);
           }
         }
 
@@ -1123,9 +1130,9 @@ export function defineCli<
     }
 
     // ── Dispatch ─────────────────────────────────────────────────────
-    // --no-routine / --no-switchboard suppress their respective keep-alive reasons
+    // --no-routine / --no-api suppress their respective keep-alive reasons
     const effectiveRoutine = noRoutineFlag ? undefined : routine;
-    const effectiveSwitchboard = !noSwitchboardFlag && reactorConfig?.switchboard?.enabled;
+    const effectiveApi = !noApiFlag && reactorConfig?.switchboard?.enabled;
 
     // Interaction mode: how the CLI does I/O
     // - headless: no input loop, execute and exit (or serve until killed)
@@ -1138,7 +1145,7 @@ export function defineCli<
 
     // Keep-alive: why the process stays running after primary work completes
     // Orthogonal to interaction mode — a headless CLI with switchboard blocks on signals
-    const hasKeepAlive = !!effectiveRoutine || !!effectiveSwitchboard;
+    const hasKeepAlive = !!effectiveRoutine || !!effectiveApi;
 
     if (isBuiltinFlag || (!interactiveFlag && (isSubcommand || hasPrompt))) {
       // ── Command execution (any mode): subcommand or prompt without -i → execute, exit ──

@@ -21,7 +21,12 @@ describe('defaultPort', () => {
     expect(a).not.toBe(b);
   });
 
-  it('port is in range 10000–59999', () => {
+  it('port is rounded to nearest multiple of 10', () => {
+    const port = defaultPort('my-cli', 'switchboard');
+    expect(port % 10).toBe(0);
+  });
+
+  it('port is in range 10000–59900', () => {
     const names = ['a', 'bb', 'ccc', 'ph-rupert', 'ph-mara', 'test-cli', 'x'.repeat(100)];
     const salts = ['switchboard', 'connect', 'foo'];
     for (const name of names) {
@@ -101,7 +106,7 @@ describe('resolveReactorDefaults', () => {
       switchboard: { enabled: true },
     });
     expect(result.switchboard!.port).toBe(defaultPort('my-cli', 'switchboard'));
-    expect(result.switchboard!.name).toBe('my-cli-switchboard');
+    expect(result.switchboard!.name).toBe('my-cli-api');
     expect(result.switchboard!.enabled).toBe(true);
   });
 
@@ -110,7 +115,7 @@ describe('resolveReactorDefaults', () => {
       connect: { enabled: true },
     });
     expect(result.connect!.port).toBe(defaultPort('my-cli', 'connect'));
-    expect(result.connect!.name).toBe('my-cli-connect');
+    expect(result.connect!.name).toBe('my-cli-studio');
     expect(result.connect!.enabled).toBe(true);
   });
 

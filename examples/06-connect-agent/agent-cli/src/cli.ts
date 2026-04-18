@@ -125,8 +125,8 @@ cli.configureReactor({
     drive: { name: 'Agent Chat' },
     subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
   }),
-  switchboard: { enabled: true, port: 4801 },
-  connect: { enabled: true, port: 3000, workdir: agentAppDir },
+  switchboard: { enabled: true },
+  connect: { enabled: true, workdir: agentAppDir },
 });
 
 cli.configureAgent(createAgent);

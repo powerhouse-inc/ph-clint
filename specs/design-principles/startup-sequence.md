@@ -63,17 +63,27 @@ Suppresses routine activation. When set, the routine object is still created (so
 
 Use cases: debugging the REPL or Switchboard without the trigger loop interfering, running one-shot commands while the routine is defined but not needed.
 
-### `--no-switchboard` / `-S`
+### `--no-api` / `-A`
 
-Suppresses switchboard activation. When set:
+Suppresses switchboard (API) activation. When set:
 
-- **Dispatch**: `--no-switchboard` removes switchboard as a keep-alive reason. Without other keep-alive reasons or `-i`, falls to help.
+- **Dispatch**: `--no-api` removes switchboard as a keep-alive reason. Without other keep-alive reasons or `-i`, falls to help.
 - **Startup sequence step 2**: Skipped entirely — the HTTP server does not start.
 - **Keep-alive**: Since the switchboard is suppressed, it no longer counts as a reason to stay alive after EOF or in headless mode.
 
 Use cases: debugging the REPL without the HTTP server, running one-shot commands when switchboard is configured but not needed.
 
 Only registered when `reactorConfig?.switchboard?.enabled` is true (same pattern as `--no-routine` only appearing when triggers are defined).
+
+### `--no-studio` / `-S`
+
+Suppresses Connect (Studio) activation. When set:
+
+- **Startup sequence step 3**: Skipped entirely — the Connect child process is not started.
+
+Use cases: running in API-only mode without the web UI, debugging without the Connect overhead.
+
+Only registered when `reactorConfig?.connect?.enabled` is true.
 
 ## Dispatch
 
@@ -126,7 +136,7 @@ No input loop. After startup sequence, outputs "Serving — press Ctrl+C to stop
 
 ```
 1. Reactor    → in-process document store, drive, subscriptions
-2. Switchboard → GraphQL + MCP endpoint wrapping the Reactor — skipped when --no-switchboard
+2. Switchboard → GraphQL + MCP endpoint wrapping the Reactor — skipped when --no-api
 3. Connect    → web UI child process pointing at Switchboard
 4. Routine    → tick-based trigger loop processing document events — skipped when --no-routine
 ```
@@ -145,7 +155,7 @@ The factory returns a `ReactorContext` with `client`, `driveId`, `_module` (the 
 
 ### Step 2: Switchboard
 
-Runs only if `reactorConfig.switchboard.enabled` is true, `--no-switchboard` is not set, and the Reactor produced a `_module`. Switchboard is not a full service (no `ServiceManager`, no detached process) — it runs in-process as a NestJS HTTP server.
+Runs only if `reactorConfig.switchboard.enabled` is true, `--no-api` is not set, and the Reactor produced a `_module`. Switchboard is not a full service (no `ServiceManager`, no detached process) — it runs in-process as a NestJS HTTP server.
 
 Before starting, it resolves the port via `resolvePort()`, which scans the configured port range for the first available port and throws with a clear error if none is free. This combines port checking and selection in one step.
 
@@ -321,8 +331,8 @@ Port and name defaults are stamped synchronously in `configureReactor()` via `re
 
 Service IDs and labels are derived from the CLI name:
 
-- Connect service ID: `{cliName}-connect` (was `'connect'`)
-- Switchboard label: `{cliName}-switchboard` (was `'Switchboard'`)
+- Connect service ID: `{cliName}-studio` (was `'connect'`)
+- Switchboard label: `{cliName}-api` (was `'Switchboard'`)
 
 Both are configurable via the `name` field on their respective configs.
 
@@ -334,7 +344,7 @@ Both are configurable via the `name` field on their respective configs.
 | `host` | `string` | `'localhost'` | Hostname/IP to bind to |
 | `port` | `number` | `hash(cliName, 'switchboard')` | HTTP port |
 | `portRange` | `number` | `1` | Scan port..port+range-1 for first free |
-| `name` | `string` | `'{cliName}-switchboard'` | Service label for preflight messages |
+| `name` | `string` | `'{cliName}-api'` | Service label for preflight messages |
 
 ### `ConnectConfig`
 
@@ -344,7 +354,7 @@ Both are configurable via the `name` field on their respective configs.
 | `port` | `number` | `hash(cliName, 'connect')` | HTTP port (passed to `ph connect --port`) |
 | `portRange` | `number` | `1` | Scan port..port+range-1 for first free |
 | `workdir` | `string` | CLI workdir | Must be a Reactor Package project |
-| `name` | `string` | `'{cliName}-connect'` | Service ID for ServiceManager |
+| `name` | `string` | `'{cliName}-studio'` | Service ID for ServiceManager |
 
 Note: Connect does not have a `host` field. The `ph connect` command (ph-cli v6) does not support `--host`. See `specs/issues/ph-connect-missing-host-flag.md`.
 

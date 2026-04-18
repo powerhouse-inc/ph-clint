@@ -20,7 +20,9 @@ export function defaultPort(cliName: string, salt: string): number {
   for (let i = 0; i < input.length; i++) {
     hash = ((hash << 5) + hash + input.charCodeAt(i)) >>> 0;
   }
-  return 10000 + (hash % 49901);
+  // Round to nearest 10 so ports are easy to remember
+  const raw = 10000 + (hash % 49901);
+  return Math.round(raw / 10) * 10;
 }
 
 /**
@@ -66,7 +68,7 @@ export function resolveReactorDefaults(
     result.switchboard = {
       ...config.switchboard,
       port: config.switchboard.port ?? defaultPort(cliName, 'switchboard'),
-      name: config.switchboard.name ?? `${cliName}-switchboard`,
+      name: config.switchboard.name ?? `${cliName}-api`,
     };
   }
 
@@ -74,7 +76,7 @@ export function resolveReactorDefaults(
     result.connect = {
       ...config.connect,
       port: config.connect.port ?? defaultPort(cliName, 'connect'),
-      name: config.connect.name ?? `${cliName}-connect`,
+      name: config.connect.name ?? `${cliName}-studio`,
     };
   }
 
