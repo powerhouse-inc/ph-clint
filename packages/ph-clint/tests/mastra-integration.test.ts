@@ -1,8 +1,8 @@
-import { describe, it, expect, afterAll } from '@jest/globals';
+import { describe, it, expect, afterAll, afterEach } from '@jest/globals';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { rm } from 'node:fs/promises';
+import { rm, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
@@ -87,6 +87,125 @@ describe('createMastraHelpers', () => {
     const helpers = createMastraHelpers(makeAgentSetupContext());
     const provider = helpers.wrapAgent({});
     expect(provider.id).toBe('default');
+  });
+
+  describe('wrapAgent with logging', () => {
+    let logDir: string;
+
+    afterEach(async () => {
+      if (logDir) {
+        try { await rm(logDir, { recursive: true }); } catch {}
+      }
+    });
+
+    function createStreamingAgent(chunks: Array<{ type: string; [key: string]: unknown }>, opts?: { instructions?: string; getInstructions?: () => Promise<string> }) {
+      return {
+        id: 'log-agent',
+        name: 'Log Agent',
+        instructions: opts?.instructions,
+        getInstructions: opts?.getInstructions,
+        async stream(_prompt: string, _opts?: unknown) {
+          return {
+            fullStream: (async function* () {
+              for (const chunk of chunks) yield chunk;
+            })(),
+          };
+        },
+      };
+    }
+
+    it('logs session with instructions from agent.instructions', async () => {
+      logDir = join(tmpdir(), `ph-clint-log-test-${randomBytes(4).toString('hex')}`);
+      const helpers = createMastraHelpers(makeAgentSetupContext());
+      const agent = createStreamingAgent(
+        [{ type: 'text-delta', textDelta: 'hello' }],
+        { instructions: 'You are a helpful assistant' },
+      );
+      const provider = helpers.wrapAgent(agent, {
+        enableLogging: true,
+        logDirectory: logDir,
+      });
+
+      const chunks: any[] = [];
+      for await (const chunk of provider.stream('test prompt', { threadId: 'log-thread' })) {
+        chunks.push(chunk);
+      }
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0].type).toBe('text-delta');
+
+      // Log file should have been created
+      const files = await readdir(logDir);
+      expect(files.length).toBeGreaterThan(0);
+    });
+
+    it('logs session with getInstructions() function', async () => {
+      logDir = join(tmpdir(), `ph-clint-log-test-${randomBytes(4).toString('hex')}`);
+      const helpers = createMastraHelpers(makeAgentSetupContext());
+      const agent = createStreamingAgent(
+        [{ type: 'text-delta', textDelta: 'response' }],
+        { getInstructions: async () => 'dynamic instructions' },
+      );
+      const provider = helpers.wrapAgent(agent, {
+        enableLogging: true,
+        logDirectory: logDir,
+      });
+
+      const chunks: any[] = [];
+      for await (const chunk of provider.stream('hello')) {
+        chunks.push(chunk);
+      }
+      expect(chunks).toHaveLength(1);
+    });
+
+    it('handles getInstructions() throwing gracefully', async () => {
+      logDir = join(tmpdir(), `ph-clint-log-test-${randomBytes(4).toString('hex')}`);
+      const helpers = createMastraHelpers(makeAgentSetupContext());
+      const agent = createStreamingAgent(
+        [{ type: 'text-delta', textDelta: 'ok' }],
+        { getInstructions: async () => { throw new Error('no instructions'); } },
+      );
+      const provider = helpers.wrapAgent(agent, {
+        enableLogging: true,
+        logDirectory: logDir,
+      });
+
+      const chunks: any[] = [];
+      for await (const chunk of provider.stream('hello')) {
+        chunks.push(chunk);
+      }
+      expect(chunks).toHaveLength(1);
+    });
+
+    it('logs error when stream throws', async () => {
+      logDir = join(tmpdir(), `ph-clint-log-test-${randomBytes(4).toString('hex')}`);
+      const helpers = createMastraHelpers(makeAgentSetupContext());
+      const errorAgent = {
+        id: 'err-agent',
+        name: 'Error Agent',
+        async stream() {
+          return {
+            fullStream: (async function* () {
+              yield { type: 'text-delta', textDelta: 'partial' };
+              throw new Error('stream exploded');
+            })(),
+          };
+        },
+      };
+      const provider = helpers.wrapAgent(errorAgent, {
+        enableLogging: true,
+        logDirectory: logDir,
+      });
+
+      const chunks: any[] = [];
+      await expect(async () => {
+        for await (const chunk of provider.stream('hello')) {
+          chunks.push(chunk);
+        }
+      }).rejects.toThrow('stream exploded');
+
+      // Should have collected the partial chunk before the error
+      expect(chunks).toHaveLength(1);
+    });
   });
 });
 
