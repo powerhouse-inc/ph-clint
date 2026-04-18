@@ -140,6 +140,9 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   // Forward reference — set after session is created, used by handleAgentPrompt
   let sessionRef: ReplSession | null = null;
 
+  // Abort controller for the current agent stream — created per turn
+  let currentAbortController: AbortController | null = null;
+
   /** Render an agent prompt from a SkillInvocation using its template. */
   function renderSkillPromptFromInvocation(invocation: SkillInvocation): string {
     const template = invocation.instructionTemplate ?? DEFAULT_SKILL_INSTRUCTION;
@@ -445,7 +448,8 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       // Accumulate chunks as typed segments: text (agent prose) vs tool (pre-formatted)
       const segments: { content: string; isText: boolean }[] = [];
       const commandMap = new Map(commands.map((c) => [c.id, c]));
-      const stream = agentProvider.stream(text, { threadId, tools: commandMap });
+      currentAbortController = new AbortController();
+      const stream = agentProvider.stream(text, { threadId, tools: commandMap, abortSignal: currentAbortController.signal });
       const windowSize = sessionRef?.outputWindow ?? 6;
 
       // For the onStreamChunk callback, maintain a running formatted string
@@ -521,6 +525,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       }
 
       context._onToolOutput = undefined;
+      currentAbortController = null;
 
       // Build final result: render only text segments as markdown,
       // keep tool segments as pre-formatted with ⎿ indentation.
@@ -542,6 +547,11 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         .join('\n\n');
       return { text: rendered, type: 'result' };
     } catch (err: unknown) {
+      currentAbortController = null;
+      // AbortError is a clean interruption, not an error to display
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { text: '(interrupted)', type: 'result' };
+      }
       const msg = err instanceof Error ? err.message : String(err);
       return { text: msg, type: 'error' };
     }
@@ -556,6 +566,12 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     welcome: typeof cli.interactive?.welcome === 'function' ? undefined : cli.interactive?.welcome,
     get exitMessage() { return buildExitMessage(); },
     outputWindow: (cli.interactive && 'outputWindow' in cli.interactive ? (cli.interactive as { outputWindow?: number }).outputWindow : undefined) ?? 6,
+    abortCurrentStream() {
+      if (currentAbortController) {
+        currentAbortController.abort();
+        currentAbortController = null;
+      }
+    },
   };
   sessionRef = session;
 

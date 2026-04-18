@@ -15,8 +15,6 @@ interface ReplProps {
   workdir?: string;
   /** Called after Ink mounts, before user input is accepted. The `append` function adds a system message to the Repl's display. */
   onStart?: (append: (msg: string) => void) => Promise<void>;
-  /** Subscribe to background messages (service events). Returns unsubscribe function. */
-  onMessage?: (handler: (msg: string) => void) => (() => void);
 }
 
 /**
@@ -173,7 +171,7 @@ function useTerminalColumns(): { stdout: NodeJS.WriteStream; columns: number } {
   return { stdout: stdout as NodeJS.WriteStream, columns };
 }
 
-export function Repl({ session, services, workdir, onStart, onMessage }: ReplProps) {
+export function Repl({ session, services, workdir, onStart }: ReplProps) {
   const { exit } = useApp();
   const { stdout, columns } = useTerminalColumns();
 
@@ -188,7 +186,6 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
 
   const [phase, setPhase] = useState<'starting' | 'idle' | 'executing' | 'panel'>(onStart ? 'starting' : 'idle');
   const [systemMessages, setSystemMessages] = useState<string[]>([]);
-  const [statusLines, setStatusLines] = useState<string[]>([]);
   // Run onStart callback after mount — shows spinner + system messages, then transitions to idle
   useEffect(() => {
     if (!onStart) return;
@@ -200,17 +197,6 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
         setPhase('idle');
       },
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Subscribe to background messages (service events) — rolling 3-line window
-  useEffect(() => {
-    if (!onMessage) return;
-    const handler = (msg: string) => {
-      setStatusLines((prev) => [...prev.slice(-2), msg]);
-    };
-    const unsub = onMessage(handler);
-    return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -367,9 +353,10 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
 
       if (phase !== 'idle') {
         if (key.escape) {
-          // Preserve any accumulated streaming output in history
+          // Abort the running agent stream — cancels the LLM request
           if (phase === 'executing') {
             interruptedRef.current = true;
+            session.abortCurrentStream();
             setHistory((h) => [
               ...h,
               {
@@ -653,14 +640,6 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
         </Box>
       ) : (
         <Box flexDirection="column">
-          {/* Status lines from background services */}
-          {statusLines.length > 0 && (
-            <Box flexDirection="column" marginBottom={0}>
-              {statusLines.map((line, i) => (
-                <Text key={i} dimColor>{line}</Text>
-              ))}
-            </Box>
-          )}
           <Text color="green">{'─'.repeat(columns)}</Text>
           <Box>
             <Text color={promptLabel ? "cyan" : "green"}>

@@ -15,8 +15,8 @@ export interface IConversationLogger {
   endSession(sessionId: string): void;
   logUserMessage(sessionId: string, message: string): void;
   logAssistantMessage(sessionId: string, message: string): void;
-  logToolUse(sessionId: string, toolName: string, args: unknown): void;
-  logToolResult(sessionId: string, toolName: string, result: unknown, isError?: boolean): void;
+  logToolUse(sessionId: string, toolName: string, args: unknown, toolCallId?: string): void;
+  logToolResult(sessionId: string, toolName: string, result: unknown, isError?: boolean, toolCallId?: string): void;
   logError(sessionId: string, error: string): void;
   cleanup(): void;
 }
@@ -136,23 +136,26 @@ export class MarkdownConversationLogger implements IConversationLogger {
     s.messageCount++;
   }
 
-  logToolUse(sessionId: string, toolName: string, args: unknown): void {
+  logToolUse(sessionId: string, toolName: string, args: unknown, toolCallId?: string): void {
     const s = this.sessions.get(sessionId);
     if (!s?.isActive) return;
 
+    const idLine = toolCallId ? `**Call ID**: ${toolCallId}\n` : '';
     appendFileSync(s.filePath,
       `## Tool Use: ${toolName}\n` +
       `**Time**: ${new Date().toISOString()}\n` +
+      idLine +
       `**Input**:\n\`\`\`\`json\n${JSON.stringify(args, null, 2)}\n\`\`\`\`\n\n`,
     );
     s.toolUseCount++;
   }
 
-  logToolResult(sessionId: string, toolName: string, result: unknown, isError?: boolean): void {
+  logToolResult(sessionId: string, toolName: string, result: unknown, isError?: boolean, toolCallId?: string): void {
     const s = this.sessions.get(sessionId);
     if (!s?.isActive) return;
 
-    let content = `## Tool Result: ${toolName}\n**Time**: ${new Date().toISOString()}\n`;
+    const idLine = toolCallId ? `**Call ID**: ${toolCallId}\n` : '';
+    let content = `## Tool Result: ${toolName}\n**Time**: ${new Date().toISOString()}\n${idLine}`;
     if (isError) {
       content += `**Error**: ${String(result)}\n`;
     } else {
@@ -210,11 +213,11 @@ export async function* loggedStream(
           break;
         case 'tool-call':
           flushText();
-          logger.logToolUse(sessionId, chunk.toolName, chunk.args);
+          logger.logToolUse(sessionId, chunk.toolName, chunk.args, chunk.toolCallId);
           break;
         case 'tool-result':
           flushText();
-          logger.logToolResult(sessionId, chunk.toolName, chunk.result, chunk.isError);
+          logger.logToolResult(sessionId, chunk.toolName, chunk.result, chunk.isError, chunk.toolCallId);
           break;
         case 'error':
           flushText();

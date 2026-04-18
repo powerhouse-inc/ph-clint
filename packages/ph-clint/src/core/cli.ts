@@ -881,7 +881,7 @@ export function defineCli<
       // Register event handlers on the event bus
       if (_eventBus && options.events) {
         for (const [event, handler] of Object.entries(options.events)) {
-          _eventBus.on(event, handler);
+          _eventBus.on(event, (data: unknown) => handler(data, log));
         }
       }
     }
@@ -1069,7 +1069,7 @@ export function defineCli<
         cliName: options.name,
         cliVersion: options.version,
         context,
-        commands: [...commandMap.values()],
+        commands: [...commandMap.values()].filter(c => !skillIds.has(c.id)),
         skills: resolvedSkills,
       };
       cachedProvider = await agentLoader(agentCtx);
@@ -1256,15 +1256,6 @@ export function defineCli<
             onStart: async (append) => {
               await startupSequence(append);
             },
-            onMessage: eventBus ? (handler) => {
-              const events = ['service:ready', 'service:failed', 'service:restarting', 'service:stopped', 'powerhouse:switchboard:ready'];
-              const listener = (data?: unknown) => {
-                const msg = typeof data === 'string' ? data : (data && typeof data === 'object' && 'message' in data) ? String((data as any).message) : '';
-                if (msg) handler(msg);
-              };
-              for (const event of events) eventBus.on(event, listener);
-              return () => { for (const event of events) eventBus.off(event, listener); };
-            } : undefined,
           });
           /* istanbul ignore next */
           await teardown();

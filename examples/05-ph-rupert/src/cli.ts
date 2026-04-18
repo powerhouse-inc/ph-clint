@@ -108,27 +108,27 @@ export const cli = defineCli({
   },
 
   events: {
-    'service:pattern-matched': (event) => {
-      console.log(`  \u2713 ${event.patternName} matched (${event.remaining} remaining)`);
+    'service:pattern-matched': (event, log) => {
+      log.info(`  \u2713 ${event.patternName} matched (${event.remaining} remaining)`);
     },
-    'service:ready': (event) => {
+    'service:ready': (event, log) => {
       const ep = event.endpoints ?? {};
-      console.log(`\u2713 ${event.name} is ready` + (ep['vetra-studio'] ? ` \u2014 Vetra Studio at ${ep['vetra-studio']}` : ''));
+      log.info(`\u2713 ${event.name} is ready` + (ep['vetra-studio'] ? ` \u2014 Vetra Studio at ${ep['vetra-studio']}` : ''));
     },
-    'service:failed': (event) => {
-      console.log(`\u2717 ${event.name} failed: ${event.error}`);
+    'service:failed': (event, log) => {
+      log.error(`\u2717 ${event.name} failed: ${event.error}`);
       if (event.id === 'reactor-project' && /exited before becoming ready/.test(event.error ?? '')) {
-        console.log('  Hint: Is the working directory a Reactor package project? Try: reactor-project-start --workdir <project-name>');
+        log.info('  Hint: Is the working directory a Reactor package project? Try: reactor-project-start --workdir <project-name>');
       }
       if (/max instances/.test(event.error ?? '')) {
-        console.log(`  Hint: ${event.name} is already running. Stop it first with ${event.id}-stop, or use ${event.id}-restart.`);
+        log.info(`  Hint: ${event.name} is already running. Stop it first with ${event.id}-stop, or use ${event.id}-restart.`);
       }
     },
-    'service:restarting': (event) => {
-      console.log(`\u21BB ${event.name} restarting (attempt ${event.attempt}/${event.maxRetries})`);
+    'service:restarting': (event, log) => {
+      log.warn(`\u21BB ${event.name} restarting (attempt ${event.attempt}/${event.maxRetries})`);
     },
-    'service:stopped': (event) => {
-      console.log(`\u25A0 ${event.name} stopped`);
+    'service:stopped': (event, log) => {
+      log.info(`\u25A0 ${event.name} stopped`);
     },
   },
 

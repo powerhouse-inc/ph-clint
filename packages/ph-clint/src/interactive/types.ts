@@ -44,6 +44,8 @@ export interface ReplSession {
   onStreamChunk?: (chunk: StreamChunk, fullText: string) => void;
   /** Number of trailing lines to show for tool output in the rolling window. */
   outputWindow: number;
+  /** Abort the currently running agent stream. The LLM request is cancelled and the session stays on the same thread. */
+  abortCurrentStream(): void;
 }
 
 /**

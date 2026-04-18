@@ -397,7 +397,7 @@ describe('createServiceCommands — with real services', () => {
       const cmds = createServiceCommands(readyDef);
       const stopCmd = cmds.find((c) => c.id === 'test-svc-stop')!;
       const result = await stopCmd.execute({}, makeContext()) as any;
-      expect(result.text).toContain('stopped');
+      expect(result.text).not.toContain('✗');
     });
 
     it('reports error for not-running service', async () => {
@@ -658,7 +658,7 @@ describe('auto-injected service commands in CLI', () => {
 
     const cap2 = capture();
     await cli.run(['node', 'svc', 'test-svc-stop'], cap2.options);
-    expect(cap2.output.join('')).toContain('stopped');
+    expect(cap2.output.join('')).not.toContain('✗');
   });
 
   it('/test-svc-ps works in headless interactive mode', async () => {

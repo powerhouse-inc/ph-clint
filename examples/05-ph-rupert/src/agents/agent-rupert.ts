@@ -127,6 +127,7 @@ export async function createAgent(ctx: AgentSetupContext<Config>): Promise<Agent
     maxSteps: 80,
     enableLogging: ctx.config.agentLogging,
     logDirectory: store.getStoreFolder('logs'),
+    cacheControl: true,
   };
   return m.wrapAgent(agent, wrapOpts);
 }

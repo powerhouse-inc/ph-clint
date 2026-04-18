@@ -128,7 +128,7 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
       if (!services) throw new Error('No services configured');
       try {
         await services.stop(id, input.instance as string | undefined);
-        return { text: `■ ${id} stopped` };
+        return { text: '' };
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         return { text: `✗ ${id}: ${msg}` };

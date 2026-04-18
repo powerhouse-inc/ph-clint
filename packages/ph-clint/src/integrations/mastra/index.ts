@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, appendFileSync, writeFileSync } from 'node:fs';
 import type { AgentSetupContext, AgentProvider, StreamChunk } from '../../core/types.js';
 import { createWorkdirStore } from '../../core/store.js';
 import { mapMastraStream } from './stream.js';
@@ -85,21 +85,40 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       const agentId = agent.id ?? 'default';
       const agentName = agent.name ?? agentId;
 
+      // Build providerOptions for Anthropic caching
+      let providerOptions: Record<string, unknown> | undefined;
+      if (options?.cacheControl) {
+        const cc = options.cacheControl === true
+          ? { type: 'ephemeral' as const }
+          : { type: 'ephemeral' as const, ...(options.cacheControl.ttl ? { ttl: options.cacheControl.ttl } : {}) };
+        providerOptions = { anthropic: { cacheControl: cc } };
+      }
+
       // Create logger if enabled
       const logger = options?.enableLogging && options.logDirectory
         ? new MarkdownConversationLogger({ directory: options.logDirectory })
         : undefined;
 
+      // Debug logging to /tmp/agent-logs/
+      const debugDir = '/tmp/agent-logs';
+      let callSeq = 0;
+
       return {
         id: agentId,
         async *stream(prompt: string, opts?) {
           const streamOpts: Record<string, unknown> = { maxSteps };
+          if (providerOptions) streamOpts.providerOptions = providerOptions;
 
           if (opts?.threadId) {
             streamOpts.memory = {
               thread: opts.threadId,
               resource: 'cli-user',
             };
+          }
+
+          // Pass abort signal through to Mastra agent
+          if (opts?.abortSignal) {
+            streamOpts.abortSignal = opts.abortSignal;
           }
 
           const sessionId = opts?.threadId ?? agentId;
@@ -118,7 +137,33 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
             logger.logUserMessage(sessionId, prompt);
           }
 
+          // Dump invocation to debug log
+          const callId = ++callSeq;
+          const ts = new Date().toISOString().replace(/[:.]/g, '-');
+          const debugFile = `${debugDir}/${ts}_${agentId}_${callId}.json`;
+          try {
+            mkdirSync(debugDir, { recursive: true });
+            writeFileSync(debugFile, JSON.stringify({
+              timestamp: new Date().toISOString(),
+              callId,
+              agentId,
+              agentName,
+              prompt: prompt.slice(0, 500),
+              streamOpts: { ...streamOpts, abortSignal: opts?.abortSignal ? '(AbortSignal)' : undefined },
+              model: agent.model ?? agent.modelId ?? '(unknown)',
+            }, null, 2));
+          } catch { /* debug logging is best-effort */ }
+
           const streamResult = await agent.stream(prompt, streamOpts);
+
+          // Append usage/metadata after stream is created
+          try {
+            const usage = await streamResult.usage?.catch?.(() => null) ?? streamResult.usage ?? null;
+            if (usage) {
+              appendFileSync(debugFile, `\n--- usage ---\n${JSON.stringify(usage, null, 2)}\n`);
+            }
+          } catch { /* best-effort */ }
+
           const rawStream = mapMastraStream(streamResult.fullStream as any);
 
           try {
@@ -128,11 +173,27 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
               yield* rawStream;
             }
           } catch (err) {
+            const isAbort = err instanceof Error && err.name === 'AbortError';
+            if (isAbort) {
+              // Log abort in markdown logger
+              if (logger) {
+                logger.logError(sessionId, 'Stream aborted by user');
+              }
+              // Log abort in debug file
+              try { appendFileSync(debugFile, `\n--- aborted ---\n${new Date().toISOString()}\n`); } catch { /* best-effort */ }
+              return; // Clean exit — not an error
+            }
             if (logger) {
               logger.logError(sessionId, err instanceof Error ? err.message : String(err));
             }
             throw err;
           }
+
+          // Append final usage after stream completes
+          try {
+            const usage = await streamResult.usage?.catch?.(() => null) ?? streamResult.usage ?? null;
+            appendFileSync(debugFile, `\n--- final usage ---\n${JSON.stringify(usage, null, 2)}\n`);
+          } catch { /* best-effort */ }
         },
       };
     },

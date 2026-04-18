@@ -28,6 +28,15 @@ export interface WrapAgentOptions {
   enableLogging?: boolean;
   /** Directory to write log files. Required when enableLogging is true. */
   logDirectory?: string;
+  /**
+   * Enable Anthropic prompt caching. Passes `providerOptions.anthropic.cacheControl`
+   * on every stream() call, enabling automatic cache breakpoint placement.
+   *
+   * Set to `true` for default 5-minute TTL, or specify `{ ttl: '1h' }` for extended caching.
+   * Only effective when the model is Anthropic and the prompt exceeds the model's
+   * minimum cacheable token threshold (e.g. 4,096 for Haiku 4.5).
+   */
+  cacheControl?: boolean | { ttl?: '5m' | '1h' };
 }
 
 export interface MastraHelpers {

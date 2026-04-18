@@ -234,6 +234,8 @@ export type StreamChunk =
 export interface AgentStreamOptions {
   threadId?: string;
   tools?: Map<string, Command>;
+  /** Signal to abort the current stream. When aborted, the underlying LLM request is cancelled. */
+  abortSignal?: AbortSignal;
 }
 
 /**
@@ -742,8 +744,8 @@ export interface CliOptions<
   routine?: RoutineConfig;
   /** Service definitions for the ServiceManager. */
   services?: ServiceDefinition<z.infer<TSchema> & z.infer<TSecrets>>[];
-  /** Event handlers registered on the event bus. */
-  events?: Record<string, (data: any) => void>;
+  /** Event handlers registered on the event bus. Receives event data and a logger for display output. */
+  events?: Record<string, (data: any, log: Logger) => void>;
   /**
    * Implementation-level workdir override. When set, the --workdir/-w CLI flag
    * is hidden — the implementation owns the decision of where the workspace is.
