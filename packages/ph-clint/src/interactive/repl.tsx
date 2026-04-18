@@ -28,16 +28,62 @@ interface ReplProps {
  */
 type InteractionMode = 'typing' | 'tab-cycling' | 'history-cycling';
 
-/** Number of trailing lines shown in the rolling output window during streaming. */
-const ROLLING_LINES = 6;
+/** Default number of trailing lines shown in the rolling output window during streaming. */
+const DEFAULT_OUTPUT_WINDOW = 6;
+
+/** Prefix for the first line of indented tool output. */
+const INDENT_FIRST = ' ⎿ ';
+/** Prefix for continuation lines of indented tool output. */
+const INDENT_REST = '   ';
+
+/** Strip ANSI escape codes for visible-width measurement. */
+function stripAnsi(str: string): string {
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+/**
+ * Indent and truncate tool output lines for the rolling window.
+ * First line gets ` ⎿ `, subsequent lines get `   `.
+ * Lines are truncated to fit within `maxWidth` columns.
+ */
+function formatToolLines(lines: string[], maxWidth: number): string[] {
+  return lines.map((line, i) => {
+    const prefix = i === 0 ? INDENT_FIRST : INDENT_REST;
+    const available = maxWidth - prefix.length;
+    if (available <= 0) return prefix;
+    const visible = stripAnsi(line);
+    if (visible.length <= available) return prefix + line;
+    // Truncate: find how many chars of the original string to keep
+    // Walk the original string, tracking visible characters
+    let visCount = 0;
+    let cutIdx = line.length;
+    for (let j = 0; j < line.length; j++) {
+      if (line[j] === '\x1b') {
+        // Skip ANSI sequence
+        const end = line.indexOf('m', j);
+        if (end !== -1) { j = end; continue; }
+      }
+      visCount++;
+      if (visCount >= available - 1) { // -1 for ellipsis
+        cutIdx = j + 1;
+        break;
+      }
+    }
+    return prefix + line.slice(0, cutIdx) + '…';
+  });
+}
 
 /** A logical segment of streaming output — either agent text or a tool call/result pair. */
 interface StreamSegment {
   type: 'text' | 'tool';
   /** Formatted display lines accumulated in this segment. */
   lines: string[];
+  /** Tool call ID for matching results to calls (from Vercel AI SDK). */
+  toolCallId?: string;
   /** Tool name (for tool segments). */
   toolName?: string;
+  /** Number of header lines (tool-call) pinned above the rolling window. */
+  headerLines: number;
   /** Whether the tool segment has received its result. */
   complete: boolean;
 }
@@ -50,41 +96,52 @@ function updateSegments(prev: StreamSegment[], chunk: StreamChunk): StreamSegmen
     case 'text-delta': {
       const last = next[next.length - 1];
       if (last && last.type === 'text') {
-        // Append to existing text segment
-        const text = last.lines.join('') + chunk.text;
+        // Append to existing text segment (join with \n to preserve line breaks)
+        const text = last.lines.join('\n') + chunk.text;
         last.lines = text.split('\n');
       } else {
         // Start a new text segment
-        next.push({ type: 'text', lines: chunk.text.split('\n'), complete: false });
+        next.push({ type: 'text', lines: chunk.text.split('\n'), headerLines: 0, complete: false });
       }
       break;
     }
-    case 'tool-call':
+    case 'tool-call': {
+      // Strip leading/trailing \n from formatStreamChunk, keep only content lines
+      const headerLines = formatStreamChunk(chunk).split('\n').filter(l => l !== '');
       next.push({
         type: 'tool',
-        lines: [formatStreamChunk(chunk)],
+        lines: headerLines,
+        toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
+        headerLines: headerLines.length,
         complete: false,
       });
       break;
+    }
     case 'tool-result': {
-      // Find the matching incomplete tool segment
-      const toolSeg = [...next].reverse().find(s => s.type === 'tool' && !s.complete);
+      // Strip empty lines from leading/trailing \n
+      const resultLines = formatStreamChunk(chunk).split('\n').filter(l => l !== '');
+      // Match by toolCallId (exact), then toolName (FIFO), then any incomplete
+      const toolSeg = (chunk.toolCallId
+          ? next.find(s => s.type === 'tool' && !s.complete && s.toolCallId === chunk.toolCallId)
+          : undefined)
+        ?? next.find(s => s.type === 'tool' && !s.complete && s.toolName === chunk.toolName)
+        ?? next.find(s => s.type === 'tool' && !s.complete);
       if (toolSeg) {
-        toolSeg.lines.push(formatStreamChunk(chunk));
+        toolSeg.lines.push(...resultLines);
         toolSeg.complete = true;
       } else {
-        // Orphan result — append to a new segment
-        next.push({ type: 'tool', lines: [formatStreamChunk(chunk)], toolName: chunk.toolName, complete: true });
+        next.push({ type: 'tool', lines: resultLines, toolCallId: chunk.toolCallId, toolName: chunk.toolName, headerLines: 0, complete: true });
       }
       break;
     }
     case 'error': {
+      const errorLines = formatStreamChunk(chunk).split('\n').filter(l => l !== '');
       const last = next[next.length - 1];
       if (last) {
-        last.lines.push(formatStreamChunk(chunk));
+        last.lines.push(...errorLines);
       } else {
-        next.push({ type: 'text', lines: [formatStreamChunk(chunk)], complete: false });
+        next.push({ type: 'text', lines: errorLines, headerLines: 0, complete: false });
       }
       break;
     }
@@ -523,7 +580,7 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
           }}
         />
       ) : phase === 'executing' ? (
-        <Box flexDirection="column" marginBottom={1}>
+        <Box flexDirection="column">
           <Text>{' '}</Text>
           <Text backgroundColor="#333333" color="#eeeeee">{' > '}{currentInput}{' '}</Text>
           <Text>{' '}</Text>
@@ -531,17 +588,39 @@ export function Repl({ session, services, workdir, onStart, onMessage }: ReplPro
             <Box flexDirection="column">
               {segments.map((seg, i) => {
                 const isLast = i === segments.length - 1;
-                if (seg.type === 'tool' && seg.complete && !isLast) {
-                  // Collapsed completed tool: one-liner
-                  return <Text key={i} dimColor>  ▶ {seg.toolName} ✓</Text>;
+                const windowSize = session.outputWindow ?? DEFAULT_OUTPUT_WINDOW;
+
+                if (seg.type === 'text') {
+                  if (!isLast) {
+                    // Earlier text block: first line only, dimmed
+                    return <Text key={i} dimColor>{seg.lines[0]}</Text>;
+                  }
+                  // Active text segment: render markdown incrementally
+                  const rawText = seg.lines.join('\n');
+                  return <Text key={i}>{renderMarkdown(rawText) || rawText}</Text>;
                 }
-                if (seg.type === 'text' && !isLast) {
-                  // Earlier text block: first line only
-                  return <Text key={i} dimColor>{seg.lines[0]}</Text>;
+
+                // Tool segment: header unindented, body indented with ⎿
+                const header = seg.lines.slice(0, seg.headerLines);
+                const body = seg.lines.slice(seg.headerLines);
+                const visibleBody = body.slice(-windowSize);
+                const hiddenCount = body.length - visibleBody.length;
+
+                const parts: string[] = [];
+                parts.push(...header);
+                if (hiddenCount > 0) {
+                  // ⎿ on the indicator, continuation indent on visible lines
+                  parts.push(INDENT_FIRST + `\x1b[2m... (${hiddenCount} more lines)\x1b[0m`);
+                  parts.push(...visibleBody.map(l => INDENT_REST + l));
+                } else {
+                  // ⎿ on first body line, continuation indent on rest
+                  parts.push(...formatToolLines(visibleBody, columns));
                 }
-                // Active segment: rolling tail
-                const visible = seg.lines.slice(-ROLLING_LINES);
-                return <Text key={i}>{visible.join('\n')}</Text>;
+
+                const dimmed = seg.complete && !isLast;
+                const leading = '\n';
+                const trailing = seg.complete && !isLast ? '\n' : '';
+                return <Text key={i} dimColor={dimmed}>{leading}{parts.join('\n')}{trailing}</Text>;
               })}
             </Box>
           ) : (

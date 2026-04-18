@@ -42,6 +42,8 @@ export interface ReplSession {
   readonly exitMessage: string;
   /** Callback invoked for each chunk during agent streaming. Receives the raw chunk and cumulative formatted text. */
   onStreamChunk?: (chunk: StreamChunk, fullText: string) => void;
+  /** Number of trailing lines to show for tool output in the rolling window. */
+  outputWindow: number;
 }
 
 /**

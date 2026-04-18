@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { ReplOutput, ReplSession, ReplSessionOptions } from './types.js';
+import type { StreamChunk } from '../core/types.js';
 import type { FieldInfo } from '../core/schema.js';
 import { parseReplInput } from './router.js';
 import { getCompletions, getGhostSuggestion, getCompletionSuffix } from './completions.js';
 import { getSchemaFields } from '../core/schema.js';
 import { renderMarkdown } from './markdown.js';
-import { renderStream } from '../core/stream.js';
+import { formatStreamChunk } from '../core/stream.js';
 import { formatZodError } from '../core/errors.js';
 import { isSkillInvocation, DEFAULT_SKILL_INSTRUCTION } from '../core/skill-commands.js';
 import type { SkillInvocation } from '../core/skill-commands.js';
@@ -381,6 +382,34 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     return result;
   }
 
+  /**
+   * Head-crop a tool-result body: keep at most `windowSize` lines,
+   * append truncation indicator if exceeded.
+   */
+  function cropToolBody(body: string, windowSize: number): string {
+    const lines = body.split('\n');
+    if (lines.length <= windowSize) return body;
+    const kept = lines.slice(0, windowSize);
+    const omitted = lines.length - windowSize;
+    kept.push(`\x1b[2m... (${omitted} more lines)\x1b[0m`);
+    return kept.join('\n');
+  }
+
+  /**
+   * Format a tool-result chunk for the history result.
+   * Status line + cropped body, as pre-formatted (non-markdown) text.
+   */
+  function formatToolResult(chunk: StreamChunk & { type: 'tool-result' }, windowSize: number): string {
+    const formatted = formatStreamChunk(chunk).trim();
+    // formatStreamChunk for tool-result with text body: "✓ name\nbody"
+    // without text body: "✓ name → result"
+    const nlIdx = formatted.indexOf('\n');
+    if (nlIdx === -1) return formatted; // single-line result, no cropping
+    const statusLine = formatted.slice(0, nlIdx);
+    const body = formatted.slice(nlIdx + 1);
+    return statusLine + '\n' + cropToolBody(body, windowSize);
+  }
+
   async function handleAgentPrompt(text: string): Promise<ReplOutput> {
     if (!agentProvider) {
       return {
@@ -390,14 +419,88 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     }
 
     try {
-      const parts: string[] = [];
+      // Accumulate chunks as typed segments: text (agent prose) vs tool (pre-formatted)
+      const segments: { content: string; isText: boolean }[] = [];
       const commandMap = new Map(commands.map((c) => [c.id, c]));
       const stream = agentProvider.stream(text, { threadId, tools: commandMap });
-      for await (const { chunk, formatted } of renderStream(stream)) {
-        parts.push(formatted);
-        sessionRef?.onStreamChunk?.(chunk, parts.join(''));
+      const windowSize = sessionRef?.outputWindow ?? 6;
+
+      // For the onStreamChunk callback, maintain a running formatted string
+      const streamParts: string[] = [];
+
+      // Track tool segments by index for matching results to calls
+      interface ToolSeg { index: number; toolCallId?: string; toolName: string; complete: boolean }
+      const toolSegs: ToolSeg[] = [];
+
+      for await (const chunk of stream) {
+        const isText = chunk.type === 'text-delta';
+        let display: string;
+
+        if (chunk.type === 'tool-result') {
+          display = formatToolResult(chunk as StreamChunk & { type: 'tool-result' }, windowSize);
+        } else {
+          display = formatStreamChunk(chunk);
+        }
+
+        if (chunk.type === 'tool-call') {
+          // Each tool-call starts a new tool segment
+          segments.push({ content: display, isText: false });
+          toolSegs.push({ index: segments.length - 1, toolCallId: chunk.toolCallId, toolName: chunk.toolName, complete: false });
+        } else if (chunk.type === 'tool-result') {
+          // Match by toolCallId (exact), then toolName (FIFO), then any incomplete
+          const match = (chunk.toolCallId
+              ? toolSegs.find(t => !t.complete && t.toolCallId === chunk.toolCallId)
+              : undefined)
+            ?? toolSegs.find(t => !t.complete && t.toolName === chunk.toolName)
+            ?? toolSegs.find(t => !t.complete);
+          if (match) {
+            segments[match.index]!.content += display;
+            match.complete = true;
+          } else {
+            segments.push({ content: display, isText: false });
+          }
+        } else if (isText) {
+          // Merge consecutive text-deltas
+          const last = segments[segments.length - 1];
+          if (last && last.isText) {
+            last.content += display;
+          } else {
+            segments.push({ content: display, isText: true });
+          }
+        } else {
+          // Error chunks: append to last segment or create new
+          const last = segments[segments.length - 1];
+          if (last && !last.isText) {
+            last.content += display;
+          } else {
+            segments.push({ content: display, isText: false });
+          }
+        }
+
+        // Feed streaming callback with running text
+        streamParts.push(display);
+        sessionRef?.onStreamChunk?.(chunk, streamParts.join(''));
       }
-      return { text: renderMarkdown(parts.join('')), type: 'result' };
+
+      // Build final result: render only text segments as markdown,
+      // keep tool segments as pre-formatted with ⎿ indentation.
+      // Trim each segment to remove \n padding from formatStreamChunk,
+      // then join with \n\n so segments have visual separation.
+      const rendered = segments
+        .map(seg => {
+          const trimmed = seg.content.trim();
+          if (seg.isText) return renderMarkdown(trimmed);
+          // Indent tool output: ⎿ on first body line, continuation on rest
+          const lines = trimmed.split('\n');
+          return lines.map((line, j) => {
+            if (j === 0) return line; // ▶ header — no indent
+            if (j === 1) return ' ⎿ ' + line; // first body line (✓ status)
+            return '   ' + line; // continuation lines
+          }).join('\n');
+        })
+        .filter(s => s !== '')
+        .join('\n\n');
+      return { text: rendered, type: 'result' };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       return { text: msg, type: 'error' };
@@ -412,6 +515,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
     get isPrompting() { return prompting !== null; },
     welcome: typeof cli.interactive?.welcome === 'function' ? undefined : cli.interactive?.welcome,
     get exitMessage() { return buildExitMessage(); },
+    outputWindow: (cli.interactive && 'outputWindow' in cli.interactive ? (cli.interactive as { outputWindow?: number }).outputWindow : undefined) ?? 6,
   };
   sessionRef = session;
 

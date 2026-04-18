@@ -148,6 +148,8 @@ export interface PromptConfig {
  */
 export interface InteractiveConfig<TConfig = Record<string, unknown>> {
   welcome: Resolvable<string, TConfig>;
+  /** Number of trailing lines to show in the output window for tool results. Default: 6. */
+  outputWindow?: number;
 }
 
 /**
@@ -155,6 +157,8 @@ export interface InteractiveConfig<TConfig = Record<string, unknown>> {
  */
 export interface ResolvedInteractiveConfig {
   welcome: string;
+  /** Number of trailing lines to show in the output window for tool results. Default: 6. */
+  outputWindow: number;
 }
 
 /**
@@ -188,12 +192,14 @@ export interface TextDeltaChunk {
 
 export interface ToolCallChunk {
   type: 'tool-call';
+  toolCallId?: string;
   toolName: string;
   args: unknown;
 }
 
 export interface ToolResultChunk {
   type: 'tool-result';
+  toolCallId?: string;
   toolName: string;
   result: unknown;
   isError: boolean;

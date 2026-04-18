@@ -27,7 +27,9 @@ Both projects target ES2022 with strict mode. agent-rupert-cli uses the newer Ty
 | `ink-text-input` | ^6.0 | REPL text input component |
 | `ink-spinner` | ^5.0 | Loading/progress indicators |
 | `marked` | ^12.0 | Markdown parsing |
-| `marked-terminal` | ^7.3 | Terminal-aware markdown rendering |
+| `marked-terminal` | ^7.3 | Terminal-aware markdown rendering (see caveat below) |
+
+> **Caveat: `marked-terminal` list rendering.** `marked-terminal` inserts whitespace-only separator lines (indentation + ANSI reset) between list items, especially in loose lists. The library works around this with two measures in `renderMarkdown()`: (1) a `walkTokens` hook that forces `loose: false` on all lists/items to prevent extra separators from loose-list parsing, and (2) a post-processing filter that strips lines which are whitespace-only after ANSI codes are removed. Additionally, the Ink REPL displays raw text during streaming rather than calling `renderMarkdown()` on every chunk — markdown is rendered once on the final result to avoid visual "jumps" when `marked` reclassifies a growing list from tight to loose. See `specs/archive/issues/marked-terminal-list-spacing.md` for the full investigation.
 
 ### Mastra (AI Agent Framework)
 

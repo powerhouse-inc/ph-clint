@@ -1139,8 +1139,7 @@ export function defineCli<
       const prompt = renderSkillPrompt(invocation);
       const threadId = resumeId ?? randomUUID();
       for await (const chunk of agentProvider.stream(prompt, { threadId, tools: commandMap })) {
-        const text = formatStreamChunk(chunk);
-        stdout(text);
+        writeRaw(formatStreamChunk(chunk));
       }
       stdout('');
       stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
@@ -1172,8 +1171,7 @@ export function defineCli<
           const prompt = promptArgs.join(' ');
           const threadId = resumeId ?? randomUUID();
           for await (const chunk of agentProvider.stream(prompt, { threadId, tools: commandMap })) {
-            const text = formatStreamChunk(chunk);
-            stdout(text);
+            writeRaw(formatStreamChunk(chunk));
           }
           stdout('');
           stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
@@ -1206,7 +1204,10 @@ export function defineCli<
           return;
         }
 
-        const resolvedInteractive: ResolvedInteractiveConfig = { welcome: resolvedWelcome! };
+        const resolvedInteractive: ResolvedInteractiveConfig = {
+          welcome: resolvedWelcome!,
+          outputWindow: options.interactive?.outputWindow ?? 6,
+        };
         const cliRef: Cli = {
           name: options.name,
           version: options.version,

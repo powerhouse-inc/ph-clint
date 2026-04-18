@@ -68,10 +68,20 @@ describe('formatStreamChunk', () => {
     expect(result).toContain('…');
   });
 
-  it('truncates long tool-result', () => {
+  it('renders long string tool-result as multi-line body (not truncated)', () => {
     const longResult = 'x'.repeat(300);
     const result = formatStreamChunk({ type: 'tool-result', toolName: 'search', result: longResult, isError: false });
+    // String results use multi-line format (status line + body) so the output window handles truncation
+    expect(result).toContain('✓ search');
+    expect(result).toContain(longResult);
+    expect(result).not.toContain('→');
+  });
+
+  it('truncates long object tool-result with →', () => {
+    const longObj = { data: 'x'.repeat(300) };
+    const result = formatStreamChunk({ type: 'tool-result', toolName: 'search', result: longObj, isError: false });
     expect(result).toContain('…');
+    expect(result).toContain('→');
   });
 
   it('renders text field directly when tool-result has a text property', () => {

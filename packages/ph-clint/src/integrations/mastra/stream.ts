@@ -22,6 +22,7 @@ export async function* mapMastraStream(
       case 'tool-call':
         yield {
           type: 'tool-call',
+          toolCallId: payloadOr(chunk, 'toolCallId') ?? undefined,
           toolName: payloadOr(chunk, 'toolName') ?? '',
           args: payloadOr(chunk, 'args') ?? {},
         };
@@ -30,6 +31,7 @@ export async function* mapMastraStream(
       case 'tool-result':
         yield {
           type: 'tool-result',
+          toolCallId: payloadOr(chunk, 'toolCallId') ?? undefined,
           toolName: payloadOr(chunk, 'toolName') ?? '',
           result: payloadOr(chunk, 'result') ?? null,
           isError: payloadOr(chunk, 'isError') ?? false,

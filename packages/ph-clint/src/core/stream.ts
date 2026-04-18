@@ -27,11 +27,14 @@ export function formatStreamChunk(chunk: StreamChunk): string {
       if (chunk.isError) {
         return `${RED}✗ ${chunk.toolName} error: ${formatResult(chunk.result)}${RESET}\n`;
       }
-      // If the result has a text field, print it directly (e.g. ASCII art, formatted output)
-      if (hasTextField(chunk.result)) {
-        const text = (chunk.result as { text: string }).text;
-        return `${DIM}${GREEN_DIM}✓ ${chunk.toolName}${RESET}\n${text}\n`;
+      // Extract text body: from { text: string } field or raw string result
+      const body = hasTextField(chunk.result)
+        ? (chunk.result as { text: string }).text
+        : typeof chunk.result === 'string' ? chunk.result : null;
+      if (body && body.length > 0) {
+        return `${DIM}${GREEN_DIM}✓ ${chunk.toolName}${RESET}\n${body}\n`;
       }
+      // Short/null/object results: inline summary
       return `${DIM}${GREEN_DIM}✓ ${chunk.toolName}${RESET}${DIM} → ${truncateResult(chunk.result)}${RESET}\n`;
 
     case 'error':
@@ -47,7 +50,6 @@ export interface RenderedChunk {
 
 /**
  * Consume a stream of StreamChunks and yield { chunk, formatted } pairs.
- * This is the main entry point for rendering agent/streaming output.
  *
  * Inserts an extra newline before the first text-delta after tool activity,
  * so the agent's prose is visually separated from tool call/result lines.

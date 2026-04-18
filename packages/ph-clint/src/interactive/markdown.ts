@@ -5,6 +5,17 @@ import { markedTerminal } from 'marked-terminal';
 // This avoids mutating the global marked instance.
 const marked = new Marked();
 marked.use(markedTerminal() as any);
+// Force all lists to render as "tight" (no extra newlines between items).
+// Without this, a single blank line between top-level items makes marked
+// set loose:true on the entire list, causing marked-terminal to add
+// double newlines between ALL items including tight nested ones.
+marked.use({
+  walkTokens(token: { type: string; loose?: boolean }) {
+    if (token.type === 'list' || token.type === 'list_item') {
+      token.loose = false;
+    }
+  },
+});
 
 /**
  * Render a markdown string for terminal display.
@@ -20,6 +31,13 @@ export function renderMarkdown(text: string): string {
   if (typeof rendered !== 'string') {
     return text;
   }
-  // Trim trailing whitespace that marked/marked-terminal adds
-  return rendered.trimEnd();
+  // marked-terminal inserts whitespace-only lines (with ANSI resets)
+  // between list items as separators. Remove these but keep truly empty
+  // lines which serve as paragraph breaks.
+  const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
+  return rendered
+    .split('\n')
+    .filter(line => line.length === 0 || stripAnsi(line).trim().length > 0)
+    .join('\n')
+    .trimEnd();
 }
