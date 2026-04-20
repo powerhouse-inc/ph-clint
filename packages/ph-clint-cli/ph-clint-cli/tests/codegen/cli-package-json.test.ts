@@ -14,7 +14,7 @@ describe('buildCliPackageJson', () => {
     expect(pkg.type).toBe('module');
     expect(pkg.bin).toEqual({ foo: './dist/main.js' });
     const deps = pkg.dependencies as Record<string, string>;
-    expect(deps['ph-clint']).toBeDefined();
+    expect(deps['@powerhousedao/ph-clint']).toBeDefined();
     expect(deps['foo-app']).toBeUndefined();
     expect(deps['@mastra/core']).toBeUndefined();
     const scripts = pkg.scripts as Record<string, string>;

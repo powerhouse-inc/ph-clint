@@ -22,7 +22,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
   const bin = getBinName(spec);
 
   const dependencies: Record<string, string> = {
-    'ph-clint': PH_CLINT_VERSION,
+    '@powerhousedao/ph-clint': PH_CLINT_VERSION,
     zod: '^4.3.6',
   };
   if (mastra.enabled) {
@@ -67,7 +67,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     '@jest/globals': '^30.2.0',
     '@types/node': '^25.5.2',
     jest: '^30.2.0',
-    'ph-clint-dev': PH_CLINT_VERSION,
+    '@powerhousedao/ph-clint-dev': PH_CLINT_VERSION,
     'ts-jest': '^29.4.6',
     tsx: '^4.19.0',
     typescript: '^6.0.2',
