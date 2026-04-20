@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { defineCli, defineCommand, defineService, createServiceManager, createEventBus, createMemoryWorkdirStore, formatStreamChunk, renderStream } from 'ph-clint';
-import type { ServiceDefinition, StreamChunk } from 'ph-clint';
+import { defineCli, defineCommand, defineService, createServiceManager, createEventBus, createMemoryWorkdirStore, formatStreamChunk, renderStream } from '@powerhousedao/ph-clint';
+import type { ServiceDefinition, StreamChunk } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import { createDemoAgent } from '../src/agents/demo-agent.js';
 

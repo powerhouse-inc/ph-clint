@@ -6,7 +6,7 @@
  * rewritten by ph-clint-cli's generator when the project spec changes.
  * Everything outside the markers is user-editable and preserved.
  */
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { CLI_NAME, CLI_VERSION, configSchema, secretsSchema } from './config.js';
 
 // @clint:begin imports

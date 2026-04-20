@@ -1,4 +1,4 @@
-import type { AgentProvider, StreamChunk } from 'ph-clint';
+import type { AgentProvider, StreamChunk } from '@powerhousedao/ph-clint';
 
 /**
  * A demo agent provider that simulates the GTM strategist without an API key.

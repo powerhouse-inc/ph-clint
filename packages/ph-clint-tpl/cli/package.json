@@ -1,5 +1,5 @@
 {
-  "name": "ph-clint-tpl-cli",
+  "name": "@powerhousedao/ph-clint-tpl-cli",
   "version": "0.0.0",
   "private": true,
   "description": "Template for ph-clint CLI projects (consumed by ph-clint-cli code generator)",
@@ -17,14 +17,14 @@
     "publish:npm": "pnpm build && pnpm publish --no-git-checks"
   },
   "dependencies": {
-    "ph-clint": "file:../../ph-clint",
+    "@powerhousedao/ph-clint": "file:../../ph-clint",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
     "@types/node": "^25.5.2",
     "jest": "^30.2.0",
-    "ph-clint-dev": "file:../../ph-clint-dev",
+    "@powerhousedao/ph-clint-dev": "file:../../ph-clint-dev",
     "ts-jest": "^29.4.6",
     "tsx": "^4.19.0",
     "typescript": "^6.0.2"

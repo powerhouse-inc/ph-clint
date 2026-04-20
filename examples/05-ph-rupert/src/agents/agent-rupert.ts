@@ -5,14 +5,14 @@ import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
 import { MCPClient } from '@mastra/mcp';
-import { createWorkdirStore } from 'ph-clint';
-import { createMastraHelpers, getMastraPaths } from 'ph-clint/mastra';
-import type { AgentSetupContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
-import type { WrapAgentOptions } from 'ph-clint/mastra';
+import { createWorkdirStore } from '@powerhousedao/ph-clint';
+import { createMastraHelpers, getMastraPaths } from '@powerhousedao/ph-clint/mastra';
+import type { AgentSetupContext, AgentProvider, Command, CommandContext, Logger } from '@powerhousedao/ph-clint';
+import type { WrapAgentOptions } from '@powerhousedao/ph-clint/mastra';
 import { CLI_NAME, PROJECT_ROOT } from '../config.js';
 import type { Config } from '../framework.js';
 import { createDemoAgent } from './demo-agent.js';
-import type { SkillInfo } from 'ph-clint';
+import type { SkillInfo } from '@powerhousedao/ph-clint';
 
 // Under `mastra dev`, PROJECT_ROOT resolves to .mastra/ (bundler output).
 // The actual project root with gen/ is its parent.
@@ -118,7 +118,7 @@ export async function createAgentRupert(
 export async function createAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {
   if (!ctx.config.apiKey) return createDemoAgent();
 
-  const { createMastraHelpers } = await import('ph-clint/mastra');
+  const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
   const m = createMastraHelpers(ctx);
   const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.skills, ctx.context.log);
 

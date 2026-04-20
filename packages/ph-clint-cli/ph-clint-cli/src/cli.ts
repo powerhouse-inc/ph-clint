@@ -8,12 +8,12 @@
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineCli, buildDefaultReactor } from 'ph-clint';
+import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
 import { CLI_NAME, CLI_VERSION } from './config.js';
 import { configSchema, secretsSchema } from './framework.js';
 
 // @clint:begin imports
-import { documentModels } from 'ph-clint-app';
+import { documentModels } from '@powerhousedao/ph-clint-app';
 import { createAgent } from './agents/clint-agent.js';
 import { init } from './commands/init.js';
 import { regen } from './commands/regen.js';

@@ -7,7 +7,7 @@
  * generator requires a valid package name. Callers handle the `null` result
  * (typically by skipping the regen until the user sets a name).
  */
-import type { PhClintProjectGlobalState } from 'ph-clint-app/document-models/ph-clint-project';
+import type { PhClintProjectGlobalState } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import {
   clintProjectSpecSchema,
   type ClintProjectSpec,

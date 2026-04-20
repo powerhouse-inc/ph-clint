@@ -5,7 +5,7 @@
  * - writeUserMessage: Writes a user message to the document before invoking the agent
  */
 
-import type { StreamChunk } from 'ph-clint';
+import type { StreamChunk } from '@powerhousedao/ph-clint';
 import type { AgentChatAction } from 'agent-app/document-models/agent-chat';
 import { sendText } from 'agent-app/document-models/agent-chat';
 

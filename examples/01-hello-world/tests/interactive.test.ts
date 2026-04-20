@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { defineCli, createReplSession, createMemoryWorkdirStore } from 'ph-clint';
+import { defineCli, createReplSession, createMemoryWorkdirStore } from '@powerhousedao/ph-clint';
 import { greet } from '../src/commands/greet.js';
 
 const cli = defineCli({

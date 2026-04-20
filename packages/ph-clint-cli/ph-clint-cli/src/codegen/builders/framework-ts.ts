@@ -38,7 +38,7 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
   }
   lines.push(' */');
   lines.push(`import { z } from 'zod';`);
-  lines.push(`import { createTypes } from 'ph-clint';`);
+  lines.push(`import { createTypes } from '@powerhousedao/ph-clint';`);
   if (hasGen) {
     lines.push(`import { registry } from './framework.gen.js';`);
   }

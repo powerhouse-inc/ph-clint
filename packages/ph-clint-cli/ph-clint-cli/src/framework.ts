@@ -10,7 +10,7 @@
  * the spec's `documentTypes` list changes.
  */
 import { z } from 'zod';
-import { createTypes } from 'ph-clint';
+import { createTypes } from '@powerhousedao/ph-clint';
 import { registry } from './framework.gen.js';
 
 export const configSchema = z.object({

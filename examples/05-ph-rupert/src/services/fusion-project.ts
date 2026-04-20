@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { checkWorkdir, checkPort } from 'ph-clint';
+import { checkWorkdir, checkPort } from '@powerhousedao/ph-clint';
 import { defineService } from '../framework.js';
 
 const fusionProjectParams = z.object({

@@ -67,7 +67,7 @@ describe('buildBuildSkillsScript', () => {
   it('is a tsx script invoking ph-clint-dev buildSkills', () => {
     const out = buildBuildSkillsScript();
     expect(out).toContain('#!/usr/bin/env tsx');
-    expect(out).toContain("import { buildSkills } from 'ph-clint-dev'");
+    expect(out).toContain("import { buildSkills } from '@powerhousedao/ph-clint-dev'");
     expect(out).toContain('buildSkills({');
   });
 });

@@ -1,4 +1,4 @@
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 
 export const greet = defineCommand({

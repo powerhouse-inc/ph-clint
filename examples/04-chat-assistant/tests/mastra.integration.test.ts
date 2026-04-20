@@ -11,8 +11,8 @@ import {
   defineCli,
   formatStreamChunk,
   createMemoryWorkdirStore,
-} from 'ph-clint';
-import type { StreamChunk, AgentProvider, AgentSetupContext } from 'ph-clint';
+} from '@powerhousedao/ph-clint';
+import type { StreamChunk, AgentProvider, AgentSetupContext } from '@powerhousedao/ph-clint';
 import { ascii } from '../src/commands/ascii.js';
 import { saveImage } from '../src/commands/save-image.js';
 import { listImages } from '../src/commands/list-images.js';
@@ -43,7 +43,7 @@ describeWithKey('Mastra agent E2E', () => {
   let agentProvider: AgentProvider;
 
   beforeAll(async () => {
-    const { createMastraHelpers } = await import('ph-clint/mastra');
+    const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
     const { Agent } = await import('@mastra/core/agent');
 
     const ctx: AgentSetupContext = {

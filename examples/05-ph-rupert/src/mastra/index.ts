@@ -8,8 +8,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveWorkdir, resolveConfig, createWorkdirStore, installSkills, readSkillsFromSources } from 'ph-clint';
-import { getMastraPaths } from 'ph-clint/mastra';
+import { resolveWorkdir, resolveConfig, createWorkdirStore, installSkills, readSkillsFromSources } from '@powerhousedao/ph-clint';
+import { getMastraPaths } from '@powerhousedao/ph-clint/mastra';
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';

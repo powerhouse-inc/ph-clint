@@ -3,8 +3,8 @@ import {
   defineCli,
   createReplSession,
   createMemoryWorkdirStore,
-} from 'ph-clint';
-import type { WorkdirStore, ReplSession } from 'ph-clint';
+} from '@powerhousedao/ph-clint';
+import type { WorkdirStore, ReplSession } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import { add } from '../src/commands/add.js';
 import { list } from '../src/commands/list.js';

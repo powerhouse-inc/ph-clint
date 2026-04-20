@@ -1,5 +1,5 @@
 {
-  "name": "ph-clint-cli-root",
+  "name": "@powerhousedao/ph-clint-cli-root",
   "private": true,
   "description": "Root of the ph-clint-cli project. Split layout: ph-clint-cli (the ph-clint CLI side) + ph-clint-app (the Powerhouse reactor-package side). No pnpm workspace — each sub-project installs independently.",
   "scripts": {

@@ -5,7 +5,7 @@
  * document and writes responses back to it via the bridge.
  */
 
-import type { AgentSetupContext, AgentProvider, StreamChunk, AgentStreamOptions, ReactorContext } from 'ph-clint';
+import type { AgentSetupContext, AgentProvider, StreamChunk, AgentStreamOptions, ReactorContext } from '@powerhousedao/ph-clint';
 import type { Config } from './config.js';
 import type { Registry } from './framework.js';
 import type { AgentChatAction } from 'agent-app/document-models/agent-chat';
@@ -46,7 +46,7 @@ async function createInnerAgent(ctx: AgentSetupContext<Config>): Promise<AgentPr
     return createDemoAgent();
   }
 
-  const { createMastraHelpers } = await import('ph-clint/mastra');
+  const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
   const { Agent } = await import('@mastra/core/agent');
   const m = createMastraHelpers(ctx);
 

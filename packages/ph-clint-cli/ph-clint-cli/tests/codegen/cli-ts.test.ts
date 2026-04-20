@@ -6,7 +6,7 @@ describe('buildCliTs', () => {
   it('emits a minimal defineCli call for the no-features case', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const code = buildCliTs(spec);
-    expect(code).toContain("import { defineCli } from 'ph-clint'");
+    expect(code).toContain("import { defineCli } from '@powerhousedao/ph-clint'");
     expect(code).toContain('export const cli = defineCli({');
     expect(code).toContain('// @clint:begin imports');
     expect(code).toContain('// @clint:end imports');
@@ -41,7 +41,7 @@ describe('buildCliTs', () => {
       features: { powerhouse: { enabled: true } },
     });
     const code = buildCliTs(spec);
-    expect(code).toContain("import { defineCli, buildDefaultReactor } from 'ph-clint'");
+    expect(code).toContain("import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint'");
     expect(code).toContain("import { documentModels } from 'foo-app'");
     expect(code).toContain('cli.configureReactor');
     expect(code).toContain('switchboard: { enabled: true }');

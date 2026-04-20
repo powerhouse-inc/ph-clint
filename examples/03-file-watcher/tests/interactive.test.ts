@@ -6,8 +6,8 @@ import {
   createMemoryWorkdirStore,
   createEventBus,
   createProcessManager,
-} from 'ph-clint';
-import type { ReplSession, CommandContext } from 'ph-clint';
+} from '@powerhousedao/ph-clint';
+import type { ReplSession, CommandContext } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 
 // Simplified versions of file-watcher commands for testing.

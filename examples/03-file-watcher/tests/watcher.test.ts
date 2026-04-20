@@ -7,7 +7,7 @@ import {
   createEventBus,
   createProcessManager,
   createRoutine,
-} from 'ph-clint';
+} from '@powerhousedao/ph-clint';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';

@@ -1,4 +1,4 @@
-import type { AgentProvider, StreamChunk } from 'ph-clint';
+import type { AgentProvider, StreamChunk } from '@powerhousedao/ph-clint';
 
 /**
  * A demo agent provider that simulates the rupert dev agent without an API key.

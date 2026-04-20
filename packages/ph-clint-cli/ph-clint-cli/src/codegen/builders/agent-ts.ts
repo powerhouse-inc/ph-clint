@@ -10,7 +10,7 @@ import { type ClintProjectSpec } from '../../spec/types.js';
 export function buildAgentTs(spec: ClintProjectSpec): string {
   const id = spec.name;
   return [
-    "import type { AgentProvider, AgentSetupContext, StreamChunk } from 'ph-clint';",
+    "import type { AgentProvider, AgentSetupContext, StreamChunk } from '@powerhousedao/ph-clint';",
     "import type { Config } from '../framework.js';",
     '',
     '/**',

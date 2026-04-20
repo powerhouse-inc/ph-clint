@@ -1,4 +1,4 @@
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { configSchema } from './framework.js';
 import { ascii } from './commands/ascii.js';
 import { saveImage } from './commands/save-image.js';
@@ -53,7 +53,7 @@ cli.configureAgent(async (ctx) => {
   if (!ctx.config.apiKey) return createAssistant();
 
   // Lazy-load Mastra only when an API key is configured
-  const { createMastraHelpers } = await import('ph-clint/mastra');
+  const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
   const { Agent } = await import('@mastra/core/agent');
   const m = createMastraHelpers(ctx);
 

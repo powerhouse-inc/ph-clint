@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { greet } from './commands/greet.js';
 
 const cli = defineCli({

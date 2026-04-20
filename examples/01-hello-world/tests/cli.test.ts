@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { greet } from '../src/commands/greet.js';
 
 describe('hello CLI', () => {

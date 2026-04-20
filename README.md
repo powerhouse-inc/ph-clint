@@ -72,6 +72,23 @@ After changing library source in `packages/ph-clint/`:
 1. **Rebuild the library**: `pnpm build` in `packages/ph-clint/`
 2. **If the build produced new files** in `dist/` (not just changes to existing ones), run `pnpm install` in the example directory to pick them up. Symptoms of a stale install: "Cannot find module" errors for files that exist in the library's `dist/`.
 
+## Publishing
+
+Packages are published via `ph-publish` (provided by ph-clint-dev). Each project with publish scripts exposes them as pnpm scripts:
+
+```sh
+# From any project with publish scripts (e.g. examples/05-ph-rupert/)
+pnpm publish:dev          # dev prerelease
+pnpm publish:staging      # staging prerelease
+pnpm publish:production   # production release
+
+# Extra flags go directly (no -- needed with pnpm)
+pnpm publish:dev --dry-run
+pnpm publish:dev --verbose
+```
+
+Config: `packages/publish.config.ts` (multi-group) or per-project `publish.config.ts`.
+
 ## Documentation
 
 The ph-clint library includes HTML documentation with API reference, guides, and annotated examples:

@@ -7,12 +7,12 @@ import {
   createMemoryWorkdirStore,
   formatStreamChunk,
   renderStream,
-} from 'ph-clint';
+} from '@powerhousedao/ph-clint';
 import type {
   AgentProvider,
   StreamChunk,
   CommandContext,
-} from 'ph-clint';
+} from '@powerhousedao/ph-clint';
 import { ascii } from '../src/commands/ascii.js';
 import { saveImage } from '../src/commands/save-image.js';
 import { listImages } from '../src/commands/list-images.js';

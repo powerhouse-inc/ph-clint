@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { createMemoryWorkdirStore } from 'ph-clint';
+import { createMemoryWorkdirStore } from '@powerhousedao/ph-clint';
 import { greet } from '../src/commands/greet.js';
 
 const ctx = { workdir: '', workspace: createMemoryWorkdirStore(), stdout: () => {}, config: {} };

@@ -18,7 +18,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { WorkItem } from 'ph-clint';
+import type { WorkItem } from '@powerhousedao/ph-clint';
 import { createDocumentChangeTrigger } from '../framework.js';
 import { generateProject } from '../codegen/index.js';
 import { specFromDocumentState } from '../spec/from-document.js';

@@ -7,7 +7,7 @@
  */
 
 import path from 'node:path';
-import { buildSkills } from 'ph-clint-dev';
+import { buildSkills } from '@powerhousedao/ph-clint-dev';
 import { cli } from '../src/cli.js';
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '..');

@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import type { StreamChunk } from 'ph-clint';
+import type { StreamChunk } from '@powerhousedao/ph-clint';
 import { writeStreamToDocument } from '../src/bridge.js';
 import type { DocumentDispatcher, BridgeOptions } from '../src/bridge.js';
 

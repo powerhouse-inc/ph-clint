@@ -213,6 +213,12 @@ pnpm test 2>&1 | grep "FAIL"
 
 If you need to run a targeted subset, use `pnpm test -- --testPathPattern=<pattern>`.
 
+### Publishing
+
+Publish configs (`publish.config.ts`) define which packages are published together. When adding a new package to a group or changing package paths, update the relevant config. The shared config is at `packages/publish.config.ts`; per-project configs live alongside `package.json`.
+
+Run `pnpm publish:dev --dry-run` to validate the pipeline end-to-end without side-effects.
+
 ### What NOT to do
 
 - Don't add Powerhouse or Mastra imports to `core/`, `routine/`, `execution/`, `output/`, `interactive/`, or `cli/`. Those must stay integration-free.

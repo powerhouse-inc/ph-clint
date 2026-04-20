@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { renderSkillTemplate } from 'ph-clint';
+import { renderSkillTemplate } from '@powerhousedao/ph-clint';
 import type { ResolvedBuildConfig } from './types.js';
 
 /**

@@ -1,4 +1,4 @@
-import { createTypes } from 'ph-clint';
+import { createTypes } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import { configSchema, secretsSchema } from './config.js';
 

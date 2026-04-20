@@ -10,8 +10,8 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineCli, buildDefaultReactor } from 'ph-clint';
-import type { WorkItem } from 'ph-clint';
+import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
+import type { WorkItem } from '@powerhousedao/ph-clint';
 import { documentModels } from 'agent-app';
 import * as agentChatCreators from 'agent-app/document-models/agent-chat';
 import { configSchema } from './config.js';

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { build } from './commands/build.js';
 import { fileChangeTrigger } from './trigger.js';
 import { configSchema } from './framework.js';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import { add } from '../src/commands/add.js';
 import { list } from '../src/commands/list.js';

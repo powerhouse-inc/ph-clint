@@ -111,8 +111,8 @@ export interface TypedFactory<
  * ```ts
  * // impl/src/framework.ts
  * import { z } from 'zod';
- * import { createTypes, defineRegistry } from 'ph-clint';
- * import { PhClintProject } from 'ph-clint-app/document-models/ph-clint-project';
+ * import { createTypes, defineRegistry } from '@powerhousedao/ph-clint';
+ * import { PhClintProject } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
  *
  * const configSchema = z.object({ projectDocumentId: z.string().optional() });
  * const registry = defineRegistry([PhClintProject] as const);

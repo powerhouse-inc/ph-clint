@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import type { Config } from '../config.js';
 

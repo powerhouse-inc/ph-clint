@@ -20,9 +20,9 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   if (powerhouse.enabled) {
     lines.push(`import path from 'node:path';`);
     lines.push(`import { fileURLToPath } from 'node:url';`);
-    lines.push(`import { defineCli, buildDefaultReactor } from 'ph-clint';`);
+    lines.push(`import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';`);
   } else {
-    lines.push(`import { defineCli } from 'ph-clint';`);
+    lines.push(`import { defineCli } from '@powerhousedao/ph-clint';`);
   }
   lines.push(`import { CLI_NAME, CLI_VERSION } from './config.js';`);
   lines.push(`import { configSchema, secretsSchema } from './framework.js';`);

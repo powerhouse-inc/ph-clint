@@ -46,7 +46,7 @@ describe('buildFrameworkGenTs', () => {
     const code = buildFrameworkGenTs(spec);
     expect(code).not.toBeNull();
     expect(code).toContain('defineRegistry([] as const)');
-    expect(code).toContain("from 'ph-clint'");
+    expect(code).toContain("from '@powerhousedao/ph-clint'");
     // framework.gen.ts exports only `registry` + `Registry` type; the
     // createTypes() call lives in framework.ts to avoid a circular import.
     expect(code).toContain('export const registry');
@@ -78,7 +78,7 @@ describe('buildFrameworkTs', () => {
   it('Powerhouse off — inlines createTypes in framework.ts, no re-export from gen', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const code = buildFrameworkTs(spec);
-    expect(code).toContain("import { createTypes } from 'ph-clint'");
+    expect(code).toContain("import { createTypes } from '@powerhousedao/ph-clint'");
     expect(code).toContain('export const configSchema = z.object({');
     expect(code).toContain('export const secretsSchema = z.object({');
     expect(code).toContain('createTypes({ configSchema: fullConfigSchema })');
@@ -95,7 +95,7 @@ describe('buildFrameworkTs', () => {
     // createTypes is called here so configSchema edits stay local and the
     // two files don't form a runtime import cycle.
     expect(code).toContain("import { registry } from './framework.gen.js'");
-    expect(code).toContain("import { createTypes } from 'ph-clint'");
+    expect(code).toContain("import { createTypes } from '@powerhousedao/ph-clint'");
     expect(code).toContain('createTypes({');
     expect(code).toContain('defineCommand,');
     expect(code).toContain('createDocumentChangeTrigger,');

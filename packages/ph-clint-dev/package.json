@@ -1,17 +1,25 @@
 {
-  "name": "ph-clint-dev",
-  "version": "0.1.0",
+  "name": "@powerhousedao/ph-clint-dev",
+  "version": "0.1.0-dev.0",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./publish": {
+      "types": "./dist/publish/index.d.ts",
+      "import": "./dist/publish/index.js"
     }
   },
   "bin": {
-    "build-skills": "./dist/cli.js"
+    "build-skills": "./dist/cli.js",
+    "ph-publish": "./dist/publish-cli.js"
   },
   "files": [
     "dist"
@@ -19,11 +27,14 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage"
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+    "publish:dev": "tsx src/publish-cli.ts dev -g ph-clint -c ../publish.config.ts",
+    "publish:staging": "tsx src/publish-cli.ts staging -g ph-clint -c ../publish.config.ts",
+    "publish:production": "tsx src/publish-cli.ts production -g ph-clint -c ../publish.config.ts"
   },
   "dependencies": {
     "handlebars": "^4.7.8",
-    "ph-clint": "file:../ph-clint"
+    "@powerhousedao/ph-clint": "file:../ph-clint"
   },
   "devDependencies": {
     "@jest/globals": "^30.3.0",

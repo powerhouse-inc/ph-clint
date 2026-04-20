@@ -13,7 +13,7 @@
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles"
   },
   "dependencies": {
-    "ph-clint": "file:../../packages/ph-clint",
+    "@powerhousedao/ph-clint": "file:../../packages/ph-clint",
     "zod": "^4.3.6"
   },
   "devDependencies": {

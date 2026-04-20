@@ -1,4 +1,4 @@
-import type { AgentProvider, AgentSetupContext, StreamChunk } from 'ph-clint';
+import type { AgentProvider, AgentSetupContext, StreamChunk } from '@powerhousedao/ph-clint';
 import type { Config } from '../framework.js';
 
 export const AGENT_ID = 'clint';
@@ -21,7 +21,7 @@ const instructions = `You are Clint — a ph-clint assistant that helps users sc
 export async function createAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {
   if (!ctx.config.apiKey) return createDemoAgent();
 
-  const { createMastraHelpers } = await import('ph-clint/mastra');
+  const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
   const { Agent } = await import('@mastra/core/agent');
   const m = createMastraHelpers(ctx);
 

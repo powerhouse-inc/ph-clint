@@ -65,6 +65,36 @@ pnpm is the default (`packageManager` field in root `package.json`). Each projec
 - After changing library source, run `pnpm build` in `packages/ph-clint/` — the symlink means examples pick up the new `dist/` without reinstalling.
 - Use `corepack enable` to auto-select the pinned pnpm version.
 
+## Publishing
+
+ph-clint-dev includes a multi-package publish pipeline (`ph-publish`) that supports lockstep versioning, dev/staging/production tags, and automatic `file:` dependency rewriting.
+
+Projects that depend on ph-clint-dev get `ph-publish` in `node_modules/.bin/` and invoke it via package.json scripts:
+
+```sh
+# From any project with publish scripts (e.g. examples/05-ph-rupert/)
+pnpm publish:dev          # dev prerelease
+pnpm publish:staging      # staging prerelease
+pnpm publish:production   # production release
+```
+
+Extra flags go directly after the script name — pnpm passes them through without `--`:
+
+```sh
+pnpm publish:dev --dry-run
+pnpm publish:dev --verbose
+```
+
+- `dev`/`staging` → auto-incremented prerelease (`0.2.0-dev.5`), published under that dist-tag
+- `production` → exact base version, published under `latest`
+- `bump` subcommand updates the base version in config without publishing
+
+Config lives in `publish.config.ts` (auto-discovered or `--config`). Groups define sets of packages published together with lockstep versions. The pipeline builds everything first, then publishes all — ensuring all packages are valid before any hits the registry.
+
+**`file:` deps are handled automatically**: intra-group deps get `^{lockstep version}`, external deps get `^{version from target's package.json}`. After publish, `file:` paths are restored (versions persist).
+
+For the ph-clint group itself (bootstrapping), `pnpm publish:dev` in ph-clint-dev runs from source via tsx to avoid the circular dependency of needing the published binary.
+
 ## Development Approach
 
 Development is **example-driven TDD**. The example projects (01 through 08) define the target behavior; the library is built to satisfy their tests.

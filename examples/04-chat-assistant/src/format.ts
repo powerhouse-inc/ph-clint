@@ -1,4 +1,4 @@
-import type { StreamChunk } from 'ph-clint';
+import type { StreamChunk } from '@powerhousedao/ph-clint';
 
 // ANSI color codes
 const green = '\x1b[32m';
@@ -25,6 +25,8 @@ export function colorFormat(chunk: StreamChunk): string {
 
     case 'error':
       return `${red}Error: ${chunk.error}${reset}\n`;
+    default:
+      return `${dim}[unknown chunk type: ${(chunk as { type: string }).type}]${reset}\n`;
   }
 }
 

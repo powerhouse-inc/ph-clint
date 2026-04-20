@@ -17,7 +17,7 @@
     "@mastra/libsql": "^1.7.4",
     "@mastra/memory": "^1.13.1",
     "asciify-image": "^0.1.10",
-    "ph-clint": "file:../../packages/ph-clint",
+    "@powerhousedao/ph-clint": "file:../../packages/ph-clint",
     "zod": "^4.3.6"
   },
   "pnpm": {

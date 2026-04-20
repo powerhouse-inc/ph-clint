@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { z } from 'zod';
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, secretsSchema } from './config.js';
 import { initProject } from './commands/init-project.js';
 import { addSource } from './commands/add-source.js';

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 import { configSchema } from './framework.js';
 import { add } from './commands/add.js';
 import { list } from './commands/list.js';

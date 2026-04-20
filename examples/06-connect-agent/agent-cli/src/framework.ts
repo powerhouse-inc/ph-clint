@@ -5,8 +5,8 @@
  * `defineTrigger` / `createDocumentChangeTrigger` don't need their generics
  * restated at every call site.
  */
-import { createTypes } from 'ph-clint';
-import type { RegistryEntry } from 'ph-clint';
+import { createTypes } from '@powerhousedao/ph-clint';
+import type { RegistryEntry } from '@powerhousedao/ph-clint';
 import type {
   AgentChatAction,
   AgentChatPHState,

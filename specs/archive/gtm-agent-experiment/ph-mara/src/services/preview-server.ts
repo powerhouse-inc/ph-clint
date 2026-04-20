@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { defineService, checkWorkdir, checkPort } from 'ph-clint';
+import { defineService, checkWorkdir, checkPort } from '@powerhousedao/ph-clint';
 import type { Config } from '../config.js';
 
 const previewServerParams = z.object({

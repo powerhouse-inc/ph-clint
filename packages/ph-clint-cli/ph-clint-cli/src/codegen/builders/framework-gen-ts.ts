@@ -43,7 +43,7 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
   lines.push(' * tick. Put custom bindings in `framework.ts`, not here — edits to');
   lines.push(' * this file will be overwritten.');
   lines.push(' */');
-  lines.push(`import { defineRegistry } from 'ph-clint';`);
+  lines.push(`import { defineRegistry } from '@powerhousedao/ph-clint';`);
   for (const e of entries) {
     lines.push(`import { ${e.name} } from '${pkg}';`);
   }

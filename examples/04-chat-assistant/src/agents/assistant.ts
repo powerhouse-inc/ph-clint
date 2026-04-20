@@ -1,5 +1,5 @@
-import { createMemoryWorkdirStore } from 'ph-clint';
-import type { AgentProvider, StreamChunk } from 'ph-clint';
+import { createMemoryWorkdirStore } from '@powerhousedao/ph-clint';
+import type { AgentProvider, StreamChunk } from '@powerhousedao/ph-clint';
 
 /**
  * A test/demo agent provider that echoes prompts and simulates tool usage.

@@ -4,11 +4,11 @@ import { Agent } from '@mastra/core/agent';
 import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
-import { createWorkdirStore } from 'ph-clint';
-import { createMastraHelpers, getMastraPaths } from 'ph-clint/mastra';
-import type { AgentContext, AgentProvider, Command, CommandContext, Logger } from 'ph-clint';
-import type { WrapAgentOptions } from 'ph-clint/mastra';
-import type { SkillInfo } from 'ph-clint';
+import { createWorkdirStore } from '@powerhousedao/ph-clint';
+import { createMastraHelpers, getMastraPaths } from '@powerhousedao/ph-clint/mastra';
+import type { AgentContext, AgentProvider, Command, CommandContext, Logger } from '@powerhousedao/ph-clint';
+import type { WrapAgentOptions } from '@powerhousedao/ph-clint/mastra';
+import type { SkillInfo } from '@powerhousedao/ph-clint';
 import { CLI_NAME, PROJECT_ROOT, type Config } from '../config.js';
 import { createDemoAgent } from './demo-agent.js';
 
@@ -95,7 +95,7 @@ export async function createAgentMara(
 export async function createAgent(ctx: AgentContext<Config>): Promise<AgentProvider> {
   if (!ctx.config.apiKey) return createDemoAgent();
 
-  const { createMastraHelpers } = await import('ph-clint/mastra');
+  const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
   const m = createMastraHelpers(ctx);
   const agent = await createAgentMara(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.skills, ctx.context.log);
 

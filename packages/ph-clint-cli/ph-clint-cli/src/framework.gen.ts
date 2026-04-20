@@ -5,8 +5,8 @@
  * Put custom bindings in `framework.ts`, not here — edits to this file
  * will be overwritten.
  */
-import { defineRegistry } from 'ph-clint';
-import { PhClintProject } from 'ph-clint-app';
+import { defineRegistry } from '@powerhousedao/ph-clint';
+import { PhClintProject } from '@powerhousedao/ph-clint-app';
 
 /**
  * Typed document registry derived from the reactor package's document models.
