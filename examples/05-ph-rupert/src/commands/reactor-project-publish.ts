@@ -53,7 +53,7 @@ const publishInputSchema = z.object({
   tag: z.string().optional().describe('npm dist-tag to publish under (e.g. "dev", "next").'),
   skipBuild: z.boolean().optional().describe('Skip the build step before publishing.'),
   dryRun: z.boolean().optional().describe('Perform a dry run without actually publishing.'),
-  log: z.boolean().optional().describe('Whether to log output to the console. Defaults to false.'),
+  log: z.boolean().optional().describe('Whether to log output to the console. Only enable for debugging purposes.'),
   username: z.string().optional().describe('Registry username (overrides config.registryUsername)'),
   password: z.string().optional().describe('Registry password (overrides config.registryPassword)'),
 });
