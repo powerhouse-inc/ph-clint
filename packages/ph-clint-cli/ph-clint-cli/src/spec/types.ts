@@ -45,7 +45,7 @@ export const clintProjectSpecSchema = z.object({
     .string()
     .regex(/^[a-z0-9][a-z0-9-]*$/, 'lowercase letters, digits, hyphens only')
     .optional(),
-  version: z.string().default('0.1.0'),
+  version: z.string().default('0.0.1-dev.0'),
   description: z.string().default(''),
   bin: z.string().optional(),
   features: z

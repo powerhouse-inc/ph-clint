@@ -18,8 +18,9 @@ describe('buildRootPackageJson', () => {
     expect(pkg.scripts.install).toBe(
       'pnpm --prefix foo-app install && pnpm --prefix foo-cli install',
     );
+    // Connect enabled by default → build includes connect:build step
     expect(pkg.scripts.build).toBe(
-      'pnpm --prefix foo-app build && pnpm --prefix foo-cli build',
+      'pnpm --prefix foo-app build && pnpm --prefix foo-app connect:build && pnpm --prefix foo-cli build',
     );
     expect(pkg.scripts.test).toBe(
       'pnpm --prefix foo-app test && pnpm --prefix foo-cli test',

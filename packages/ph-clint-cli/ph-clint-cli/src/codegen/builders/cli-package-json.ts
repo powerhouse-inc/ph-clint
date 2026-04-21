@@ -35,7 +35,10 @@ function phClintRange(version: string): string {
   if (!match) return `^${version}`;
   const base = match[1];
   const channel = match[2]; // "dev", "staging", or undefined
-  return channel ? `^${base}-${channel}.0` : `^${base}`;
+  // For prerelease channels, pin exact version. Caret ranges like ^0.1.0-dev.0
+  // resolve to `latest` dist-tag (0.1.0-dev.0) instead of the highest match,
+  // causing "export not found" errors when the scaffolding CLI is newer.
+  return channel ? version : `^${base}`;
 }
 
 /** Version range for @powerhousedao/ph-clint{,-dev} deps in scaffolded projects. */

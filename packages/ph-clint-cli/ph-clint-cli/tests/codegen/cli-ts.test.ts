@@ -45,7 +45,7 @@ describe('buildCliTs', () => {
     expect(code).toContain("import { documentModels } from 'foo-app'");
     expect(code).toContain('cli.configureReactor');
     expect(code).toContain('switchboard: { enabled: true }');
-    expect(code).toContain('connect: { enabled: true, workdir: appDir }');
+    expect(code).toContain('connect: { enabled: true, workdir: appDir, assetsDir: resolveConnectAssets(appDir) }');
     expect(code).toContain('Switchboard:');
     expect(code).toContain('Connect:');
   });
@@ -59,7 +59,7 @@ describe('buildCliTs', () => {
     });
     const code = buildCliTs(spec);
     expect(code).toContain('switchboard: { enabled: false }');
-    expect(code).toContain('connect: { enabled: false, workdir: appDir }');
+    expect(code).toContain('connect: { enabled: false }');
     expect(code).not.toContain('Switchboard: http://');
     expect(code).not.toContain('Connect:     http://');
   });

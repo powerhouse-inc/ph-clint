@@ -11,7 +11,7 @@ describe('clintProjectSpecSchema', () => {
   it('accepts a minimal spec and applies defaults', () => {
     const parsed = clintProjectSpecSchema.parse({ name: 'myproj' });
     expect(parsed.name).toBe('myproj');
-    expect(parsed.version).toBe('0.1.0');
+    expect(parsed.version).toBe('0.0.1-dev.0');
     expect(parsed.description).toBe('');
     expect(parsed.features.powerhouse.enabled).toBe(false);
     expect(parsed.features.powerhouse.switchboard).toBe(true);
