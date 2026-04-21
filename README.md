@@ -11,19 +11,21 @@ ph-clint is a TypeScript framework for building CLI tools that double as agent h
 
 This repository contains independent projects (not a pnpm workspace). Each project has its own `node_modules` and `pnpm-lock.yaml`.
 
-| Path | Status | Description |
-|------|--------|-------------|
-| [`packages/ph-clint/`](packages/ph-clint/) | | The framework library |
-| [`packages/ph-clint-dev/`](packages/ph-clint-dev/) | | Build-time tools: skill template compilation, agent profile generation |
-| [`examples/01-hello-world/`](examples/01-hello-world/) | Done | Minimal: one command, no integrations |
-| [`examples/02-task-tracker/`](examples/02-task-tracker/) | Done | REPL, workspace, parameter prompting |
-| [`examples/03-file-watcher/`](examples/03-file-watcher/) | Done | Routine loop, triggers, background processes |
-| [`examples/04-chat-assistant/`](examples/04-chat-assistant/) | Done | Mastra agent, streaming, memory |
-| [`examples/05-ph-rupert/`](examples/05-ph-rupert/) | Done | ServiceManager, Mastra agent, skills, MCP client |
-| [`examples/06-doc-browser/`](examples/06-doc-browser/) | Planned | Powerhouse reactor, drives, document operations |
-| [`examples/07-doc-agent/`](examples/07-doc-agent/) | Planned | Mastra + Powerhouse, routine loop, document triggers |
-| [`examples/08-reactor-dev/`](examples/08-reactor-dev/) | Planned | Full reference: multi-agent, services, skills, MCP |
-| [`specs/`](specs/) | | Architecture docs, feature specs, skill definitions |
+| Path | Description |
+|------|-------------|
+| [`packages/ph-clint/`](packages/ph-clint/) | The framework library |
+| [`packages/ph-clint-dev/`](packages/ph-clint-dev/) | Build-time tools: skill compilation, agent profiles, publish pipeline, project layout detection |
+| [`packages/ph-clint-cli/ph-clint-app/`](packages/ph-clint-cli/ph-clint-app/) | Powerhouse reactor package for ph-clint-cli (document models) |
+| [`packages/ph-clint-cli/ph-clint-cli/`](packages/ph-clint-cli/ph-clint-cli/) | Project scaffolding CLI (`clint-project-init`, `clint-project-regen`, `clint-project-build`, `clint-project-publish`) |
+| [`examples/01-hello-world/`](examples/01-hello-world/) | Minimal: one command, no integrations |
+| [`examples/02-task-tracker/`](examples/02-task-tracker/) | REPL, workspace, parameter prompting |
+| [`examples/03-file-watcher/`](examples/03-file-watcher/) | Routine loop, triggers, background processes |
+| [`examples/04-chat-assistant/`](examples/04-chat-assistant/) | Mastra agent, streaming, memory |
+| [`examples/05-ph-rupert/`](examples/05-ph-rupert/) | ServiceManager, Mastra agent, skills, MCP client |
+| [`examples/06-doc-browser/`](examples/06-doc-browser/) | Powerhouse reactor, drives, document operations |
+| [`examples/07-doc-agent/`](examples/07-doc-agent/) | Mastra + Powerhouse, routine loop, document triggers |
+| [`examples/08-reactor-dev/`](examples/08-reactor-dev/) | Full reference: multi-agent, services, skills, MCP |
+| [`specs/`](specs/) | Architecture docs, feature specs, skill definitions |
 
 ## Install, Build, and Test
 
@@ -74,20 +76,23 @@ After changing library source in `packages/ph-clint/`:
 
 ## Publishing
 
-Packages are published via `ph-publish` (provided by ph-clint-dev). Each project with publish scripts exposes them as pnpm scripts:
+All four framework packages (ph-clint, ph-clint-dev, ph-clint-app, ph-clint-cli) are published in a single lockstep group via `ph-publish` (provided by ph-clint-dev). The bootstrap entry point is `packages/ph-clint-dev/`:
 
 ```sh
-# From any project with publish scripts (e.g. examples/05-ph-rupert/)
-pnpm publish:dev          # dev prerelease
+cd packages/ph-clint-dev
+pnpm publish:dev          # dev prerelease (e.g. 0.1.0-dev.5)
 pnpm publish:staging      # staging prerelease
 pnpm publish:production   # production release
 
 # Extra flags go directly (no -- needed with pnpm)
 pnpm publish:dev --dry-run
 pnpm publish:dev --verbose
+pnpm publish:dev --no-verify   # skip post-publish registry verification
 ```
 
-Config: `packages/publish.config.ts` (multi-group) or per-project `publish.config.ts`.
+Implementation projects (e.g. `examples/05-ph-rupert/`) have their own `publish.config.ts` and publish scripts.
+
+Config: `packages/publish.config.ts` (framework group) or per-project `publish.config.ts`.
 
 ## Documentation
 
