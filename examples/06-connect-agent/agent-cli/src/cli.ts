@@ -9,6 +9,7 @@
  */
 
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { defineCli, buildDefaultReactor, readPackageInfo } from '@powerhousedao/ph-clint';
 import type { WorkItem } from '@powerhousedao/ph-clint';
 import { documentModels } from 'agent-app';
@@ -22,6 +23,11 @@ const pkg = readPackageInfo(import.meta.url);
 
 // Connect (ph connect) must run inside the agent-app Reactor Package.
 const agentAppDir = path.resolve(pkg.root, '../agent-app');
+
+function resolveConnectAssets(dir: string): string | undefined {
+  const assetsDir = path.join(dir, 'dist', 'connect');
+  return existsSync(path.join(assetsDir, 'index.html')) ? assetsDir : undefined;
+}
 
 // ── Document Change Trigger ─────────────────────────────────────────
 // When an agent-chat document changes (e.g. a user sends a message via
@@ -126,7 +132,7 @@ cli.configureReactor({
     subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
   }),
   switchboard: { enabled: true },
-  connect: { enabled: true, workdir: agentAppDir },
+  connect: { enabled: true, workdir: agentAppDir, assetsDir: resolveConnectAssets(agentAppDir) },
 });
 
 cli.configureAgent(createAgent);

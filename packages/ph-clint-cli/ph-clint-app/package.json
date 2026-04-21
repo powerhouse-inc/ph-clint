@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-app",
-  "version": "0.1.0-dev.7",
+  "version": "0.1.0-dev.10",
   "license": "AGPL-3.0-only",
   "type": "module",
   "publishConfig": {
@@ -59,6 +59,8 @@
     "generate": "ph-cli generate",
     "connect": "ph-cli connect",
     "build": "ph-cli build",
+    "postbuild": "ph-cli connect build --outDir dist/connect",
+    "connect:build": "ph-cli connect build --outDir dist/connect",
     "reactor": "ph-cli reactor",
     "service": "ph-cli service",
     "vetra": "ph-cli vetra",

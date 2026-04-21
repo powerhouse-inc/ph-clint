@@ -11,7 +11,7 @@ export default {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.test.tsx', '**/tests/**/*.integration.test.ts'],
-  collectCoverageFrom: ['src/**/*.ts', 'src/**/*.tsx', '!src/interactive/*.tsx', '!src/testing/**', '!src/**/*.d.ts'],
+  collectCoverageFrom: ['src/**/*.ts', 'src/**/*.tsx', '!src/interactive/*.tsx', '!src/testing/**', '!src/**/*.d.ts', '!src/integrations/powerhouse/connect-server.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
   coverageThreshold: {

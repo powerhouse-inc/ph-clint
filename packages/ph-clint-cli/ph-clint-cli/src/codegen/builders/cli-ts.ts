@@ -19,6 +19,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
 
   if (powerhouse.enabled) {
     lines.push(`import path from 'node:path';`);
+    lines.push(`import { existsSync } from 'node:fs';`);
     lines.push(`import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';`);
   } else {
     lines.push(`import { defineCli } from '@powerhousedao/ph-clint';`);
@@ -40,6 +41,13 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   if (powerhouse.enabled) {
     lines.push(`const appDir = path.resolve(CLI_ROOT, '../${spec.name}-app');`);
     lines.push('');
+    if (powerhouse.connect) {
+      lines.push('function resolveConnectAssets(dir: string): string | undefined {');
+      lines.push("  const assetsDir = path.join(dir, 'dist', 'connect');");
+      lines.push("  return existsSync(path.join(assetsDir, 'index.html')) ? assetsDir : undefined;");
+      lines.push('}');
+      lines.push('');
+    }
   }
 
   lines.push('export const cli = defineCli({');
@@ -123,9 +131,15 @@ export function buildCliTs(spec: ClintProjectSpec): string {
     lines.push(
       `  switchboard: { enabled: ${String(powerhouse.switchboard)} },`,
     );
-    lines.push(
-      `  connect: { enabled: ${String(powerhouse.connect)}, workdir: appDir },`,
-    );
+    if (powerhouse.connect) {
+      lines.push(
+        `  connect: { enabled: true, workdir: appDir, assetsDir: resolveConnectAssets(appDir) },`,
+      );
+    } else {
+      lines.push(
+        `  connect: { enabled: false },`,
+      );
+    }
     lines.push('});');
   }
   lines.push('// @clint:end reactor');

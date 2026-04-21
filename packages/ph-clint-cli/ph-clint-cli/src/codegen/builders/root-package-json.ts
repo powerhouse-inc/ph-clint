@@ -18,9 +18,15 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
   const prefix = (dir: string, cmd: string) => `pnpm --prefix ${dir} ${cmd}`;
   const both = (cmd: string) => `${prefix(app, cmd)} && ${prefix(cli, cmd)}`;
 
+  const connectEnabled = spec.features.powerhouse.enabled && spec.features.powerhouse.connect;
+
+  const buildScript = connectEnabled
+    ? `${prefix(app, 'build')} && ${prefix(app, 'connect:build')} && ${prefix(cli, 'build')}`
+    : both('build');
+
   const scripts: Record<string, string> = {
     install: both('install'),
-    build: both('build'),
+    build: buildScript,
     test: both('test'),
     dev: prefix(cli, 'dev'),
     start: prefix(cli, 'start'),

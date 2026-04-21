@@ -56,6 +56,7 @@
     "generate": "ph-cli generate",
     "connect": "ph-cli connect",
     "build": "ph-cli build",
+    "connect:build": "ph-cli connect build --outDir dist/connect",
     "reactor": "ph-cli reactor",
     "service": "ph-cli service",
     "vetra": "ph-cli vetra",

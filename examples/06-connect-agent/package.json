@@ -5,7 +5,7 @@
   "description": "AI chat agent backed by Powerhouse documents, CLI REPL + Connect web UI",
   "scripts": {
     "install": "pnpm --prefix agent-app install && pnpm --prefix agent-cli install",
-    "build": "pnpm --prefix agent-app build && pnpm --prefix agent-cli build",
+    "build": "pnpm --prefix agent-app build && pnpm --prefix agent-app connect:build && pnpm --prefix agent-cli build",
     "test": "pnpm --prefix agent-app test && pnpm --prefix agent-cli test",
     "dev": "pnpm --prefix agent-cli dev",
     "start": "pnpm --prefix agent-cli start",

@@ -7,6 +7,7 @@
  * Everything outside the markers is user-editable and preserved.
  */
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
 import { CLI_NAME, CLI_VERSION, CLI_ROOT } from './config.js';
 import { configSchema, secretsSchema } from './framework.js';
@@ -24,6 +25,11 @@ import { specChangeTrigger } from './triggers/spec-change.js';
 
 // Connect (ph connect) must run inside the Reactor Package (ph-clint-app).
 const appDir = path.resolve(CLI_ROOT, '../ph-clint-app');
+
+function resolveConnectAssets(dir: string): string | undefined {
+  const assetsDir = path.join(dir, 'dist', 'connect');
+  return existsSync(path.join(assetsDir, 'index.html')) ? assetsDir : undefined;
+}
 
 export const cli = defineCli({
   name: CLI_NAME,
@@ -82,7 +88,7 @@ cli.configureReactor({
     subscriptions: { documentTypes: ['powerhouse/ph-clint-project'] },
   }),
   switchboard: { enabled: true },
-  connect: { enabled: true, workdir: appDir },
+  connect: { enabled: true, workdir: appDir, assetsDir: resolveConnectAssets(appDir) },
 });
 // @clint:end reactor
 

@@ -297,6 +297,8 @@ export interface ConnectConfig {
   workdir?: string;
   /** Service ID for ServiceManager. Default: '{cliName}-studio'. */
   name?: string;
+  /** Path to pre-built Connect static assets. When set, serves via static file server instead of Vite dev server. */
+  assetsDir?: string;
 }
 
 /**
