@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-cli",
-  "version": "0.1.0-dev.5",
+  "version": "0.1.0-dev.6",
   "publishConfig": {
     "access": "public"
   },
@@ -37,6 +37,7 @@
     "document-model": "6.0.0-dev.170",
     "kysely": "^0.27.0",
     "kysely-pglite-dialect": "^1.3.0",
+    "@powerhousedao/ph-clint-dev": "file:../../ph-clint-dev",
     "zod": "^4.3.6"
   },
   "pnpm": {
@@ -48,7 +49,6 @@
     "@jest/globals": "^30.2.0",
     "@types/node": "^25.5.2",
     "jest": "^30.2.0",
-    "@powerhousedao/ph-clint-dev": "file:../../ph-clint-dev",
     "ts-jest": "^29.4.6",
     "tsx": "^4.19.0",
     "typescript": "^6.0.2"
