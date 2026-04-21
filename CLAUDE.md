@@ -23,7 +23,7 @@ ph-clint/
 │   ├── 03-file-watcher/ # Routine loop, triggers, background processes (no agent)
 │   ├── 04-chat-assistant/ # Mastra agent, streaming, memory, session resumption
 │   ├── 05-ph-rupert/      # ServiceManager, Mastra agent, skills, MCP client, demo mode
-│   ├── 06-doc-browser/  # Powerhouse reactor, drives, document operations (no agent)
+│   ├── 06-connect-agent/ # AI chat agent backed by Powerhouse documents, CLI REPL + Connect web UI
 │   ├── 07-doc-agent/    # Mastra + Powerhouse, routine loop, document triggers
 │   └── 08-reactor-dev/  # Full reference: multi-agent, services, skills, MCP transport
 └── CLAUDE.md            # You are here

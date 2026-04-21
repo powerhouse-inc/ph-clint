@@ -1,0 +1,15 @@
+{
+  "name": "ph-clint-packages",
+  "private": true,
+  "scripts": {
+    "install": "pnpm --prefix ph-clint install && pnpm --prefix ph-clint-dev install && pnpm --prefix ph-clint-cli/ph-clint-app install && pnpm --prefix ph-clint-cli/ph-clint-cli install",
+    "build": "pnpm --prefix ph-clint build && pnpm --prefix ph-clint-dev build && pnpm --prefix ph-clint-cli/ph-clint-app build && pnpm --prefix ph-clint-cli/ph-clint-cli build",
+    "test": "pnpm --prefix ph-clint test && pnpm --prefix ph-clint-dev test && pnpm --prefix ph-clint-cli/ph-clint-app test && pnpm --prefix ph-clint-cli/ph-clint-cli test",
+    "publish:dev": "tsx ph-clint-dev/src/publish-cli.ts dev -c ./publish.config.ts",
+    "publish:staging": "tsx ph-clint-dev/src/publish-cli.ts staging -c ./publish.config.ts",
+    "publish:production": "tsx ph-clint-dev/src/publish-cli.ts production -c ./publish.config.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}
