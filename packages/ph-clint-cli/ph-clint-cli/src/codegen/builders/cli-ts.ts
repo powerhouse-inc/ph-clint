@@ -19,12 +19,11 @@ export function buildCliTs(spec: ClintProjectSpec): string {
 
   if (powerhouse.enabled) {
     lines.push(`import path from 'node:path';`);
-    lines.push(`import { fileURLToPath } from 'node:url';`);
     lines.push(`import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';`);
   } else {
     lines.push(`import { defineCli } from '@powerhousedao/ph-clint';`);
   }
-  lines.push(`import { CLI_NAME, CLI_VERSION } from './config.js';`);
+  lines.push(`import { CLI_NAME, CLI_VERSION${powerhouse.enabled ? ', CLI_ROOT' : ''} } from './config.js';`);
   lines.push(`import { configSchema, secretsSchema } from './framework.js';`);
   lines.push('');
 
@@ -39,8 +38,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('');
 
   if (powerhouse.enabled) {
-    lines.push(`const __dirname = path.dirname(fileURLToPath(import.meta.url));`);
-    lines.push(`const appDir = path.resolve(__dirname, '../../${spec.name}-app');`);
+    lines.push(`const appDir = path.resolve(CLI_ROOT, '../${spec.name}-app');`);
     lines.push('');
   }
 

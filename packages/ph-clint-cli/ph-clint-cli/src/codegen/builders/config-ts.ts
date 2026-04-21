@@ -6,24 +6,23 @@
  */
 import {
   type ClintProjectSpec,
-  getBinName,
 } from '../../spec/types.js';
 
 export function buildConfigTs(spec: ClintProjectSpec): string {
-  const cliName = getBinName(spec);
+  const hasCustomBin = !!spec.bin;
   const lines: string[] = [];
 
-  lines.push(`import path from 'node:path';`);
-  lines.push(`import { fileURLToPath } from 'node:url';`);
+  lines.push(`import { readPackageInfo } from '@powerhousedao/ph-clint';`);
   lines.push('');
-  lines.push('/** CLI name — used for config resolution, env var prefixing, and .ph/ paths. */');
-  lines.push(`export const CLI_NAME = '${cliName}';`);
-  lines.push(`export const CLI_VERSION = '${spec.version}';`);
+  lines.push('const pkg = readPackageInfo(import.meta.url);');
   lines.push('');
-  lines.push('/** Project root — resolved from this file location. */');
-  lines.push(
-    'export const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), \'..\');',
-  );
+  lines.push('export const CLI_ROOT = pkg.root;');
+  if (hasCustomBin) {
+    lines.push(`export const CLI_NAME = '${spec.bin}';`);
+  } else {
+    lines.push(`export const CLI_NAME = pkg.name.replace(/-cli$/, '');`);
+  }
+  lines.push('export const CLI_VERSION = pkg.version;');
 
   return lines.join('\n') + '\n';
 }

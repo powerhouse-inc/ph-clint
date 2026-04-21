@@ -1,3 +1,5 @@
+export { readPackageInfo } from './core/pkg.js';
+export type { PackageInfo } from './core/pkg.js';
 export { defineCommand } from './core/command.js';
 export { formatZodError } from './core/errors.js';
 export { createLogger } from './core/logger.js';

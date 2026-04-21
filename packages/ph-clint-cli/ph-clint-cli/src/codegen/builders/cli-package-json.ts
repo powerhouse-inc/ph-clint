@@ -9,9 +9,37 @@ import {
   getBinName,
   getPackageName,
 } from '../../spec/types.js';
+import { CLI_VERSION } from '../../config.js';
 
-/** Pinned version range for peer ph-clint packages emitted into generated projects. */
-const PH_CLINT_VERSION = '^0.1.0';
+/**
+ * Derive a semver range from the running ph-clint-cli version that respects
+ * the dev / staging / production channel boundary. This is the version range
+ * emitted into *scaffolded* projects' package.json for @powerhousedao/ph-clint
+ * and @powerhousedao/ph-clint-dev dependencies.
+ *
+ * CLI_VERSION is the version of ph-clint-cli itself (read from its own
+ * package.json at startup). Since all framework packages share a lockstep
+ * version, this is also the correct base for the dependency range.
+ *
+ * Examples:
+ *   "0.1.0"            → "^0.1.0"            (production — stable only)
+ *   "0.1.0-staging.2"  → "^0.1.0-staging.0"  (staging + stable)
+ *   "0.1.0-dev.4"      → "^0.1.0-dev.0"      (dev + staging + stable)
+ *
+ * This works because semver orders prereleases alphabetically:
+ * dev.N < staging.N < release. A caret range starting at dev.0 naturally
+ * upgrades through staging to production.
+ */
+function phClintRange(version: string): string {
+  const match = /^(\d+\.\d+\.\d+)(?:-([a-z]+)\.\d+)?/.exec(version);
+  if (!match) return `^${version}`;
+  const base = match[1];
+  const channel = match[2]; // "dev", "staging", or undefined
+  return channel ? `^${base}-${channel}.0` : `^${base}`;
+}
+
+/** Version range for @powerhousedao/ph-clint{,-dev} deps in scaffolded projects. */
+const PH_CLINT_VERSION = phClintRange(CLI_VERSION);
 const POWERHOUSE_VERSION = '6.0.0-dev.170';
 
 export function buildCliPackageJson(spec: ClintProjectSpec): string {

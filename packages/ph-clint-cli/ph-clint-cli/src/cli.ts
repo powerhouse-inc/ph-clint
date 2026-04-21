@@ -7,9 +7,8 @@
  * Everything outside the markers is user-editable and preserved.
  */
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
-import { CLI_NAME, CLI_VERSION } from './config.js';
+import { CLI_NAME, CLI_VERSION, CLI_ROOT } from './config.js';
 import { configSchema, secretsSchema } from './framework.js';
 
 // @clint:begin imports
@@ -24,8 +23,7 @@ import { specChangeTrigger } from './triggers/spec-change.js';
 // @clint:end imports
 
 // Connect (ph connect) must run inside the Reactor Package (ph-clint-app).
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const appDir = path.resolve(__dirname, '../../ph-clint-app');
+const appDir = path.resolve(CLI_ROOT, '../ph-clint-app');
 
 export const cli = defineCli({
   name: CLI_NAME,
