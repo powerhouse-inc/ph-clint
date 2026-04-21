@@ -4,6 +4,7 @@ import type {
   PublishConfig,
   PublishGroup,
   PublishOptions,
+  PublishPlan,
   PublishResult,
   BumpOptions,
   ResolvedPackage,
@@ -38,10 +39,12 @@ import {
 import { checkCleanWorkingTree } from './git.js';
 
 /**
- * Main publish pipeline.
+ * Phase 1+2: Load config, validate packages, run pre-flight checks, and
+ * compute the version. Returns a plan that can be passed to buildPackages()
+ * and publishPackages().
  */
-export async function publish(options: PublishOptions): Promise<PublishResult> {
-  const log = (msg: string) => console.log(msg);
+export async function resolvePublishPlan(options: PublishOptions): Promise<PublishPlan> {
+  const log = options.log ?? ((msg: string) => console.log(msg));
 
   // ── 1. LOAD & VALIDATE ──
   log('Loading config...');
@@ -131,8 +134,6 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
 
     // Partial failure recovery: if some packages are already published at this
     // version but not all, reuse it instead of bumping to the next prerelease.
-    // This happens when a previous run published A at dev.N but B failed —
-    // re-running should publish B at the same dev.N, not dev.N+1.
     if (latest !== null) {
       const currentVer = computeVersion(group.version, options.tag, latest - 1);
       const somePublished = await verifyVersionOnRegistry(
@@ -177,37 +178,69 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
     }
   }
 
-  // ── 3. BUILD ALL ──
-  if (!options.skipBuild) {
-    log('Building...');
-    await buildAll(packages, options.verbose ?? false, log);
-  } else {
+  return {
+    config,
+    configPath,
+    configDir,
+    group,
+    groupName,
+    packages,
+    version: computedVer,
+    tag: options.tag,
+    registry,
+  };
+}
+
+/**
+ * Phase 3: Build all packages in the plan.
+ */
+export async function buildPackages(
+  plan: PublishPlan,
+  options?: { skipBuild?: boolean; verbose?: boolean; log?: (msg: string) => void },
+): Promise<void> {
+  const log = options?.log ?? ((msg: string) => console.log(msg));
+
+  if (options?.skipBuild) {
     log('Skipping build (--skip-build)');
+    return;
   }
+
+  log('Building...');
+  await buildAll(plan.packages, options?.verbose ?? false, log);
+}
+
+/**
+ * Phase 4-7: Prepare, validate, publish, and post-publish cleanup.
+ */
+export async function publishPackages(
+  plan: PublishPlan,
+  options?: { dryRun?: boolean; verbose?: boolean; verify?: boolean; log?: (msg: string) => void },
+): Promise<PublishResult> {
+  const log = options?.log ?? ((msg: string) => console.log(msg));
+  const { packages, version: computedVer, registry, tag } = plan;
 
   // ── 4. PREPARE FOR PUBLISH ──
   log('Preparing package.json files...');
-  const backups: string[] = [];
   try {
     for (const pkg of packages) {
-      backups.push(backupPackageJson(pkg.absPath));
+      backupPackageJson(pkg.absPath);
       rewritePackageJson(pkg, computedVer);
     }
 
     // ── 5. VALIDATE ──
     log('Validating packages...');
     for (const pkg of packages) {
-      await packDryRun(pkg.absPath, options.verbose ?? false);
+      await packDryRun(pkg.absPath, options?.verbose ?? false);
       log(`  ✓ ${pkg.name}`);
     }
 
-    if (options.dryRun) {
+    if (options?.dryRun) {
       log('\nDry run — restoring package.json files...');
       for (const pkg of packages) {
         restorePackageJson(pkg.absPath);
       }
       log('Done (dry run). No packages were published.\n');
-      printSummary(packages, computedVer, registry, options.tag, true, log);
+      printSummary(packages, computedVer, registry, tag, true, log);
       return {
         success: true,
         version: computedVer,
@@ -222,10 +255,11 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
     const { published, failed } = await publishAll(
       packages,
       registry,
-      options.tag,
+      tag,
       computedVer,
-      options.verbose ?? false,
+      options?.verbose ?? false,
       log,
+      options?.verify ?? true,
     );
 
     if (failed.length > 0) {
@@ -251,7 +285,7 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
     }
 
     log('');
-    printSummary(packages, computedVer, registry, options.tag, false, log);
+    printSummary(packages, computedVer, registry, tag, false, log);
 
     return {
       success: true,
@@ -267,6 +301,29 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
     }
     throw err;
   }
+}
+
+/**
+ * Main publish pipeline — thin orchestrator over the decomposed phases.
+ */
+export async function publish(options: PublishOptions): Promise<PublishResult> {
+  const log = options.log ?? ((msg: string) => console.log(msg));
+  const optsWithLog = { ...options, log };
+
+  const plan = await resolvePublishPlan(optsWithLog);
+
+  await buildPackages(plan, {
+    skipBuild: options.skipBuild,
+    verbose: options.verbose,
+    log,
+  });
+
+  return publishPackages(plan, {
+    dryRun: options.dryRun,
+    verbose: options.verbose,
+    verify: options.verify ?? true,
+    log,
+  });
 }
 
 /**

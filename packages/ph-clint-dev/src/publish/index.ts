@@ -1,5 +1,5 @@
 export { definePublishConfig } from './config.js';
-export { publish, bump } from './pipeline.js';
+export { publish, bump, resolvePublishPlan, buildPackages, publishPackages } from './pipeline.js';
 export type {
   PublishConfig,
   PublishGroup,
@@ -7,6 +7,7 @@ export type {
   PackageCategory,
   PublishTag,
   PublishOptions,
+  PublishPlan,
   BumpOptions,
   PublishResult,
 } from './types.js';

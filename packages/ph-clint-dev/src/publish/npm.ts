@@ -21,6 +21,11 @@ export async function checkNpmAuth(registry: string): Promise<void> {
 
 /**
  * Verify that a specific package version exists on the registry.
+ *
+ * IMPORTANT: `npm view pkg@version version` returns exit code 0 even when
+ * the specific version doesn't exist — it only errors if the package itself
+ * has never been published. We must check the stdout content, not just the
+ * exit code.
  */
 export async function verifyVersionOnRegistry(
   packageName: string,
@@ -28,14 +33,16 @@ export async function verifyVersionOnRegistry(
   registry: string,
 ): Promise<boolean> {
   try {
-    await execFileAsync('npm', [
+    const { stdout } = await execFileAsync('npm', [
       'view',
       `${packageName}@${version}`,
       'version',
       '--registry',
       registry,
     ]);
-    return true;
+    // stdout is empty (or whitespace) when the package exists but that
+    // specific version does not. Only trust it if the output matches.
+    return stdout.trim() === version;
   } catch {
     return false;
   }
@@ -113,8 +120,39 @@ export function publishPackage(
 }
 
 /**
+ * Verify a version exists on the registry with exponential backoff.
+ * The registry is eventually consistent — a version may not be queryable
+ * immediately after `npm publish` returns.
+ *
+ * Attempts: 1s, 2s, 4s, 8s, 16s (total ~31s max wait).
+ */
+export async function verifyWithRetry(
+  packageName: string,
+  version: string,
+  registry: string,
+  log: (msg: string) => void,
+  maxAttempts = 5,
+): Promise<boolean> {
+  let delay = 1_000;
+  for (let i = 0; i < maxAttempts; i++) {
+    if (await verifyVersionOnRegistry(packageName, version, registry)) {
+      return true;
+    }
+    if (i < maxAttempts - 1) {
+      log(`    waiting ${delay / 1000}s for registry propagation...`);
+      await new Promise((r) => setTimeout(r, delay));
+      delay *= 2;
+    }
+  }
+  return false;
+}
+
+/**
  * Publish all packages in order.
  * Returns which packages succeeded and which failed.
+ *
+ * When `verify` is true (default), each package is confirmed on the
+ * registry after publish using exponential backoff.
  */
 export async function publishAll(
   packages: ResolvedPackage[],
@@ -123,6 +161,7 @@ export async function publishAll(
   version: string,
   verbose: boolean,
   log: (msg: string) => void,
+  verify = true,
 ): Promise<{ published: string[]; failed: string[] }> {
   const published: string[] = [];
   const failed: string[] = [];
@@ -143,6 +182,20 @@ export async function publishAll(
     try {
       log(`  Publishing ${pkg.name}...`);
       await publishPackage(pkg, registry, tag, verbose);
+
+      if (verify) {
+        const confirmed = await verifyWithRetry(pkg.name, version, registry, log);
+        if (!confirmed) {
+          failed.push(pkg.name);
+          log(`  ✗ ${pkg.name}: published but not found on registry after verification`);
+          log(
+            `\n  The registry may be slow to propagate. Re-run to retry.` +
+              `\n  Use --no-verify to skip post-publish verification.`,
+          );
+          break;
+        }
+      }
+
       published.push(pkg.name);
       log(`  ✓ ${pkg.name}`);
     } catch (err) {

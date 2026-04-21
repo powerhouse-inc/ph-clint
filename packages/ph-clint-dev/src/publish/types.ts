@@ -46,6 +46,9 @@ export interface PublishOptions {
   force?: boolean;
   verbose?: boolean;
   allowPrivate?: boolean;
+  /** Verify each package appears on the registry after publish (default true). */
+  verify?: boolean;
+  log?: (msg: string) => void;
 }
 
 /** Options for the bump command. */
@@ -84,6 +87,19 @@ export interface ResolvedPackage {
   name: string;
   /** Resolved file: dependencies. */
   fileDeps: FileDep[];
+}
+
+/** Resolved plan ready for build + publish execution. */
+export interface PublishPlan {
+  config: PublishConfig;
+  configPath: string;
+  configDir: string;
+  group: PublishGroup;
+  groupName: string;
+  packages: ResolvedPackage[];
+  version: string;
+  tag: PublishTag;
+  registry: string;
 }
 
 /** Result of a publish pipeline run. */

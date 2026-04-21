@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { buildSpec, init } from '../../src/commands/init.js';
+import { buildSpec, init } from '../../src/commands/clint-project-init.js';
 
 describe('buildSpec', () => {
   it('splits a scoped name into { scope, name }', () => {

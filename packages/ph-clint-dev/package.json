@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-dev",
-  "version": "0.1.0-dev.0",
+  "version": "0.1.0-dev.3",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -28,9 +28,9 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
-    "publish:dev": "tsx src/publish-cli.ts dev -g ph-clint -c ../publish.config.ts",
-    "publish:staging": "tsx src/publish-cli.ts staging -g ph-clint -c ../publish.config.ts",
-    "publish:production": "tsx src/publish-cli.ts production -g ph-clint -c ../publish.config.ts"
+    "publish:dev": "tsx src/publish-cli.ts dev -c ../publish.config.ts",
+    "publish:staging": "tsx src/publish-cli.ts staging -c ../publish.config.ts",
+    "publish:production": "tsx src/publish-cli.ts production -c ../publish.config.ts"
   },
   "dependencies": {
     "handlebars": "^4.7.8",

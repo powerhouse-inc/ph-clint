@@ -26,7 +26,7 @@ const inputSchema = z.object({
 });
 
 export const regen = defineCommand({
-  id: 'regen',
+  id: 'clint-project-regen',
   description: 'Regenerate project files from the persisted spec',
   inputSchema,
   execute: async (input, { workdir, stdout, log }) => {

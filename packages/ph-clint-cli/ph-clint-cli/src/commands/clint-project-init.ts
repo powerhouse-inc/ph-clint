@@ -99,7 +99,7 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
 }
 
 export const init = defineCommand({
-  id: 'init',
+  id: 'clint-project-init',
   description: 'Initialize a new ph-clint project in the target directory',
   inputSchema,
   prompt: {

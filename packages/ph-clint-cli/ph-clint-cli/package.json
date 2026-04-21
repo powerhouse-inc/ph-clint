@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-cli",
-  "version": "0.1.0-dev.0",
+  "version": "0.1.0-dev.3",
   "publishConfig": {
     "access": "public"
   },
@@ -22,8 +22,7 @@
     "lint": "eslint src",
     "mastra:dev": "mastra dev",
     "mastra:build": "mastra build",
-    "mastra:start": "mastra start",
-    "publish:npm": "pnpm build && pnpm publish --no-git-checks"
+    "mastra:start": "mastra start"
   },
   "dependencies": {
     "@powerhousedao/ph-clint": "file:../../ph-clint",

@@ -6,8 +6,8 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { init } from '../../src/commands/init.js';
-import { regen } from '../../src/commands/regen.js';
+import { init } from '../../src/commands/clint-project-init.js';
+import { regen } from '../../src/commands/clint-project-regen.js';
 
 async function mkTmpDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ph-clint-regen-'));

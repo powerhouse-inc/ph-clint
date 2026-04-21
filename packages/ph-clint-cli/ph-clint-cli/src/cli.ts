@@ -15,8 +15,11 @@ import { configSchema, secretsSchema } from './framework.js';
 // @clint:begin imports
 import { documentModels } from '@powerhousedao/ph-clint-app';
 import { createAgent } from './agents/clint-agent.js';
-import { init } from './commands/init.js';
-import { regen } from './commands/regen.js';
+import { init } from './commands/clint-project-init.js';
+import { regen } from './commands/clint-project-regen.js';
+import { build } from './commands/clint-project-build.js';
+import { clintProjectPublish } from './commands/clint-project-publish.js';
+import { clintProject } from './services/clint-project.js';
 import { specChangeTrigger } from './triggers/spec-change.js';
 // @clint:end imports
 
@@ -32,11 +35,11 @@ export const cli = defineCli({
   secretsSchema,
 
   // @clint:begin commands
-  commands: [init, regen],
+  commands: [init, regen, build, clintProjectPublish],
   // @clint:end commands
 
   // @clint:begin services
-  services: [],
+  services: [clintProject],
   // @clint:end services
 
   // @clint:begin triggers
