@@ -53,6 +53,7 @@ import {
   CLI_FILE_BUILDERS,
   buildReadme,
   buildRootPackageJson,
+  buildPublishConfigTs,
   buildAppIndexTs,
 } from './builders/index.js';
 
@@ -191,6 +192,12 @@ function planFiles(
       relativePath: 'package.json',
       absolutePath: rootPkg,
       content: buildRootPackageJson(spec),
+    });
+    const publishConfig = path.join(targetDir, 'publish.config.ts');
+    planned.push({
+      relativePath: 'publish.config.ts',
+      absolutePath: publishConfig,
+      content: buildPublishConfigTs(spec),
     });
     const appGitkeep = path.join(appDir, '.gitkeep');
     planned.push({

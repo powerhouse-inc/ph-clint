@@ -1,0 +1,19 @@
+{
+  "name": "@ph-clint/connect-agent",
+  "version": "0.0.1-dev.0",
+  "private": true,
+  "description": "AI chat agent backed by Powerhouse documents, CLI REPL + Connect web UI",
+  "scripts": {
+    "install": "pnpm --prefix agent-app install && pnpm --prefix agent-cli install",
+    "build": "pnpm --prefix agent-app build && pnpm --prefix agent-cli build",
+    "test": "pnpm --prefix agent-app test && pnpm --prefix agent-cli test",
+    "dev": "pnpm --prefix agent-cli dev",
+    "start": "pnpm --prefix agent-cli start",
+    "lint": "pnpm --prefix agent-cli lint",
+    "app:dev": "pnpm --prefix agent-app dev",
+    "cli:dev": "pnpm --prefix agent-cli dev",
+    "publish:dev": "pnpm --prefix agent-cli exec ph-publish dev -c ./publish.config.ts",
+    "publish:staging": "pnpm --prefix agent-cli exec ph-publish staging -c ./publish.config.ts",
+    "publish:production": "pnpm --prefix agent-cli exec ph-publish production -c ./publish.config.ts"
+  }
+}
