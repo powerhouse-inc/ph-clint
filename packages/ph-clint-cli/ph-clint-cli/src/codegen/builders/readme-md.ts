@@ -36,7 +36,7 @@ export function buildReadme(spec: ClintProjectSpec): string {
   lines.push(
     'Toggle features or update metadata in `.ph/ph-clint-cli/project-spec.json`,',
   );
-  lines.push('then re-run `ph-clint` to regenerate.');
+  lines.push('then re-run `ph-clint clint-project-regen` to regenerate.');
   lines.push('');
   if (powerhouse.enabled) {
     lines.push('## Split layout');

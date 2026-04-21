@@ -1,5 +1,5 @@
 /**
- * `ph-clint init` — the project bootstrap wizard.
+ * `ph-clint clint-project-init` — the project bootstrap wizard.
  *
  * Behavior:
  *   1. Resolve target dir (positional `dir`, defaults to cwd).
@@ -183,7 +183,7 @@ export const init = defineCommand({
     }
     next.push('');
     next.push(
-      'Edit the project spec and run `ph-clint regen` to regenerate.',
+      'Edit the project spec and run `ph-clint clint-project-regen` to regenerate.',
     );
 
     return {

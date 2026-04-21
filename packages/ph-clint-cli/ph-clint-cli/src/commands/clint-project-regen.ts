@@ -1,5 +1,5 @@
 /**
- * `ph-clint regen` — reconcile an existing project against its persisted
+ * `ph-clint clint-project-regen` — reconcile an existing project against its persisted
  * spec. Equivalent to running the generator in update mode.
  *
  * Run inside a project directory (or pass `--dir`). If the spec has flipped
@@ -36,7 +36,7 @@ export const regen = defineCommand({
       return {
         text:
           `Error: no spec found at ${targetDir}/.ph/ph-clint-cli/project-spec.json.\n` +
-          'Run `ph-clint init` first to scaffold a new project.',
+          'Run `ph-clint clint-project-init` first to scaffold a new project.',
       };
     }
 

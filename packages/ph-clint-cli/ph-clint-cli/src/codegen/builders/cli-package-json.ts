@@ -51,8 +51,6 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     scripts['mastra:build'] = 'mastra build';
     scripts['mastra:start'] = 'mastra start';
   }
-  scripts['publish:npm'] = 'pnpm build && pnpm publish --no-git-checks';
-
   const pkg: Record<string, unknown> = {
     name: pkgName,
     version: spec.version,
