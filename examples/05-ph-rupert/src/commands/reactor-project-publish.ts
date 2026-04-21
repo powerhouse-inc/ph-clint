@@ -1,10 +1,50 @@
 import { defineCommand } from '../framework.js';
 import { z } from 'zod';
-import { DEFAULT_REGISTRY_URL} from '@powerhousedao/shared/clis';
 import { checkNpmAuth, npmPublish, resolveRegistryUrl } from '@powerhousedao/shared/registry';
 import path from 'node:path';
 import fs from 'node:fs';
 import { runBuild } from './reactor-project-build.js';
+import { spawnAsync } from '@powerhousedao/shared/clis';
+import { spawn } from 'node:child_process';
+
+function npmLogin(registryUrl: string, username: string, password: string, email?: string, cwd?: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const cmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+      const child = spawn(cmd, ['login', '--registry', registryUrl], {
+        cwd,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      const answers: Record<string, string> = {
+        'Username': username,
+        'Password': password,
+        'Email': email ?? '',
+      };
+
+      const handleData = (data: Buffer) => {
+        const text = data.toString();
+        for (const [prompt, answer] of Object.entries(answers)) {
+          if (text.includes(prompt)) {
+            child.stdin!.write(answer + '\n');
+            return;
+          }
+        }
+      };
+
+      child.stdout.on('data', handleData);
+      child.stderr.on('data', handleData);
+      child.on('error', reject);
+      child.on('close', (code) => {
+        code === 0 ? resolve() : reject(new Error(`npm adduser exited with code ${code}`));
+      });
+    });
+}
+
+function npmLogout(registryUrl: string, cwd?: string): Promise<string> {
+  return spawnAsync('npm', ['logout', '--registry', registryUrl], {
+    cwd,
+  });
+}
 
 const publishInputSchema = z.object({
   name: z.string().optional().describe('Project directory name (relative to workdir).'),
@@ -13,7 +53,9 @@ const publishInputSchema = z.object({
   tag: z.string().optional().describe('npm dist-tag to publish under (e.g. "dev", "next").'),
   skipBuild: z.boolean().optional().describe('Skip the build step before publishing.'),
   dryRun: z.boolean().optional().describe('Perform a dry run without actually publishing.'),
-  log: z.boolean().optional().describe('Whether to log output to the console. Defaults to false.'),
+  log: z.boolean().optional().describe('Whether to log output to the console. Only enable for debugging purposes.'),
+  username: z.string().optional().describe('Registry username (overrides config.registryUsername)'),
+  password: z.string().optional().describe('Registry password (overrides config.registryPassword)'),
 });
 
 export const reactorProjectPublish = defineCommand({
@@ -28,9 +70,9 @@ This command:
 5. Runs npm publish
 
 Prerequisites: You must be authenticated with the npm registry.
-Run \`npm adduser --registry <url>\` to create an account with a username, password, and email.`,
+Run \`npm login --registry <url>\` to create an account with a username, password, and email.`,
   inputSchema: publishInputSchema,
-  execute: async ({ name, version, registry, tag, skipBuild, dryRun, log }, { workdir, stdout }) => {
+  execute: async ({ name, version, registry, tag, skipBuild, dryRun, log }, { workdir, config, stdout }) => {
     const projectPath = name ? path.join(workdir, name) : workdir;
     const packageJsonPath = path.join(projectPath, 'package.json');
 
@@ -60,10 +102,9 @@ Run \`npm adduser --registry <url>\` to create an account with a username, passw
     }
 
     const registryUrl = resolveRegistryUrl({
-      registry,
+      registry: registry || config.registryUrl,
       projectPath,
     });
-
 
     if (!skipBuild) {
       const buildResult = await runBuild(projectPath, (stdoutChunk) => {
@@ -78,14 +119,38 @@ Run \`npm adduser --registry <url>\` to create an account with a username, passw
       }
     }
 
-    let username: string;
+    let username: string | undefined;
+    try {
+
     try {
       username = await checkNpmAuth(registryUrl);
-    } catch {
-      return {
-        text: [`**Not authenticated** with registry \`${registryUrl}\``, '', 'Run the following to authenticate:', '```', `npm adduser --registry ${registryUrl}`, '```'].join('\n'),
-      };
+    } catch (error) {
+      // not authenticated, will attempt to log in
     }
+
+    // if the user is authenticated but the username doesn't match the one in config,
+    // log out to prevent publishing under the wrong account
+    if (config.registryUsername && username && username !== config.registryUsername) {
+      await npmLogout(registryUrl, projectPath);
+      username = undefined;
+    }
+
+    if (!username) {
+      if (config.registryUsername && config.registryPassword) {
+        await npmLogin(registryUrl, config.registryUsername || '', config.registryPassword || '', config.registryEmail, projectPath);
+      } else {
+        return {
+          text: `**Error:** Not authenticated with registry \`${registryUrl}\`. Please provide registryUsername and registryPassword in your config, or run \`npm login --registry ${registryUrl}\` to log in.`,
+        };
+      }
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      text: ['**Authentication failed**', '', `Registry: \`${registryUrl}\``, '', '```', message, '```'].join('\n'),
+    };
+  }
+
     const extraArgs: string[] = [];
     if (tag) extraArgs.push('--tag', tag);
     if (dryRun) extraArgs.push('--dry-run');
