@@ -1,14 +1,12 @@
 import { DEFAULT_RENOWN_URL } from '@renown/sdk/node';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readPackageInfo } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 
-/** CLI name — used for config resolution, env var prefixing, and .ph/ paths. */
-export const CLI_NAME = 'ph-rupert';
-export const CLI_VERSION = '0.0.1';
+const pkg = readPackageInfo(import.meta.url);
 
-/** Project root — resolved from this file's location. */
-export const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const CLI_ROOT = pkg.root;
+export const CLI_NAME = pkg.name.replace(/-cli$/, '');
+export const CLI_VERSION = pkg.version;
 
 // ── Config schema ─────────────────────────────────────────────────
 

@@ -9,16 +9,16 @@ import { createWorkdirStore } from '@powerhousedao/ph-clint';
 import { createMastraHelpers, getMastraPaths } from '@powerhousedao/ph-clint/mastra';
 import type { AgentSetupContext, AgentProvider, Command, CommandContext, Logger } from '@powerhousedao/ph-clint';
 import type { WrapAgentOptions } from '@powerhousedao/ph-clint/mastra';
-import { CLI_NAME, PROJECT_ROOT } from '../config.js';
+import { CLI_NAME, CLI_ROOT } from '../config.js';
 import type { Config } from '../framework.js';
 import { createDemoAgent } from './demo-agent.js';
 import type { SkillInfo } from '@powerhousedao/ph-clint';
 
-// Under `mastra dev`, PROJECT_ROOT resolves to .mastra/ (bundler output).
+// Under `mastra dev`, CLI_ROOT resolves to .mastra/ (bundler output).
 // The actual project root with gen/ is its parent.
-const projectRoot = path.basename(PROJECT_ROOT) === '.mastra'
-  ? path.dirname(PROJECT_ROOT)
-  : PROJECT_ROOT;
+const projectRoot = path.basename(CLI_ROOT) === '.mastra'
+  ? path.dirname(CLI_ROOT)
+  : CLI_ROOT;
 
 function loadInstructions(profileName: string): string {
   return fs.readFileSync(
@@ -120,7 +120,7 @@ export async function createAgent(ctx: AgentSetupContext<Config>): Promise<Agent
 
   const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
   const m = createMastraHelpers(ctx);
-  const agent = await createAgentRupert(ctx.config, ctx.workdir, PROJECT_ROOT, ctx.commands, ctx.context, ctx.skills, ctx.context.log);
+  const agent = await createAgentRupert(ctx.config, ctx.workdir, CLI_ROOT, ctx.commands, ctx.context, ctx.skills, ctx.context.log);
 
   const store = createWorkdirStore(ctx.workdir, CLI_NAME);
   const wrapOpts: WrapAgentOptions = {

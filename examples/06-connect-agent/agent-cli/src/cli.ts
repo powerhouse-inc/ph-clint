@@ -9,8 +9,7 @@
  */
 
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
+import { defineCli, buildDefaultReactor, readPackageInfo } from '@powerhousedao/ph-clint';
 import type { WorkItem } from '@powerhousedao/ph-clint';
 import { documentModels } from 'agent-app';
 import * as agentChatCreators from 'agent-app/document-models/agent-chat';
@@ -19,9 +18,10 @@ import { createDocumentChangeTrigger } from './framework.js';
 import { createAgent, AGENT_ID, findChatDocuments, ensureParticipant, createDispatcher } from './agent.js';
 import { writeStreamToDocument } from './bridge.js';
 
+const pkg = readPackageInfo(import.meta.url);
+
 // Connect (ph connect) must run inside the agent-app Reactor Package.
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const agentAppDir = path.resolve(__dirname, '../../agent-app');
+const agentAppDir = path.resolve(pkg.root, '../agent-app');
 
 // ── Document Change Trigger ─────────────────────────────────────────
 // When an agent-chat document changes (e.g. a user sends a message via
@@ -103,8 +103,8 @@ const documentChangeTrigger = createDocumentChangeTrigger<'powerhouse/agent-chat
 // ── CLI ─────────────────────────────────────────────────────────────
 
 const cli = defineCli({
-  name: 'connect-agent',
-  version: '0.1.0',
+  name: pkg.name.replace(/-cli$/, ''),
+  version: pkg.version,
   description: 'AI agent with Powerhouse Connect web UI',
   configSchema,
   commands: [],

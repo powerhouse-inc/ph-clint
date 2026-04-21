@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { z } from 'zod';
 import { defineCli } from '@powerhousedao/ph-clint';
-import { CLI_NAME, CLI_VERSION, PROJECT_ROOT, configSchema, secretsSchema } from './config.js';
+import { CLI_NAME, CLI_VERSION, CLI_ROOT, configSchema, secretsSchema } from './config.js';
 import { reactorProjectInit } from './commands/reactor-project-init.js';
 import { fusionProjectInit } from './commands/fusion-project-init.js';
 import { phLogin, phLogout, phAccessToken } from './commands/ph-auth.js';
@@ -22,7 +22,7 @@ export const cli = defineCli({
   commands: [reactorProjectInit, fusionProjectInit, phLogin, phLogout, phAccessToken, reactorProjectPublish, reactorProjectBuild],
   services: [reactorProject, fusionProject],
   prompts: {
-    sources: [path.join(PROJECT_ROOT, 'gen', 'skills'), path.join(PROJECT_ROOT, 'dist', 'gen', 'skills')],
+    sources: [path.join(CLI_ROOT, 'gen', 'skills'), path.join(CLI_ROOT, 'dist', 'gen', 'skills')],
     agents: {
       'rupert-dev-agent': {
         name: 'RupertDevAgent',

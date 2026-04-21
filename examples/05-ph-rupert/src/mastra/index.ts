@@ -13,14 +13,14 @@ import { getMastraPaths } from '@powerhousedao/ph-clint/mastra';
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';
-import { CLI_NAME, PROJECT_ROOT } from '../config.js';
+import { CLI_NAME, CLI_ROOT } from '../config.js';
 import { configSchema, secretsSchema, type Config } from '../framework.js';
 import { cli } from '../cli.js';
 import { createAgentRupert } from '../agents/agent-rupert.js';
 
 // ── Resolve runtime context (Mastra Studio runs outside CLI lifecycle) ──
 
-const workdir = resolveWorkdir({ fallback: PROJECT_ROOT });
+const workdir = resolveWorkdir({ fallback: CLI_ROOT });
 const config = resolveConfig({ configSchema: configSchema.extend(secretsSchema.shape), cliName: CLI_NAME, workdir }) as Config;
 const store = createWorkdirStore(workdir, CLI_NAME);
 const paths = getMastraPaths(store);
@@ -52,11 +52,11 @@ if (config.apiKey && !process.env.ANTHROPIC_API_KEY) {
 fs.mkdirSync(paths.dbFolder, { recursive: true });
 
 // Install pre-packaged skills into .ph/{cliName}/.mastra/skills/
-// Under `mastra dev`, PROJECT_ROOT resolves to .mastra/ (bundler output).
+// Under `mastra dev`, CLI_ROOT resolves to .mastra/ (bundler output).
 // The actual project root with gen/ is its parent.
-const actualRoot = path.basename(PROJECT_ROOT) === '.mastra'
-  ? path.dirname(PROJECT_ROOT)
-  : PROJECT_ROOT;
+const actualRoot = path.basename(CLI_ROOT) === '.mastra'
+  ? path.dirname(CLI_ROOT)
+  : CLI_ROOT;
 installSkills({
   store,
   skillSources: [
@@ -77,7 +77,7 @@ const commands = cli.listCommands();
 // Build a minimal CommandContext for Mastra Studio (no services — runs outside CLI lifecycle)
 const studioContext = { workdir, workspace: store, config, stdout: console.log };
 
-const rupertAgent = await createAgentRupert(config, workdir, PROJECT_ROOT, commands, studioContext, skills);
+const rupertAgent = await createAgentRupert(config, workdir, CLI_ROOT, commands, studioContext, skills);
 
 export const mastra = new Mastra({
   agents: { rupertAgent },
