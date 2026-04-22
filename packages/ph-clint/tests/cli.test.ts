@@ -230,7 +230,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
 
         const help = skillCli.generateHelp();
@@ -248,7 +248,7 @@ describe('defineCli', () => {
         version: '1.0.0',
         description: 'No skills',
         commands: [echo],
-        prompts: { sources: ['/nonexistent/path'] },
+        prompts: { artifacts: ['/nonexistent/path'] },
       });
       const help = skillCli.generateHelp();
       expect(help).not.toContain('Skills:');
@@ -269,7 +269,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills commands test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
 
         expect(skillCli.getCommand('my-skill')).toBeDefined();
@@ -294,7 +294,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills exec test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
 
         const result = await skillCli.execute('my-skill', {});
@@ -323,7 +323,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills agent test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
         skillCli.configureAgent(async () => ({
           id: 'test-agent',
@@ -365,7 +365,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'No agent',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
 
         const output: string[] = [];
@@ -401,7 +401,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skill docs test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
 
         const help = skillCli.generateCommandHelp('my-skill');
@@ -430,7 +430,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'No docs test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
 
         const help = skillCli.generateCommandHelp('plain-skill');
@@ -461,7 +461,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skill -h test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
 
         let output = '';
@@ -1082,7 +1082,7 @@ describe('defineCli', () => {
           version: '1.0.0',
           description: 'Skills metadata test',
           commands: [echo],
-          prompts: { sources: [tmp] },
+          prompts: { artifacts: [tmp] },
         });
         const cap = capture();
         await skillCli.run(['node', 'test', '--meta'], cap.options);
@@ -1093,7 +1093,7 @@ describe('defineCli', () => {
           id: 'my-skill',
           description: 'A test skill',
         });
-        expect(json.prompts.sources).toEqual([tmp]);
+        expect(json.prompts.artifacts).toEqual([tmp]);
       } finally {
         await rm(tmp, { recursive: true, force: true });
       }

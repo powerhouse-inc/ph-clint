@@ -33,7 +33,7 @@ describe('installSkills', () => {
     const logs: string[] = [];
     const count = installSkills({
       store,
-      skillSources: ['/nonexistent', skillsDir],
+      skillArtifacts: ['/nonexistent', skillsDir],
       stdout: (msg) => logs.push(msg),
     });
 
@@ -59,7 +59,7 @@ describe('installSkills', () => {
 
     installSkills({
       store,
-      skillSources: [skillsDir],
+      skillArtifacts: [skillsDir],
       stdout: () => {},
     });
 
@@ -74,7 +74,7 @@ describe('installSkills', () => {
     const logs: string[] = [];
     const count = installSkills({
       store,
-      skillSources: ['/nonexistent-a', '/nonexistent-b'],
+      skillArtifacts: ['/nonexistent-a', '/nonexistent-b'],
       stdout: (msg) => logs.push(msg),
     });
 
@@ -90,7 +90,7 @@ describe('installSkills', () => {
     const logs: string[] = [];
     const count = installSkills({
       store,
-      skillSources: [emptyDir],
+      skillArtifacts: [emptyDir],
       stdout: (msg) => logs.push(msg),
     });
 
@@ -113,7 +113,7 @@ describe('installSkills', () => {
 
     installSkills({
       store,
-      skillSources: [skillsDir],
+      skillArtifacts: [skillsDir],
       stdout: () => {},
     });
 
@@ -137,7 +137,7 @@ describe('installSkills', () => {
 
     installSkills({
       store,
-      skillSources: [first, second],
+      skillArtifacts: [first, second],
       stdout: () => {},
     });
 
@@ -165,7 +165,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      prompts: { sources: [skillsDir] },
+      prompts: { artifacts: [skillsDir] },
     });
 
     const output: string[] = [];
@@ -197,7 +197,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      prompts: { sources: [skillsDir] },
+      prompts: { artifacts: [skillsDir] },
     });
 
     const output: string[] = [];
@@ -224,7 +224,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      prompts: { sources: [skillsDir] },
+      prompts: { artifacts: [skillsDir] },
     });
 
     const runOpts = {
@@ -254,7 +254,7 @@ describe('auto-initialization on first run', () => {
       version: '1.0.0',
       description: 'Test',
       commands: [dummyCommand],
-      prompts: { sources: ['/some/path'] },
+      prompts: { artifacts: ['/some/path'] },
     });
 
     expect(cli.getCommand('init')).toBeUndefined();

@@ -1,113 +1,12 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { Agent } from '@mastra/core/agent';
-import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
-import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
 import { MCPClient } from '@mastra/mcp';
+import { createMastraHelpers } from '@powerhousedao/ph-clint/mastra';
 import { createWorkdirStore } from '@powerhousedao/ph-clint';
-import { createMastraHelpers, getMastraPaths } from '@powerhousedao/ph-clint/mastra';
-import type { AgentSetupContext, AgentProvider, Command, CommandContext, Logger } from '@powerhousedao/ph-clint';
+import type { AgentSetupContext, AgentProvider } from '@powerhousedao/ph-clint';
 import type { WrapAgentOptions } from '@powerhousedao/ph-clint/mastra';
-import { CLI_NAME, CLI_ROOT } from '../config.js';
+import { CLI_NAME } from '../config.js';
 import type { Config } from '../framework.js';
 import { createDemoAgent } from './demo-agent.js';
-import type { SkillInfo } from '@powerhousedao/ph-clint';
-
-// Under `mastra dev`, CLI_ROOT resolves to .mastra/ (bundler output).
-// The actual project root with gen/ is its parent.
-const projectRoot = path.basename(CLI_ROOT) === '.mastra'
-  ? path.dirname(CLI_ROOT)
-  : CLI_ROOT;
-
-function loadInstructions(profileName: string): string {
-  return fs.readFileSync(
-    path.join(projectRoot, 'gen', 'agent-profiles', `${profileName}.md`), 'utf-8',
-  );
-}
-
-/**
- * Create the fully configured Rupert dev agent.
- *
- * Used by both the ph-clint CLI and Mastra Dev Studio — same tools,
- * same memory, same workspace, same skills, same config.
- *
- * @param config      Resolved CLI config (with apiKey, model, etc.)
- * @param workdir     Resolved working directory (for mastra paths, workspace)
- * @param projectRoot Root of the example project (where skills/ lives).
- *                    Required because Mastra's bundler breaks import.meta.url paths.
- * @param commands    Commands to convert to Mastra tools. Includes auto-injected
- *                    commands (config, svc) when called from the CLI.
- * @param context     CommandContext for tool execution and MCP discovery.
- */
-export async function createAgentRupert(
-  config: Config,
-  workdir: string,
-  projectRoot: string,
-  commands: Command[],
-  context: CommandContext,
-  skills: SkillInfo[],
-  log?: Logger,
-): Promise<Agent> {
-  const store = createWorkdirStore(workdir, CLI_NAME);
-  const skillNames = skills.map(s => s.name);
-  const paths = getMastraPaths(store, { prePackagedSkills: skillNames });
-  fs.mkdirSync(paths.dbFolder, { recursive: true });
-
-  log?.debug('[agent-rupert] workdir:', paths.workspaceBasePath);
-  log?.debug('[agent-rupert] rootFolder:', paths.rootFolder);
-  log?.debug('[agent-rupert] dbFolder:', paths.dbFolder);
-  log?.debug('[agent-rupert] skillPaths:');
-  for (const sp of paths.skillPaths) {
-    log?.debug(`[agent-rupert]   ${sp}`);
-  }
-  log?.debug('[agent-rupert] allowedPaths:', paths.allowedPaths);
-
-  const workspace = new Workspace({
-    filesystem: new LocalFilesystem({
-      basePath: paths.workspaceBasePath,
-      allowedPaths: paths.allowedPaths,
-    }),
-    sandbox: new LocalSandbox({
-      workingDirectory: paths.workspaceBasePath,
-    }),
-    skills: paths.skillPaths,
-  });
-
-  const libsqlStore = new LibSQLStore({ id: 'ph-clint-storage', url: `file:${paths.dbPath}` });
-  const memory = new Memory({ storage: libsqlStore });
-
-  // Use createMastraHelpers for CLI tools + auto-discovered MCP tools.
-  // tools callback is invoked per-turn, so MCP endpoints that appear after
-  // agent creation (e.g. vetra-start in interactive mode) are picked up.
-  const agentCtx: AgentSetupContext<Config> = {
-    workdir,
-    config,
-    cliName: CLI_NAME,
-    cliVersion: '0.1.0',
-    context,
-    commands,
-    skills,
-  };
-  const m = createMastraHelpers(agentCtx);
-
-  return new Agent({
-    id: 'rupert-dev-agent',
-    name: 'Rupert Dev Agent',
-    instructions: loadInstructions('RupertDevAgent'),
-    model: config.apiKey
-      ? { id: config.model as `${string}/${string}`, apiKey: config.apiKey }
-      : (config.model as `${string}/${string}`),
-    tools: async () => {
-      log?.debug('[agent-rupert] tools callback invoked');
-      const tools = await m.getTools({ MCPClient });
-      log?.debug(`[agent-rupert] tools resolved: ${Object.keys(tools).length} tools`);
-      return tools;
-    },
-    workspace,
-    memory,
-  });
-}
 
 /**
  * Agent factory for the ph-clint CLI.
@@ -118,9 +17,24 @@ export async function createAgentRupert(
 export async function createAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {
   if (!ctx.config.apiKey) return createDemoAgent();
 
-  const { createMastraHelpers } = await import('@powerhousedao/ph-clint/mastra');
   const m = createMastraHelpers(ctx);
-  const agent = await createAgentRupert(ctx.config, ctx.workdir, CLI_ROOT, ctx.commands, ctx.context, ctx.skills, ctx.context.log);
+
+  const agent = new Agent({
+    id: 'rupert-dev-agent',
+    name: 'Rupert Dev Agent',
+    instructions: m.getAgentInstructions('rupert-dev-agent'),
+    model: ctx.config.apiKey
+      ? { id: ctx.config.model as `${string}/${string}`, apiKey: ctx.config.apiKey }
+      : (ctx.config.model as `${string}/${string}`),
+    tools: async () => {
+      ctx.context.log?.debug('[agent-rupert] tools callback invoked');
+      const tools = await m.getTools({ MCPClient });
+      ctx.context.log?.debug(`[agent-rupert] tools resolved: ${Object.keys(tools).length} tools`);
+      return tools;
+    },
+    workspace: await m.createWorkspace(),
+    memory: await m.createMemory(),
+  });
 
   const store = createWorkdirStore(ctx.workdir, CLI_NAME);
   const wrapOpts: WrapAgentOptions = {

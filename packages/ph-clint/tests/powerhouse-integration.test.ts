@@ -1,10 +1,19 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, jest, afterAll } from '@jest/globals';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import { z } from 'zod';
 import { connectServiceDefinition } from '../src/integrations/powerhouse/connect.js';
 import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscriptions.js';
 import { ensureDrive } from '../src/integrations/powerhouse/drive.js';
 import { buildDefaultReactor } from '../src/integrations/powerhouse/index.js';
+import { buildReactor } from '../src/integrations/powerhouse/reactor.js';
+import { startSwitchboard, buildSwitchboardInstance } from '../src/integrations/powerhouse/switchboard.js';
 import { defineRegistry } from '../src/integrations/powerhouse/registry.js';
-import type { ReactorContext, ReactorClientModule } from '../src/integrations/powerhouse/types.js';
+import { defineCli, defineCommand, isPortFree } from '../src/index.js';
+import { createMemoryWorkdirStore } from '../src/core/store.js';
+import type { ReactorContext, ReactorClientModule, SwitchboardInstance } from '../src/integrations/powerhouse/types.js';
 
 describe('connectServiceDefinition', () => {
   it('creates a service definition with correct id and name', () => {
@@ -56,6 +65,44 @@ describe('connectServiceDefinition', () => {
   it('has restart disabled', () => {
     const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
     expect(svc.restart?.enabled).toBe(false);
+  });
+
+  it('static mode uses connect-server.js with assetsDir', () => {
+    const svc = connectServiceDefinition({
+      enabled: true,
+      port: 3000,
+      name: 'static-connect',
+      assetsDir: '/path/to/assets',
+    });
+    const cmd = typeof svc.command === 'function'
+      ? svc.command({ port: 3000 })
+      : svc.command;
+    expect(cmd).toContain('node ');
+    expect(cmd).toContain('connect-server.js');
+    expect(cmd).toContain('--dir /path/to/assets');
+    expect(cmd).toContain('--port 3000');
+    // Static mode should NOT include ph connect or driveUrl
+    expect(cmd).not.toContain('ph connect');
+  });
+
+  it('static mode has no checkCommand preflight', () => {
+    const svc = connectServiceDefinition({
+      enabled: true,
+      port: 3000,
+      name: 'static-connect',
+      assetsDir: '/path/to/assets',
+    });
+    // Static mode skips checkCommand('ph') — only has checkPort
+    expect(svc.preflight).toHaveLength(1);
+  });
+
+  it('studio mode includes checkCommand and checkPort preflight', () => {
+    const svc = connectServiceDefinition({
+      enabled: true,
+      port: 3000,
+      name: 'studio-connect',
+    });
+    expect(svc.preflight).toHaveLength(2);
   });
 });
 
@@ -290,6 +337,242 @@ describe('ReactorContext type', () => {
 describe('buildDefaultReactor', () => {
   it('is exported as a function', () => {
     expect(typeof buildDefaultReactor).toBe('function');
+  });
+});
+
+// ── Real integration tests (PGlite + Switchboard) ────────────────
+
+const testDir = join(tmpdir(), `ph-clint-ph-test-${randomBytes(4).toString('hex')}`);
+
+async function findFreePort(): Promise<number> {
+  const base = 40000 + Math.floor(Math.random() * 10000);
+  for (let p = base; p < base + 100; p++) {
+    if (await isPortFree(p)) return p;
+  }
+  throw new Error('No free port found');
+}
+
+afterAll(async () => {
+  try { await rm(testDir, { recursive: true }); } catch {}
+});
+
+describe('Powerhouse real integration', () => {
+  let reactorModule: ReactorClientModule;
+  let driveId: string;
+  let switchboard: SwitchboardInstance;
+
+  afterAll(async () => {
+    if (switchboard) await switchboard.shutdown();
+    if (reactorModule) {
+      try {
+        const status = reactorModule.reactor.kill();
+        await status.completed;
+      } catch {}
+    }
+  });
+
+  it('buildReactor creates a PGlite-backed reactor', async () => {
+    // Pass empty documentModels — buildReactor already includes base models
+    // (documentModelDocumentModelModule + driveDocumentModelModule) internally.
+    reactorModule = await buildReactor({
+      documentModels: [],
+      storagePath: join(testDir, 'reactor-storage'),
+      enableSync: true,
+    });
+    expect(reactorModule).toBeDefined();
+    expect(reactorModule.client).toBeDefined();
+    expect(reactorModule.reactor).toBeDefined();
+  });
+
+  it('ensureDrive creates a drive on first call', async () => {
+    driveId = await ensureDrive(reactorModule, { name: 'test-drive' });
+    expect(typeof driveId).toBe('string');
+    expect(driveId.length).toBeGreaterThan(0);
+  });
+
+  it('ensureDrive returns the same drive on second call', async () => {
+    const secondId = await ensureDrive(reactorModule);
+    expect(secondId).toBe(driveId);
+  });
+
+  // Switchboard tests are skipped: @mercuriusjs/gateway (CJS) requires p-map (ESM-only).
+  // Jest's CJS runtime cannot load ESM modules via require(). These tests need to run
+  // outside Jest (e.g. node:test + c8) — tracked in specs/plans/unified-coverage.md.
+  it.skip('startSwitchboard exposes GraphQL + MCP endpoints', async () => {
+    const port = await findFreePort();
+    switchboard = await startSwitchboard({
+      reactorModule,
+      port,
+      dbPath: join(testDir, 'read-model.db'),
+      driveId,
+    });
+    expect(switchboard.switchboardUrl).toContain(`${port}/graphql`);
+    expect(switchboard.mcpUrl).toContain(`${port}/mcp`);
+    expect(switchboard.driveUrl).toContain(`${port}/d/${driveId}`);
+  });
+
+  it.skip('GraphQL endpoint responds to introspection', async () => {
+    const response = await fetch(switchboard.switchboardUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: '{ __typename }' }),
+    });
+    expect(response.ok).toBe(true);
+    const body = await response.json() as any;
+    expect(body.data).toBeDefined();
+  });
+
+  it.skip('GraphQL endpoint lists drives', async () => {
+    const response = await fetch(switchboard.switchboardUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: '{ drives { id name } }' }),
+    });
+    expect(response.ok).toBe(true);
+    const body = await response.json() as any;
+    expect(body.data.drives).toBeDefined();
+    expect(body.data.drives.length).toBeGreaterThan(0);
+  });
+});
+
+describe('buildSwitchboardInstance', () => {
+  it('constructs correct URLs with default host', () => {
+    const instance = buildSwitchboardInstance(
+      { port: 4001, driveId: 'abc-123' },
+      {},
+    );
+    expect(instance.switchboardUrl).toBe('http://localhost:4001/graphql');
+    expect(instance.driveUrl).toBe('http://localhost:4001/d/abc-123');
+    expect(instance.mcpUrl).toBe('http://localhost:4001/mcp');
+  });
+
+  it('constructs correct URLs with custom host', () => {
+    const instance = buildSwitchboardInstance(
+      { host: '0.0.0.0', port: 5000, driveId: 'drive-x' },
+      {},
+    );
+    expect(instance.switchboardUrl).toBe('http://0.0.0.0:5000/graphql');
+    expect(instance.driveUrl).toBe('http://0.0.0.0:5000/d/drive-x');
+    expect(instance.mcpUrl).toBe('http://0.0.0.0:5000/mcp');
+  });
+
+  it('shutdown calls api.stop() when available', async () => {
+    let stopped = false;
+    const instance = buildSwitchboardInstance(
+      { port: 4001, driveId: 'd' },
+      { stop: async () => { stopped = true; } },
+    );
+    await instance.shutdown();
+    expect(stopped).toBe(true);
+  });
+
+  it('shutdown falls back to httpAdapter.httpServer.close', async () => {
+    let closed = false;
+    const instance = buildSwitchboardInstance(
+      { port: 4001, driveId: 'd' },
+      { httpAdapter: { httpServer: { close(cb: () => void) { closed = true; cb(); } } } },
+    );
+    await instance.shutdown();
+    expect(closed).toBe(true);
+  });
+
+  it('shutdown falls back to httpAdapter.close when no httpServer', async () => {
+    let closed = false;
+    const instance = buildSwitchboardInstance(
+      { port: 4001, driveId: 'd' },
+      { httpAdapter: { close(cb: () => void) { closed = true; cb(); } } },
+    );
+    await instance.shutdown();
+    expect(closed).toBe(true);
+  });
+
+  it('shutdown swallows errors (best-effort)', async () => {
+    const instance = buildSwitchboardInstance(
+      { port: 4001, driveId: 'd' },
+      { stop: async () => { throw new Error('boom'); } },
+    );
+    // Should not throw
+    await instance.shutdown();
+  });
+
+  it('shutdown is no-op when api has no stop or httpAdapter', async () => {
+    const instance = buildSwitchboardInstance(
+      { port: 4001, driveId: 'd' },
+      {},
+    );
+    // Should not throw
+    await instance.shutdown();
+  });
+});
+
+describe('buildDefaultReactor (real)', () => {
+  let reactorCtx: ReactorContext;
+
+  afterAll(async () => {
+    if (reactorCtx) await reactorCtx.shutdown();
+  });
+
+  it('creates reactor context with client and driveId', async () => {
+    const workspace = createMemoryWorkdirStore();
+    const events: Array<{ event: string; data: unknown }> = [];
+
+    // Pass empty documentModels — buildReactor already includes base models
+    // (documentModelDocumentModelModule + driveDocumentModelModule) internally.
+    reactorCtx = await buildDefaultReactor(
+      {
+        workdir: testDir,
+        config: {},
+        workspace,
+        emit: ((event: string, data?: unknown) => { events.push({ event, data }); }) as any,
+        switchboard: { enabled: false },
+      },
+      { documentModels: [], drive: { name: 'default-reactor-test' } },
+    );
+
+    expect(reactorCtx.client).toBeDefined();
+    expect(typeof reactorCtx.driveId).toBe('string');
+    expect(typeof reactorCtx.shutdown).toBe('function');
+    expect(events.some(e => e.event === 'powerhouse:ready')).toBe(true);
+  });
+});
+
+describe('defineCli + configureReactor', () => {
+  it('CLI with reactor reports hasReactor in metadata', async () => {
+    const noopCmd = defineCommand({
+      id: 'noop',
+      description: 'No-op',
+      inputSchema: z.object({}),
+      execute: async () => ({ ok: true }),
+    });
+
+    const cli = defineCli({
+      name: 'ph-test-reactor',
+      version: '0.0.1',
+      description: 'Test CLI with reactor',
+      commands: [noopCmd],
+    });
+
+    cli.configureReactor({
+      create: (ctx) => buildDefaultReactor(ctx, {
+        documentModels: [],
+        drive: { name: 'test-cli-drive' },
+      }),
+      switchboard: { enabled: false },
+    });
+
+    expect(cli.hasReactor).toBe(true);
+
+    // argv must include node + script prefix — runImpl does argv.slice(2)
+    let metaOutput = '';
+    await cli.run(['node', 'test', '--meta'], {
+      stdout: (text: string) => { metaOutput += text; },
+      stderr: () => {},
+      exit: () => {},
+    });
+
+    const parsed = JSON.parse(metaOutput);
+    expect(parsed.name).toBe('ph-test-reactor');
+    expect(parsed.hasReactor).toBe(true);
   });
 });
 

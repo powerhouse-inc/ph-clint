@@ -760,4 +760,79 @@ describe('createRoutine', () => {
       expect(receivedConfig).toEqual({ key: 'updated-value' });
     });
   });
+
+  describe('trigger context capabilities', () => {
+    it('reactor() and agent() return undefined when capabilities not set', async () => {
+      let capturedCtx: any;
+      const trigger = defineTrigger({
+        id: 'cap-test',
+        description: 'test',
+        setup: async (ctx) => { capturedCtx = ctx; },
+        poll: async () => [],
+      });
+
+      routine = makeRoutine({ triggers: [trigger] });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_ONE_TICK_WAIT));
+      await routine.stop();
+
+      // No capabilities were set → reactor/agent return undefined
+      expect(capturedCtx).toBeDefined();
+      const reactor = await capturedCtx.reactor();
+      const agent = await capturedCtx.agent();
+      expect(reactor).toBeUndefined();
+      expect(agent).toBeUndefined();
+    });
+  });
+
+  describe('command work items', () => {
+    it('executeWorkItem provides emit on extended context', async () => {
+      const bus = createEventBus();
+      const emittedEvents: Array<{ event: string; data: unknown }> = [];
+      bus.on('test-event', (data) => emittedEvents.push({ event: 'test-event', data }));
+
+      let capturedCtx: any;
+      const cmd = defineCommand({
+        id: 'emit-test',
+        description: 'emits an event',
+        inputSchema: z.object({}),
+        execute: async (_input, ctx) => {
+          capturedCtx = ctx;
+          ctx.emit?.('test-event', { hello: 'world' });
+          return {};
+        },
+      });
+
+      // Only emit a work item on the first poll to avoid repeated execution
+      let polled = false;
+      const trigger = defineTrigger({
+        id: 'cmd-trigger',
+        description: 'test',
+        setup: async () => {},
+        poll: async () => {
+          if (polled) return null;
+          polled = true;
+          return {
+            type: 'command' as const,
+            params: { commandId: 'emit-test', args: {} },
+          };
+        },
+      });
+
+      routine = makeRoutine({
+        triggers: [trigger],
+        commands: new Map([['emit-test', cmd]]),
+        eventBus: bus,
+      });
+      routine.start();
+      // Wait long enough for setup + poll + execute cycle
+      await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT * 2));
+      await routine.stop();
+
+      expect(capturedCtx).toBeDefined();
+      expect(typeof capturedCtx.emit).toBe('function');
+      expect(emittedEvents.length).toBeGreaterThan(0);
+      expect(emittedEvents[0]!.data).toEqual({ hello: 'world' });
+    });
+  });
 });

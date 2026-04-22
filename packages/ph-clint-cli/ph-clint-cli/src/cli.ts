@@ -52,7 +52,7 @@ export const cli = defineCli({
 
   // @clint:begin prompts
   prompts: {
-    sources: [],
+    artifacts: [],
     agents: {},
     skills: {},
   },

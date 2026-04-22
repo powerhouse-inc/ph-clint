@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { readSkillsFromSources } from '../src/core/skills.js';
+import { readSkills } from '../src/core/skills.js';
 
-describe('readSkillsFromSources', () => {
+describe('readSkills', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe('readSkillsFromSources', () => {
     createSkill(source, 'document-modeling', 'Design document model schemas');
     createSkill(source, 'fusion-development', 'Build Fusion UI pages');
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toMatchObject([
       { name: 'document-modeling', description: 'Design document model schemas' },
       { name: 'fusion-development', description: 'Build Fusion UI pages' },
@@ -43,13 +43,13 @@ describe('readSkillsFromSources', () => {
     createSkill(source, 'zzz-last', 'Last skill');
     createSkill(source, 'aaa-first', 'First skill');
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills[0]!.name).toBe('aaa-first');
     expect(skills[1]!.name).toBe('zzz-last');
   });
 
   it('returns empty array when no sources exist', () => {
-    const skills = readSkillsFromSources(['/nonexistent/path']);
+    const skills = readSkills(['/nonexistent/path']);
     expect(skills).toEqual([]);
   });
 
@@ -57,7 +57,7 @@ describe('readSkillsFromSources', () => {
     const source = path.join(tmpDir, 'empty');
     fs.mkdirSync(source, { recursive: true });
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toEqual([]);
   });
 
@@ -66,7 +66,7 @@ describe('readSkillsFromSources', () => {
     createSkill(source, 'valid-skill', 'Has a SKILL.md');
     fs.mkdirSync(path.join(source, 'no-skill-md'), { recursive: true });
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toHaveLength(1);
     expect(skills[0]!.name).toBe('valid-skill');
   });
@@ -77,7 +77,7 @@ describe('readSkillsFromSources', () => {
     createSkill(source1, 'my-skill', 'From source 1');
     createSkill(source2, 'my-skill', 'From source 2');
 
-    const skills = readSkillsFromSources([source1, source2]);
+    const skills = readSkills([source1, source2]);
     expect(skills).toHaveLength(1);
     expect(skills[0]!.description).toBe('From source 1');
   });
@@ -88,7 +88,7 @@ describe('readSkillsFromSources', () => {
     fs.mkdirSync(skillDir, { recursive: true });
     fs.writeFileSync(path.join(skillDir, 'SKILL.md'), 'No frontmatter here.\n');
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toEqual([]);
   });
 
@@ -101,7 +101,7 @@ describe('readSkillsFromSources', () => {
       '---\nname: plain\ndescription: Unquoted description\n---\n\nContent.\n',
     );
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toMatchObject([{ name: 'plain', description: 'Unquoted description' }]);
   });
 
@@ -113,7 +113,7 @@ describe('readSkillsFromSources', () => {
       '# Usage\n\nRun this skill to do things.\n',
     );
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toHaveLength(1);
     expect(skills[0]!.cliDocsPath).toBe(path.join(source, 'documented-skill', '.cli-docs.md'));
   });
@@ -122,7 +122,7 @@ describe('readSkillsFromSources', () => {
     const source = path.join(tmpDir, 'skills');
     createSkill(source, 'no-docs-skill', 'No CLI docs');
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toHaveLength(1);
     expect(skills[0]!.cliDocsPath).toBeUndefined();
   });
@@ -136,7 +136,7 @@ describe('readSkillsFromSources', () => {
       '---\nname: name-only\n---\n\nContent.\n',
     );
 
-    const skills = readSkillsFromSources([source]);
+    const skills = readSkills([source]);
     expect(skills).toMatchObject([{ name: 'name-only', description: '' }]);
   });
 });

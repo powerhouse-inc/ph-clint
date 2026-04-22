@@ -35,7 +35,7 @@ import { createServiceCommands } from './service-command.js';
 import { resolveServiceName } from './services.js';
 import { createHelpCommand } from './help-command.js';
 import { installSkills } from './init.js';
-import { readSkillsFromSources } from './skills.js';
+import { readSkills } from './skills.js';
 import type { SkillInfo } from './skills.js';
 import { createSkillCommands, isSkillInvocation, DEFAULT_SKILL_INSTRUCTION } from './skill-commands.js';
 import type { SkillInvocation } from './skill-commands.js';
@@ -166,8 +166,8 @@ export function defineCli<
 
   // Read skill metadata and register skill commands
   let resolvedSkills: SkillInfo[] = [];
-  if (options.prompts && options.prompts.sources.length > 0) {
-    resolvedSkills = readSkillsFromSources(options.prompts.sources);
+  if (options.prompts && options.prompts.artifacts.length > 0) {
+    resolvedSkills = readSkills(options.prompts.artifacts);
     const skillCmds = createSkillCommands(resolvedSkills, options.prompts.skills);
     for (const cmd of skillCmds) {
       if (!commandMap.has(cmd.id)) commandMap.set(cmd.id, cmd);
@@ -817,7 +817,7 @@ export function defineCli<
     const workspace = createWorkdirStore(workdir, options.name);
 
     // Auto-initialize store and install skills on first use
-    if (options.prompts && options.prompts.sources.length > 0) {
+    if (options.prompts && options.prompts.artifacts.length > 0) {
       const storeRoot = workspace.getStoreFolder();
       if (!fs.existsSync(storeRoot)) {
         fs.mkdirSync(storeRoot, { recursive: true });
@@ -825,7 +825,7 @@ export function defineCli<
         fs.mkdirSync(dbFolder, { recursive: true });
         installSkills({
           store: workspace,
-          skillSources: options.prompts.sources,
+          skillArtifacts: options.prompts.artifacts,
           stdout: verboseFlag ? stderr : () => {},
         });
       }
@@ -1080,6 +1080,7 @@ export function defineCli<
         context,
         commands: [...commandMap.values()].filter(c => !skillIds.has(c.id)),
         skills: resolvedSkills,
+        prompts: options.prompts,
       };
       cachedProvider = await agentLoader(agentCtx);
       return cachedProvider;
@@ -1485,7 +1486,7 @@ export function defineCli<
         resolvedMap[s.name] = { id: s.name, description: s.description };
       }
       promptsMeta = {
-        sources: options.prompts.sources,
+        artifacts: options.prompts.artifacts,
         agents: options.prompts.agents ?? {},
         skills: options.prompts.skills ?? {},
         resolved: resolvedMap,

@@ -1,14 +1,13 @@
 {
   "name": "@powerhousedao/ph-rupert-cli",
-  "version": "0.0.1-dev.0",
+  "version": "0.0.1-dev.5",
   "private": false,
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "dist",
-    "prompts"
+    "dist"
   ],
   "bin": {
     "ph-rupert": "./dist/main.js"

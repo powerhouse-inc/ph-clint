@@ -34,6 +34,45 @@ interface SwitchboardApi {
 }
 
 /**
+ * Build the SwitchboardInstance result from a raw API handle.
+ *
+ * Pure function — constructs URLs and wraps the shutdown logic.
+ * Separated from startSwitchboard for testability (no lazy imports).
+ */
+export function buildSwitchboardInstance(
+  options: Pick<StartSwitchboardOptions, 'host' | 'port' | 'driveId'>,
+  api: SwitchboardApi,
+): SwitchboardInstance {
+  const host = options.host ?? 'localhost';
+  const switchboardUrl = `http://${host}:${options.port}/graphql`;
+  const driveUrl = `http://${host}:${options.port}/d/${options.driveId}`;
+  const mcpUrl = `http://${host}:${options.port}/mcp`;
+
+  return {
+    switchboardUrl,
+    driveUrl,
+    mcpUrl,
+    async shutdown() {
+      try {
+        if (api && typeof api.stop === 'function') {
+          await api.stop();
+        } else if (api?.httpAdapter) {
+          const server = api.httpAdapter.httpServer ?? api.httpAdapter;
+          if (server) {
+            const closeFn = 'close' in server ? server.close : undefined;
+            if (typeof closeFn === 'function') {
+              await new Promise<void>((resolve) => closeFn(() => resolve()));
+            }
+          }
+        }
+      } catch {
+        // Best-effort shutdown
+      }
+    },
+  };
+}
+
+/**
  * Start Switchboard wrapping the Phase 1 Reactor.
  *
  * Lazy-loads @powerhousedao/reactor-api — it's an optional peer dependency.
@@ -63,31 +102,5 @@ export async function startSwitchboard(
     'agent',
   );
 
-  const host = options.host ?? 'localhost';
-  const switchboardUrl = `http://${host}:${options.port}/graphql`;
-  const driveUrl = `http://${host}:${options.port}/d/${options.driveId}`;
-  const mcpUrl = `http://${host}:${options.port}/mcp`;
-
-  return {
-    switchboardUrl,
-    driveUrl,
-    mcpUrl,
-    async shutdown() {
-      try {
-        if (api && typeof api.stop === 'function') {
-          await api.stop();
-        } else if (api?.httpAdapter) {
-          const server = api.httpAdapter.httpServer ?? api.httpAdapter;
-          if (server) {
-            const closeFn = 'close' in server ? server.close : undefined;
-            if (typeof closeFn === 'function') {
-              await new Promise<void>((resolve) => closeFn(() => resolve()));
-            }
-          }
-        }
-      } catch {
-        // Best-effort shutdown
-      }
-    },
-  };
+  return buildSwitchboardInstance(options, api);
 }

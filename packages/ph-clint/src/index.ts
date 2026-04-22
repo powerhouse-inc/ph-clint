@@ -20,7 +20,7 @@ export { scanProjects, PROJECT_INDICATORS } from './core/project-scanner.js';
 export { checkWorkdir, checkCommand, checkPort, isPortFree } from './core/preflight.js';
 export { createHelpCommand } from './core/help-command.js';
 export { installSkills } from './core/init.js';
-export { readSkillsFromSources } from './core/skills.js';
+export { readSkills } from './core/skills.js';
 export { createSkillCommands, isSkillInvocation, DEFAULT_SKILL_INSTRUCTION } from './core/skill-commands.js';
 export type { SkillInvocation } from './core/skill-commands.js';
 export { registerDefaultHelpers, extractTemplateVars, renderSkillTemplate } from './core/templates.js';

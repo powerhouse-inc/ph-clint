@@ -1369,7 +1369,7 @@ Coverage target: 95% (statements, branches, functions, lines).
 
 | Function | Description |
 |----------|-------------|
-| `readSkillsFromSources(dirs)` | Scan directories for SKILL.md files |
+| `readSkills(artifacts)` | Scan artifact directories for SKILL.md files |
 | `installSkills(options)` | Copy skill folders into the workspace store |
 | `createSkillCommands(skills)` | Create CLI commands from skill metadata |
 | `isSkillInvocation(value)` | Type guard for `SkillInvocation` results |

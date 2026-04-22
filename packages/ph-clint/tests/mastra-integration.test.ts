@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll, afterEach } from '@jest/globals';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { rm, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { z } from 'zod';
@@ -9,8 +10,9 @@ import { defineCommand } from '../src/core/command.js';
 import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
 import { mapMastraStream } from '../src/integrations/mastra/stream.js';
-import { createMemoryWorkdirStore } from '../src/core/store.js';
-import type { AgentSetupContext, ServiceInstanceStatus, ServiceManager } from '../src/core/types.js';
+import { createMemoryWorkdirStore, createWorkdirStore } from '../src/core/store.js';
+import type { AgentSetupContext, PromptsConfig, ServiceInstanceStatus, ServiceManager } from '../src/core/types.js';
+import type { SkillInfo } from '../src/core/skills.js';
 
 const testWorkspace = join(tmpdir(), `ph-clint-mastra-test-${randomBytes(4).toString('hex')}`);
 
@@ -65,6 +67,139 @@ describe('createMastraHelpers', () => {
     const helpers = createMastraHelpers(makeAgentSetupContext());
     const workspace = await helpers.createWorkspace();
     expect(workspace).toBeDefined();
+  });
+
+  describe('createWorkspace configuration', () => {
+    let skillsWorkdir: string;
+
+    afterEach(async () => {
+      if (skillsWorkdir) {
+        try { await rm(skillsWorkdir, { recursive: true }); } catch {}
+      }
+    });
+
+    function makeContextWithSkills(): AgentSetupContext {
+      skillsWorkdir = join(tmpdir(), `ph-clint-ws-test-${randomBytes(4).toString('hex')}`);
+      // Create the store directory so installSkills has somewhere to put things
+      const store = createWorkdirStore(skillsWorkdir, 'test-cli');
+      const skillsDir = store.getStoreFolder('.mastra/skills');
+      mkdirSync(join(skillsDir, 'my-skill'), { recursive: true });
+      writeFileSync(join(skillsDir, 'my-skill', 'SKILL.md'), '---\nname: my-skill\ndescription: Test\n---\n');
+
+      const skills: SkillInfo[] = [
+        { name: 'my-skill', description: 'Test skill', skillMdPath: join(skillsDir, 'my-skill', 'SKILL.md') },
+      ];
+      return makeAgentSetupContext({ workdir: skillsWorkdir, skills });
+    }
+
+    it('passes skill paths derived from ctx.skills to Workspace', async () => {
+      const ctx = makeContextWithSkills();
+      const helpers = createMastraHelpers(ctx);
+      const workspace = await helpers.createWorkspace();
+      // Workspace should report skills are configured
+      expect(workspace.hasSkillsConfig()).toBe(true);
+    });
+
+    it('passes allowedPaths constraining filesystem to workdir', async () => {
+      const ctx = makeContextWithSkills();
+      const helpers = createMastraHelpers(ctx);
+      const workspace = await helpers.createWorkspace();
+      const fs = (workspace as any)._fs;
+      expect(fs._allowedPaths).toEqual([skillsWorkdir]);
+    });
+
+    it('configures LocalSandbox with correct workingDirectory', async () => {
+      const ctx = makeContextWithSkills();
+      const helpers = createMastraHelpers(ctx);
+      const workspace = await helpers.createWorkspace();
+      const sandbox = (workspace as any)._sandbox;
+      expect(sandbox).toBeDefined();
+      expect(sandbox.workingDirectory).toBe(skillsWorkdir);
+    });
+
+    it('with skills: [], only runtime glob is passed (no crash)', async () => {
+      const helpers = createMastraHelpers(makeAgentSetupContext());
+      const workspace = await helpers.createWorkspace();
+      // Should still work — just has the runtime glob, no pre-packaged skills
+      expect(workspace).toBeDefined();
+      expect(workspace.hasSkillsConfig()).toBe(true);
+    });
+  });
+
+  describe('getAgentInstructions', () => {
+    let artifactDir: string;
+
+    afterEach(async () => {
+      if (artifactDir) {
+        try { await rm(artifactDir, { recursive: true }); } catch {}
+      }
+    });
+
+    function setupArtifacts(profileName: string, content: string): PromptsConfig {
+      artifactDir = join(tmpdir(), `ph-clint-instr-test-${randomBytes(4).toString('hex')}`);
+      const skillsDir = join(artifactDir, 'gen', 'skills');
+      const profilesDir = join(artifactDir, 'gen', 'agent-profiles');
+      mkdirSync(skillsDir, { recursive: true });
+      mkdirSync(profilesDir, { recursive: true });
+      writeFileSync(join(profilesDir, `${profileName}.md`), content);
+      return {
+        artifacts: [skillsDir],
+        agents: {
+          'test-agent': { name: profileName, sections: [], skills: [] },
+        },
+      };
+    }
+
+    it('returns profile content when file exists', () => {
+      const prompts = setupArtifacts('TestAgent', '# Test Agent Instructions\nDo things well.');
+      const helpers = createMastraHelpers(makeAgentSetupContext({ prompts }));
+      const instructions = helpers.getAgentInstructions('test-agent');
+      expect(instructions).toBe('# Test Agent Instructions\nDo things well.');
+    });
+
+    it('uses first artifact directory that has the file', () => {
+      artifactDir = join(tmpdir(), `ph-clint-instr-test-${randomBytes(4).toString('hex')}`);
+      const missing = join(artifactDir, 'missing', 'skills');
+      const found = join(artifactDir, 'found', 'skills');
+      const profilesDir = join(artifactDir, 'found', 'agent-profiles');
+      mkdirSync(missing, { recursive: true });
+      mkdirSync(found, { recursive: true });
+      mkdirSync(profilesDir, { recursive: true });
+      writeFileSync(join(profilesDir, 'MyAgent.md'), 'Found it');
+
+      const prompts: PromptsConfig = {
+        artifacts: [missing, found],
+        agents: { 'my-agent': { name: 'MyAgent', sections: [], skills: [] } },
+      };
+      const helpers = createMastraHelpers(makeAgentSetupContext({ prompts }));
+      expect(helpers.getAgentInstructions('my-agent')).toBe('Found it');
+    });
+
+    it('throws when agent ID not in prompts.agents', () => {
+      const prompts = setupArtifacts('TestAgent', 'content');
+      const helpers = createMastraHelpers(makeAgentSetupContext({ prompts }));
+      expect(() => helpers.getAgentInstructions('nonexistent')).toThrow(/not found in prompts\.agents/);
+    });
+
+    it('throws when prompts is undefined on context', () => {
+      const helpers = createMastraHelpers(makeAgentSetupContext({ prompts: undefined }));
+      expect(() => helpers.getAgentInstructions('any-id')).toThrow(/no prompts config/);
+    });
+
+    it('throws when profile file does not exist on disk', () => {
+      artifactDir = join(tmpdir(), `ph-clint-instr-test-${randomBytes(4).toString('hex')}`);
+      const skillsDir = join(artifactDir, 'gen', 'skills');
+      mkdirSync(skillsDir, { recursive: true });
+      // Create agent-profiles dir but no file
+      mkdirSync(join(artifactDir, 'gen', 'agent-profiles'), { recursive: true });
+
+      const prompts: PromptsConfig = {
+        artifacts: [skillsDir],
+        agents: { 'ghost': { name: 'GhostAgent', sections: [], skills: [] } },
+      };
+      const helpers = createMastraHelpers(makeAgentSetupContext({ prompts }));
+      expect(() => helpers.getAgentInstructions('ghost')).toThrow(/not found in agent-profiles/);
+    });
   });
 
   it('createMemory creates LibSQL-backed memory and db directory', async () => {

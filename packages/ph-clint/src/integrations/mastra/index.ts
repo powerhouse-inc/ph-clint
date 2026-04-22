@@ -1,4 +1,5 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
 import type { AgentSetupContext, AgentProvider, StreamChunk } from '../../core/types.js';
 import { createWorkdirStore } from '../../core/store.js';
 import { mapMastraStream } from './stream.js';
@@ -60,12 +61,43 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       return { ...cliTools, ...mcpTools };
     },
 
+    getAgentInstructions(agentId: string): string {
+      const prompts = ctx.prompts;
+      if (!prompts) {
+        throw new Error(`getAgentInstructions('${agentId}'): no prompts config on AgentSetupContext`);
+      }
+      const agentConfig = prompts.agents?.[agentId];
+      if (!agentConfig) {
+        throw new Error(`getAgentInstructions('${agentId}'): agent ID not found in prompts.agents`);
+      }
+
+      // agent-profiles/ is a sibling of the skill artifact directory
+      for (const artifact of prompts.artifacts) {
+        const profileDir = path.join(path.dirname(artifact), 'agent-profiles');
+        const profilePath = path.join(profileDir, `${agentConfig.name}.md`);
+        if (existsSync(profilePath)) {
+          return readFileSync(profilePath, 'utf-8');
+        }
+      }
+
+      throw new Error(
+        `getAgentInstructions('${agentId}'): profile file '${agentConfig.name}.md' not found in agent-profiles/ sibling of any artifact directory`,
+      );
+    },
+
     async createWorkspace() {
-      const { Workspace: MastraWorkspace, LocalFilesystem } = await import('@mastra/core/workspace');
+      const { Workspace: MastraWorkspace, LocalFilesystem, LocalSandbox } = await import('@mastra/core/workspace');
+      const skillNames = ctx.skills.map(s => s.name);
+      const fullPaths = getMastraPaths(store, { prePackagedSkills: skillNames });
       return new MastraWorkspace({
         filesystem: new LocalFilesystem({
-          basePath: paths.workspaceBasePath,
+          basePath: fullPaths.workspaceBasePath,
+          allowedPaths: fullPaths.allowedPaths,
         }),
+        sandbox: new LocalSandbox({
+          workingDirectory: fullPaths.workspaceBasePath,
+        }),
+        skills: fullPaths.skillPaths,
       });
     },
 

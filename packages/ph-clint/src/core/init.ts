@@ -27,8 +27,8 @@ function copyDirRecursive(src: string, dest: string): number {
 export interface InstallSkillsOptions {
   /** WorkdirStore — used to compute the target `.mastra/skills/` folder. */
   store: WorkdirStore;
-  /** Candidate directories containing built skill folders. First existing wins. */
-  skillSources: string[];
+  /** Candidate directories containing pre-built skill artifacts. First existing wins. */
+  skillArtifacts: string[];
   /** Optional output callback. Default: console.log. */
   stdout?: (text: string) => void;
 }
@@ -36,18 +36,18 @@ export interface InstallSkillsOptions {
 /**
  * Copy pre-packaged skill folders into the store's `.mastra/skills/` directory.
  *
- * Iterates `skillSources` and uses the first directory that exists.
+ * Iterates `skillArtifacts` and uses the first directory that exists.
  * Clears the target before copying to avoid stale skills.
  * Each skill folder is expected to contain at least a `SKILL.md` file.
  *
  * @returns The number of skill folders copied, or 0 if no source was found.
  */
 export function installSkills(options: InstallSkillsOptions): number {
-  const { store, skillSources, stdout = console.log } = options;
+  const { store, skillArtifacts, stdout = console.log } = options;
   const targetDir = store.getStoreFolder('.mastra/skills');
 
   // Find first existing source directory
-  const source = skillSources.find(s => fs.existsSync(s));
+  const source = skillArtifacts.find(s => fs.existsSync(s));
   if (!source) {
     stdout('[init] No skill source directory found — skipping skill installation');
     return 0;

@@ -33,17 +33,17 @@ function parseFrontmatter(content: string): Omit<SkillInfo, 'skillMdPath'> | nul
 }
 
 /**
- * Read skill metadata from skill source directories.
+ * Read skill metadata from artifact directories.
  *
- * Scans each source directory for `{skillName}/SKILL.md` files, parses
- * frontmatter, and returns a deduplicated sorted list. First source wins
+ * Scans each artifact directory for `{skillName}/SKILL.md` files, parses
+ * frontmatter, and returns a deduplicated sorted list. First directory wins
  * on name collisions.
  */
-export function readSkillsFromSources(skillSources: string[]): SkillInfo[] {
+export function readSkills(artifacts: string[]): SkillInfo[] {
   const seen = new Set<string>();
   const skills: SkillInfo[] = [];
 
-  for (const source of skillSources) {
+  for (const source of artifacts) {
     if (!fs.existsSync(source)) continue;
 
     let entries: fs.Dirent[];

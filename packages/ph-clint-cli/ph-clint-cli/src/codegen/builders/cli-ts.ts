@@ -75,7 +75,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('');
   lines.push('  // @clint:begin prompts');
   lines.push('  prompts: {');
-  lines.push('    sources: [],');
+  lines.push('    artifacts: [],');
   lines.push('    agents: {},');
   lines.push('    skills: {},');
   lines.push('  },');

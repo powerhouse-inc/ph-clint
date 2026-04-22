@@ -42,6 +42,8 @@ export interface WrapAgentOptions {
 export interface MastraHelpers {
   /** Convert CLI commands to Mastra createTool() format, optionally including MCP tools from running services. */
   getTools(options?: GetToolsOptions): Promise<Record<string, any>>;
+  /** Resolve pre-built agent profile instructions by agent ID. */
+  getAgentInstructions(agentId: string): string;
   /** Create a Mastra Workspace rooted at ctx.workdir. */
   createWorkspace(): Promise<any>;
   /** Create Memory with LibSQL at .ph/{cliName}/mastra/mastra.db. */

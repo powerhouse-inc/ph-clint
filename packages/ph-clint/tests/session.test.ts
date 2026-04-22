@@ -1121,7 +1121,7 @@ describe('session edge cases', () => {
         version: '1.0.0',
         description: 'Test',
         commands: [],
-        prompts: { sources: [tmp] },
+        prompts: { artifacts: [tmp] },
         interactive: { welcome: 'hi' },
       });
 

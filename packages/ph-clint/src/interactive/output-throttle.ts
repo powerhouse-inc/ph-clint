@@ -1,27 +1,100 @@
 import { useState, useRef, useCallback } from 'react';
-import { writeFileSync, appendFileSync } from 'fs';
-import { join } from 'path';
 
 // --- Constants (per-second, converted to per-tick at runtime) ---
 
-const FRAME_RATE = 20;
-const TICK_MS = 1000 / FRAME_RATE;
+export const FRAME_RATE = 20;
+export const TICK_MS = 1000 / FRAME_RATE;
 /** Floor velocity (chars/s). */
-const MIN_VELOCITY_S = 80;
+export const MIN_VELOCITY_S = 80;
 /** Max chars released per second. */
-const MAX_VELOCITY_S = 600;
+export const MAX_VELOCITY_S = 600;
 /** Velocity gain per second while backlog > BREAKING_POINT. */
-const ACCELERATION_S = 120;
+export const ACCELERATION_S = 120;
 /** Velocity loss per second while backlog <= BREAKING_POINT. */
-const DECELERATION_S = 10;
+export const DECELERATION_S = 10;
 /** Backlog threshold that switches between acceleration and deceleration. */
-const BREAKING_POINT = 75;
+export const BREAKING_POINT = 75;
 
 // Per-tick derived values
-const MIN_VELOCITY = MIN_VELOCITY_S / FRAME_RATE;
-const MAX_VELOCITY = MAX_VELOCITY_S / FRAME_RATE;
-const ACCELERATION = ACCELERATION_S / FRAME_RATE;
-const DECELERATION = DECELERATION_S / FRAME_RATE;
+export const MIN_VELOCITY = MIN_VELOCITY_S / FRAME_RATE;
+export const MAX_VELOCITY = MAX_VELOCITY_S / FRAME_RATE;
+export const ACCELERATION = ACCELERATION_S / FRAME_RATE;
+export const DECELERATION = DECELERATION_S / FRAME_RATE;
+
+// ── Pure throttle simulation (no React, no timers) ─────────────
+
+/**
+ * Pure state machine for the output throttle simulation.
+ *
+ * Characters accumulate in a backlog and are released at a velocity
+ * that ramps up with acceleration and decelerates when the backlog
+ * drains below BREAKING_POINT. Each call to tick() advances one frame.
+ */
+export class ThrottleState {
+  backlog = 0;
+  velocity = MIN_VELOCITY;
+  totalDrained = 0;
+
+  /** Add characters to the backlog. Ignores zero/negative values. */
+  addChars(n: number): void {
+    if (n > 0) this.backlog += n;
+  }
+
+  /**
+   * Advance one tick: adjust velocity, drain characters from backlog.
+   * Returns the number of characters drained this tick.
+   */
+  tick(): number {
+    if (this.backlog <= 0) return 0;
+
+    // Accelerate or decelerate
+    if (this.backlog > BREAKING_POINT) {
+      this.velocity += ACCELERATION;
+    } else {
+      this.velocity -= DECELERATION;
+    }
+    this.velocity = Math.max(MIN_VELOCITY, Math.min(MAX_VELOCITY, this.velocity));
+
+    // Drain
+    const drain = Math.min(this.velocity, this.backlog);
+    this.backlog -= drain;
+    this.totalDrained += drain;
+
+    // Snap to zero when fully drained
+    if (this.backlog <= 0) {
+      this.backlog = 0;
+      this.velocity = MIN_VELOCITY;
+    }
+
+    return drain;
+  }
+
+  /** True when the backlog is fully drained. */
+  get isDrained(): boolean {
+    return this.backlog <= 0;
+  }
+
+  /** Reset all state to initial values. */
+  reset(): void {
+    this.backlog = 0;
+    this.velocity = MIN_VELOCITY;
+    this.totalDrained = 0;
+  }
+}
+
+// ── Tick event for observability ─────────────────────────────────
+
+export interface ThrottleTickEvent {
+  tick: number;
+  backlog: number;
+  velocity: number;
+  drain: number;
+  totalDrained: number;
+}
+
+export type ThrottleEventHandler = (event: ThrottleTickEvent) => void;
+
+// ── Standalone throttle (real timers, no React) ─────────────────
 
 export interface OutputThrottle {
   /** Total number of characters approved for display. */
@@ -34,92 +107,101 @@ export interface OutputThrottle {
   reset: () => void;
 }
 
+export interface CreateOutputThrottleOptions {
+  onTick?: ThrottleEventHandler;
+}
+
 /**
- * React hook that smooths streaming output delivery.
+ * Create a standalone output throttle with real setInterval timers.
  *
- * Characters accumulate in a backlog and are released at a velocity
- * that ramps up with acceleration and decelerates when the backlog
- * drains below BREAKING_POINT.
+ * This is the testable core: no React, no hooks. The React hook
+ * (useOutputThrottle) is a thin wrapper that adds useState on top.
  */
-const CSV_PATH = join(process.cwd(), 'throttle-debug.csv');
+export function createOutputThrottle(
+  options?: CreateOutputThrottleOptions,
+): OutputThrottle {
+  const ts = new ThrottleState();
+  let tickCount = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let drainResolve: (() => void) | null = null;
+  let _visibleChars = 0;
 
-export function useOutputThrottle(): OutputThrottle {
-  const [visibleChars, setVisibleChars] = useState(0);
+  function startTimer(): void {
+    if (timer) return;
+    tickCount = 0;
+    timer = setInterval(() => {
+      tickCount++;
+      const drain = ts.tick();
+      _visibleChars += drain;
 
-  // Mutable state lives in a ref so the interval callback always
-  // sees current values without needing to restart the timer.
-  const state = useRef({
-    backlog: 0,
-    velocity: MIN_VELOCITY,
-    timer: null as ReturnType<typeof setInterval> | null,
-    t0: 0,
-    tick: 0,
-    drainResolve: null as (() => void) | null,
-  });
-
-  const startTimer = useCallback(() => {
-    if (state.current.timer) return;
-    state.current.t0 = Date.now();
-    state.current.tick = 0;
-    writeFileSync(CSV_PATH, 'tick,time_ms,backlog,velocity,drain,visible_chars\n');
-    state.current.timer = setInterval(() => {
-      const s = state.current;
-      s.tick++;
-
-      // Accelerate or decelerate
-      if (s.backlog > BREAKING_POINT) {
-        s.velocity += ACCELERATION;
-      } else {
-        s.velocity -= DECELERATION;
-      }
-      s.velocity = Math.max(MIN_VELOCITY, Math.min(MAX_VELOCITY, s.velocity));
-
-      // Drain
-      const drain = Math.min(s.velocity, s.backlog);
-      s.backlog -= drain;
-      setVisibleChars(prev => {
-        const next = prev + drain;
-        appendFileSync(CSV_PATH, `${s.tick},${Date.now() - s.t0},${s.backlog.toFixed(2)},${s.velocity.toFixed(2)},${drain.toFixed(2)},${next.toFixed(2)}\n`);
-        return next;
+      options?.onTick?.({
+        tick: tickCount,
+        backlog: ts.backlog,
+        velocity: ts.velocity,
+        drain,
+        totalDrained: ts.totalDrained,
       });
 
-      // Stop when empty
-      if (s.backlog <= 0) {
-        s.backlog = 0;
-        s.velocity = MIN_VELOCITY;
-        if (s.timer) {
-          clearInterval(s.timer);
-          s.timer = null;
+      if (ts.isDrained) {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
         }
-        if (s.drainResolve) {
-          s.drainResolve();
-          s.drainResolve = null;
+        if (drainResolve) {
+          drainResolve();
+          drainResolve = null;
         }
       }
     }, TICK_MS);
-  }, []);
+  }
 
-  const addChars = useCallback((n: number) => {
-    if (n <= 0) return;
-    state.current.backlog += n;
-    startTimer();
-  }, [startTimer]);
+  return {
+    get visibleChars() { return _visibleChars; },
+    addChars(n: number) {
+      if (n <= 0) return;
+      ts.addChars(n);
+      startTimer();
+    },
+    waitForDrain(): Promise<void> {
+      if (ts.isDrained && !timer) return Promise.resolve();
+      return new Promise(resolve => { drainResolve = resolve; });
+    },
+    reset() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      ts.reset();
+      _visibleChars = 0;
+    },
+  };
+}
 
-  const waitForDrain = useCallback((): Promise<void> => {
-    if (state.current.backlog <= 0 && !state.current.timer) return Promise.resolve();
-    return new Promise(resolve => { state.current.drainResolve = resolve; });
-  }, []);
+// ── React hook (thin wrapper over createOutputThrottle) ─────────
 
-  const reset = useCallback(() => {
-    const s = state.current;
-    if (s.timer) {
-      clearInterval(s.timer);
-      s.timer = null;
-    }
-    s.backlog = 0;
-    s.velocity = MIN_VELOCITY;
-    setVisibleChars(0);
-  }, []);
+/**
+ * React hook that smooths streaming output delivery.
+ *
+ * Delegates all simulation and timer logic to createOutputThrottle;
+ * this hook only adds React state updates for visibleChars.
+ */
+export function useOutputThrottle(options?: CreateOutputThrottleOptions): OutputThrottle {
+  const [visibleChars, setVisibleChars] = useState(0);
 
-  return { visibleChars, addChars, waitForDrain, reset };
+  const throttle = useRef(createOutputThrottle({
+    onTick(event) {
+      setVisibleChars(event.totalDrained);
+      options?.onTick?.(event);
+    },
+  }));
+
+  return {
+    visibleChars,
+    addChars: useCallback((n: number) => throttle.current.addChars(n), []),
+    waitForDrain: useCallback(() => throttle.current.waitForDrain(), []),
+    reset: useCallback(() => {
+      throttle.current.reset();
+      setVisibleChars(0);
+    }, []),
+  };
 }

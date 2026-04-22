@@ -22,7 +22,7 @@ export const cli = defineCli({
   commands: [reactorProjectInit, fusionProjectInit, phLogin, phLogout, phAccessToken, reactorProjectPublish, reactorProjectBuild],
   services: [reactorProject, fusionProject],
   prompts: {
-    sources: [path.join(CLI_ROOT, 'gen', 'skills'), path.join(CLI_ROOT, 'dist', 'gen', 'skills')],
+    artifacts: [path.join(CLI_ROOT, 'gen', 'skills'), path.join(CLI_ROOT, 'dist', 'gen', 'skills')],
     agents: {
       'rupert-dev-agent': {
         name: 'RupertDevAgent',

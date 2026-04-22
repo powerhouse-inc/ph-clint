@@ -615,6 +615,8 @@ export interface AgentSetupContext<TConfig = Record<string, unknown>> {
   commands: Command<any, any, any>[];
   /** Skill metadata from PromptsConfig, filtered by agent assignment if configured. */
   skills: import('./skills.js').SkillInfo[];
+  /** Full prompts configuration — agent profiles, skill configs, artifact paths. */
+  prompts?: PromptsConfig;
 }
 
 // ── Agent Loader ──────────────────────────────────────────────────
@@ -656,8 +658,8 @@ export interface SkillConfig {
  * Configuration for agent prompts, profiles, and skills.
  */
 export interface PromptsConfig {
-  /** Candidate directories containing built skill folders. First existing wins. */
-  sources: string[];
+  /** Candidate directories containing pre-built prompt artifacts (skills, agent profiles). First existing wins. */
+  artifacts: string[];
   /** Agent profiles: build-time instruction sections + runtime skill assignments. Key = agent ID. */
   agents?: Record<string, AgentProfileConfig>;
   /** Skill configs: description + optional inputSchema + instructionTemplate. Key = skill folder name.
@@ -712,7 +714,7 @@ export interface CliMetadata {
     mcpPrefix?: string | Record<string, string>;
   }> | null;
   prompts: {
-    sources: string[];
+    artifacts: string[];
     agents: Record<string, { name: string; sections: string[]; skills: string[] }>;
     skills: Record<string, string | SkillConfig>;
     resolved: Record<string, { id: string; description: string }>;

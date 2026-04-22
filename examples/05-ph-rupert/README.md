@@ -63,7 +63,7 @@ pnpm mastra:dev
 ```
 src/
   main.ts                  Entry point — calls cli.run()
-  cli.ts                   CLI definition (commands, services, events, skillSources)
+  cli.ts                   CLI definition (commands, services, events, prompt artifacts)
   config.ts                Zod config schema (6 fields, env var mapping)
   commands/
     reactor-package-init.ts  Initialize a Reactor project via `ph init`
@@ -101,7 +101,7 @@ Six pre-packaged skills are compiled from `prompts/skills-tpl/` during `pnpm bui
 | `handle-stakeholder-message` | Triage stakeholder messages and update WBS docs |
 | `reactor-project-management` | Initialize and manage Reactor packages |
 
-Skills are installed into `.ph/ph-rupert/.mastra/skills/` by the built-in `init` command (auto-injected by ph-clint when `skillSources` is set).
+Skills are installed into `.ph/ph-rupert/.mastra/skills/` by the built-in `init` command (auto-injected by ph-clint when `prompts.artifacts` is set).
 
 ## Testing
 

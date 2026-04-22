@@ -8,15 +8,17 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveWorkdir, resolveConfig, createWorkdirStore, installSkills, readSkillsFromSources } from '@powerhousedao/ph-clint';
-import { getMastraPaths } from '@powerhousedao/ph-clint/mastra';
+import { resolveWorkdir, resolveConfig, createWorkdirStore, installSkills, readSkills } from '@powerhousedao/ph-clint';
+import type { AgentSetupContext } from '@powerhousedao/ph-clint';
+import { createMastraHelpers, getMastraPaths } from '@powerhousedao/ph-clint/mastra';
 import { Mastra } from '@mastra/core/mastra';
+import { Agent } from '@mastra/core/agent';
+import { MCPClient } from '@mastra/mcp';
 import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';
 import { CLI_NAME, CLI_ROOT } from '../config.js';
 import { configSchema, secretsSchema, type Config } from '../framework.js';
 import { cli } from '../cli.js';
-import { createAgentRupert } from '../agents/agent-rupert.js';
 
 // ── Resolve runtime context (Mastra Studio runs outside CLI lifecycle) ──
 
@@ -51,25 +53,22 @@ if (config.apiKey && !process.env.ANTHROPIC_API_KEY) {
 
 fs.mkdirSync(paths.dbFolder, { recursive: true });
 
-// Install pre-packaged skills into .ph/{cliName}/.mastra/skills/
 // Under `mastra dev`, CLI_ROOT resolves to .mastra/ (bundler output).
 // The actual project root with gen/ is its parent.
 const actualRoot = path.basename(CLI_ROOT) === '.mastra'
   ? path.dirname(CLI_ROOT)
   : CLI_ROOT;
-installSkills({
-  store,
-  skillSources: [
-    path.join(actualRoot, 'gen', 'skills'),
-    path.join(actualRoot, 'dist', 'gen', 'skills'),
-  ],
-});
 
-// Read skills from generated output
-const skills = readSkillsFromSources([
+const skillArtifacts = [
   path.join(actualRoot, 'gen', 'skills'),
   path.join(actualRoot, 'dist', 'gen', 'skills'),
-]);
+];
+
+// Install pre-packaged skills into .ph/{cliName}/.mastra/skills/
+installSkills({ store, skillArtifacts });
+
+// Read skills from generated output
+const skills = readSkills(skillArtifacts);
 
 // Use the CLI as single source of truth for commands (includes auto-injected config + svc)
 const commands = cli.listCommands();
@@ -77,7 +76,40 @@ const commands = cli.listCommands();
 // Build a minimal CommandContext for Mastra Studio (no services — runs outside CLI lifecycle)
 const studioContext = { workdir, workspace: store, config, stdout: console.log };
 
-const rupertAgent = await createAgentRupert(config, workdir, CLI_ROOT, commands, studioContext, skills);
+// Build AgentSetupContext for createMastraHelpers
+const agentCtx: AgentSetupContext<Config> = {
+  workdir,
+  config,
+  cliName: CLI_NAME,
+  cliVersion: '0.1.0',
+  context: studioContext as any,
+  commands,
+  skills,
+  prompts: {
+    artifacts: skillArtifacts,
+    agents: {
+      'rupert-dev-agent': {
+        name: 'RupertDevAgent',
+        sections: ['AgentBase.md', 'ReactorPackageDevAgent.md'],
+        skills: ['document-modeling', 'document-editor-creation', 'fusion-development', 'fusion-project-management', 'playwright-cli', 'reactor-project-management'],
+      },
+    },
+  },
+};
+
+const m = createMastraHelpers(agentCtx);
+
+const rupertAgent = new Agent({
+  id: 'rupert-dev-agent',
+  name: 'Rupert Dev Agent',
+  instructions: m.getAgentInstructions('rupert-dev-agent'),
+  model: config.apiKey
+    ? { id: config.model as `${string}/${string}`, apiKey: config.apiKey }
+    : (config.model as `${string}/${string}`),
+  tools: async () => m.getTools({ MCPClient }),
+  workspace: await m.createWorkspace(),
+  memory: await m.createMemory(),
+});
 
 export const mastra = new Mastra({
   agents: { rupertAgent },
