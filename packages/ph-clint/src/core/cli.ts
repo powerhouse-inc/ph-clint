@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { Command as Commander } from 'commander';
 import type {
   AgentSetupContext,
@@ -241,6 +242,21 @@ export function defineCli<
     const resolved = resolveReactorDefaults(options.name, config);
     if (resolved.switchboard) config = { ...config, switchboard: resolved.switchboard };
     if (resolved.connect) config = { ...config, connect: resolved.connect };
+
+    // Auto-resolve Connect workdir and assetsDir from CLI root
+    if (config.connect?.enabled && options.root) {
+      const connect = { ...config.connect };
+      if (!connect.workdir) {
+        connect.workdir = path.resolve(options.root, `../${options.name}-app`);
+      }
+      if (connect.assetsDir === undefined && connect.workdir) {
+        const candidateDir = path.join(connect.workdir, 'dist', 'connect');
+        if (fs.existsSync(path.join(candidateDir, 'index.html'))) {
+          connect.assetsDir = candidateDir;
+        }
+      }
+      config = { ...config, connect };
+    }
 
     // Erase R at the storage site — at runtime the registry is just a dict.
     // The generic only exists to type-check the caller's `create` factory.

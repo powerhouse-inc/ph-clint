@@ -8,8 +8,6 @@
  * - Connect: web UI for browser-based chat
  */
 
-import path from 'node:path';
-import { existsSync } from 'node:fs';
 import { defineCli, buildDefaultReactor, readPackageInfo } from '@powerhousedao/ph-clint';
 import type { WorkItem } from '@powerhousedao/ph-clint';
 import { documentModels } from 'agent-app';
@@ -20,14 +18,6 @@ import { createAgent, AGENT_ID, findChatDocuments, ensureParticipant, createDisp
 import { writeStreamToDocument } from './bridge.js';
 
 const pkg = readPackageInfo(import.meta.url);
-
-// Connect (ph connect) must run inside the agent-app Reactor Package.
-const agentAppDir = path.resolve(pkg.root, '../agent-app');
-
-function resolveConnectAssets(dir: string): string | undefined {
-  const assetsDir = path.join(dir, 'dist', 'connect');
-  return existsSync(path.join(assetsDir, 'index.html')) ? assetsDir : undefined;
-}
 
 // ── Document Change Trigger ─────────────────────────────────────────
 // When an agent-chat document changes (e.g. a user sends a message via
@@ -111,6 +101,7 @@ const documentChangeTrigger = createDocumentChangeTrigger<'powerhouse/agent-chat
 const cli = defineCli({
   name: pkg.name.replace(/-cli$/, ''),
   version: pkg.version,
+  root: pkg.root,
   description: 'AI agent with Powerhouse Connect web UI',
   configSchema,
   commands: [],
@@ -132,7 +123,7 @@ cli.configureReactor({
     subscriptions: { documentTypes: ['powerhouse/agent-chat'] },
   }),
   switchboard: { enabled: true },
-  connect: { enabled: true, workdir: agentAppDir, assetsDir: resolveConnectAssets(agentAppDir) },
+  connect: { enabled: true },
 });
 
 cli.configureAgent(createAgent);

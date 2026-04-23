@@ -736,6 +736,12 @@ export interface CliOptions<
 > {
   name: string;
   version: string;
+  /**
+   * Absolute path to the CLI package root (the directory containing package.json).
+   * Used by the framework to resolve sibling packages (e.g. the `-app` Reactor Package)
+   * and auto-detect Connect assets. Typically set to `CLI_ROOT` from config.ts.
+   */
+  root?: string;
   description: Resolvable<string, z.infer<TSchema> & z.infer<TSecrets>>;
   commands: Command<any, any, any>[];
   configSchema?: TSchema;

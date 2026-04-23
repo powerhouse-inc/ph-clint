@@ -3,7 +3,7 @@
  * `@clint:begin`/`@clint:end` markers so the code generator can patch
  * specific regions on subsequent runs (delta mode — future phase).
  */
-import { type ClintProjectSpec, getAppDirName, getAppPackageName, phAtLeast } from '../../spec/types.js';
+import { type ClintProjectSpec, getAppPackageName, phAtLeast } from '../../spec/types.js';
 
 export function buildCliTs(spec: ClintProjectSpec): string {
   const { mastra, routine, powerhouse } = spec.features;
@@ -19,8 +19,6 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push(' */');
 
   if (phAtLeast(ph, 'Reactor')) {
-    lines.push(`import path from 'node:path';`);
-    lines.push(`import { existsSync } from 'node:fs';`);
     lines.push(`import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';`);
   } else {
     lines.push(`import { defineCli } from '@powerhousedao/ph-clint';`);
@@ -39,21 +37,12 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('// @clint:end imports');
   lines.push('');
 
-  if (phAtLeast(ph, 'Reactor')) {
-    lines.push(`const appDir = path.resolve(CLI_ROOT, '../${spec.name}-app');`);
-    lines.push('');
-    if (phAtLeast(ph, 'Connect')) {
-      lines.push('function resolveConnectAssets(dir: string): string | undefined {');
-      lines.push("  const assetsDir = path.join(dir, 'dist', 'connect');");
-      lines.push("  return existsSync(path.join(assetsDir, 'index.html')) ? assetsDir : undefined;");
-      lines.push('}');
-      lines.push('');
-    }
-  }
-
   lines.push('export const cli = defineCli({');
   lines.push('  name: CLI_NAME,');
   lines.push('  version: CLI_VERSION,');
+  if (phAtLeast(ph, 'Reactor')) {
+    lines.push('  root: CLI_ROOT,');
+  }
   lines.push('  description: `${CLI_NAME} v${CLI_VERSION}`,');
   lines.push('  configSchema,');
   lines.push('  secretsSchema,');
@@ -132,15 +121,9 @@ export function buildCliTs(spec: ClintProjectSpec): string {
     lines.push(
       `  switchboard: { enabled: ${String(phAtLeast(ph, 'Switchboard'))} },`,
     );
-    if (phAtLeast(ph, 'Connect')) {
-      lines.push(
-        `  connect: { enabled: true, workdir: appDir, assetsDir: resolveConnectAssets(appDir) },`,
-      );
-    } else {
-      lines.push(
-        `  connect: { enabled: false },`,
-      );
-    }
+    lines.push(
+      `  connect: { enabled: ${String(phAtLeast(ph, 'Connect'))} },`,
+    );
     lines.push('});');
   }
   lines.push('// @clint:end reactor');

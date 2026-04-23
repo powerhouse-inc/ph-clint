@@ -45,7 +45,10 @@ describe('buildCliTs', () => {
     expect(code).toContain("import { documentModels } from 'foo-app'");
     expect(code).toContain('cli.configureReactor');
     expect(code).toContain('switchboard: { enabled: true }');
-    expect(code).toContain('connect: { enabled: true, workdir: appDir, assetsDir: resolveConnectAssets(appDir) }');
+    expect(code).toContain('connect: { enabled: true }');
+    expect(code).toContain('root: CLI_ROOT');
+    expect(code).not.toContain('resolveConnectAssets');
+    expect(code).not.toContain('appDir');
     expect(code).toContain('Switchboard:');
     expect(code).toContain('Connect:');
   });

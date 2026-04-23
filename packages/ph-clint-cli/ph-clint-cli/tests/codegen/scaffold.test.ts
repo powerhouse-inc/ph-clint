@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runPhInit, runPnpmInstall } from '../../src/codegen/scaffold.js';
+import { runPhInit, runPnpmInstall, getPhVersion } from '../../src/codegen/scaffold.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 async function mkTmpDir(): Promise<string> {
@@ -24,6 +24,12 @@ async function rmRf(dir: string): Promise<void> {
 // A binary name that cannot exist on any PATH — gives us a deterministic
 // "not installed" result.
 const BOGUS_BIN = '__ph_clint_definitely_not_a_binary__';
+
+describe('getPhVersion', () => {
+  it('returns undefined for a non-existent binary', () => {
+    expect(getPhVersion(BOGUS_BIN)).toBeUndefined();
+  });
+});
 
 describe('runPhInit', () => {
   let tmp: string;

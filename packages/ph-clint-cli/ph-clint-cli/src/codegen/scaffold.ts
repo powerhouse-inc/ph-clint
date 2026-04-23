@@ -7,6 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { hasCommandOnPath, runCommand } from './exec.js';
 import type { ClintProjectSpec } from '../spec/types.js';
 
@@ -22,12 +23,32 @@ export interface PhInitOptions {
   binName?: string;
   /** Stdio passthrough (tests pass 'ignore'). */
   stdio?: 'inherit' | 'ignore';
+  /** Explicit Powerhouse version to pin `ph init` to (tag or semver). */
+  phVersion?: string;
 }
 
 export interface PhInitResult {
   ran: boolean;
   exitCode?: number;
   reason?: string;
+}
+
+/**
+ * Detect the installed `ph` CLI version by parsing `ph --version` output.
+ * Returns the version string (e.g. '6.0.0-dev.194') or undefined if
+ * detection fails.
+ */
+export function getPhVersion(binName: string): string | undefined {
+  try {
+    const output = execFileSync(binName, ['--version'], {
+      encoding: 'utf-8',
+      timeout: 5_000,
+    });
+    const match = output.match(/PH CMD version:\s*(\S+)/);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
 }
 
 export async function runPhInit(
@@ -45,19 +66,29 @@ export async function runPhInit(
     return { ran: false, reason: 'ph-not-on-path' };
   }
 
+  // Pin ph init to the same version as the installed ph CLI, so the
+  // generated app uses matching Powerhouse packages.
+  const phVersion = options.phVersion ?? getPhVersion(binName);
+  const tags = ['dev', 'staging', 'latest'];
+  const versionArgs = phVersion
+    ? tags.includes(phVersion)
+      ? [`--${phVersion}`]
+      : ['--version', phVersion]
+    : ['--dev']; // fallback if detection fails
+
   // `ph init {name}` creates a fresh directory beside the cwd. Our generator
   // placed a `.gitkeep` + README.md placeholder there; clear it out so
   // ph init has a blank slate to work with.
   await fs.rm(options.appDir, { recursive: true, force: true });
 
-  log(`Running \`${binName} init ${appFolder}\` in ${options.targetDir} …`);
+  log(`Running \`${binName} init ${appFolder}\` (version: ${phVersion ?? 'auto'}) in ${options.targetDir} …`);
   const result = await runCommand(
     binName,
     [
       'init',
       appFolder,
+      ...versionArgs,
       '--pnpm',
-      '--dev',
     ],
     { cwd: options.targetDir, stdio: options.stdio ?? 'inherit' },
   );
