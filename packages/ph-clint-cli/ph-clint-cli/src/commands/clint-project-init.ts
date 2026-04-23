@@ -2,7 +2,7 @@
  * `ph-clint clint-project-init` — the project bootstrap wizard.
  *
  * Behavior:
- *   1. Resolve target dir (positional `dir`, defaults to cwd).
+ *   1. Resolve target dir (positional `dir`, defaults to the project name).
  *   2. Assert it is empty (or `--force`).
  *   3. Collect project identity + feature toggles (prompt for missing).
  *   4. Assemble a ClintProjectSpec and validate with Zod.
@@ -26,7 +26,7 @@ const inputSchema = z.object({
   dir: z
     .string()
     .optional()
-    .describe('Target directory (defaults to the current directory)'),
+    .describe('Target directory (defaults to the project name)'),
   name: z
     .string()
     .describe(
@@ -107,7 +107,8 @@ export const init = defineCommand({
     promptOptional: ['description'],
   },
   execute: async (input, { workdir, stdout }) => {
-    const targetDir = path.resolve(workdir, input.dir ?? '.');
+    const { name: bareName } = splitPackageName(input.name);
+    const targetDir = path.resolve(workdir, input.dir ?? bareName);
 
     if (!input.force) {
       const empty = await isDirEmptyEnough(targetDir);
