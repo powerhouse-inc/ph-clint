@@ -127,8 +127,8 @@ export async function generateProject(
   if (
     resolvedMode === 'update' &&
     existingSpec &&
-    !existingSpec.features.powerhouse.enabled &&
-    spec.features.powerhouse.enabled
+    existingSpec.features.powerhouse === 'Disabled' &&
+    spec.features.powerhouse !== 'Disabled'
   ) {
     await migrateFlatToSplit({
       targetDir,
@@ -160,7 +160,7 @@ function planFiles(
   spec: ClintProjectSpec,
   targetDir: string,
 ): { planned: PlannedFile[]; cliDir: string; appDir: string | null } {
-  const split = spec.features.powerhouse.enabled;
+  const split = spec.features.powerhouse !== 'Disabled';
   const cliDir = split ? path.join(targetDir, getCliFolderName(spec)) : targetDir;
   const appDir = split ? path.join(targetDir, getAppFolderName(spec)) : null;
   const planned: PlannedFile[] = [];
@@ -307,12 +307,18 @@ async function runUpdate(
   for (const p of planned) {
     if (p.initOnly) {
       // User-owned files (e.g. `src/framework.ts` with its `configSchema`)
-      // are emitted only on create. In update mode we never overwrite them
-      // and never re-create them if missing — the user may have deliberately
-      // deleted or inlined them. Keep whatever hash the previous run stored
-      // so the deletion pass (step 2) still considers them "ours".
-      const stored = previous[p.relativePath];
-      if (stored !== undefined) next[p.relativePath] = stored;
+      // are emitted only on create. In update mode we never overwrite them —
+      // but we DO create them if they don't yet exist on disk (e.g. first
+      // spec-change trigger run where no explicit `init` was run before).
+      const onDisk = await hashFile(p.absolutePath);
+      if (onDisk === null && p.content) {
+        await writeFileEnsuringDir(p.absolutePath, p.content);
+        next[p.relativePath] = hashContent(p.content);
+        files.push({ absolutePath: p.absolutePath, relativePath: p.relativePath });
+      } else {
+        const stored = previous[p.relativePath];
+        if (stored !== undefined) next[p.relativePath] = stored;
+      }
       continue;
     }
     const existing = await hashFile(p.absolutePath);

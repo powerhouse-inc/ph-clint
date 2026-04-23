@@ -9,14 +9,11 @@ export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
   [SubKey in K]: Maybe<T[SubKey]>;
 };
-export type MakeEmpty<
-  T extends { [key: string]: unknown },
-  K extends keyof T,
-> = { [_ in K]?: never };
+export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
 export type Incremental<T> =
   | T
   | {
-      [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never;
+      [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never;
     };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
@@ -59,87 +56,190 @@ export type Scalars = {
   Upload: { input: File; output: File };
 };
 
+export type AddExternalSkillInput = {
+  githubUrl: Scalars['URL']['input'];
+  id: Scalars['OID']['input'];
+  name: Scalars['String']['input'];
+};
+
+export type AddPackageDocumentTypeInput = {
+  documentType: Scalars['String']['input'];
+  packageId: Scalars['OID']['input'];
+};
+
+export type AddPowerhousePackageInput = {
+  id: Scalars['OID']['input'];
+  packageName: Scalars['String']['input'];
+};
+
+export type BumpVersionInput = {
+  version: Scalars['String']['input'];
+};
+
 export type ClearBinInput = {
-  _?: InputMaybe<Scalars["Boolean"]["input"]>;
+  _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type ClearScopeInput = {
-  _?: InputMaybe<Scalars["Boolean"]["input"]>;
+  _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type DisableMastraInput = {
-  _?: InputMaybe<Scalars["Boolean"]["input"]>;
+  _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type DisableRoutineInput = {
-  _?: InputMaybe<Scalars["Boolean"]["input"]>;
+  _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type EnableMastraInput = {
-  _?: InputMaybe<Scalars["Boolean"]["input"]>;
-};
-
-export type EnablePowerhouseInput = {
-  _?: InputMaybe<Scalars["Boolean"]["input"]>;
+  _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type EnableRoutineInput = {
-  _?: InputMaybe<Scalars["Boolean"]["input"]>;
+  _?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type ExternalSkill = {
+  githubUrl: Scalars['URL']['output'];
+  id: Scalars['OID']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type ImportPackageInput = {
+  documentTypes: Array<Scalars['String']['input']>;
+  id: Scalars['OID']['input'];
+  packageName: Scalars['String']['input'];
+};
+
+export type ImportSkillInput = {
+  githubUrl: Scalars['URL']['input'];
+  id: Scalars['OID']['input'];
+  name: Scalars['String']['input'];
+};
+
+export type ImportSpecInput = {
+  bin?: InputMaybe<Scalars['String']['input']>;
+  description: Scalars['String']['input'];
+  externalSkills: Array<ImportSkillInput>;
+  mastraEnabled: Scalars['Boolean']['input'];
+  name: Scalars['String']['input'];
+  packages: Array<ImportPackageInput>;
+  powerhouse: PowerhouseLevel;
+  routineEnabled: Scalars['Boolean']['input'];
+  scope?: InputMaybe<Scalars['String']['input']>;
+  version: Scalars['String']['input'];
 };
 
 export type PhClintFeatures = {
   mastra: PhClintMastraFeature;
-  powerhouse: PhClintPowerhouseFeature;
+  powerhouse: PowerhouseLevel;
   routine: PhClintRoutineFeature;
 };
 
 export type PhClintMastraFeature = {
-  enabled: Scalars["Boolean"]["output"];
-};
-
-export type PhClintPowerhouseFeature = {
-  connect: Scalars["Boolean"]["output"];
-  enabled: Scalars["Boolean"]["output"];
-  switchboard: Scalars["Boolean"]["output"];
+  enabled: Scalars['Boolean']['output'];
 };
 
 export type PhClintProjectState = {
-  bin: Maybe<Scalars["String"]["output"]>;
-  description: Scalars["String"]["output"];
+  bin: Maybe<Scalars['String']['output']>;
+  description: Scalars['String']['output'];
+  externalSkills: Array<ExternalSkill>;
   features: PhClintFeatures;
-  name: Maybe<Scalars["String"]["output"]>;
-  scope: Maybe<Scalars["String"]["output"]>;
-  version: Scalars["String"]["output"];
+  name: Maybe<Scalars['String']['output']>;
+  packages: Array<PowerhousePackage>;
+  publishHistory: Array<PublishRecord>;
+  scope: Maybe<Scalars['String']['output']>;
+  version: Scalars['String']['output'];
 };
 
 export type PhClintRoutineFeature = {
-  enabled: Scalars["Boolean"]["output"];
+  enabled: Scalars['Boolean']['output'];
+};
+
+export type PowerhouseLevel = 'Connect' | 'Disabled' | 'Reactor' | 'Switchboard';
+
+export type PowerhousePackage = {
+  documentTypes: Array<Scalars['String']['output']>;
+  id: Scalars['OID']['output'];
+  packageName: Scalars['String']['output'];
+};
+
+export type PublishDevInput = {
+  id: Scalars['OID']['input'];
+  timestamp: Scalars['DateTime']['input'];
+};
+
+export type PublishProductionInput = {
+  id: Scalars['OID']['input'];
+  timestamp: Scalars['DateTime']['input'];
+};
+
+export type PublishRecord = {
+  id: Scalars['OID']['output'];
+  status: PublishStatus;
+  tag: PublishTag;
+  timestamp: Scalars['DateTime']['output'];
+  version: Scalars['String']['output'];
+};
+
+export type PublishStagingInput = {
+  id: Scalars['OID']['input'];
+  timestamp: Scalars['DateTime']['input'];
+};
+
+export type PublishStatus = 'Failed' | 'InProgress' | 'Pending' | 'Succeeded';
+
+export type PublishTag = 'Dev' | 'Production' | 'Staging';
+
+export type RemoveExternalSkillInput = {
+  id: Scalars['OID']['input'];
+};
+
+export type RemovePackageDocumentTypeInput = {
+  documentType: Scalars['String']['input'];
+  packageId: Scalars['OID']['input'];
+};
+
+export type RemovePowerhousePackageInput = {
+  id: Scalars['OID']['input'];
 };
 
 export type SetBinInput = {
-  bin: Scalars["String"]["input"];
+  bin: Scalars['String']['input'];
 };
 
 export type SetDescriptionInput = {
-  description: Scalars["String"]["input"];
+  description: Scalars['String']['input'];
+};
+
+export type SetExternalSkillGithubUrlInput = {
+  githubUrl: Scalars['URL']['input'];
+  id: Scalars['OID']['input'];
+};
+
+export type SetExternalSkillNameInput = {
+  id: Scalars['OID']['input'];
+  name: Scalars['String']['input'];
 };
 
 export type SetPackageNameInput = {
-  name: Scalars["String"]["input"];
+  name: Scalars['String']['input'];
 };
 
-export type SetPowerhouseConnectInput = {
-  enabled: Scalars["Boolean"]["input"];
+export type SetPowerhouseLevelInput = {
+  level: PowerhouseLevel;
 };
 
-export type SetPowerhouseSwitchboardInput = {
-  enabled: Scalars["Boolean"]["input"];
+export type SetPublishStatusInput = {
+  id: Scalars['OID']['input'];
+  status: PublishStatus;
 };
 
 export type SetScopeInput = {
-  scope: Scalars["String"]["input"];
+  scope: Scalars['String']['input'];
 };
 
 export type SetVersionInput = {
-  version: Scalars["String"]["input"];
+  version: Scalars['String']['input'];
 };

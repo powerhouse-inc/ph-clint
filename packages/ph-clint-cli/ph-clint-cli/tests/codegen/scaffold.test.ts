@@ -43,7 +43,7 @@ describe('runPhInit', () => {
 
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const logs: string[] = [];
     const result = await runPhInit({

@@ -69,6 +69,29 @@ export async function runPhInit(
     );
   }
 
+  // ph init creates an unscoped package name. If the spec has a scope, patch
+  // the app's package.json to use the scoped name so `file:` deps and publish
+  // both resolve correctly. Run even on non-zero exit — ph init may have
+  // partially succeeded and created package.json.
+  if (options.spec.scope) {
+    const appPkgJsonPath = path.join(options.appDir, 'package.json');
+    try {
+      const raw = await fs.readFile(appPkgJsonPath, 'utf8');
+      const pkg = JSON.parse(raw);
+      const scopedName = `@${options.spec.scope}/${appFolder}`;
+      if (pkg.name !== scopedName) {
+        pkg.name = scopedName;
+        pkg.publishConfig = { access: 'public' };
+        await fs.writeFile(appPkgJsonPath, JSON.stringify(pkg, null, 2) + '\n');
+        log(`Patched app package name to ${scopedName}`);
+      }
+    } catch (err) {
+      log(
+        `Warning: could not patch app package name: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   return { ran: true, exitCode: result.exitCode };
 }
 

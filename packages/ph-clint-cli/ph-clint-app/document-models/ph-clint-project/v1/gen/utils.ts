@@ -1,41 +1,29 @@
-import type { DocumentModelUtils } from "document-model";
-import {
-  baseCreateDocument,
-  baseSaveToFileHandle,
-  baseLoadFromInput,
-  defaultBaseState,
-  generateId,
-} from "document-model";
-import { reducer } from "./reducer.js";
-import { phClintProjectDocumentType } from "./document-type.js";
-import {
-  assertIsPhClintProjectDocument,
-  assertIsPhClintProjectState,
-  isPhClintProjectDocument,
-  isPhClintProjectState,
-} from "./document-schema.js";
-import type {
-  PhClintProjectGlobalState,
-  PhClintProjectLocalState,
-  PhClintProjectPHState,
-} from "./types.js";
+import type { DocumentModelUtils } from 'document-model';
+import { baseCreateDocument, baseSaveToFileHandle, baseLoadFromInput, defaultBaseState, generateId } from 'document-model';
+import { reducer } from './reducer.js';
+import { phClintProjectDocumentType } from './document-type.js';
+import { assertIsPhClintProjectDocument, assertIsPhClintProjectState, isPhClintProjectDocument, isPhClintProjectState } from './document-schema.js';
+import type { PhClintProjectGlobalState, PhClintProjectLocalState, PhClintProjectPHState } from './types.js';
 
 export const initialGlobalState: PhClintProjectGlobalState = {
   name: null,
   scope: null,
-  version: "0.1.0",
-  description: "",
+  version: '0.1.0',
+  description: '',
   bin: null,
   features: {
-    powerhouse: { enabled: false, switchboard: true, connect: true },
+    powerhouse: 'Disabled',
     mastra: { enabled: false },
     routine: { enabled: false },
   },
+  packages: [],
+  externalSkills: [],
+  publishHistory: [],
 };
 export const initialLocalState: PhClintProjectLocalState = {};
 
 export const utils: DocumentModelUtils<PhClintProjectPHState> = {
-  fileExtension: "pcp",
+  fileExtension: 'pcp',
   createState(state) {
     return {
       ...defaultBaseState(),

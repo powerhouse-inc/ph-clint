@@ -22,7 +22,7 @@ describe('buildConfigTs', () => {
   it('does not emit configSchema or secretsSchema (those live in framework.ts)', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true }, mastra: { enabled: true } },
+      features: { powerhouse: 'Connect', mastra: { enabled: true } },
     });
     const code = buildConfigTs(spec);
     expect(code).not.toContain('configSchema');

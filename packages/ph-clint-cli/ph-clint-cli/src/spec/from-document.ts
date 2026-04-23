@@ -24,13 +24,6 @@ export function specFromDocumentState(
 ): ClintProjectSpec | null {
   if (!state.name) return null;
 
-  // `documentTypes` is a forward-compatible field — older `ph-clint-project`
-  // document states don't declare it yet. Pull through if present, otherwise
-  // leave it to the schema default (`[]`). Codegen treats the empty list as
-  // "no registry entries" and emits an empty `defineRegistry([...])`.
-  const documentTypes =
-    (state as { documentTypes?: unknown }).documentTypes ?? undefined;
-
   const parsed = clintProjectSpecSchema.safeParse({
     name: state.name,
     scope: state.scope ?? undefined,
@@ -38,11 +31,20 @@ export function specFromDocumentState(
     description: state.description,
     bin: state.bin ?? undefined,
     features: {
-      powerhouse: { ...state.features.powerhouse },
+      powerhouse: state.features.powerhouse,
       mastra: { ...state.features.mastra },
       routine: { ...state.features.routine },
     },
-    ...(Array.isArray(documentTypes) ? { documentTypes } : {}),
+    packages: state.packages.map((p) => ({
+      id: p.id,
+      packageName: p.packageName,
+      documentTypes: [...p.documentTypes],
+    })),
+    externalSkills: state.externalSkills.map((s) => ({
+      id: s.id,
+      name: s.name,
+      githubUrl: s.githubUrl,
+    })),
   });
 
   return parsed.success ? parsed.data : null;

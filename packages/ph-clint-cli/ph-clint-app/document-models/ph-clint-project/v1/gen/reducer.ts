@@ -1,13 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import type { Reducer, StateReducer } from "document-model";
-import { isDocumentAction, createReducer } from "document-model";
-import type { PhClintProjectPHState } from "document-models/ph-clint-project/v1";
+import type { Reducer, StateReducer } from 'document-model';
+import { isDocumentAction, createReducer } from 'document-model';
+import type { PhClintProjectPHState } from 'document-models/ph-clint-project/v1';
 
-import { phClintProjectIdentityOperations } from "../src/reducers/identity.js";
-import { phClintProjectFeaturesPowerhouseOperations } from "../src/reducers/features-powerhouse.js";
-import { phClintProjectFeaturesMastraOperations } from "../src/reducers/features-mastra.js";
-import { phClintProjectFeaturesRoutineOperations } from "../src/reducers/features-routine.js";
+import { phClintProjectIdentityOperations } from '../src/reducers/identity.js';
+import { phClintProjectFeaturesPowerhouseOperations } from '../src/reducers/features-powerhouse.js';
+import { phClintProjectFeaturesMastraOperations } from '../src/reducers/features-mastra.js';
+import { phClintProjectFeaturesRoutineOperations } from '../src/reducers/features-routine.js';
+import { phClintProjectPowerhousePackagesOperations } from '../src/reducers/powerhouse-packages.js';
+import { phClintProjectExternalSkillsOperations } from '../src/reducers/external-skills.js';
+import { phClintProjectPublishingOperations } from '../src/reducers/publishing.js';
+import { phClintProjectLifecycleOperations } from '../src/reducers/lifecycle.js';
 
 import {
   SetPackageNameInputSchema,
@@ -17,188 +21,236 @@ import {
   SetVersionInputSchema,
   ClearScopeInputSchema,
   SetScopeInputSchema,
-  EnablePowerhouseInputSchema,
-  SetPowerhouseSwitchboardInputSchema,
-  SetPowerhouseConnectInputSchema,
+  SetPowerhouseLevelInputSchema,
   EnableMastraInputSchema,
   DisableMastraInputSchema,
   EnableRoutineInputSchema,
   DisableRoutineInputSchema,
-} from "./schema/zod.js";
+  AddPowerhousePackageInputSchema,
+  RemovePowerhousePackageInputSchema,
+  AddPackageDocumentTypeInputSchema,
+  RemovePackageDocumentTypeInputSchema,
+  AddExternalSkillInputSchema,
+  RemoveExternalSkillInputSchema,
+  SetExternalSkillNameInputSchema,
+  SetExternalSkillGithubUrlInputSchema,
+  BumpVersionInputSchema,
+  PublishDevInputSchema,
+  PublishStagingInputSchema,
+  PublishProductionInputSchema,
+  SetPublishStatusInputSchema,
+  ImportSpecInputSchema,
+} from './schema/zod.js';
 
-const stateReducer: StateReducer<PhClintProjectPHState> = (
-  state,
-  action,
-  dispatch,
-) => {
+const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispatch) => {
   if (isDocumentAction(action)) {
     return state;
   }
   switch (action.type) {
-    case "SET_PACKAGE_NAME": {
+    case 'SET_PACKAGE_NAME': {
       SetPackageNameInputSchema().parse(action.input);
 
-      phClintProjectIdentityOperations.setPackageNameOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectIdentityOperations.setPackageNameOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "CLEAR_BIN": {
+    case 'CLEAR_BIN': {
       ClearBinInputSchema().parse(action.input);
 
-      phClintProjectIdentityOperations.clearBinOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectIdentityOperations.clearBinOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "SET_BIN": {
+    case 'SET_BIN': {
       SetBinInputSchema().parse(action.input);
 
-      phClintProjectIdentityOperations.setBinOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectIdentityOperations.setBinOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "SET_DESCRIPTION": {
+    case 'SET_DESCRIPTION': {
       SetDescriptionInputSchema().parse(action.input);
 
-      phClintProjectIdentityOperations.setDescriptionOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectIdentityOperations.setDescriptionOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "SET_VERSION": {
+    case 'SET_VERSION': {
       SetVersionInputSchema().parse(action.input);
 
-      phClintProjectIdentityOperations.setVersionOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectIdentityOperations.setVersionOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "CLEAR_SCOPE": {
+    case 'CLEAR_SCOPE': {
       ClearScopeInputSchema().parse(action.input);
 
-      phClintProjectIdentityOperations.clearScopeOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectIdentityOperations.clearScopeOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "SET_SCOPE": {
+    case 'SET_SCOPE': {
       SetScopeInputSchema().parse(action.input);
 
-      phClintProjectIdentityOperations.setScopeOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectIdentityOperations.setScopeOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "ENABLE_POWERHOUSE": {
-      EnablePowerhouseInputSchema().parse(action.input);
+    case 'SET_POWERHOUSE_LEVEL': {
+      SetPowerhouseLevelInputSchema().parse(action.input);
 
-      phClintProjectFeaturesPowerhouseOperations.enablePowerhouseOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectFeaturesPowerhouseOperations.setPowerhouseLevelOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "SET_POWERHOUSE_SWITCHBOARD": {
-      SetPowerhouseSwitchboardInputSchema().parse(action.input);
-
-      phClintProjectFeaturesPowerhouseOperations.setPowerhouseSwitchboardOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
-
-      break;
-    }
-
-    case "SET_POWERHOUSE_CONNECT": {
-      SetPowerhouseConnectInputSchema().parse(action.input);
-
-      phClintProjectFeaturesPowerhouseOperations.setPowerhouseConnectOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
-
-      break;
-    }
-
-    case "ENABLE_MASTRA": {
+    case 'ENABLE_MASTRA': {
       EnableMastraInputSchema().parse(action.input);
 
-      phClintProjectFeaturesMastraOperations.enableMastraOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectFeaturesMastraOperations.enableMastraOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "DISABLE_MASTRA": {
+    case 'DISABLE_MASTRA': {
       DisableMastraInputSchema().parse(action.input);
 
-      phClintProjectFeaturesMastraOperations.disableMastraOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectFeaturesMastraOperations.disableMastraOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "ENABLE_ROUTINE": {
+    case 'ENABLE_ROUTINE': {
       EnableRoutineInputSchema().parse(action.input);
 
-      phClintProjectFeaturesRoutineOperations.enableRoutineOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectFeaturesRoutineOperations.enableRoutineOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
-    case "DISABLE_ROUTINE": {
+    case 'DISABLE_ROUTINE': {
       DisableRoutineInputSchema().parse(action.input);
 
-      phClintProjectFeaturesRoutineOperations.disableRoutineOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
+      phClintProjectFeaturesRoutineOperations.disableRoutineOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'ADD_POWERHOUSE_PACKAGE': {
+      AddPowerhousePackageInputSchema().parse(action.input);
+
+      phClintProjectPowerhousePackagesOperations.addPowerhousePackageOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'REMOVE_POWERHOUSE_PACKAGE': {
+      RemovePowerhousePackageInputSchema().parse(action.input);
+
+      phClintProjectPowerhousePackagesOperations.removePowerhousePackageOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'ADD_PACKAGE_DOCUMENT_TYPE': {
+      AddPackageDocumentTypeInputSchema().parse(action.input);
+
+      phClintProjectPowerhousePackagesOperations.addPackageDocumentTypeOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'REMOVE_PACKAGE_DOCUMENT_TYPE': {
+      RemovePackageDocumentTypeInputSchema().parse(action.input);
+
+      phClintProjectPowerhousePackagesOperations.removePackageDocumentTypeOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'ADD_EXTERNAL_SKILL': {
+      AddExternalSkillInputSchema().parse(action.input);
+
+      phClintProjectExternalSkillsOperations.addExternalSkillOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'REMOVE_EXTERNAL_SKILL': {
+      RemoveExternalSkillInputSchema().parse(action.input);
+
+      phClintProjectExternalSkillsOperations.removeExternalSkillOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_EXTERNAL_SKILL_NAME': {
+      SetExternalSkillNameInputSchema().parse(action.input);
+
+      phClintProjectExternalSkillsOperations.setExternalSkillNameOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_EXTERNAL_SKILL_GITHUB_URL': {
+      SetExternalSkillGithubUrlInputSchema().parse(action.input);
+
+      phClintProjectExternalSkillsOperations.setExternalSkillGithubUrlOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'BUMP_VERSION': {
+      BumpVersionInputSchema().parse(action.input);
+
+      phClintProjectPublishingOperations.bumpVersionOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'PUBLISH_DEV': {
+      PublishDevInputSchema().parse(action.input);
+
+      phClintProjectPublishingOperations.publishDevOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'PUBLISH_STAGING': {
+      PublishStagingInputSchema().parse(action.input);
+
+      phClintProjectPublishingOperations.publishStagingOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'PUBLISH_PRODUCTION': {
+      PublishProductionInputSchema().parse(action.input);
+
+      phClintProjectPublishingOperations.publishProductionOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_PUBLISH_STATUS': {
+      SetPublishStatusInputSchema().parse(action.input);
+
+      phClintProjectPublishingOperations.setPublishStatusOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'IMPORT_SPEC': {
+      ImportSpecInputSchema().parse(action.input);
+
+      phClintProjectLifecycleOperations.importSpecOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
@@ -208,5 +260,4 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (
   }
 };
 
-export const reducer: Reducer<PhClintProjectPHState> =
-  createReducer(stateReducer);
+export const reducer: Reducer<PhClintProjectPHState> = createReducer(stateReducer);

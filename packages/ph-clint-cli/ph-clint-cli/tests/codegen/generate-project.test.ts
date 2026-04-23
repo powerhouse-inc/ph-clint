@@ -75,7 +75,7 @@ describe('generateProject — create mode', () => {
   it('writes a split-layout project when Powerhouse is enabled', async () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({ targetDir: tmp, spec });
 
@@ -109,13 +109,13 @@ describe('generateProject — create mode', () => {
 
   it('covers all 8 feature-toggle combinations without crashing', async () => {
     const combos: ClintProjectSpecInput[] = [];
-    for (const p of [false, true]) {
+    for (const p of ['Disabled', 'Connect'] as const) {
       for (const m of [false, true]) {
         for (const r of [false, true]) {
           combos.push({
             name: 'proj',
             features: {
-              powerhouse: { enabled: p },
+              powerhouse: p,
               mastra: { enabled: m },
               routine: { enabled: r },
             },

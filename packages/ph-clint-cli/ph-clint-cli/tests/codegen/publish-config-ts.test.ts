@@ -7,23 +7,22 @@ describe('buildPublishConfigTs', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       version: '0.1.0',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const content = buildPublishConfigTs(spec);
-    expect(content).toContain(
-      "import { definePublishConfig } from '@powerhousedao/ph-clint-dev/publish'",
-    );
+    expect(content).not.toContain('import');
+    expect(content).toContain('export default');
     expect(content).toContain("'foo':");
     expect(content).toContain("version: '0.1.0'");
     expect(content).toContain("{ path: 'foo-app', category: 'app' }");
     expect(content).toContain("{ path: 'foo-cli', category: 'cli' }");
   });
 
-  it('uses the spec version', () => {
+  it('strips prerelease suffix from version', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'bar',
-      version: '2.3.4',
-      features: { powerhouse: { enabled: true } },
+      version: '2.3.4-dev.5',
+      features: { powerhouse: 'Connect' },
     });
     const content = buildPublishConfigTs(spec);
     expect(content).toContain("version: '2.3.4'");

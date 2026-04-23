@@ -13,9 +13,7 @@ describe('clintProjectSpecSchema', () => {
     expect(parsed.name).toBe('myproj');
     expect(parsed.version).toBe('0.0.1-dev.0');
     expect(parsed.description).toBe('');
-    expect(parsed.features.powerhouse.enabled).toBe(false);
-    expect(parsed.features.powerhouse.switchboard).toBe(true);
-    expect(parsed.features.powerhouse.connect).toBe(true);
+    expect(parsed.features.powerhouse).toBe('Disabled');
     expect(parsed.features.mastra.enabled).toBe(false);
     expect(parsed.features.routine.enabled).toBe(false);
   });
@@ -30,12 +28,11 @@ describe('clintProjectSpecSchema', () => {
     const parsed = clintProjectSpecSchema.parse({
       name: 'foo',
       features: {
-        powerhouse: { enabled: true, switchboard: false, connect: true },
+        powerhouse: 'Connect',
         mastra: { enabled: true },
       },
     });
-    expect(parsed.features.powerhouse.enabled).toBe(true);
-    expect(parsed.features.powerhouse.switchboard).toBe(false);
+    expect(parsed.features.powerhouse).toBe('Connect');
     expect(parsed.features.mastra.enabled).toBe(true);
     expect(parsed.features.routine.enabled).toBe(false);
   });

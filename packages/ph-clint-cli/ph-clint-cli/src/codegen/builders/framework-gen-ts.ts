@@ -4,36 +4,41 @@
  * `defineRegistry([...] as const)` call that describes which document models
  * are bound into `framework.ts`'s typed factories.
  *
- * Kept deliberately small: this file exports only `registry` and the
- * `Registry` type. The `createTypes` call lives in `framework.ts` (the
- * user-owned half) so `configSchema` edits stay local and we avoid an import
- * cycle between the two files.
+ * Iterates all packages' document types. The app package's modules are
+ * imported from the local `{name}-app` package; external packages' modules
+ * are imported from their npm package name.
  *
  * Emitted only when Powerhouse is enabled — flat-layout impls have no
  * reactor package to import modules from and bind `createTypes` directly in
- * `framework.ts`. When Powerhouse is on but no `documentTypes` are declared,
+ * `framework.ts`. When Powerhouse is on but no document types are declared,
  * we still emit this file with an empty `defineRegistry([])` so impl code's
  * `import { registry } from './framework.gen.js'` keeps resolving across
  * regens.
  */
 import {
   type ClintProjectSpec,
+  getAppPackageName,
   getDocumentTypeModuleName,
+  phAtLeast,
 } from '../../spec/types.js';
 
-/** Local package name of the reactor package for this project. */
-function appPackageName(spec: ClintProjectSpec): string {
-  return `${spec.name}-app`;
-}
-
 export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
-  if (!spec.features.powerhouse.enabled) return null;
+  if (!phAtLeast(spec.features.powerhouse, 'Reactor')) return null;
 
-  const pkg = appPackageName(spec);
-  const entries = spec.documentTypes.map((docType) => ({
-    docType,
-    name: getDocumentTypeModuleName(docType),
-  }));
+  const appPkg = getAppPackageName(spec);
+
+  // Collect all (docType, moduleName, importFrom) tuples across packages.
+  const entries: { docType: string; name: string; importFrom: string }[] = [];
+  for (const pkg of spec.packages) {
+    const importFrom = pkg.packageName === appPkg ? appPkg : pkg.packageName;
+    for (const docType of pkg.documentTypes) {
+      entries.push({
+        docType,
+        name: getDocumentTypeModuleName(docType),
+        importFrom,
+      });
+    }
+  }
 
   const lines: string[] = [];
   lines.push('/**');
@@ -45,12 +50,12 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
   lines.push(' */');
   lines.push(`import { defineRegistry } from '@powerhousedao/ph-clint';`);
   for (const e of entries) {
-    lines.push(`import { ${e.name} } from '${pkg}';`);
+    lines.push(`import { ${e.name} } from '${e.importFrom}';`);
   }
   lines.push('');
   lines.push('/**');
   lines.push(' * Typed document registry derived from the reactor package\'s document models.');
-  lines.push(' * Regenerated whenever the spec\'s `documentTypes` list changes.');
+  lines.push(' * Regenerated whenever the spec\'s packages or document types change.');
   lines.push(' */');
   if (entries.length === 0) {
     lines.push('export const registry = defineRegistry([] as const);');

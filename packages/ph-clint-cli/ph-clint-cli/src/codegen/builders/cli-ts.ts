@@ -3,10 +3,11 @@
  * `@clint:begin`/`@clint:end` markers so the code generator can patch
  * specific regions on subsequent runs (delta mode — future phase).
  */
-import { type ClintProjectSpec } from '../../spec/types.js';
+import { type ClintProjectSpec, getAppDirName, getAppPackageName, phAtLeast } from '../../spec/types.js';
 
 export function buildCliTs(spec: ClintProjectSpec): string {
   const { mastra, routine, powerhouse } = spec.features;
+  const ph = powerhouse;
   const lines: string[] = [];
 
   lines.push('/**');
@@ -17,20 +18,20 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push(' * Everything outside the markers is user-editable and preserved.');
   lines.push(' */');
 
-  if (powerhouse.enabled) {
+  if (phAtLeast(ph, 'Reactor')) {
     lines.push(`import path from 'node:path';`);
     lines.push(`import { existsSync } from 'node:fs';`);
     lines.push(`import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';`);
   } else {
     lines.push(`import { defineCli } from '@powerhousedao/ph-clint';`);
   }
-  lines.push(`import { CLI_NAME, CLI_VERSION${powerhouse.enabled ? ', CLI_ROOT' : ''} } from './config.js';`);
+  lines.push(`import { CLI_NAME, CLI_VERSION${phAtLeast(ph, 'Reactor') ? ', CLI_ROOT' : ''} } from './config.js';`);
   lines.push(`import { configSchema, secretsSchema } from './framework.js';`);
   lines.push('');
 
   lines.push('// @clint:begin imports');
-  if (powerhouse.enabled) {
-    lines.push(`import { documentModels } from '${spec.name}-app';`);
+  if (phAtLeast(ph, 'Reactor')) {
+    lines.push(`import { documentModels } from '${getAppPackageName(spec)}';`);
   }
   if (mastra.enabled) {
     lines.push(`import { createAgent } from './agents/agent.js';`);
@@ -38,10 +39,10 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('// @clint:end imports');
   lines.push('');
 
-  if (powerhouse.enabled) {
+  if (phAtLeast(ph, 'Reactor')) {
     lines.push(`const appDir = path.resolve(CLI_ROOT, '../${spec.name}-app');`);
     lines.push('');
-    if (powerhouse.connect) {
+    if (phAtLeast(ph, 'Connect')) {
       lines.push('function resolveConnectAssets(dir: string): string | undefined {');
       lines.push("  const assetsDir = path.join(dir, 'dist', 'connect');");
       lines.push("  return existsSync(path.join(assetsDir, 'index.html')) ? assetsDir : undefined;");
@@ -88,7 +89,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('  // @clint:begin interactive');
   lines.push('  interactive: {');
   const ctxArgs: string[] = [];
-  if (powerhouse.enabled && (powerhouse.switchboard || powerhouse.connect)) {
+  if (phAtLeast(ph, 'Switchboard')) {
     ctxArgs.push('config');
   }
   ctxArgs.push('workdir');
@@ -96,12 +97,12 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('      [');
   lines.push('        `${CLI_NAME} v${CLI_VERSION}`,');
   lines.push('        `Workdir: ${workdir}`,');
-  if (powerhouse.enabled && powerhouse.switchboard) {
+  if (phAtLeast(ph, 'Switchboard')) {
     lines.push(
       '        `Switchboard: http://localhost:${config.switchboardPort}`,',
     );
   }
-  if (powerhouse.enabled && powerhouse.connect) {
+  if (phAtLeast(ph, 'Connect')) {
     lines.push(
       '        `Connect:     http://localhost:${config.connectPort}`,',
     );
@@ -121,7 +122,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('');
 
   lines.push('// @clint:begin reactor');
-  if (powerhouse.enabled) {
+  if (phAtLeast(ph, 'Reactor')) {
     lines.push('cli.configureReactor({');
     lines.push('  create: (ctx) =>');
     lines.push('    buildDefaultReactor(ctx, {');
@@ -129,9 +130,9 @@ export function buildCliTs(spec: ClintProjectSpec): string {
     lines.push(`      drive: { name: '${spec.name}' },`);
     lines.push('    }),');
     lines.push(
-      `  switchboard: { enabled: ${String(powerhouse.switchboard)} },`,
+      `  switchboard: { enabled: ${String(phAtLeast(ph, 'Switchboard'))} },`,
     );
-    if (powerhouse.connect) {
+    if (phAtLeast(ph, 'Connect')) {
       lines.push(
         `  connect: { enabled: true, workdir: appDir, assetsDir: resolveConnectAssets(appDir) },`,
       );

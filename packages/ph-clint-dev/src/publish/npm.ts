@@ -87,13 +87,14 @@ export function publishPackage(
     const proc = spawn('npm', args,
       {
         cwd: pkg.absPath,
-        stdio: verbose ? 'inherit' : 'pipe',
+        // Always capture stderr so we can detect "already published" errors.
+        stdio: verbose ? ['ignore', 'inherit', 'pipe'] : 'pipe',
         shell: false,
       },
     );
 
     let stderr = '';
-    if (!verbose && proc.stderr) {
+    if (proc.stderr) {
       proc.stderr.on('data', (data: Buffer) => {
         stderr += data.toString();
       });
@@ -122,18 +123,20 @@ export function publishPackage(
 /**
  * Verify a version exists on the registry with exponential backoff.
  * The registry is eventually consistent — a version may not be queryable
- * immediately after `npm publish` returns.
+ * immediately after `npm publish` returns, especially for new packages
+ * which can take up to several minutes to propagate.
  *
- * Attempts: 1s, 2s, 4s, 8s, 16s (total ~31s max wait).
+ * Default schedule: 2s, 4s, 8s, 16s, 32s, 60s, 60s, 60s (~242s max wait).
  */
 export async function verifyWithRetry(
   packageName: string,
   version: string,
   registry: string,
   log: (msg: string) => void,
-  maxAttempts = 5,
+  maxAttempts = 8,
 ): Promise<boolean> {
-  let delay = 1_000;
+  let delay = 2_000;
+  const maxDelay = 60_000;
   for (let i = 0; i < maxAttempts; i++) {
     if (await verifyVersionOnRegistry(packageName, version, registry)) {
       return true;
@@ -141,7 +144,7 @@ export async function verifyWithRetry(
     if (i < maxAttempts - 1) {
       log(`    waiting ${delay / 1000}s for registry propagation...`);
       await new Promise((r) => setTimeout(r, delay));
-      delay *= 2;
+      delay = Math.min(delay * 2, maxDelay);
     }
   }
   return false;
@@ -186,21 +189,25 @@ export async function publishAll(
       if (verify) {
         const confirmed = await verifyWithRetry(pkg.name, version, registry, log);
         if (!confirmed) {
-          failed.push(pkg.name);
-          log(`  ✗ ${pkg.name}: published but not found on registry after verification`);
-          log(
-            `\n  The registry may be slow to propagate. Re-run to retry.` +
-              `\n  Use --no-verify to skip post-publish verification.`,
-          );
-          break;
+          // The publish command succeeded, so the package is on the registry
+          // even if verification can't see it yet. Treat as published.
+          log(`  ⚠ ${pkg.name}: published but not yet visible on registry (propagation delay)`);
         }
       }
 
       published.push(pkg.name);
       log(`  ✓ ${pkg.name}`);
     } catch (err) {
-      failed.push(pkg.name);
       const msg = err instanceof Error ? err.message : String(err);
+      // npm returns 403 "You cannot publish over the previously published
+      // versions" when a version already exists. Treat this as already-published
+      // (the pre-publish `npm view` check can miss it during propagation).
+      if (msg.includes('previously published version') || msg.includes('cannot publish over')) {
+        published.push(pkg.name);
+        log(`  ⊘ ${pkg.name} (already published, skipping)`);
+        continue;
+      }
+      failed.push(pkg.name);
       log(`  ✗ ${pkg.name}: ${msg}`);
       log(
         `\n  Fix the issue and re-run the same command to resume.` +

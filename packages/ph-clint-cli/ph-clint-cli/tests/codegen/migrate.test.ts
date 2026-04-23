@@ -1,6 +1,6 @@
 /**
  * Flat → split migration tests. Covers the end-to-end generator flow when
- * `features.powerhouse.enabled` flips `false` → `true`, and the low-level
+ * `features.powerhouse` flips `'Disabled'` → a enabled level, and the low-level
  * migrator's guarantees in isolation.
  */
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
@@ -51,7 +51,7 @@ describe('generateProject — flat → split migration', () => {
     // Flip Powerhouse on.
     const split = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
       targetDir: tmp,
@@ -77,7 +77,7 @@ describe('generateProject — flat → split migration', () => {
 
     const split = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     await generateProject({ targetDir: tmp, spec: split, force: true });
 
@@ -105,7 +105,7 @@ describe('generateProject — flat → split migration', () => {
 
     const split = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     await expect(
       generateProject({ targetDir: tmp, spec: split }),
@@ -126,7 +126,7 @@ describe('generateProject — flat → split migration', () => {
 
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const warnings: string[] = [];
     const result = await migrateFlatToSplit({

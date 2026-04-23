@@ -41,7 +41,7 @@ describe('buildCliPackageJson', () => {
   it('powerhouse enabled — appends -cli suffix and app dep', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const pkg = parseBuilt(spec);
     expect(pkg.name).toBe('foo-cli');
@@ -55,7 +55,7 @@ describe('buildCliPackageJson', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       scope: 'acme',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const pkg = parseBuilt(spec);
     expect(pkg.name).toBe('@acme/foo-cli');

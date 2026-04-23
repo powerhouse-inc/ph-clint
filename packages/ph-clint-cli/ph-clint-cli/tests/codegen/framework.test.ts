@@ -17,6 +17,16 @@ import {
 } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
+/** Helper: create an app package entry with document types. */
+function appPkg(name: string, docTypes: string[]) {
+  return { id: `app-${name}`, packageName: `${name}-app`, documentTypes: docTypes };
+}
+
+/** Helper: create an external package entry with document types. */
+function extPkg(packageName: string, docTypes: string[], id = `ext-${packageName}`) {
+  return { id, packageName, documentTypes: docTypes };
+}
+
 async function mkTmpDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ph-clint-fw-'));
 }
@@ -38,10 +48,10 @@ describe('buildFrameworkGenTs', () => {
     expect(buildFrameworkGenTs(spec)).toBeNull();
   });
 
-  it('emits an empty registry when Powerhouse is on but documentTypes is empty', () => {
+  it('emits an empty registry when Powerhouse is on but no packages have document types', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const code = buildFrameworkGenTs(spec);
     expect(code).not.toBeNull();
@@ -54,11 +64,13 @@ describe('buildFrameworkGenTs', () => {
     expect(code).not.toContain('createTypes');
   });
 
-  it('imports each registered module from the top-level reactor package', () => {
+  it('imports each registered module from the app package', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
-      documentTypes: ['powerhouse/ph-clint-project', 'acme/invoice'],
+      features: { powerhouse: 'Connect' },
+      packages: [
+        appPkg('foo', ['powerhouse/ph-clint-project', 'acme/invoice']),
+      ],
     });
     const code = buildFrameworkGenTs(spec);
     expect(code).not.toBeNull();
@@ -71,6 +83,21 @@ describe('buildFrameworkGenTs', () => {
     expect(pos2).toBeGreaterThan(pos1);
     // `as const` preserved for literal inference.
     expect(code).toContain('] as const);');
+  });
+
+  it('imports external package modules from their own npm package', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+      packages: [
+        appPkg('foo', ['powerhouse/ph-clint-project']),
+        extPkg('@acme/reactor-pkg', ['acme/invoice']),
+      ],
+    });
+    const code = buildFrameworkGenTs(spec);
+    expect(code).not.toBeNull();
+    expect(code).toContain("import { PhClintProject } from 'foo-app';");
+    expect(code).toContain("import { Invoice } from '@acme/reactor-pkg';");
   });
 });
 
@@ -88,19 +115,15 @@ describe('buildFrameworkTs', () => {
   it('Powerhouse on — calls createTypes locally using registry from framework.gen.ts', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const code = buildFrameworkTs(spec);
-    // Pulls `registry` (but not `createTypes`) from framework.gen.ts —
-    // createTypes is called here so configSchema edits stay local and the
-    // two files don't form a runtime import cycle.
     expect(code).toContain("import { registry } from './framework.gen.js'");
     expect(code).toContain("import { createTypes } from '@powerhousedao/ph-clint'");
     expect(code).toContain('createTypes({');
     expect(code).toContain('defineCommand,');
     expect(code).toContain('createDocumentChangeTrigger,');
     expect(code).toContain("export { registry } from './framework.gen.js'");
-    // configSchema still lives here — it's the user-owned surface.
     expect(code).toContain('export const configSchema = z.object({');
   });
 
@@ -121,23 +144,39 @@ describe('buildAppIndexTs', () => {
     expect(buildAppIndexTs(spec)).toBeNull();
   });
 
-  it('returns null when Powerhouse on but no document types', () => {
+  it('returns null when Powerhouse on but no document types in app package', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     expect(buildAppIndexTs(spec)).toBeNull();
   });
 
-  it('emits a barrel re-export per documentType slug', () => {
+  it('emits a barrel re-export per documentType slug from the app package', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
-      documentTypes: ['powerhouse/ph-clint-project', 'acme/invoice'],
+      features: { powerhouse: 'Connect' },
+      packages: [
+        appPkg('foo', ['powerhouse/ph-clint-project', 'acme/invoice']),
+      ],
     });
     const code = buildAppIndexTs(spec);
     expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
     expect(code).toContain("export * from './document-models/invoice/index.js';");
+  });
+
+  it('does not re-export external package document types', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+      packages: [
+        appPkg('foo', ['powerhouse/ph-clint-project']),
+        extPkg('@acme/reactor-pkg', ['acme/invoice']),
+      ],
+    });
+    const code = buildAppIndexTs(spec);
+    expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
+    expect(code).not.toContain('invoice');
   });
 });
 
@@ -160,7 +199,7 @@ describe('generateProject — framework files', () => {
     try {
       const on = clintProjectSpecSchema.parse({
         name: 'bar',
-        features: { powerhouse: { enabled: true } },
+        features: { powerhouse: 'Connect' },
       });
       await generateProject({ targetDir: tmp2, spec: on });
       expect(await exists(path.join(tmp2, 'bar-cli/src/framework.ts'))).toBe(true);
@@ -194,10 +233,10 @@ describe('generateProject — framework files', () => {
     expect(after).toContain('USER_MARKER = 42');
   });
 
-  it('framework.gen.ts regenerates when documentTypes changes', async () => {
+  it('framework.gen.ts regenerates when packages change', async () => {
     const initial = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     await generateProject({ targetDir: tmp, spec: initial });
 
@@ -207,8 +246,8 @@ describe('generateProject — framework files', () => {
 
     const next = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
-      documentTypes: ['powerhouse/ph-clint-project'],
+      features: { powerhouse: 'Connect' },
+      packages: [appPkg('foo', ['powerhouse/ph-clint-project'])],
     });
     const result = await generateProject({ targetDir: tmp, spec: next });
     expect(result.files.map((f) => f.relativePath)).toContain(
@@ -219,11 +258,11 @@ describe('generateProject — framework files', () => {
     expect(v2).toContain('PhClintProject,');
   });
 
-  it('init emits the reactor-package top-level index.ts when documentTypes are declared', async () => {
+  it('init emits the reactor-package top-level index.ts when app package has document types', async () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
-      documentTypes: ['powerhouse/ph-clint-project'],
+      features: { powerhouse: 'Connect' },
+      packages: [appPkg('foo', ['powerhouse/ph-clint-project'])],
     });
     await generateProject({ targetDir: tmp, spec });
 

@@ -10,11 +10,32 @@
  */
 import { z } from 'zod';
 
-const powerhouseFeatureSchema = z.object({
-  enabled: z.boolean().default(false),
-  switchboard: z.boolean().default(true),
-  connect: z.boolean().default(true),
-});
+/**
+ * Ordered Powerhouse integration level. Higher levels imply all lower ones:
+ *   Disabled → Reactor → Switchboard → Connect
+ */
+export const POWERHOUSE_LEVELS = [
+  'Disabled',
+  'Reactor',
+  'Switchboard',
+  'Connect',
+] as const;
+
+export const powerhouseLevelSchema = z
+  .enum(POWERHOUSE_LEVELS)
+  .default('Disabled');
+
+export type PowerhouseLevel = z.infer<typeof powerhouseLevelSchema>;
+
+/** Check whether `level` is at least `threshold` in the ordered enum. */
+export function phAtLeast(
+  level: PowerhouseLevel,
+  threshold: PowerhouseLevel,
+): boolean {
+  return (
+    POWERHOUSE_LEVELS.indexOf(level) >= POWERHOUSE_LEVELS.indexOf(threshold)
+  );
+}
 
 const mastraFeatureSchema = z.object({
   enabled: z.boolean().default(false),
@@ -24,18 +45,24 @@ const routineFeatureSchema = z.object({
   enabled: z.boolean().default(false),
 });
 
-// Zod 4 does not cascade `.default({})` through nested object schemas — a
-// missing outer key fills in `{}`, but nested keys with their own `.default`
-// are not re-defaulted unless the object itself re-parses. We spell out full
-// defaults here so `clintProjectSpecSchema.parse({ name: 'x' })` yields a
-// fully-populated feature tree.
-const DEFAULT_POWERHOUSE = {
-  enabled: false,
-  switchboard: true,
-  connect: true,
-} as const;
 const DEFAULT_MASTRA = { enabled: false } as const;
 const DEFAULT_ROUTINE = { enabled: false } as const;
+
+export const powerhousePackageSchema = z.object({
+  id: z.string(),
+  packageName: z.string(),
+  documentTypes: z.array(z.string()).default([]),
+});
+
+export type PowerhousePackage = z.infer<typeof powerhousePackageSchema>;
+
+export const externalSkillSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  githubUrl: z.string(),
+});
+
+export type ExternalSkill = z.infer<typeof externalSkillSchema>;
 
 export const clintProjectSpecSchema = z.object({
   name: z
@@ -50,24 +77,28 @@ export const clintProjectSpecSchema = z.object({
   bin: z.string().optional(),
   features: z
     .object({
-      powerhouse: powerhouseFeatureSchema.default(DEFAULT_POWERHOUSE),
+      powerhouse: powerhouseLevelSchema,
       mastra: mastraFeatureSchema.default(DEFAULT_MASTRA),
       routine: routineFeatureSchema.default(DEFAULT_ROUTINE),
     })
     .default({
-      powerhouse: DEFAULT_POWERHOUSE,
+      powerhouse: 'Disabled' as const,
       mastra: DEFAULT_MASTRA,
       routine: DEFAULT_ROUTINE,
     }),
   /**
-   * Document types registered with this CLI — full documentType ID strings
-   * (e.g. `powerhouse/ph-clint-project`). Drives codegen of `src/framework.gen.ts`,
-   * which emits a typed `defineRegistry([...] as const)` call so impl code
-   * gets narrowed `reactor.client.get(id, 'my-type')` access. Empty on
-   * fresh projects — populated as document models are added to the reactor
-   * package.
+   * Reactor packages and their document types. Each entry groups a package
+   * name with the document type IDs it provides. The app package (project's
+   * own reactor package) uses a `file:` dependency; external packages become
+   * versioned npm dependencies. Drives codegen of `framework.gen.ts`,
+   * `app/index.ts`, and `cli/package.json`.
    */
-  documentTypes: z.array(z.string()).default([]),
+  packages: z.array(powerhousePackageSchema).default([]),
+  /**
+   * External skills from the skills.sh ecosystem. Each skill has a name
+   * (kebab-case) and a GitHub URL for installation.
+   */
+  externalSkills: z.array(externalSkillSchema).default([]),
 });
 
 export type ClintProjectSpec = z.infer<typeof clintProjectSpecSchema>;
@@ -95,6 +126,29 @@ export function getCliFolderName(spec: ClintProjectSpec): string {
  * Name of the reactor-package sub-folder when the project is split.
  */
 export function getAppFolderName(spec: ClintProjectSpec): string {
+  return `${spec.name}-app`;
+}
+
+/**
+ * Flat list of all document types across all packages. Convenience for
+ * codegen that needs to iterate every registered document type regardless
+ * of which package provides it.
+ */
+export function getAllDocumentTypes(spec: ClintProjectSpec): string[] {
+  return spec.packages.flatMap((p) => p.documentTypes);
+}
+
+/**
+ * The app npm package name (`@scope/{name}-app` or `{name}-app`).
+ * Matches what the document model reducer stores in `packages[].packageName`.
+ */
+export function getAppPackageName(spec: ClintProjectSpec): string {
+  const base = `${spec.name}-app`;
+  return spec.scope ? `@${spec.scope}/${base}` : base;
+}
+
+/** Directory name for the app package (`{name}-app`, no scope prefix). */
+export function getAppDirName(spec: ClintProjectSpec): string {
   return `${spec.name}-app`;
 }
 

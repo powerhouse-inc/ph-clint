@@ -13,6 +13,7 @@ const inputSchema = z.object({
   dir: z.string().optional().describe('Project root directory'),
   dryRun: z.boolean().default(false).describe('Preview without publishing'),
   skipBuild: z.boolean().default(false),
+  skipGitCheck: z.boolean().default(false).describe('Skip git working tree check'),
   verbose: z.boolean().default(false),
 });
 
@@ -44,11 +45,12 @@ export const clintProjectPublish = defineCommand({
       stdout(msg + '\n');
     };
 
-    // 1. Resolve plan
+    // 1. Resolve plan — discover config from the target dir, not process.cwd().
+    const configFile = path.join(dir, 'publish.config.ts');
     const plan = await resolvePublishPlan({
       tag: input.tag,
-      configPath: undefined, // auto-discover from dir
-      skipGitCheck: input.dryRun,
+      configPath: configFile,
+      skipGitCheck: input.dryRun || input.skipGitCheck,
       log,
     });
 

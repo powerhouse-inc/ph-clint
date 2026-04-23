@@ -4,10 +4,12 @@
 import {
   type ClintProjectSpec,
   getPackageName,
+  phAtLeast,
 } from '../../spec/types.js';
 
 export function buildReadme(spec: ClintProjectSpec): string {
   const { mastra, routine, powerhouse } = spec.features;
+  const ph = powerhouse;
   const title = getPackageName(spec);
   const lines: string[] = [];
   lines.push(`# ${title}`);
@@ -23,10 +25,10 @@ export function buildReadme(spec: ClintProjectSpec): string {
   lines.push('');
   lines.push('## Enabled features');
   lines.push('');
-  lines.push(`- **Powerhouse**: ${powerhouse.enabled ? 'on' : 'off'}`);
-  if (powerhouse.enabled) {
-    lines.push(`  - Switchboard: ${powerhouse.switchboard ? 'on' : 'off'}`);
-    lines.push(`  - Connect: ${powerhouse.connect ? 'on' : 'off'}`);
+  lines.push(`- **Powerhouse**: ${ph !== 'Disabled' ? `on (${ph})` : 'off'}`);
+  if (phAtLeast(ph, 'Reactor')) {
+    lines.push(`  - Switchboard: ${phAtLeast(ph, 'Switchboard') ? 'on' : 'off'}`);
+    lines.push(`  - Connect: ${phAtLeast(ph, 'Connect') ? 'on' : 'off'}`);
   }
   lines.push(`- **Mastra agent**: ${mastra.enabled ? 'on' : 'off'}`);
   lines.push(`- **Routine loop**: ${routine.enabled ? 'on' : 'off'}`);
@@ -38,7 +40,7 @@ export function buildReadme(spec: ClintProjectSpec): string {
   );
   lines.push('then re-run `ph-clint clint-project-regen` to regenerate.');
   lines.push('');
-  if (powerhouse.enabled) {
+  if (phAtLeast(ph, 'Reactor')) {
     lines.push('## Split layout');
     lines.push('');
     lines.push(

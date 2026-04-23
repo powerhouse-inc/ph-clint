@@ -17,11 +17,11 @@
  *   against, so this file binds `createTypes({ configSchema })` directly and
  *   exports the typed factories from here. No `framework.gen.ts` is emitted.
  */
-import { type ClintProjectSpec } from '../../spec/types.js';
+import { type ClintProjectSpec, phAtLeast } from '../../spec/types.js';
 
 export function buildFrameworkTs(spec: ClintProjectSpec): string {
   const { mastra, powerhouse } = spec.features;
-  const hasGen = powerhouse.enabled;
+  const hasGen = phAtLeast(powerhouse, 'Reactor');
   const lines: string[] = [];
 
   lines.push('/**');

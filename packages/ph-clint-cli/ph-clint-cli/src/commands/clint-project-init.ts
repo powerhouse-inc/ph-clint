@@ -90,7 +90,7 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
     scope,
     description: input.description ?? '',
     features: {
-      powerhouse: { enabled: input.enablePowerhouse },
+      powerhouse: input.enablePowerhouse ? 'Connect' as const : 'Disabled' as const,
       mastra: { enabled: input.enableMastra },
       routine: { enabled: routine },
     },
@@ -132,7 +132,7 @@ export const init = defineCommand({
 
     stdout(`Generated ${result.files.length} files in ${targetDir}\n`);
 
-    const split = spec.features.powerhouse.enabled;
+    const split = spec.features.powerhouse !== 'Disabled';
 
     // Reactor package scaffolding (split layout only).
     if (split && result.appDir && !input.skipPhInit) {

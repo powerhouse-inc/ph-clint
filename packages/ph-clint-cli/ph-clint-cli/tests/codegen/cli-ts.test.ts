@@ -35,10 +35,10 @@ describe('buildCliTs', () => {
     );
   });
 
-  it('wires Powerhouse when powerhouse.enabled', () => {
+  it('wires Powerhouse when powerhouse is enabled', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const code = buildCliTs(spec);
     expect(code).toContain("import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint'");
@@ -50,11 +50,11 @@ describe('buildCliTs', () => {
     expect(code).toContain('Connect:');
   });
 
-  it('honours switchboard/connect sub-toggles', () => {
+  it('honours powerhouse level — Reactor only omits switchboard/connect', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       features: {
-        powerhouse: { enabled: true, switchboard: false, connect: false },
+        powerhouse: 'Reactor',
       },
     });
     const code = buildCliTs(spec);
@@ -68,7 +68,7 @@ describe('buildCliTs', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       features: {
-        powerhouse: { enabled: true },
+        powerhouse: 'Connect',
         mastra: { enabled: true },
         routine: { enabled: true },
       },

@@ -7,10 +7,10 @@ import { actions } from "./actions.js";
 import { utils } from "./utils.js";
 
 /** Document model module for the PhClintProject document type */
-export const PhClintProject = {
+export const PhClintProject: DocumentModelModule<PhClintProjectPHState> = {
   version: 1,
   reducer,
   actions,
   utils,
   documentModel: createState(defaultBaseState(), documentModel),
-} as const satisfies DocumentModelModule<PhClintProjectPHState>;
+};

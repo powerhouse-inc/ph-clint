@@ -6,7 +6,7 @@ describe('buildRootPackageJson', () => {
   it('emits pnpm --prefix scripts for app and cli', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const pkg = JSON.parse(buildRootPackageJson(spec)) as {
       name: string;
@@ -35,7 +35,7 @@ describe('buildRootPackageJson', () => {
   it('includes publish scripts using pnpm --prefix exec', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const pkg = JSON.parse(buildRootPackageJson(spec)) as {
       scripts: Record<string, string>;
@@ -55,7 +55,7 @@ describe('buildRootPackageJson', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       scope: 'acme',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const pkg = JSON.parse(buildRootPackageJson(spec)) as { name: string };
     expect(pkg.name).toBe('@acme/foo');

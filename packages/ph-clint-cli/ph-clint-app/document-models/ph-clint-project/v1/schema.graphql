@@ -26,18 +26,22 @@ type PhClintProjectState {
   description: String!
   bin: String
   features: PhClintFeatures!
+  packages: [PowerhousePackage!]!
+  externalSkills: [ExternalSkill!]!
+  publishHistory: [PublishRecord!]!
 }
 
 type PhClintFeatures {
-  powerhouse: PhClintPowerhouseFeature!
+  powerhouse: PowerhouseLevel!
   mastra: PhClintMastraFeature!
   routine: PhClintRoutineFeature!
 }
 
-type PhClintPowerhouseFeature {
-  enabled: Boolean!
-  switchboard: Boolean!
-  connect: Boolean!
+enum PowerhouseLevel {
+  Disabled
+  Reactor
+  Switchboard
+  Connect
 }
 
 type PhClintMastraFeature {
@@ -48,6 +52,38 @@ type PhClintRoutineFeature {
   enabled: Boolean!
 }
 
+type PowerhousePackage {
+  id: OID!
+  packageName: String!
+  documentTypes: [String!]!
+}
+
+type ExternalSkill {
+  id: OID!
+  name: String!
+  githubUrl: URL!
+}
+
+enum PublishTag {
+  Dev
+  Staging
+  Production
+}
+
+enum PublishStatus {
+  Pending
+  InProgress
+  Succeeded
+  Failed
+}
+
+type PublishRecord {
+  id: OID!
+  tag: PublishTag!
+  version: String!
+  timestamp: DateTime!
+  status: PublishStatus!
+}
 
 # identity
 
@@ -81,16 +117,8 @@ input SetScopeInput {
 
 # features_powerhouse
 
-input EnablePowerhouseInput {
-  _: Boolean
-}
-
-input SetPowerhouseSwitchboardInput {
-  enabled: Boolean!
-}
-
-input SetPowerhouseConnectInput {
-  enabled: Boolean!
+input SetPowerhouseLevelInput {
+  level: PowerhouseLevel!
 }
 
 # features_mastra
@@ -111,4 +139,100 @@ input EnableRoutineInput {
 
 input DisableRoutineInput {
   _: Boolean
+}
+
+# powerhouse_packages
+
+input AddPowerhousePackageInput {
+  id: OID!
+  packageName: String!
+}
+
+input RemovePowerhousePackageInput {
+  id: OID!
+}
+
+input AddPackageDocumentTypeInput {
+  packageId: OID!
+  documentType: String!
+}
+
+input RemovePackageDocumentTypeInput {
+  packageId: OID!
+  documentType: String!
+}
+
+# external_skills
+
+input AddExternalSkillInput {
+  id: OID!
+  name: String!
+  githubUrl: URL!
+}
+
+input RemoveExternalSkillInput {
+  id: OID!
+}
+
+input SetExternalSkillNameInput {
+  id: OID!
+  name: String!
+}
+
+input SetExternalSkillGithubUrlInput {
+  id: OID!
+  githubUrl: URL!
+}
+
+# publishing
+
+input BumpVersionInput {
+  version: String!
+}
+
+input PublishDevInput {
+  id: OID!
+  timestamp: DateTime!
+}
+
+input PublishStagingInput {
+  id: OID!
+  timestamp: DateTime!
+}
+
+input PublishProductionInput {
+  id: OID!
+  timestamp: DateTime!
+}
+
+input SetPublishStatusInput {
+  id: OID!
+  status: PublishStatus!
+}
+
+# lifecycle
+
+input ImportSpecInput {
+  name: String!
+  scope: String
+  version: String!
+  description: String!
+  bin: String
+  powerhouse: PowerhouseLevel!
+  mastraEnabled: Boolean!
+  routineEnabled: Boolean!
+  packages: [ImportPackageInput!]!
+  externalSkills: [ImportSkillInput!]!
+}
+
+input ImportPackageInput {
+  id: OID!
+  packageName: String!
+  documentTypes: [String!]!
+}
+
+input ImportSkillInput {
+  id: OID!
+  name: String!
+  githubUrl: URL!
 }

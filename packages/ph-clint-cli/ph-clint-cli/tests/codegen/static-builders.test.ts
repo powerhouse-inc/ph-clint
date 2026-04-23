@@ -119,7 +119,7 @@ describe('buildReadme', () => {
   it('powerhouse on — mentions the split-layout `ph init` step', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { powerhouse: { enabled: true } },
+      features: { powerhouse: 'Connect' },
     });
     const out = buildReadme(spec);
     expect(out).toContain('## Split layout');

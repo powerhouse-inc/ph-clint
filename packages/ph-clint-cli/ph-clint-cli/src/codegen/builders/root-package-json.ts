@@ -9,6 +9,7 @@
 import {
   type ClintProjectSpec,
   getPackageName,
+  phAtLeast,
 } from '../../spec/types.js';
 
 export function buildRootPackageJson(spec: ClintProjectSpec): string {
@@ -18,7 +19,7 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
   const prefix = (dir: string, cmd: string) => `pnpm --prefix ${dir} ${cmd}`;
   const both = (cmd: string) => `${prefix(app, cmd)} && ${prefix(cli, cmd)}`;
 
-  const connectEnabled = spec.features.powerhouse.enabled && spec.features.powerhouse.connect;
+  const connectEnabled = phAtLeast(spec.features.powerhouse, 'Connect');
 
   const buildScript = connectEnabled
     ? `${prefix(app, 'build')} && ${prefix(app, 'connect:build')} && ${prefix(cli, 'build')}`

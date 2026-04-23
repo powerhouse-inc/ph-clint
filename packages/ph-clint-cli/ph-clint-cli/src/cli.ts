@@ -20,7 +20,9 @@ import { regen } from './commands/clint-project-regen.js';
 import { build } from './commands/clint-project-build.js';
 import { clintProjectPublish } from './commands/clint-project-publish.js';
 import { clintProject } from './services/clint-project.js';
+import { skillsSync } from './commands/clint-skills-sync.js';
 import { specChangeTrigger } from './triggers/spec-change.js';
+import { publishTrigger } from './triggers/publish-trigger.js';
 // @clint:end imports
 
 // Connect (ph connect) must run inside the Reactor Package (ph-clint-app).
@@ -39,7 +41,7 @@ export const cli = defineCli({
   secretsSchema,
 
   // @clint:begin commands
-  commands: [init, regen, build, clintProjectPublish],
+  commands: [init, regen, build, clintProjectPublish, skillsSync],
   // @clint:end commands
 
   // @clint:begin services
@@ -47,7 +49,7 @@ export const cli = defineCli({
   // @clint:end services
 
   // @clint:begin triggers
-  triggers: [specChangeTrigger],
+  triggers: [specChangeTrigger, publishTrigger],
   // @clint:end triggers
 
   // @clint:begin prompts

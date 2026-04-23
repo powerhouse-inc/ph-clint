@@ -6,8 +6,11 @@
  */
 import {
   type ClintProjectSpec,
+  getAppDirName,
+  getAppPackageName,
   getBinName,
   getPackageName,
+  phAtLeast,
 } from '../../spec/types.js';
 import { CLI_VERSION } from '../../config.js';
 
@@ -47,7 +50,7 @@ const POWERHOUSE_VERSION = '6.0.0-dev.170';
 
 export function buildCliPackageJson(spec: ClintProjectSpec): string {
   const { mastra, powerhouse } = spec.features;
-  const pkgName = powerhouse.enabled
+  const pkgName = phAtLeast(powerhouse, 'Reactor')
     ? `${getPackageName(spec)}-cli`
     : getPackageName(spec);
   const bin = getBinName(spec);
@@ -61,12 +64,20 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     dependencies['@mastra/libsql'] = '^1.7.4';
     dependencies['@mastra/memory'] = '^1.13.1';
   }
-  if (powerhouse.enabled) {
-    dependencies[`${spec.name}-app`] = `file:../${spec.name}-app`;
+  if (phAtLeast(powerhouse, 'Reactor')) {
+    const appPkg = getAppPackageName(spec);
+    const appDir = getAppDirName(spec);
+    dependencies[appPkg] = `file:../${appDir}`;
     dependencies['@powerhousedao/reactor'] = POWERHOUSE_VERSION;
     dependencies['@powerhousedao/reactor-api'] = POWERHOUSE_VERSION;
     dependencies['@powerhousedao/shared'] = POWERHOUSE_VERSION;
     dependencies['document-model'] = POWERHOUSE_VERSION;
+    // External reactor packages (non-app) as versioned dependencies.
+    for (const pkg of spec.packages) {
+      if (pkg.packageName !== appPkg) {
+        dependencies[pkg.packageName] = 'latest';
+      }
+    }
   }
 
   const scripts: Record<string, string> = {
@@ -85,11 +96,12 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
   const pkg: Record<string, unknown> = {
     name: pkgName,
     version: spec.version,
-    private: true,
+    publishConfig: { access: 'public' as const },
     type: 'module',
   };
   if (spec.description) pkg.description = spec.description;
   pkg.bin = { [bin]: './dist/main.js' };
+  pkg.files = ['dist', 'prompts'];
   pkg.scripts = scripts;
   pkg.dependencies = dependencies;
   pkg.devDependencies = {
