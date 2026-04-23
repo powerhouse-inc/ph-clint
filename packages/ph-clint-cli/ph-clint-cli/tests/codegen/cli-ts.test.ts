@@ -49,8 +49,8 @@ describe('buildCliTs', () => {
     expect(code).toContain('root: CLI_ROOT');
     expect(code).not.toContain('resolveConnectAssets');
     expect(code).not.toContain('appDir');
-    expect(code).toContain('Switchboard:');
-    expect(code).toContain('Connect:');
+    expect(code).not.toContain('Switchboard:');
+    expect(code).not.toContain('Connect:');
   });
 
   it('honours powerhouse level — Reactor only omits switchboard/connect', () => {

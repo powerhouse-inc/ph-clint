@@ -77,25 +77,10 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('');
   lines.push('  // @clint:begin interactive');
   lines.push('  interactive: {');
-  const ctxArgs: string[] = [];
-  if (phAtLeast(ph, 'Switchboard')) {
-    ctxArgs.push('config');
-  }
-  ctxArgs.push('workdir');
-  lines.push(`    welcome: ({ ${ctxArgs.join(', ')} }) =>`);
+  lines.push(`    welcome: ({ workdir }) =>`);
   lines.push('      [');
   lines.push('        `${CLI_NAME} v${CLI_VERSION}`,');
   lines.push('        `Workdir: ${workdir}`,');
-  if (phAtLeast(ph, 'Switchboard')) {
-    lines.push(
-      '        `Switchboard: http://localhost:${config.switchboardPort}`,',
-    );
-  }
-  if (phAtLeast(ph, 'Connect')) {
-    lines.push(
-      '        `Connect:     http://localhost:${config.connectPort}`,',
-    );
-  }
   lines.push("        '',");
   if (mastra.enabled) {
     lines.push(
