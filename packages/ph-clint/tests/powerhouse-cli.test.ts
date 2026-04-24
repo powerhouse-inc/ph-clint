@@ -266,6 +266,38 @@ describe('configureReactor() in cli.ts', () => {
     expect(cmds).toContain('test-ph-studio-start');
   });
 
+  it('auto-resolves workdir stripping npm scope from name', () => {
+    const tmpDir = fs.mkdtempSync(path.join(process.env.TMPDIR ?? '/tmp', 'ph-clint-test-'));
+    const cliRoot = path.join(tmpDir, 'my-tool-cli');
+    const appDir = path.join(tmpDir, 'my-tool-app');
+    const assetsDir = path.join(appDir, 'dist', 'connect');
+    fs.mkdirSync(cliRoot, { recursive: true });
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, 'index.html'), '<html></html>');
+
+    try {
+      const cli = defineCli({
+        name: '@acme/my-tool',
+        version: '0.0.1',
+        root: cliRoot,
+        description: 'Test CLI',
+        commands: [noopCommand],
+      });
+
+      cli.configureReactor({
+        create: async () => createMockReactor(),
+        connect: { enabled: true, port: 3000 },
+      });
+
+      // Service commands should be injected — proves the sibling dir was
+      // resolved as ../my-tool-app (not ../@acme/my-tool-app)
+      const cmds = cli.listCommands().map(c => c.id);
+      expect(cmds).toContain('@acme/my-tool-studio-start');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('auto-detects assetsDir when dist/connect/index.html exists', () => {
     const tmpDir = fs.mkdtempSync(path.join(process.env.TMPDIR ?? '/tmp', 'ph-clint-test-'));
     const cliRoot = path.join(tmpDir, 'test-ph-cli');

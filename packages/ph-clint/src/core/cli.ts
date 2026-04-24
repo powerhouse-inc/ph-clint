@@ -247,7 +247,9 @@ export function defineCli<
     if (config.connect?.enabled && options.root) {
       const connect = { ...config.connect };
       if (!connect.workdir) {
-        connect.workdir = path.resolve(options.root, `../${options.name}-app`);
+        // Strip npm scope (e.g. "@scope/foo" → "foo") for the sibling dir name
+        const bareName = options.name.replace(/^@[^/]+\//, '');
+        connect.workdir = path.resolve(options.root, `../${bareName}-app`);
       }
       if (connect.assetsDir === undefined && connect.workdir) {
         const candidateDir = path.join(connect.workdir, 'dist', 'connect');
