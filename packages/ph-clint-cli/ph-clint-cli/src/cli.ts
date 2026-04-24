@@ -6,8 +6,6 @@
  * rewritten by ph-clint-cli's generator when the project spec changes.
  * Everything outside the markers is user-editable and preserved.
  */
-import path from 'node:path';
-import { existsSync } from 'node:fs';
 import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
 import { CLI_NAME, CLI_VERSION, CLI_ROOT } from './config.js';
 import { configSchema, secretsSchema } from './framework.js';
@@ -25,17 +23,10 @@ import { specChangeTrigger } from './triggers/spec-change.js';
 import { publishTrigger } from './triggers/publish-trigger.js';
 // @clint:end imports
 
-// Connect (ph connect) must run inside the Reactor Package (ph-clint-app).
-const appDir = path.resolve(CLI_ROOT, '../ph-clint-app');
-
-function resolveConnectAssets(dir: string): string | undefined {
-  const assetsDir = path.join(dir, 'dist', 'connect');
-  return existsSync(path.join(assetsDir, 'index.html')) ? assetsDir : undefined;
-}
-
 export const cli = defineCli({
   name: CLI_NAME,
   version: CLI_VERSION,
+  root: CLI_ROOT,
   description: `${CLI_NAME} v${CLI_VERSION} — scaffold and maintain ph-clint implementation projects`,
   configSchema,
   secretsSchema,
@@ -90,7 +81,7 @@ cli.configureReactor({
     subscriptions: { documentTypes: ['powerhouse/ph-clint-project'] },
   }),
   switchboard: { enabled: true },
-  connect: { enabled: true, workdir: appDir, assetsDir: resolveConnectAssets(appDir) },
+  connect: { enabled: true },
 });
 // @clint:end reactor
 
