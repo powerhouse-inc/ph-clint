@@ -46,7 +46,7 @@ export interface PublishOptions {
   force?: boolean;
   verbose?: boolean;
   allowPrivate?: boolean;
-  /** Verify each package appears on the registry after publish (default true). */
+  /** Verify packages are visible on the registry after publish (default: false). */
   verify?: boolean;
   log?: (msg: string) => void;
 }

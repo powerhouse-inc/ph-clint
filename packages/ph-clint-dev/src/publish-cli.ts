@@ -21,7 +21,7 @@ Options:
   --skip-git-check         Skip clean working tree check
   --force                  Downgrade validation errors to warnings
   --allow-private          Allow publishing packages marked private
-  --no-verify              Skip post-publish registry verification
+  --verify                 Verify packages on registry after publish
   -v, --verbose            Show build and publish output
   -h, --help               Show this help`);
 }
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
       'skip-build': { type: 'boolean' },
       'skip-git-check': { type: 'boolean' },
       'allow-private': { type: 'boolean' },
-      'no-verify': { type: 'boolean' },
+      verify: { type: 'boolean' },
       force: { type: 'boolean' },
       verbose: { type: 'boolean', short: 'v' },
       help: { type: 'boolean', short: 'h' },
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
     skipBuild: values['skip-build'],
     skipGitCheck: values['skip-git-check'],
     allowPrivate: values['allow-private'],
-    verify: !values['no-verify'],
+    verify: values.verify,
     force: values.force,
     verbose: values.verbose,
   });

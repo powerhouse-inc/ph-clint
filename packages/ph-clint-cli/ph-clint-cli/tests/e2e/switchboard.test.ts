@@ -12,9 +12,44 @@
  */
 import { describe, it, expect, afterAll, beforeAll } from '@jest/globals';
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import fsSync from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+
+// ── Logging ─────────────────────────────────────────────────────────────
+
+const WRITE_TO_LOG = false;
+const LOG_FILE = path.resolve(
+  import.meta.dirname,
+  `../../switchboard-e2e-${new Date().toISOString().replace(/[:.]/g, '-')}.log`,
+);
+
+let logFd: number | null = null;
+
+function log(msg: string): void {
+  const ts = new Date().toISOString();
+  const line = `[${ts}] ${msg}\n`;
+  console.log(msg);
+  if (WRITE_TO_LOG) {
+    if (logFd === null) {
+      logFd = fsSync.openSync(LOG_FILE, 'w');
+      fsSync.writeSync(logFd, `=== E2E switchboard test started at ${ts} ===\n`);
+    }
+    fsSync.writeSync(logFd, line);
+  }
+}
+
+function logCliOutput(cli: CliInstance, label: string, lastN = 50): void {
+  const recent = cli.output.slice(-lastN);
+  log(`--- ${label}: last ${recent.length} CLI output lines ---`);
+  for (const line of recent) {
+    log(`  cli> ${line}`);
+  }
+  log(`--- end ${label} ---`);
+}
+
+// ── Constants ───────────────────────────────────────────────────────────
 
 const CLI_DIR = path.resolve(import.meta.dirname, '../..');
 const STARTUP_TIMEOUT = 60_000;
@@ -85,10 +120,6 @@ async function getDocState(url: string, docId: string): Promise<DocState> {
 
 // ── npm registry helpers ────────────────────────────────────────────────
 
-/**
- * Query the npm registry directly via fetch (avoids npm CLI's aggressive
- * 404 caching for new packages).
- */
 async function npmRegistryView(
   packageName: string,
 ): Promise<Record<string, unknown> | null> {
@@ -99,10 +130,6 @@ async function npmRegistryView(
   return (await res.json()) as Record<string, unknown>;
 }
 
-/**
- * Get the version currently tagged as `dev` for a package.
- * Returns null if the package or tag doesn't exist yet.
- */
 async function getDevTaggedVersion(
   packageName: string,
 ): Promise<string | null> {
@@ -112,26 +139,45 @@ async function getDevTaggedVersion(
   return distTags?.dev ?? null;
 }
 
-/**
- * Poll the npm registry until a specific version is visible.
- * Uses fetch against the registry API to avoid npm CLI caching.
- */
+async function getAllVersions(
+  packageName: string,
+): Promise<string[]> {
+  const data = await npmRegistryView(packageName);
+  if (!data) return [];
+  const versions = data.versions as Record<string, unknown> | undefined;
+  return versions ? Object.keys(versions) : [];
+}
+
 async function waitForVersionOnNpm(
   packageName: string,
   version: string,
   timeoutMs: number,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
+  let attempt = 0;
   while (Date.now() < deadline) {
+    attempt++;
     const data = await npmRegistryView(packageName);
     if (data) {
       const versions = data.versions as Record<string, unknown> | undefined;
-      if (versions && version in versions) return;
+      const distTags = data['dist-tags'] as Record<string, string> | undefined;
+      if (versions && version in versions) {
+        log(`[npm] ${packageName}@${version} found on attempt ${attempt}`);
+        return;
+      }
+      if (attempt % 6 === 0) {
+        const knownVersions = versions ? Object.keys(versions) : [];
+        log(`[npm] attempt ${attempt}: ${packageName} has ${knownVersions.length} versions (latest: ${knownVersions.at(-1) ?? 'none'}, dev tag: ${distTags?.dev ?? 'none'}), waiting for ${version}`);
+      }
+    } else {
+      if (attempt % 6 === 0) {
+        log(`[npm] attempt ${attempt}: ${packageName} returns 404`);
+      }
     }
     await new Promise((r) => setTimeout(r, 5_000));
   }
   throw new Error(
-    `${packageName}@${version} not visible on npm after ${timeoutMs / 1000}s`,
+    `${packageName}@${version} not visible on npm after ${timeoutMs / 1000}s (${attempt} attempts)`,
   );
 }
 
@@ -169,7 +215,13 @@ function startCli(workdir: string): Promise<CliInstance> {
 
     function onData(chunk: Buffer) {
       for (const line of chunk.toString().split('\n')) {
-        if (line.trim()) output.push(line.trim());
+        if (line.trim()) {
+          output.push(line.trim());
+          // Stream CLI output to the log in real time
+          if (WRITE_TO_LOG && logFd !== null) {
+            fsSync.writeSync(logFd, `  cli> ${line.trim()}\n`);
+          }
+        }
       }
       const match = chunk.toString().match(/ready at (http:\/\/[^\s]+\/graphql)/);
       if (match && !settled) {
@@ -231,45 +283,56 @@ describe('Switchboard e2e — full project lifecycle', () => {
   let url: string;
   let driveId: string;
   let docId: string;
-  /** The version we expect the pipeline to compute (captured before publish). */
   let expectedVersion: string;
-  /** The actual version visible on npm after publish. */
   let publishedVersion: string;
 
   beforeAll(async () => {
-    console.log('[setup] Creating temp workdir and starting ph-clint-cli...');
+    log('[setup] Creating temp workdir and starting ph-clint-cli...');
+    if (WRITE_TO_LOG) {
+      log(`[setup] Log file: ${LOG_FILE}`);
+    }
     workdir = await fs.mkdtemp(path.join(os.tmpdir(), 'ph-clint-e2e-'));
+    log(`[setup] Workdir: ${workdir}`);
+
     cli = await startCli(workdir);
     url = cli.switchboardUrl;
-    console.log(`[setup] Switchboard ready at ${url}`);
-    console.log(`[setup] Workdir: ${workdir}`);
+    log(`[setup] Switchboard ready at ${url}`);
 
-    // Determine what the next dev version will be. The pipeline queries npm
-    // for the latest `{BASE_VERSION}-dev.N` and increments N.
+    // Query npm for current state
     const currentDev = await getDevTaggedVersion(CLI_PKG_NAME);
+    const allVersions = await getAllVersions(CLI_PKG_NAME);
+    log(`[setup] ${CLI_PKG_NAME} npm state: dev=${currentDev ?? '<none>'}, all versions=[${allVersions.join(', ')}]`);
+
     if (currentDev && currentDev.startsWith(`${BASE_VERSION}-dev.`)) {
       const n = parseInt(currentDev.split('-dev.')[1], 10);
       expectedVersion = `${BASE_VERSION}-dev.${n + 1}`;
     } else {
       expectedVersion = `${BASE_VERSION}-dev.0`;
     }
-    console.log(`[setup] npm dev tag for ${CLI_PKG_NAME}: ${currentDev ?? '<none>'}`);
-    console.log(`[setup] Expected next version: ${expectedVersion}`);
+    log(`[setup] Expected next version: ${expectedVersion}`);
   }, STARTUP_TIMEOUT);
 
   afterAll(async () => {
-    console.log('[teardown] Stopping CLI and cleaning up...');
-    if (cli) await killCli(cli);
+    log('[teardown] Stopping CLI...');
+    if (cli) {
+      logCliOutput(cli, 'final CLI output');
+      await killCli(cli);
+    }
     if (workdir) {
+      log(`[teardown] Cleaning up workdir: ${workdir}`);
       await fs.rm(workdir, { recursive: true, force: true }).catch(() => {});
     }
-    console.log('[teardown] Done.');
+    if (logFd !== null) {
+      log('[teardown] Done.');
+      fsSync.closeSync(logFd);
+      logFd = null;
+    }
   }, 30_000);
 
   // ── Step 1: discover the drive ──
 
   it('finds the Clint drive', async () => {
-    console.log('[step 1] Querying Switchboard for document drives...');
+    log('[step 1] Querying Switchboard for document drives...');
     const data = await gql<{
       findDocuments: { items: Array<{ id: string; name: string }> };
     }>(url, `{
@@ -278,16 +341,16 @@ describe('Switchboard e2e — full project lifecycle', () => {
       }
     }`);
     const drives = data.findDocuments.items;
-    console.log(`[step 1] Found ${drives.length} drive(s): ${drives.map((d) => `${d.name} (${d.id})`).join(', ')}`);
+    log(`[step 1] Found ${drives.length} drive(s): ${drives.map((d) => `${d.name} (${d.id})`).join(', ')}`);
     expect(drives.length).toBeGreaterThanOrEqual(1);
     driveId = (drives.find((d) => d.name === 'Clint') ?? drives[0]).id;
-    console.log(`[step 1] Using drive: ${driveId}`);
+    log(`[step 1] Using drive: ${driveId}`);
   });
 
   // ── Step 2: create the project document ──
 
   it('creates a ph-clint-project document', async () => {
-    console.log(`[step 2] Creating powerhouse/ph-clint-project document in drive ${driveId}...`);
+    log(`[step 2] Creating powerhouse/ph-clint-project document in drive ${driveId}...`);
     const data = await gql<{
       createEmptyDocument: { id: string; documentType: string };
     }>(
@@ -301,7 +364,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
     );
     docId = data.createEmptyDocument.id;
     expect(data.createEmptyDocument.documentType).toBe('powerhouse/ph-clint-project');
-    console.log(`[step 2] Created document: ${docId} (${data.createEmptyDocument.documentType})`);
+    log(`[step 2] Created document: ${docId} (type=${data.createEmptyDocument.documentType})`);
   });
 
   // ── Step 3: populate identity + features ──
@@ -309,8 +372,8 @@ describe('Switchboard e2e — full project lifecycle', () => {
   it(
     'populates the project spec',
     async () => {
-      console.log(`[step 3] Dispatching identity + feature actions to ${docId}...`);
-      await gql(url, MUTATE, {
+      log(`[step 3] Dispatching identity + feature actions to ${docId}...`);
+      const mutResult = await gql(url, MUTATE, {
         id: docId,
         actions: [
           action('SET_PACKAGE_NAME', { name: PROJECT_NAME }),
@@ -319,12 +382,12 @@ describe('Switchboard e2e — full project lifecycle', () => {
           action('SET_POWERHOUSE_LEVEL', { level: 'Reactor' }),
         ],
       });
+      log(`[step 3] Mutation result: ${JSON.stringify(mutResult)}`);
 
       const state = await getDocState(url, docId);
       expect(state.name).toBe(PROJECT_NAME);
       expect(state.scope).toBe(PROJECT_SCOPE);
-      console.log(`[step 3] Spec populated: @${state.scope}/${state.name}`);
-      console.log(`[step 3] features:`, JSON.stringify(state.features));
+      log(`[step 3] Spec populated: @${state.scope}/${state.name}, features=${JSON.stringify(state.features)}`);
     },
     ACTION_TIMEOUT,
   );
@@ -337,10 +400,10 @@ describe('Switchboard e2e — full project lifecycle', () => {
       const cliDir = path.join(workdir, `${PROJECT_NAME}-cli`);
       const appDir = path.join(workdir, `${PROJECT_NAME}-app`);
 
-      console.log(`[step 4] Waiting for codegen + ph init (cli: ${cliDir}, app: ${appDir})...`);
-      // Wait for the CLI package.json (codegen) AND the app package.json
-      // with the correct scoped name (ph init + scope patch run after codegen
-      // in the same work item — we must wait for the patch, not just existence).
+      log(`[step 4] Waiting for codegen + ph init...`);
+      log(`[step 4]   cli dir: ${cliDir}`);
+      log(`[step 4]   app dir: ${appDir}`);
+
       let pollCount = 0;
       await poll(
         async () => {
@@ -349,20 +412,20 @@ describe('Switchboard e2e — full project lifecycle', () => {
             await fs.access(path.join(cliDir, 'package.json'));
             const raw = await fs.readFile(path.join(appDir, 'package.json'), 'utf8');
             const pkg = JSON.parse(raw) as { name: string };
-            if (pollCount % 10 === 0) {
-              console.log(`[step 4] Poll #${pollCount}: cli/package.json exists, app name=${pkg.name} (want ${APP_PKG_NAME})`);
+            if (pollCount % 5 === 0) {
+              log(`[step 4] Poll #${pollCount}: cli/package.json exists, app name="${pkg.name}" (want "${APP_PKG_NAME}")`);
             }
             return pkg.name === APP_PKG_NAME;
           } catch {
-            if (pollCount % 10 === 0) {
+            if (pollCount % 5 === 0) {
               const cliExists = await fs.access(path.join(cliDir, 'package.json')).then(() => true, () => false);
               const appExists = await fs.access(path.join(appDir, 'package.json')).then(() => true, () => false);
-              console.log(`[step 4] Poll #${pollCount}: cli/package.json=${cliExists}, app/package.json=${appExists}`);
+              log(`[step 4] Poll #${pollCount}: cli/package.json=${cliExists}, app/package.json=${appExists}`);
             }
             return false;
           }
         },
-        PUBLISH_TIMEOUT, // ph init + pnpm install can take a while
+        PUBLISH_TIMEOUT,
         'waiting for generated cli + scoped app package.json',
       );
 
@@ -372,18 +435,18 @@ describe('Switchboard e2e — full project lifecycle', () => {
       ) as { name: string };
       expect(cliPkg.name).toBe(CLI_PKG_NAME);
 
-      // Verify app was scaffolded by ph init (has powerhouse.config.json).
+      // Verify app was scaffolded by ph init
       await expect(
         fs.access(path.join(appDir, 'powerhouse.config.json')),
       ).resolves.toBeUndefined();
 
-      // Verify app package name was patched to include scope.
+      // Verify app package name was patched
       const appPkg = JSON.parse(
         await fs.readFile(path.join(appDir, 'package.json'), 'utf8'),
       ) as { name: string };
       expect(appPkg.name).toBe(APP_PKG_NAME);
 
-      // Verify publish.config.ts was generated at the root.
+      // Verify publish.config.ts
       const publishConfig = await fs.readFile(
         path.join(workdir, 'publish.config.ts'),
         'utf8',
@@ -392,7 +455,12 @@ describe('Switchboard e2e — full project lifecycle', () => {
       expect(publishConfig).toContain(`'${PROJECT_NAME}-app'`);
       expect(publishConfig).toContain(`'${PROJECT_NAME}-cli'`);
 
-      console.log(`[step 4] Project generated: cli=${CLI_PKG_NAME}, app=${APP_PKG_NAME}`);
+      log(`[step 4] Project generated: cli=${cliPkg.name}, app=${appPkg.name}`);
+      log(`[step 4] publish.config.ts exists and references all packages`);
+
+      // Log the generated project structure
+      const workdirContents = await fs.readdir(workdir);
+      log(`[step 4] Workdir contents: ${workdirContents.join(', ')}`);
     },
     PUBLISH_TIMEOUT,
   );
@@ -402,7 +470,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
   it(
     'dispatches BUMP_VERSION + PUBLISH_DEV',
     async () => {
-      console.log(`[step 5] Dispatching BUMP_VERSION (${BASE_VERSION}) + PUBLISH_DEV...`);
+      log(`[step 5] Dispatching BUMP_VERSION (${BASE_VERSION}) + PUBLISH_DEV...`);
       const publishRecordId = 'e2e-publish-1';
 
       await gql(url, MUTATE, {
@@ -416,12 +484,18 @@ describe('Switchboard e2e — full project lifecycle', () => {
         ],
       });
 
-      // Verify the publish record was created with Pending status.
       const state = (await getDocState(url, docId)) as {
         version: string;
         publishHistory: Array<{ id: string; tag: string; status: string; version: string }>;
       };
       expect(state.version).toBe(BASE_VERSION);
+
+      log(`[step 5] Document version: ${state.version}`);
+      log(`[step 5] Publish history (${state.publishHistory.length} records):`);
+      for (const r of state.publishHistory) {
+        log(`[step 5]   id=${r.id} tag=${r.tag} status=${r.status} version=${r.version}`);
+      }
+
       expect(state.publishHistory).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -432,7 +506,6 @@ describe('Switchboard e2e — full project lifecycle', () => {
           }),
         ]),
       );
-      console.log(`[step 5] Publish record created: id=${state.publishHistory[0]?.id}, tag=${state.publishHistory[0]?.tag}, status=${state.publishHistory[0]?.status}`);
     },
     ACTION_TIMEOUT,
   );
@@ -442,24 +515,48 @@ describe('Switchboard e2e — full project lifecycle', () => {
   it(
     'publish trigger installs, builds, and publishes the package',
     async () => {
-      console.log('[step 6] Waiting for publish trigger to complete (install + build + publish)...');
-      // The publish trigger runs on the routine loop. It will:
-      //   1. Mark the record InProgress
-      //   2. Run pnpm install in the generated project
-      //   3. Invoke the publish pipeline (build + publish)
-      //   4. Mark Succeeded or Failed
+      log('[step 6] Waiting for publish trigger to complete...');
       let lastStatus = '';
+      let pollCount = 0;
+      const outputLenAtStart = cli.output.length;
+
       await poll(
         async () => {
+          pollCount++;
           const state = (await getDocState(url, docId)) as {
-            publishHistory: Array<{ id: string; status: string }>;
+            publishHistory: Array<{ id: string; status: string; version: string }>;
           };
           const record = state.publishHistory.find(
             (r) => r.id === 'e2e-publish-1',
           );
           if (record && record.status !== lastStatus) {
             lastStatus = record.status;
-            console.log(`[step 6] Publish status changed: ${record.status}`);
+            log(`[step 6] Publish status changed: ${record.status} (poll #${pollCount})`);
+          }
+          // Every 15 polls (~30s), log new CLI output lines
+          if (pollCount % 15 === 0) {
+            const newLines = cli.output.slice(outputLenAtStart);
+            const publishLines = newLines.filter(
+              (l) =>
+                l.includes('[publish]') ||
+                l.includes('publish') ||
+                l.includes('Publishing') ||
+                l.includes('Building') ||
+                l.includes('Version:') ||
+                l.includes('error') ||
+                l.includes('failed') ||
+                l.includes('✓') ||
+                l.includes('✗') ||
+                l.includes('⊘'),
+            );
+            if (publishLines.length > 0) {
+              log(`[step 6] Poll #${pollCount}: ${publishLines.length} publish-related CLI lines since step start:`);
+              for (const line of publishLines.slice(-20)) {
+                log(`[step 6]   cli> ${line}`);
+              }
+            } else {
+              log(`[step 6] Poll #${pollCount}: ${newLines.length} new CLI lines, none publish-related`);
+            }
           }
           return !!record && record.status !== 'Pending' && record.status !== 'InProgress';
         },
@@ -473,7 +570,25 @@ describe('Switchboard e2e — full project lifecycle', () => {
       const record = state.publishHistory.find(
         (r) => r.id === 'e2e-publish-1',
       );
-      console.log(`[step 6] Publish complete: status=${record?.status}, version=${record?.version}`);
+      log(`[step 6] Final publish record: status=${record?.status}, version=${record?.version}`);
+
+      // Log ALL CLI output lines that appeared during the publish
+      const publishOutput = cli.output.slice(outputLenAtStart);
+      log(`[step 6] CLI output during publish (${publishOutput.length} lines):`);
+      for (const line of publishOutput) {
+        log(`[step 6]   cli> ${line}`);
+      }
+
+      // After checking the record, also query npm directly to see what's actually there
+      const cliVersions = await getAllVersions(CLI_PKG_NAME);
+      const appVersions = await getAllVersions(APP_PKG_NAME);
+      const cliDevTag = await getDevTaggedVersion(CLI_PKG_NAME);
+      const appDevTag = await getDevTaggedVersion(APP_PKG_NAME);
+      log(`[step 6] npm state after publish:`);
+      log(`[step 6]   ${CLI_PKG_NAME}: versions=[${cliVersions.join(', ')}], dev=${cliDevTag ?? '<none>'}`);
+      log(`[step 6]   ${APP_PKG_NAME}: versions=[${appVersions.join(', ')}], dev=${appDevTag ?? '<none>'}`);
+      log(`[step 6]   Expected version: ${expectedVersion}`);
+
       expect(record?.status).toBe('Succeeded');
     },
     PUBLISH_TIMEOUT,
@@ -484,13 +599,24 @@ describe('Switchboard e2e — full project lifecycle', () => {
   it(
     'published CLI package is available on npm',
     async () => {
-      console.log(`[step 7] Waiting for ${CLI_PKG_NAME}@${expectedVersion} on npm registry...`);
-      await waitForVersionOnNpm(CLI_PKG_NAME, expectedVersion, NPM_PROPAGATION_TIMEOUT);
-      console.log(`[step 7] ${CLI_PKG_NAME}@${expectedVersion} found on npm.`);
+      log(`[step 7] Checking npm for ${CLI_PKG_NAME}@${expectedVersion}...`);
 
-      console.log(`[step 7] Waiting for ${APP_PKG_NAME}@${expectedVersion} on npm registry...`);
+      // First, check current state before waiting
+      const cliVersionsBefore = await getAllVersions(CLI_PKG_NAME);
+      const appVersionsBefore = await getAllVersions(APP_PKG_NAME);
+      log(`[step 7] Current npm versions:`);
+      log(`[step 7]   CLI: [${cliVersionsBefore.join(', ')}]`);
+      log(`[step 7]   App: [${appVersionsBefore.join(', ')}]`);
+
+      if (!cliVersionsBefore.includes(expectedVersion)) {
+        log(`[step 7] ${expectedVersion} not yet visible, waiting...`);
+      }
+
+      await waitForVersionOnNpm(CLI_PKG_NAME, expectedVersion, NPM_PROPAGATION_TIMEOUT);
+      log(`[step 7] ${CLI_PKG_NAME}@${expectedVersion} confirmed on npm`);
+
       await waitForVersionOnNpm(APP_PKG_NAME, expectedVersion, NPM_PROPAGATION_TIMEOUT);
-      console.log(`[step 7] ${APP_PKG_NAME}@${expectedVersion} found on npm.`);
+      log(`[step 7] ${APP_PKG_NAME}@${expectedVersion} confirmed on npm`);
 
       publishedVersion = expectedVersion;
     },
@@ -502,26 +628,24 @@ describe('Switchboard e2e — full project lifecycle', () => {
   it(
     'installs and runs the published CLI',
     async () => {
-      console.log(`[step 8] Installing ${CLI_PKG_NAME}@${publishedVersion} in a fresh directory...`);
+      log(`[step 8] Installing ${CLI_PKG_NAME}@${publishedVersion}...`);
       const installDir = await fs.mkdtemp(
         path.join(os.tmpdir(), 'ph-clint-e2e-install-'),
       );
+      log(`[step 8] Install dir: ${installDir}`);
       try {
-        // Initialize a minimal package.json so npm install works.
         await fs.writeFile(
           path.join(installDir, 'package.json'),
           JSON.stringify({ name: 'e2e-install-test', private: true }),
         );
 
-        // Install the published CLI package.
-        console.log(`[step 8] Running: npm install ${CLI_PKG_NAME}@${publishedVersion} (in ${installDir})`);
-        execSync(
+        log(`[step 8] Running: npm install ${CLI_PKG_NAME}@${publishedVersion}`);
+        const installOutput = execSync(
           `npm install ${CLI_PKG_NAME}@${publishedVersion}`,
           { cwd: installDir, encoding: 'utf8', timeout: 120_000 },
         );
-        console.log('[step 8] npm install succeeded.');
+        log(`[step 8] npm install output: ${installOutput.trim().split('\n').slice(-5).join(' | ')}`);
 
-        // Verify the installed version matches what we published.
         const installedPkg = JSON.parse(
           await fs.readFile(
             path.join(installDir, 'node_modules', CLI_PKG_NAME, 'package.json'),
@@ -529,18 +653,16 @@ describe('Switchboard e2e — full project lifecycle', () => {
           ),
         ) as { version: string };
         expect(installedPkg.version).toBe(publishedVersion);
-        console.log(`[step 8] Installed version: ${installedPkg.version}`);
+        log(`[step 8] Installed version: ${installedPkg.version}`);
 
-        // Run the CLI binary with --version.
         const binPath = path.join(installDir, 'node_modules', '.bin', PROJECT_NAME);
-        console.log(`[step 8] Running: ${binPath} --version`);
+        log(`[step 8] Running: ${binPath} --version`);
         const versionOutput = execSync(
           `${binPath} --version`,
           { encoding: 'utf8', timeout: 10_000 },
         ).trim();
-        console.log(`[step 8] CLI output: ${versionOutput}`);
+        log(`[step 8] CLI --version output: "${versionOutput}"`);
 
-        // The --version output should contain the published version.
         expect(versionOutput).toContain(publishedVersion);
       } finally {
         await fs.rm(installDir, { recursive: true, force: true }).catch(() => {});

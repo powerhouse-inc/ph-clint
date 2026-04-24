@@ -20,12 +20,30 @@ export async function checkNpmAuth(registry: string): Promise<void> {
 }
 
 /**
+ * Fetch package metadata directly from the registry HTTP API.
+ * Bypasses `npm view` which aggressively caches 404 responses for new
+ * packages, causing verification failures during first-time publishes.
+ */
+async function fetchPackageMetadata(
+  packageName: string,
+  registry: string,
+): Promise<Record<string, unknown> | null> {
+  const base = registry.replace(/\/$/, '');
+  const encoded = packageName.startsWith('@')
+    ? packageName.replace('/', '%2f')
+    : encodeURIComponent(packageName);
+  const url = `${base}/${encoded}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json' },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  return (await res.json()) as Record<string, unknown>;
+}
+
+/**
  * Verify that a specific package version exists on the registry.
- *
- * IMPORTANT: `npm view pkg@version version` returns exit code 0 even when
- * the specific version doesn't exist — it only errors if the package itself
- * has never been published. We must check the stdout content, not just the
- * exit code.
+ * Uses direct HTTP fetch to avoid npm CLI's 404 caching.
  */
 export async function verifyVersionOnRegistry(
   packageName: string,
@@ -33,16 +51,10 @@ export async function verifyVersionOnRegistry(
   registry: string,
 ): Promise<boolean> {
   try {
-    const { stdout } = await execFileAsync('npm', [
-      'view',
-      `${packageName}@${version}`,
-      'version',
-      '--registry',
-      registry,
-    ]);
-    // stdout is empty (or whitespace) when the package exists but that
-    // specific version does not. Only trust it if the output matches.
-    return stdout.trim() === version;
+    const data = await fetchPackageMetadata(packageName, registry);
+    if (!data) return false;
+    const versions = data.versions as Record<string, unknown> | undefined;
+    return !!versions && version in versions;
   } catch {
     return false;
   }
@@ -153,9 +165,6 @@ export async function verifyWithRetry(
 /**
  * Publish all packages in order.
  * Returns which packages succeeded and which failed.
- *
- * When `verify` is true (default), each package is confirmed on the
- * registry after publish using exponential backoff.
  */
 export async function publishAll(
   packages: ResolvedPackage[],
@@ -164,7 +173,6 @@ export async function publishAll(
   version: string,
   verbose: boolean,
   log: (msg: string) => void,
-  verify = true,
 ): Promise<{ published: string[]; failed: string[] }> {
   const published: string[] = [];
   const failed: string[] = [];
@@ -185,16 +193,6 @@ export async function publishAll(
     try {
       log(`  Publishing ${pkg.name}...`);
       await publishPackage(pkg, registry, tag, verbose);
-
-      if (verify) {
-        const confirmed = await verifyWithRetry(pkg.name, version, registry, log);
-        if (!confirmed) {
-          // The publish command succeeded, so the package is on the registry
-          // even if verification can't see it yet. Treat as published.
-          log(`  ⚠ ${pkg.name}: published but not yet visible on registry (propagation delay)`);
-        }
-      }
-
       published.push(pkg.name);
       log(`  ✓ ${pkg.name}`);
     } catch (err) {
@@ -218,4 +216,32 @@ export async function publishAll(
   }
 
   return { published, failed };
+}
+
+/**
+ * Verify all published packages are visible on the registry.
+ * Run after all packages are published — this is a non-blocking
+ * confirmation step that doesn't affect the publish result.
+ */
+export async function verifyAllPublished(
+  packageNames: string[],
+  version: string,
+  registry: string,
+  log: (msg: string) => void,
+): Promise<{ verified: string[]; unverified: string[] }> {
+  const verified: string[] = [];
+  const unverified: string[] = [];
+
+  for (const name of packageNames) {
+    const ok = await verifyWithRetry(name, version, registry, log);
+    if (ok) {
+      verified.push(name);
+      log(`  ✓ ${name}@${version}`);
+    } else {
+      unverified.push(name);
+      log(`  ⚠ ${name}@${version} not yet visible (propagation delay)`);
+    }
+  }
+
+  return { verified, unverified };
 }

@@ -78,6 +78,9 @@ export function computeVersion(
  * Query the npm registry for the latest prerelease number for a given
  * package, base version, and tag.
  *
+ * Uses direct HTTP fetch against the registry API to avoid npm CLI's
+ * aggressive 404 caching for new/unpublished packages.
+ *
  * Returns the highest N from `{baseVersion}-{tag}.N`, or null if none found.
  */
 export async function queryLatestPrerelease(
@@ -86,25 +89,24 @@ export async function queryLatestPrerelease(
   tag: PublishTag,
   registry: string,
 ): Promise<number | null> {
-  const { execFile } = await import('node:child_process');
-  const { promisify } = await import('node:util');
-  const execFileAsync = promisify(execFile);
-
   try {
-    const { stdout } = await execFileAsync('npm', [
-      'view',
-      packageName,
-      'versions',
-      '--json',
-      '--registry',
-      registry,
-    ]);
+    const base = registry.replace(/\/$/, '');
+    const encoded = packageName.startsWith('@')
+      ? packageName.replace('/', '%2f')
+      : encodeURIComponent(packageName);
+    const url = `${base}/${encoded}`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
 
-    const versions: string[] = JSON.parse(stdout);
+    const data = (await res.json()) as { versions?: Record<string, unknown> };
+    if (!data.versions) return null;
+
     const prefix = `${baseVersion}-${tag}.`;
     let max: number | null = null;
 
-    for (const v of versions) {
+    for (const v of Object.keys(data.versions)) {
       if (v.startsWith(prefix)) {
         const n = Number(v.slice(prefix.length));
         if (!Number.isNaN(n) && (max === null || n > max)) {

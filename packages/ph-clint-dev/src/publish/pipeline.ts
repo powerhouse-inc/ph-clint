@@ -33,6 +33,7 @@ import { buildAll } from './build.js';
 import {
   checkNpmAuth,
   verifyVersionOnRegistry,
+  verifyAllPublished,
   packDryRun,
   publishAll,
 } from './npm.js';
@@ -259,7 +260,6 @@ export async function publishPackages(
       computedVer,
       options?.verbose ?? false,
       log,
-      options?.verify ?? true,
     );
 
     if (failed.length > 0) {
@@ -286,6 +286,20 @@ export async function publishPackages(
 
     log('');
     printSummary(packages, computedVer, registry, tag, false, log);
+
+    if (options?.verify) {
+      log('\nVerifying packages on registry...');
+      const { unverified } = await verifyAllPublished(
+        published,
+        computedVer,
+        registry,
+        log,
+      );
+      if (unverified.length > 0) {
+        log(`\n${unverified.length} package(s) not yet visible — this is normal for new packages.`);
+        log('They will appear on the registry within a few minutes.');
+      }
+    }
 
     return {
       success: true,
@@ -321,7 +335,7 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
   return publishPackages(plan, {
     dryRun: options.dryRun,
     verbose: options.verbose,
-    verify: options.verify ?? true,
+    verify: options.verify,
     log,
   });
 }
