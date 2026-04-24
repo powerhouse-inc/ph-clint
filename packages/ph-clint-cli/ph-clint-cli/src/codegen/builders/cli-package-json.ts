@@ -101,7 +101,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
   };
   if (spec.description) pkg.description = spec.description;
   pkg.bin = { [bin]: './dist/main.js' };
-  pkg.files = ['dist', 'prompts'];
+  pkg.files = ['dist'];
   pkg.scripts = scripts;
   pkg.dependencies = dependencies;
   pkg.devDependencies = {

@@ -10,8 +10,7 @@
     "ph-clint": "./dist/main.js"
   },
   "files": [
-    "dist",
-    "prompts"
+    "dist"
   ],
   "scripts": {
     "build:skills": "tsx scripts/build-skills.ts",
