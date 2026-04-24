@@ -260,10 +260,9 @@ describe('Switchboard e2e — full project lifecycle', () => {
   afterAll(async () => {
     console.log('[teardown] Stopping CLI and cleaning up...');
     if (cli) await killCli(cli);
-    // if (workdir) {
-    //   await fs.rm(workdir, { recursive: true, force: true }).catch(() => {});
-    // }
-    console.log(`[teardown] Workdir preserved at: ${workdir}`);
+    if (workdir) {
+      await fs.rm(workdir, { recursive: true, force: true }).catch(() => {});
+    }
     console.log('[teardown] Done.');
   }, 30_000);
 
@@ -330,47 +329,9 @@ describe('Switchboard e2e — full project lifecycle', () => {
     ACTION_TIMEOUT,
   );
 
-  // ── Step 3b: diagnose trigger state ──
-
-  it(
-    'diagnoses trigger and routine state',
-    async () => {
-      // Wait for a few routine loop ticks to process the change events.
-      console.log('[step 3b] Waiting 10s for routine loop ticks...');
-      await new Promise((r) => setTimeout(r, 10_000));
-
-      // Dump CLI output lines related to triggers/routine/spec-change.
-      const triggerLines = cli.output.filter(
-        (l) =>
-          l.includes('spec-change') ||
-          l.includes('trigger') ||
-          l.includes('routine') ||
-          l.includes('pending') ||
-          l.includes('regen') ||
-          l.includes('document:changed') ||
-          l.includes('poll') ||
-          l.includes('skipping') ||
-          l.includes('no target'),
-      );
-      console.log(`[step 3b] CLI output (${triggerLines.length} trigger-related lines):`);
-      for (const line of triggerLines) {
-        console.log(`  ${line}`);
-      }
-
-      // Also dump all output if there aren't many trigger lines.
-      if (triggerLines.length < 3) {
-        console.log(`[step 3b] Full CLI output (${cli.output.length} lines):`);
-        for (const line of cli.output.slice(-50)) {
-          console.log(`  ${line}`);
-        }
-      }
-    },
-    30_000,
-  );
-
   // ── Step 4: wait for codegen + app scaffolding ──
 
-  it.skip(
+  it(
     'spec-change trigger generates the project and initializes the app',
     async () => {
       const cliDir = path.join(workdir, `${PROJECT_NAME}-cli`);
@@ -438,7 +399,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
 
   // ── Step 5: bump version and trigger a dev publish ──
 
-  it.skip(
+  it(
     'dispatches BUMP_VERSION + PUBLISH_DEV',
     async () => {
       console.log(`[step 5] Dispatching BUMP_VERSION (${BASE_VERSION}) + PUBLISH_DEV...`);
@@ -478,7 +439,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
 
   // ── Step 6: verify the publish trigger completes ──
 
-  it.skip(
+  it(
     'publish trigger installs, builds, and publishes the package',
     async () => {
       console.log('[step 6] Waiting for publish trigger to complete (install + build + publish)...');
@@ -520,7 +481,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
 
   // ── Step 7: verify the package is on npm ──
 
-  it.skip(
+  it(
     'published CLI package is available on npm',
     async () => {
       console.log(`[step 7] Waiting for ${CLI_PKG_NAME}@${expectedVersion} on npm registry...`);
@@ -538,7 +499,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
 
   // ── Step 8: install and run the published CLI ──
 
-  it.skip(
+  it(
     'installs and runs the published CLI',
     async () => {
       console.log(`[step 8] Installing ${CLI_PKG_NAME}@${publishedVersion} in a fresh directory...`);
