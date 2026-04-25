@@ -10,8 +10,10 @@ import type { PHBaseState } from 'document-model';
 import {
   createDocumentChangeTrigger,
   createTypes,
+  isDocType,
 } from '../../src/index.js';
 import type { RegistryEntry } from '../../src/index.js';
+import type { PHDocument } from 'document-model';
 
 interface DocState extends PHBaseState {
   global: { name: string };
@@ -29,11 +31,13 @@ type TestRegistry = {
 
 // ── Direct form (no binding) ─────────────────────────────────────
 
-// onChange receives the correctly narrowed doc.
+// onChange receives an array of correctly narrowed docs.
 createDocumentChangeTrigger<TestRegistry, 'test/doc'>({
   id: 't1',
   documentType: 'test/doc',
-  async onChange(doc) {
+  async onChange(docs) {
+    expectTypeOf(docs).toBeArray();
+    const [doc] = docs;
     expectTypeOf(doc.state.global.name).toBeString();
     // @ts-expect-error — 'test/doc' global has no `count` field
     doc.state.global.count;
@@ -92,6 +96,16 @@ createDocumentChangeTrigger<TestRegistry, 'test/other'>({
   },
 });
 
+// Array of document types accepted.
+createDocumentChangeTrigger<TestRegistry, 'test/doc' | 'test/other'>({
+  id: 't-multi',
+  documentType: ['test/doc', 'test/other'],
+  async onChange(docs) {
+    expectTypeOf(docs).toBeArray();
+    return null;
+  },
+});
+
 // ── Binding form (createTypes) ───────────────────────────────────
 
 const configSchema = z.object({
@@ -115,7 +129,8 @@ boundCreate<'test/doc'>({
     }>();
     return ctx.context.config.projectDocumentId;
   },
-  async onChange(doc, ctx) {
+  async onChange(docs, ctx) {
+    const [doc] = docs;
     expectTypeOf(doc.state.global.name).toBeString();
     expectTypeOf(ctx.context.config.projectDocumentId).toEqualTypeOf<
       string | undefined
@@ -135,3 +150,11 @@ boundCreate<
     return null;
   },
 });
+
+// ── isDocType ────────────────────────────────────────────────────
+
+// isDocType narrows a union-typed doc to a specific registry entry.
+declare const unionDoc: TestRegistry['test/doc']['document'] | TestRegistry['test/other']['document'];
+if (isDocType<TestRegistry, 'test/doc'>(unionDoc, 'test/doc')) {
+  expectTypeOf(unionDoc.state.global).toHaveProperty('name');
+}

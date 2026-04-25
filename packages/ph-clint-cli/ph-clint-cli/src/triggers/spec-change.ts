@@ -159,7 +159,8 @@ export const specChangeTrigger = createDocumentChangeTrigger({
     return discovered;
   },
 
-  async onChange(doc, ctx): Promise<WorkItem | null> {
+  async onChange(docs, ctx): Promise<WorkItem | null> {
+    const [doc] = docs;
     const log = ctx.context.log;
 
     const spec = specFromDocumentState(doc.state.global);

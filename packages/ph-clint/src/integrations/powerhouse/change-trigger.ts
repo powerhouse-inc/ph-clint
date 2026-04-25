@@ -1,7 +1,11 @@
 /**
  * `createDocumentChangeTrigger` — typed helper that collapses the common
- * "subscribe to document changes, coalesce, load doc, narrow, call onChange"
+ * "subscribe to document changes, coalesce, load docs, narrow, call onChange"
  * pattern into a single definition.
+ *
+ * Supports watching one or multiple document types. When `documentId` is
+ * provided, loads a single document (wrapped in an array). When omitted,
+ * loads all matching documents via `client.find()`.
  *
  * The helper owns subscription setup, per-event filtering by documentType
  * (and optional literal documentId), the pending counter, initial
@@ -28,15 +32,13 @@ export interface DocumentChangeTriggerOptions<
   /** Unique trigger id for logging/routing. */
   id: string;
 
-  /** The document type to watch. Must be a key in the registry. */
-  documentType: T;
+  /** The document type(s) to watch. Must be key(s) in the registry. */
+  documentType: T | T[];
 
   /**
    * The specific document id (or a function that resolves one from context).
-   * When omitted, the helper watches ALL documents of `documentType` on the
-   * default drive — all change events bump pending, and `onChange` is called
-   * once per poll cycle with the resolved doc (only makes sense when the
-   * consumer knows how to find the right doc in `onChange`).
+   * When omitted, the helper loads ALL documents of the watched type(s)
+   * via `client.find()` and passes the full array to `onChange`.
    *
    * When a function is provided, it's resolved lazily on each poll. Returning
    * `undefined` skips the tick.
@@ -52,9 +54,9 @@ export interface DocumentChangeTriggerOptions<
   initialReconcile?: boolean;
 
   /**
-   * Optional predicate: called after loading the document, before onChange.
-   * Return false to skip this tick (no work item produced). Useful for
-   * de-duping when the impl needs access to the full loaded document.
+   * Optional predicate: called per-document after loading, before onChange.
+   * Return false to exclude a document from the batch. If all documents
+   * are filtered out, onChange is not called.
    */
   filter?: (
     doc: R[T]['document'],
@@ -62,12 +64,12 @@ export interface DocumentChangeTriggerOptions<
   ) => boolean | Promise<boolean>;
 
   /**
-   * User's change handler. Receives the loaded, type-narrowed document and
-   * the full trigger context. Returns a work item for the routine loop to
-   * execute (or null to skip).
+   * User's change handler. Receives an array of loaded, type-narrowed
+   * documents and the full trigger context. Returns a work item for the
+   * routine loop to execute (or null to skip).
    */
   onChange: (
-    doc: R[T]['document'],
+    docs: Array<R[T]['document']>,
     ctx: TriggerContext<TState, TConfig, R>,
   ) => Promise<WorkItem | null>;
 
@@ -81,25 +83,21 @@ export interface DocumentChangeTriggerOptions<
 
 /**
  * Build a Trigger that listens for document change events on the event bus,
- * coalesces them, loads the target document, narrows to the registered type,
- * and hands it to the user's onChange handler.
+ * coalesces them, loads matching documents, narrows to the registered type,
+ * and hands them to the user's onChange handler.
  *
  * Runtime behavior:
  *  1. `setup()` subscribes to `powerhouse:document:changed`. For each event,
- *     if the documentType matches (and, when `documentId` is a literal
+ *     if any documentType matches (and, when `documentId` is a literal
  *     string, the id also matches), bump the pending counter.
  *  2. If `initialReconcile !== false`, `setup()` bumps pending once on
  *     startup so the first poll reconciles without waiting for an event.
- *  3. `poll()` returns null unless pending > 0. When pending > 0 it resolves
- *     the target docId (from `documentId` option), loads the doc via
- *     `reactor.client.get<T>(id)`, applies `filter` if present, and calls
- *     `onChange(doc, ctx)`. The result is returned as the WorkItem.
+ *  3. `poll()` returns null unless pending > 0. When pending > 0:
+ *     - If `documentId` is set: load single doc, wrap in `[doc]`
+ *     - If `documentId` is omitted: `find()` all docs of matching type(s)
+ *     Applies `filter` per-doc, then calls `onChange(docs, ctx)`.
  *  4. pending is reset to 0 at the start of each poll drain — multiple
  *     events within a tick coalesce to one `onChange` call.
- *
- * For function-form `documentId`, filtering can't happen in the event
- * handler (the resolver may be async and depend on runtime state), so all
- * matching-documentType events bump pending and poll-time resolution filters.
  */
 export function createDocumentChangeTrigger<
   R extends DocumentRegistry = AnyRegistry,
@@ -110,6 +108,9 @@ export function createDocumentChangeTrigger<
   options: DocumentChangeTriggerOptions<R, T, TConfig, TState>,
 ): Trigger<TState, TConfig, R> {
   const initialReconcile = options.initialReconcile !== false;
+  const types: T[] = Array.isArray(options.documentType)
+    ? options.documentType
+    : [options.documentType];
 
   return {
     id: options.id,
@@ -130,7 +131,7 @@ export function createDocumentChangeTrigger<
       on('powerhouse:document:changed', (payload) => {
         const documents = payload.documents ?? [];
         const matches = documents.some(
-          (d) => d.header?.documentType === options.documentType,
+          (d) => types.includes(d.header?.documentType as T),
         );
         if (!matches) return;
 
@@ -160,25 +161,39 @@ export function createDocumentChangeTrigger<
         return null;
       }
 
-      const docId =
-        typeof options.documentId === 'function'
-          ? await options.documentId(ctx)
-          : options.documentId;
-      if (!docId) {
-        ctx.context.log?.debug(
-          `[${options.id}] no target document id resolved, skipping`,
-        );
-        return null;
-      }
+      let docs: Array<R[T]['document']>;
 
-      const doc = await reactor.client.get<T>(docId);
+      if (options.documentId) {
+        // Single-doc path
+        const docId =
+          typeof options.documentId === 'function'
+            ? await options.documentId(ctx)
+            : options.documentId;
+        if (!docId) {
+          ctx.context.log?.debug(
+            `[${options.id}] no target document id resolved, skipping`,
+          );
+          return null;
+        }
+        const doc = await reactor.client.get<T>(docId);
+        docs = [doc];
+      } else {
+        // Multi-doc path: find all matching documents
+        const result = await reactor.client.find<T>({ documentTypes: types });
+        docs = (result?.results ?? []) as Array<R[T]['document']>;
+        if (docs.length === 0) return null;
+      }
 
       if (options.filter) {
-        const ok = await options.filter(doc, ctx);
-        if (!ok) return null;
+        const filtered: Array<R[T]['document']> = [];
+        for (const doc of docs) {
+          if (await options.filter(doc, ctx)) filtered.push(doc);
+        }
+        if (filtered.length === 0) return null;
+        docs = filtered;
       }
 
-      return options.onChange(doc, ctx);
+      return options.onChange(docs, ctx);
     },
   };
 }

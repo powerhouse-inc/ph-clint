@@ -107,7 +107,8 @@ export const publishTrigger = createDocumentChangeTrigger({
     return findProjectDocumentId(reactor.client, reactor.driveId);
   },
 
-  async onChange(doc, ctx): Promise<WorkItem | null> {
+  async onChange(docs, ctx): Promise<WorkItem | null> {
+    const [doc] = docs;
     const log = ctx.context.log;
     const publishHistory = doc.state.global.publishHistory ?? [];
 

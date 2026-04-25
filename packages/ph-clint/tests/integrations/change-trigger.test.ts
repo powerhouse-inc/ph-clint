@@ -1,5 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import { createDocumentChangeTrigger } from '../../src/integrations/powerhouse/change-trigger.js';
+import { isDocType } from '../../src/integrations/powerhouse/type-guard.js';
 import { createEventBus } from '../../src/core/events.js';
 import type {
   TriggerContext,
@@ -15,10 +16,14 @@ interface FakeDoc {
   state: { global: { name: string } };
 }
 
-function makeReactor(docs: Record<string, FakeDoc>): ReactorContext {
+function makeReactor(
+  docs: Record<string, FakeDoc>,
+  findResults?: FakeDoc[],
+): ReactorContext {
   return {
     client: {
       get: async (id: string) => docs[id],
+      find: async () => ({ results: findResults ?? [] }),
     } as any,
     driveId: 'drive-1',
     async shutdown() {},
@@ -73,14 +78,14 @@ function initState<TState>(
 // ── Tests ────────────────────────────────────────────────────────
 
 describe('createDocumentChangeTrigger', () => {
-  it('fires onChange when a matching-type event arrives and documentId matches (string form)', async () => {
+  it('fires onChange with [doc] when a matching-type event arrives and documentId matches (string form)', async () => {
     const doc: FakeDoc = {
       header: { id: 'doc-1', documentType: 'test/doc' },
       state: { global: { name: 'Alice' } },
     };
     const work: WorkItem = { type: 'function', params: { fn: () => {} } };
     const onChange = jest.fn<
-      (d: FakeDoc) => Promise<WorkItem | null>
+      (docs: FakeDoc[]) => Promise<WorkItem | null>
     >(async () => work);
 
     const trigger = createDocumentChangeTrigger({
@@ -107,8 +112,8 @@ describe('createDocumentChangeTrigger', () => {
     const result = await trigger.poll(ctx);
     expect(result).toBe(work);
     expect(onChange).toHaveBeenCalledTimes(1);
-    const [doc1, ctx1] = onChange.mock.calls[0] as [FakeDoc, TriggerContext<any>];
-    expect(doc1).toBe(doc);
+    const [docs1, ctx1] = onChange.mock.calls[0] as [FakeDoc[], TriggerContext<any>];
+    expect(docs1).toEqual([doc]);
     expect(ctx1).toBe(ctx);
     expect(ctx.state.pending).toBe(0);
   });
@@ -164,7 +169,7 @@ describe('createDocumentChangeTrigger', () => {
       state: { global: { name: 'Bob' } },
     };
     const onChange = jest.fn<
-      (d: FakeDoc) => Promise<WorkItem | null>
+      (docs: FakeDoc[]) => Promise<WorkItem | null>
     >(async () => null);
 
     const trigger = createDocumentChangeTrigger({
@@ -187,7 +192,7 @@ describe('createDocumentChangeTrigger', () => {
 
     await trigger.poll(ctx);
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect((onChange.mock.calls[0] as unknown[])[0]).toBe(doc);
+    expect((onChange.mock.calls[0] as unknown[])[0]).toEqual([doc]);
   });
 
   it('returns null when documentId function returns undefined', async () => {
@@ -213,7 +218,7 @@ describe('createDocumentChangeTrigger', () => {
     expect(ctx.state.pending).toBe(0);
   });
 
-  it('skips when filter returns false', async () => {
+  it('skips when filter returns false for all docs', async () => {
     const doc: FakeDoc = {
       header: { id: 'doc-1', documentType: 'test/doc' },
       state: { global: { name: 'Carol' } },
@@ -278,7 +283,7 @@ describe('createDocumentChangeTrigger', () => {
       state: { global: { name: 'Dan' } },
     };
     const onChange = jest.fn<
-      (d: FakeDoc) => Promise<WorkItem | null>
+      (docs: FakeDoc[]) => Promise<WorkItem | null>
     >(async () => null);
 
     const trigger = createDocumentChangeTrigger({
@@ -367,5 +372,146 @@ describe('createDocumentChangeTrigger', () => {
     expect(ctx.state).toEqual({ pending: 0, lastSeen: 42 });
     await trigger.setup!(ctx);
     expect(ctx.state.lastSeen).toBe(42);
+  });
+
+  // ── Multi-type tests ────────────────────────────────────────────
+
+  it('accepts an array of document types and matches any of them', async () => {
+    const onChange = jest.fn<() => Promise<WorkItem | null>>(async () => null);
+
+    const trigger = createDocumentChangeTrigger({
+      id: 'multi',
+      documentType: ['type/a', 'type/b'],
+      initialReconcile: false,
+      onChange: onChange as any,
+    });
+
+    const { ctx, emit } = makeContext<{ pending: number }>();
+    initState(trigger, ctx);
+
+    await trigger.setup!(ctx);
+
+    // type/a matches
+    emit('powerhouse:document:changed', {
+      changeType: 'updated',
+      documents: [{ header: { id: '1', documentType: 'type/a' } }],
+    });
+    expect(ctx.state.pending).toBe(1);
+
+    // type/b matches
+    emit('powerhouse:document:changed', {
+      changeType: 'updated',
+      documents: [{ header: { id: '2', documentType: 'type/b' } }],
+    });
+    expect(ctx.state.pending).toBe(2);
+
+    // type/c does NOT match
+    emit('powerhouse:document:changed', {
+      changeType: 'updated',
+      documents: [{ header: { id: '3', documentType: 'type/c' } }],
+    });
+    expect(ctx.state.pending).toBe(2);
+  });
+
+  // ── Multi-doc (no documentId) tests ─────────────────────────────
+
+  it('loads all matching docs via find() when documentId is omitted', async () => {
+    const docA: FakeDoc = {
+      header: { id: 'a', documentType: 'test/doc' },
+      state: { global: { name: 'A' } },
+    };
+    const docB: FakeDoc = {
+      header: { id: 'b', documentType: 'test/doc' },
+      state: { global: { name: 'B' } },
+    };
+    const onChange = jest.fn<
+      (docs: FakeDoc[]) => Promise<WorkItem | null>
+    >(async () => null);
+
+    const trigger = createDocumentChangeTrigger({
+      id: 'multi-doc',
+      documentType: 'test/doc',
+      initialReconcile: true,
+      onChange: onChange as any,
+    });
+
+    const { ctx } = makeContext<{ pending: number }>();
+    initState(trigger, ctx);
+    ctx.reactor = async () => makeReactor({}, [docA, docB]);
+
+    await trigger.setup!(ctx);
+    await trigger.poll(ctx);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect((onChange.mock.calls[0] as unknown[])[0]).toEqual([docA, docB]);
+  });
+
+  it('returns null from poll when find() returns empty results and no documentId', async () => {
+    const onChange = jest.fn();
+    const trigger = createDocumentChangeTrigger({
+      id: 'empty-find',
+      documentType: 'test/doc',
+      initialReconcile: true,
+      onChange: onChange as any,
+    });
+
+    const { ctx } = makeContext<{ pending: number }>();
+    initState(trigger, ctx);
+    ctx.reactor = async () => makeReactor({}, []);
+
+    await trigger.setup!(ctx);
+    const result = await trigger.poll(ctx);
+    expect(result).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('filter removes individual docs from the batch', async () => {
+    const docA: FakeDoc = {
+      header: { id: 'a', documentType: 'test/doc' },
+      state: { global: { name: 'keep' } },
+    };
+    const docB: FakeDoc = {
+      header: { id: 'b', documentType: 'test/doc' },
+      state: { global: { name: 'drop' } },
+    };
+    const onChange = jest.fn<
+      (docs: FakeDoc[]) => Promise<WorkItem | null>
+    >(async () => null);
+    const filter = jest.fn<(d: FakeDoc) => boolean>(
+      (d) => d.state.global.name === 'keep',
+    );
+
+    const trigger = createDocumentChangeTrigger({
+      id: 'filtered',
+      documentType: 'test/doc',
+      initialReconcile: true,
+      filter: filter as any,
+      onChange: onChange as any,
+    });
+
+    const { ctx } = makeContext<{ pending: number }>();
+    initState(trigger, ctx);
+    ctx.reactor = async () => makeReactor({}, [docA, docB]);
+
+    await trigger.setup!(ctx);
+    await trigger.poll(ctx);
+
+    expect(filter).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect((onChange.mock.calls[0] as unknown[])[0]).toEqual([docA]);
+  });
+});
+
+// ── isDocType ─────────────────────────────────────────────────────
+
+describe('isDocType', () => {
+  it('returns true when header.documentType matches', () => {
+    const doc = { header: { documentType: 'test/a' } } as any;
+    expect(isDocType(doc, 'test/a')).toBe(true);
+  });
+
+  it('returns false when header.documentType does not match', () => {
+    const doc = { header: { documentType: 'test/b' } } as any;
+    expect(isDocType(doc, 'test/a')).toBe(false);
   });
 });

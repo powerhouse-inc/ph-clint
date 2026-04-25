@@ -39,6 +39,7 @@ export { startSwitchboard } from './switchboard.js';
 export type { StartSwitchboardOptions } from './switchboard.js';
 export { createDocumentChangeTrigger } from './change-trigger.js';
 export type { DocumentChangeTriggerOptions } from './change-trigger.js';
+export { isDocType } from './type-guard.js';
 
 import type { DocumentModelModule } from 'document-model';
 import type {

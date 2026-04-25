@@ -41,6 +41,7 @@ export type { StartSwitchboardOptions } from './integrations/powerhouse/switchbo
 export { defineRegistry } from './integrations/powerhouse/registry.js';
 export { createDocumentChangeTrigger } from './integrations/powerhouse/change-trigger.js';
 export type { DocumentChangeTriggerOptions } from './integrations/powerhouse/change-trigger.js';
+export { isDocType } from './integrations/powerhouse/type-guard.js';
 export type {
   ReactorContext,
   ReactorSetupContext,
