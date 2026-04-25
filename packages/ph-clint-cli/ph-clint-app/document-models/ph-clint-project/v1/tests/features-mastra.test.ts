@@ -1,19 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  reducer,
-  utils,
-  enableMastra,
-  disableMastra,
-  setAgentId,
-  setAgentName,
-  addModel,
-  removeModel,
-  setDefaultModel,
-  addProfile,
-  updateProfile,
-  removeProfile,
-  reorderProfiles,
-} from 'document-models/ph-clint-project/v1';
+import { reducer, utils, enableMastra, disableMastra, setAgentId, setAgentName, addModel, removeModel, setDefaultModel, addProfile, updateProfile, removeProfile, reorderProfiles } from 'document-models/ph-clint-project/v1';
 
 /** Helper: creates a document with mastra enabled */
 function createEnabledDoc() {
@@ -149,9 +135,7 @@ describe('ADD_MODEL', () => {
     const doc = createEnabledDoc();
     const updated = reducer(doc, addModel({ id: 'anthropic/claude-sonnet-4-5' }));
 
-    expect(updated.state.global.features.mastra.models).toEqual([
-      { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-    ]);
+    expect(updated.state.global.features.mastra.models).toEqual([{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }]);
   });
 
   it('should add second model as non-default', () => {
@@ -205,7 +189,7 @@ describe('REMOVE_MODEL', () => {
     const updated = reducer(doc, removeModel({ id: 'openai/gpt-4o' }));
 
     expect(updated.state.global.features.mastra.models).toHaveLength(2);
-    expect(updated.state.global.features.mastra.models.find(m => m.id === 'openai/gpt-4o')).toBeUndefined();
+    expect(updated.state.global.features.mastra.models.find((m) => m.id === 'openai/gpt-4o')).toBeUndefined();
     // Default unchanged
     expect(updated.state.global.features.mastra.models[0].isDefault).toBe(true);
   });
@@ -248,9 +232,9 @@ describe('SET_DEFAULT_MODEL', () => {
     const updated = reducer(doc, setDefaultModel({ id: 'openai/gpt-4o' }));
 
     const models = updated.state.global.features.mastra.models;
-    expect(models.find(m => m.id === 'anthropic/claude-sonnet-4-5')!.isDefault).toBe(false);
-    expect(models.find(m => m.id === 'openai/gpt-4o')!.isDefault).toBe(true);
-    expect(models.find(m => m.id === 'anthropic/claude-haiku-4-5')!.isDefault).toBe(false);
+    expect(models.find((m) => m.id === 'anthropic/claude-sonnet-4-5')!.isDefault).toBe(false);
+    expect(models.find((m) => m.id === 'openai/gpt-4o')!.isDefault).toBe(true);
+    expect(models.find((m) => m.id === 'anthropic/claude-haiku-4-5')!.isDefault).toBe(false);
   });
 
   it('should error on non-existent model', () => {
@@ -273,9 +257,7 @@ describe('ADD_PROFILE', () => {
     const doc = createEnabledDoc();
     const updated = reducer(doc, addProfile({ id: 'base', title: 'Base', content: 'Hello' }));
 
-    expect(updated.state.global.features.mastra.profiles).toEqual([
-      { id: 'base', title: 'Base', content: 'Hello' },
-    ]);
+    expect(updated.state.global.features.mastra.profiles).toEqual([{ id: 'base', title: 'Base', content: 'Hello' }]);
   });
 
   it('should insert before specified profile', () => {
@@ -284,7 +266,7 @@ describe('ADD_PROFILE', () => {
     doc = reducer(doc, addProfile({ id: 'third', title: 'Third', content: 'c' }));
     const updated = reducer(doc, addProfile({ id: 'second', title: 'Second', content: 'b', insertBefore: 'third' }));
 
-    const ids = updated.state.global.features.mastra.profiles.map(p => p.id);
+    const ids = updated.state.global.features.mastra.profiles.map((p) => p.id);
     expect(ids).toEqual(['first', 'second', 'third']);
   });
 
@@ -323,7 +305,7 @@ describe('UPDATE_PROFILE', () => {
     const doc = createDocWithProfiles();
     const updated = reducer(doc, updateProfile({ id: 'base', title: 'New Title' }));
 
-    const profile = updated.state.global.features.mastra.profiles.find(p => p.id === 'base')!;
+    const profile = updated.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
     expect(profile.title).toBe('New Title');
     expect(profile.content).toBe('Base instructions.');
   });
@@ -332,7 +314,7 @@ describe('UPDATE_PROFILE', () => {
     const doc = createDocWithProfiles();
     const updated = reducer(doc, updateProfile({ id: 'base', content: 'New content.' }));
 
-    const profile = updated.state.global.features.mastra.profiles.find(p => p.id === 'base')!;
+    const profile = updated.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
     expect(profile.title).toBe('Base');
     expect(profile.content).toBe('New content.');
   });
@@ -341,7 +323,7 @@ describe('UPDATE_PROFILE', () => {
     const doc = createDocWithProfiles();
     const updated = reducer(doc, updateProfile({ id: 'base', title: 'Updated', content: 'Updated content.' }));
 
-    const profile = updated.state.global.features.mastra.profiles.find(p => p.id === 'base')!;
+    const profile = updated.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
     expect(profile.title).toBe('Updated');
     expect(profile.content).toBe('Updated content.');
   });
@@ -366,7 +348,7 @@ describe('REMOVE_PROFILE', () => {
     const doc = createDocWithProfiles();
     const updated = reducer(doc, removeProfile({ id: 'tools' }));
 
-    const ids = updated.state.global.features.mastra.profiles.map(p => p.id);
+    const ids = updated.state.global.features.mastra.profiles.map((p) => p.id);
     expect(ids).toEqual(['base', 'style']);
   });
 
@@ -390,7 +372,7 @@ describe('REORDER_PROFILES', () => {
     const doc = createDocWithProfiles();
     const updated = reducer(doc, reorderProfiles({ ids: ['base'], insertBefore: null }));
 
-    const ids = updated.state.global.features.mastra.profiles.map(p => p.id);
+    const ids = updated.state.global.features.mastra.profiles.map((p) => p.id);
     expect(ids).toEqual(['tools', 'style', 'base']);
   });
 
@@ -398,7 +380,7 @@ describe('REORDER_PROFILES', () => {
     const doc = createDocWithProfiles();
     const updated = reducer(doc, reorderProfiles({ ids: ['style'], insertBefore: 'base' }));
 
-    const ids = updated.state.global.features.mastra.profiles.map(p => p.id);
+    const ids = updated.state.global.features.mastra.profiles.map((p) => p.id);
     expect(ids).toEqual(['style', 'base', 'tools']);
   });
 
@@ -406,7 +388,7 @@ describe('REORDER_PROFILES', () => {
     const doc = createDocWithProfiles();
     const updated = reducer(doc, reorderProfiles({ ids: ['tools', 'style'], insertBefore: 'base' }));
 
-    const ids = updated.state.global.features.mastra.profiles.map(p => p.id);
+    const ids = updated.state.global.features.mastra.profiles.map((p) => p.id);
     expect(ids).toEqual(['tools', 'style', 'base']);
   });
 
@@ -415,7 +397,7 @@ describe('REORDER_PROFILES', () => {
     doc = reducer(doc, addProfile({ id: 'extra', title: 'Extra', content: 'Extra.' }));
     const updated = reducer(doc, reorderProfiles({ ids: ['base', 'tools'], insertBefore: null }));
 
-    const ids = updated.state.global.features.mastra.profiles.map(p => p.id);
+    const ids = updated.state.global.features.mastra.profiles.map((p) => p.id);
     expect(ids).toEqual(['style', 'extra', 'base', 'tools']);
   });
 
