@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  reducer,
-  utils,
-  importSpec,
-} from 'document-models/ph-clint-project/v1';
+import { reducer, utils, importSpec } from 'document-models/ph-clint-project/v1';
 
 describe('IMPORT_SPEC', () => {
   const baseInput = {
@@ -15,12 +11,8 @@ describe('IMPORT_SPEC', () => {
     powerhouse: 'Reactor' as const,
     mastraEnabled: true,
     routineEnabled: true,
-    packages: [
-      { id: 'pkg-1', packageName: 'my-project-app', documentTypes: ['org/doc-a'] },
-    ],
-    externalSkills: [
-      { id: 'sk-1', name: 'playwright-cli', githubUrl: 'https://github.com/example/playwright-cli' },
-    ],
+    packages: [{ id: 'pkg-1', packageName: 'my-project-app', documentTypes: ['org/doc-a'] }],
+    externalSkills: [{ id: 'sk-1', name: 'playwright-cli', githubUrl: 'https://github.com/example/playwright-cli' }],
     agentId: 'my-agent',
     agentName: 'My Agent',
     models: [
@@ -47,12 +39,8 @@ describe('IMPORT_SPEC', () => {
     expect(state.features.powerhouse).toBe('Reactor');
     expect(state.features.mastra.enabled).toBe(true);
     expect(state.features.routine.enabled).toBe(true);
-    expect(state.packages).toEqual([
-      { id: 'pkg-1', packageName: 'my-project-app', documentTypes: ['org/doc-a'] },
-    ]);
-    expect(state.externalSkills).toEqual([
-      { id: 'sk-1', name: 'playwright-cli', githubUrl: 'https://github.com/example/playwright-cli' },
-    ]);
+    expect(state.packages).toEqual([{ id: 'pkg-1', packageName: 'my-project-app', documentTypes: ['org/doc-a'] }]);
+    expect(state.externalSkills).toEqual([{ id: 'sk-1', name: 'playwright-cli', githubUrl: 'https://github.com/example/playwright-cli' }]);
     expect(state.features.mastra.agentId).toBe('my-agent');
     expect(state.features.mastra.agentName).toBe('My Agent');
     expect(state.features.mastra.models).toEqual([
@@ -67,15 +55,18 @@ describe('IMPORT_SPEC', () => {
 
   it('should default nullable fields to null', () => {
     const doc = utils.createDocument();
-    const updated = reducer(doc, importSpec({
-      ...baseInput,
-      scope: null,
-      bin: null,
-      agentId: null,
-      agentName: null,
-      models: null,
-      profiles: null,
-    }));
+    const updated = reducer(
+      doc,
+      importSpec({
+        ...baseInput,
+        scope: null,
+        bin: null,
+        agentId: null,
+        agentName: null,
+        models: null,
+        profiles: null,
+      }),
+    );
     const state = updated.state.global;
 
     expect(state.scope).toBeNull();
@@ -88,7 +79,7 @@ describe('IMPORT_SPEC', () => {
 
   it('should default omitted mastra fields', () => {
     const doc = utils.createDocument();
-    const { agentId, agentName, models, profiles, ...minimalInput } = baseInput;
+    const { agentId: _a, agentName: _b, models: _c, profiles: _d, ...minimalInput } = baseInput;
     const updated = reducer(doc, importSpec(minimalInput));
     const state = updated.state.global;
 
@@ -101,16 +92,19 @@ describe('IMPORT_SPEC', () => {
   it('should overwrite previous state completely', () => {
     const doc = utils.createDocument();
     const first = reducer(doc, importSpec(baseInput));
-    const second = reducer(first, importSpec({
-      ...baseInput,
-      name: 'other-project',
-      agentId: 'other-agent',
-      agentName: 'Other Agent',
-      models: [{ id: 'openai/gpt-4o', isDefault: true }],
-      profiles: [],
-      externalSkills: [],
-      packages: [],
-    }));
+    const second = reducer(
+      first,
+      importSpec({
+        ...baseInput,
+        name: 'other-project',
+        agentId: 'other-agent',
+        agentName: 'Other Agent',
+        models: [{ id: 'openai/gpt-4o', isDefault: true }],
+        profiles: [],
+        externalSkills: [],
+        packages: [],
+      }),
+    );
     const state = second.state.global;
 
     expect(state.name).toBe('other-project');
