@@ -47,6 +47,7 @@ export type {
   ReactorSetupContext,
   ReactorConfiguration,
   DriveConfig,
+  DriveEntry,
   SubscriptionConfig,
   SwitchboardConfig,
   ConnectConfig,

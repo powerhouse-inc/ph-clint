@@ -15,6 +15,7 @@ export type {
   ReactorConfiguration,
   PowerhouseIntegrationOptions,
   DriveConfig,
+  DriveEntry,
   SubscriptionConfig,
   SwitchboardConfig,
   ConnectConfig,
@@ -33,7 +34,7 @@ export { defineRegistry } from './registry.js';
 export { connectServiceDefinition } from './connect.js';
 export { defaultPort, resolvePort, resolveReactorDefaults } from './ports.js';
 export { bridgeSubscriptions } from './subscriptions.js';
-export { ensureDrive } from './drive.js';
+export { ensureDrive, ensureRemoteDrive } from './drive.js';
 export { buildReactor } from './reactor.js';
 export { startSwitchboard } from './switchboard.js';
 export type { StartSwitchboardOptions } from './switchboard.js';
@@ -46,6 +47,7 @@ import type {
   ReactorContext,
   ReactorSetupContext,
   DriveConfig,
+  DriveEntry,
   SubscriptionConfig,
   DocumentRegistry,
   AnyRegistry,
@@ -60,8 +62,10 @@ export interface BuildDefaultReactorOptions<
 > {
   /** Document model modules to register with the Reactor. */
   documentModels: DocumentModelModule[];
-  /** Default drive to create/find on startup. */
+  /** Single drive (sugar for drives: [{ ...drive, role: 'personal' }]). */
   drive?: DriveConfig;
+  /** Multi-drive configuration. First 'personal' drive = personalDriveId = driveId. */
+  drives?: Array<DriveConfig & { role: 'personal' | 'watched'; remoteUrl?: string }>;
   /** Subscribe to document changes → event bus. */
   subscriptions?: SubscriptionConfig<R>;
 }
@@ -80,7 +84,7 @@ export async function buildDefaultReactor<
   options: BuildDefaultReactorOptions<R>,
 ): Promise<ReactorContext<R>> {
   const { buildReactor } = await import('./reactor.js');
-  const { ensureDrive } = await import('./drive.js');
+  const { ensureDrive, ensureRemoteDrive } = await import('./drive.js');
 
   const reactorModule = await buildReactor({
     documentModels: options.documentModels,
@@ -88,7 +92,28 @@ export async function buildDefaultReactor<
     enableSync: !!ctx.switchboard?.enabled,
   });
 
-  const driveId = await ensureDrive(reactorModule, options.drive);
+  // Normalize drive config
+  const driveConfigs = options.drives
+    ?? (options.drive
+      ? [{ ...options.drive, role: 'personal' as const }]
+      : [{ name: 'default', role: 'personal' as const }]);
+
+  // Create/find all drives
+  const drives: DriveEntry[] = [];
+  for (const cfg of driveConfigs) {
+    if (cfg.remoteUrl) {
+      const drive = await ensureRemoteDrive(reactorModule, cfg.remoteUrl, cfg.name);
+      drives.push({ ...drive, role: cfg.role, remoteUrl: cfg.remoteUrl });
+    } else {
+      const drive = await ensureDrive(reactorModule, cfg);
+      drives.push({ ...drive, role: cfg.role });
+    }
+  }
+
+  // Resolve personal drive
+  const personal = drives.find(d => d.role === 'personal');
+  const personalDriveId = personal?.id ?? drives[0]?.id ?? '';
+  const driveId = personalDriveId;
 
   let unsubscribe: (() => void) | undefined;
   if (options.subscriptions && ctx.emit) {
@@ -103,6 +128,8 @@ export async function buildDefaultReactor<
   const result: ReactorContext<R> = {
     client: reactorModule.client as TypedReactorClient<R>,
     driveId,
+    personalDriveId,
+    drives,
     _module: reactorModule,
     async shutdown() {
       unsubscribe?.();

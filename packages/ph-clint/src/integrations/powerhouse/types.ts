@@ -223,6 +223,24 @@ export interface ReactorClientModule {
   };
 }
 
+// ── Drive entry ──────────────────────────────────────────────────
+
+/**
+ * A drive managed by the reactor. Each drive has a role:
+ * - `personal` — the agent's own workspace drive
+ * - `watched` — an observed drive (local or remote)
+ */
+export interface DriveEntry {
+  /** Drive document ID. */
+  id: string;
+  /** Display name. */
+  name: string;
+  /** Role: 'personal' = agent's own workspace, 'watched' = observed from elsewhere. */
+  role: 'personal' | 'watched';
+  /** For watched remote drives: the Switchboard URL to sync from. */
+  remoteUrl?: string;
+}
+
 // ── Reactor context ───────────────────────────────────────────────
 
 /**
@@ -232,8 +250,12 @@ export interface ReactorClientModule {
 export interface ReactorContext<R extends DocumentRegistry = AnyRegistry> {
   /** The Reactor client — typed CRUD + subscription API. */
   client: TypedReactorClient<R>;
-  /** The default drive ID (created or found on startup). */
+  /** The default drive ID. Aliases personalDriveId when multi-drive is configured. */
   driveId: string;
+  /** All managed drives, ordered as configured. */
+  drives?: DriveEntry[];
+  /** The personal drive ID (first drive with role 'personal'). */
+  personalDriveId?: string;
   /** Phase 2: Switchboard GraphQL URL (e.g. http://localhost:4001/graphql). */
   switchboardUrl?: string;
   /** Phase 2: Switchboard drive URL (e.g. http://localhost:4001/d/{driveId}). */

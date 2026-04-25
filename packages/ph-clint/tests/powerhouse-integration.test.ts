@@ -6,7 +6,7 @@ import { rm } from 'node:fs/promises';
 import { z } from 'zod';
 import { connectServiceDefinition } from '../src/integrations/powerhouse/connect.js';
 import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscriptions.js';
-import { ensureDrive } from '../src/integrations/powerhouse/drive.js';
+import { ensureDrive, ensureRemoteDrive } from '../src/integrations/powerhouse/drive.js';
 import { buildDefaultReactor } from '../src/integrations/powerhouse/index.js';
 import { buildReactor } from '../src/integrations/powerhouse/reactor.js';
 import { startSwitchboard, buildSwitchboardInstance } from '../src/integrations/powerhouse/switchboard.js';
@@ -237,11 +237,13 @@ describe('ensureDrive', () => {
   /** Helper to build a mock ReactorClientModule with only the methods ensureDrive uses. */
   function mockModule(overrides: {
     findByType?: ReactorClientModule['reactor']['findByType'];
+    get?: (id: string) => Promise<{ name?: string; state?: { global?: { name?: string } } }>;
     createEmpty?: (...args: unknown[]) => Promise<{ header: { id: string } }>;
     rename?: (id: string, name: string) => Promise<void>;
   }): ReactorClientModule {
     return {
       client: {
+        get: overrides.get ?? (async () => ({})),
         createEmpty: overrides.createEmpty ?? (async () => ({ header: { id: 'fallback' } })),
         rename: overrides.rename ?? (async () => {}),
       },
@@ -252,15 +254,28 @@ describe('ensureDrive', () => {
     } as unknown as ReactorClientModule;
   }
 
-  it('returns existing drive ID when drives exist', async () => {
+  it('returns existing drive when name matches', async () => {
     const mod = mockModule({
       findByType: async () => ({
         results: [{ header: { id: 'existing-drive-id' } }],
       }),
+      get: async () => ({ name: 'My Drive' }),
     });
 
-    const driveId = await ensureDrive(mod);
-    expect(driveId).toBe('existing-drive-id');
+    const result = await ensureDrive(mod, { name: 'My Drive' });
+    expect(result).toEqual({ id: 'existing-drive-id', name: 'My Drive' });
+  });
+
+  it('falls back to first drive when default name and single drive exists', async () => {
+    const mod = mockModule({
+      findByType: async () => ({
+        results: [{ header: { id: 'existing-drive-id' } }],
+      }),
+      get: async () => ({ name: 'something-else' }),
+    });
+
+    const result = await ensureDrive(mod);
+    expect(result).toEqual({ id: 'existing-drive-id', name: 'default' });
   });
 
   it('creates a new drive when none exist', async () => {
@@ -268,8 +283,8 @@ describe('ensureDrive', () => {
       createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
     });
 
-    const driveId = await ensureDrive(mod, { name: 'Test Drive' });
-    expect(driveId).toBe('new-drive-id');
+    const result = await ensureDrive(mod, { name: 'Test Drive' });
+    expect(result).toEqual({ id: 'new-drive-id', name: 'Test Drive' });
   });
 
   it('renames drive with config name', async () => {
@@ -300,8 +315,85 @@ describe('ensureDrive', () => {
       createEmpty: async () => ({ header: { id: 'new-drive-id' } }),
     });
 
-    const driveId = await ensureDrive(mod);
-    expect(driveId).toBe('new-drive-id');
+    const result = await ensureDrive(mod);
+    expect(result).toEqual({ id: 'new-drive-id', name: 'default' });
+  });
+
+  it('creates new drive when name does not match any existing (non-default)', async () => {
+    const mod = mockModule({
+      findByType: async () => ({
+        results: [{ header: { id: 'drive-a' } }],
+      }),
+      get: async () => ({ name: 'Other Drive' }),
+      createEmpty: async () => ({ header: { id: 'new-id' } }),
+    });
+
+    const result = await ensureDrive(mod, { name: 'My Drive' });
+    expect(result).toEqual({ id: 'new-id', name: 'My Drive' });
+  });
+
+  it('matches drive by state.global.name', async () => {
+    const mod = mockModule({
+      findByType: async () => ({
+        results: [{ header: { id: 'drive-x' } }],
+      }),
+      get: async () => ({ state: { global: { name: 'Clint' } } }),
+    });
+
+    const result = await ensureDrive(mod, { name: 'Clint' });
+    expect(result).toEqual({ id: 'drive-x', name: 'Clint' });
+  });
+});
+
+describe('ensureRemoteDrive', () => {
+  function mockModule(overrides: {
+    addRemoteDrive?: (url: string) => Promise<{ header?: { id: string }; id?: string }>;
+    rename?: (id: string, name: string) => Promise<void>;
+  }): ReactorClientModule {
+    return {
+      client: {
+        addRemoteDrive: overrides.addRemoteDrive ?? (async () => ({ header: { id: 'remote-1' } })),
+        rename: overrides.rename ?? (async () => {}),
+      },
+      reactor: {
+        findByType: async () => ({ results: [] }),
+        kill: () => ({ completed: Promise.resolve() }),
+      },
+    } as unknown as ReactorClientModule;
+  }
+
+  it('returns drive id from addRemoteDrive result (header.id)', async () => {
+    const mod = mockModule({
+      addRemoteDrive: async () => ({ header: { id: 'remote-abc' } }),
+    });
+    const result = await ensureRemoteDrive(mod, 'http://example.com/d/xyz', 'Watched');
+    expect(result).toEqual({ id: 'remote-abc', name: 'Watched' });
+  });
+
+  it('falls back to result.id when header is absent', async () => {
+    const mod = mockModule({
+      addRemoteDrive: async () => ({ id: 'flat-id' }),
+    });
+    const result = await ensureRemoteDrive(mod, 'http://example.com/d/xyz', 'Watched');
+    expect(result).toEqual({ id: 'flat-id', name: 'Watched' });
+  });
+
+  it('renames the drive after adding', async () => {
+    let renamedWith: { id: string; name: string } | undefined;
+    const mod = mockModule({
+      addRemoteDrive: async () => ({ header: { id: 'r-1' } }),
+      rename: async (id: string, name: string) => { renamedWith = { id, name }; },
+    });
+    await ensureRemoteDrive(mod, 'http://example.com', 'My Remote');
+    expect(renamedWith).toEqual({ id: 'r-1', name: 'My Remote' });
+  });
+
+  it('does not throw when rename fails', async () => {
+    const mod = mockModule({
+      rename: async () => { throw new Error('rename not supported'); },
+    });
+    const result = await ensureRemoteDrive(mod, 'http://example.com', 'X');
+    expect(result.id).toBe('remote-1');
   });
 });
 
@@ -317,12 +409,16 @@ describe('ReactorContext type', () => {
     expect(ctx.driveUrl).toBeUndefined();
     expect(ctx.mcpUrl).toBeUndefined();
     expect(ctx.connectUrl).toBeUndefined();
+    expect(ctx.drives).toBeUndefined();
+    expect(ctx.personalDriveId).toBeUndefined();
   });
 
   it('accepts all optional Phase 2+3 fields', () => {
     const ctx: ReactorContext = {
       client: {} as any,
       driveId: 'test',
+      personalDriveId: 'test',
+      drives: [{ id: 'test', name: 'Test', role: 'personal' }],
       switchboardUrl: 'http://localhost:4001/graphql',
       driveUrl: 'http://localhost:4001/d/test',
       mcpUrl: 'http://localhost:4001/mcp',
@@ -331,6 +427,8 @@ describe('ReactorContext type', () => {
     };
     expect(ctx.switchboardUrl).toBe('http://localhost:4001/graphql');
     expect(ctx.connectUrl).toBe('http://localhost:3000');
+    expect(ctx.drives).toHaveLength(1);
+    expect(ctx.personalDriveId).toBe('test');
   });
 });
 
@@ -385,14 +483,16 @@ describe('Powerhouse real integration', () => {
   });
 
   it('ensureDrive creates a drive on first call', async () => {
-    driveId = await ensureDrive(reactorModule, { name: 'test-drive' });
+    const result = await ensureDrive(reactorModule, { name: 'test-drive' });
+    driveId = result.id;
     expect(typeof driveId).toBe('string');
     expect(driveId.length).toBeGreaterThan(0);
+    expect(result.name).toBe('test-drive');
   });
 
   it('ensureDrive returns the same drive on second call', async () => {
-    const secondId = await ensureDrive(reactorModule);
-    expect(secondId).toBe(driveId);
+    const result = await ensureDrive(reactorModule, { name: 'test-drive' });
+    expect(result.id).toBe(driveId);
   });
 
   // Switchboard tests are skipped: @mercuriusjs/gateway (CJS) requires p-map (ESM-only).
