@@ -17,11 +17,13 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { scanProjects, getProjectMapping } from '@powerhousedao/ph-clint';
+import { importSpec } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
+import type { ImportSpecInput } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import { createDocumentChangeTrigger } from '../framework.js';
 import { generateProject } from '../codegen/index.js';
 import { runPhInit } from '../codegen/scaffold.js';
 import { specFromDocumentState } from '../spec/from-document.js';
-import { writeProjectSpec } from '../spec/file.js';
+import { readProjectSpec, writeProjectSpec } from '../spec/file.js';
 import { syncExternalSkills } from '../skills/sync.js';
 import { clintProject } from '../services/clint-project.js';
 import type { ClintProjectSpec } from '../spec/types.js';
@@ -88,6 +90,29 @@ function canonicalJson(value: unknown): string {
   );
 }
 
+export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
+  return {
+    name: spec.name,
+    scope: spec.scope ?? null,
+    version: spec.version,
+    description: spec.description,
+    bin: spec.bin ?? null,
+    powerhouse: spec.features.powerhouse,
+    mastraEnabled: spec.features.mastra.enabled,
+    routineEnabled: spec.features.routine.enabled,
+    packages: spec.packages.map(p => ({
+      id: p.id,
+      packageName: p.packageName,
+      documentTypes: p.documentTypes,
+    })),
+    externalSkills: spec.externalSkills.map(s => ({
+      id: s.id,
+      name: s.name,
+      githubUrl: s.githubUrl,
+    })),
+  };
+}
+
 export const specChangeTrigger = createDocumentChangeTrigger({
   id: 'spec-change',
   documentType: DOCUMENT_TYPE,
@@ -103,6 +128,33 @@ export const specChangeTrigger = createDocumentChangeTrigger({
       ? scanProjects(ctx.context.workdir, scanner)
       : [];
     const mapping = await getProjectMapping(scanResults, folders);
+
+    // Auto-create spec documents for unlinked projects
+    const reactor = await ctx.reactor();
+    if (reactor && folders) {
+      for (const entry of mapping) {
+        if (entry.path && !entry.documentId) {
+          const existingSpec = await readProjectSpec(entry.path);
+          if (!existingSpec) continue;
+
+          log?.info(`${TAG} creating spec document for unlinked project ${entry.name}`);
+
+          const newDoc = await reactor.client.createEmpty('powerhouse/ph-clint-project');
+          const docId = newDoc.header.id;
+
+          await folders.addDocument(docId, `specs/${entry.name}`, entry.name);
+
+          const importInput = specToImportInput(existingSpec);
+          await reactor.client.execute(docId, 'main', [importSpec(importInput)]);
+
+          existingSpec.documentId = docId;
+          existingSpec.documentType = 'powerhouse/ph-clint-project';
+          await writeProjectSpec(entry.path, existingSpec);
+
+          log?.info(`${TAG} linked project ${entry.name} to document ${docId}`);
+        }
+      }
+    }
 
     for (const doc of docs) {
       const spec = specFromDocumentState(doc.state.global, {

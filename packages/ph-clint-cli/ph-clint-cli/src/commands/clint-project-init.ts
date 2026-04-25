@@ -13,6 +13,7 @@
  */
 import path from 'node:path';
 import { defineCommand } from '@powerhousedao/ph-clint';
+import { importSpec } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import { z } from 'zod';
 import {
   clintProjectSpecSchema,
@@ -21,6 +22,8 @@ import {
 import { generateProject } from '../codegen/index.js';
 import { isDirEmptyEnough } from '../codegen/write.js';
 import { runPhInit, runPnpmInstall } from '../codegen/scaffold.js';
+import { writeProjectSpec } from '../spec/file.js';
+import { specToImportInput } from '../triggers/spec-change.js';
 
 const inputSchema = z.object({
   dir: z
@@ -106,7 +109,7 @@ export const init = defineCommand({
     promptForDefaults: true,
     promptOptional: ['description'],
   },
-  execute: async (input, { workdir, stdout }) => {
+  execute: async (input, { workdir, stdout, reactor: getReactor, folders }) => {
     const { name: bareName } = splitPackageName(input.name);
     const targetDir = path.resolve(workdir, input.dir ?? bareName);
 
@@ -131,6 +134,31 @@ export const init = defineCommand({
     });
 
     stdout(`Generated ${result.files.length} files in ${targetDir}\n`);
+
+    // Create spec document in personal drive (if reactor available)
+    if (getReactor && folders) {
+      try {
+        const reactor = await getReactor();
+        if (reactor) {
+          const newDoc = await reactor.client.createEmpty('powerhouse/ph-clint-project');
+          const docId = newDoc.header.id;
+
+          await folders.addDocument(docId, `specs/${spec.name}`, spec.name);
+
+          const importInput = specToImportInput(spec);
+          await reactor.client.execute(docId, 'main', [importSpec(importInput)]);
+
+          spec.documentId = docId;
+          spec.documentType = 'powerhouse/ph-clint-project';
+          await writeProjectSpec(targetDir, spec);
+
+          stdout(`Created spec document ${docId} in Clint Folders/specs/${spec.name}\n`);
+        }
+      } catch (err) {
+        // Non-fatal — trigger will pick it up on next startup
+        stdout(`Note: could not create spec document — ${err instanceof Error ? err.message : String(err)}\n`);
+      }
+    }
 
     const split = spec.features.powerhouse !== 'Disabled';
 

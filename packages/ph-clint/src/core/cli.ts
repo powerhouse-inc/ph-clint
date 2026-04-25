@@ -1056,9 +1056,6 @@ export function defineCli<
           if (running && running.workdir === connectWorkdir) {
             const url = running.endpoints?.['connect-studio'] ?? 'unknown URL';
             output(`Connect '${connectName}' already running at ${url}`);
-            if (reactorConfig.connect!.assetsDir && cachedReactor?.driveUrl) {
-              output(`  You may need to add the drive: ${cachedReactor.driveUrl}`);
-            }
           } else {
             // Stop instance running in wrong workdir
             if (running) {
@@ -1078,12 +1075,20 @@ export function defineCli<
             const status = context.services.list(connectName).find((i) => i.instanceId === instanceId);
             const connectUrl = status?.endpoints?.['connect-studio'] ?? `http://localhost:${reactorConfig.connect!.port!}`;
             output(`Connect '${connectName}' ready at ${connectUrl}`);
+          }
 
-            // Static mode: the SPA was pre-built without knowledge of the drive URL,
-            // so the user may need to add the remote drive manually in Connect.
-            if (reactorConfig.connect!.assetsDir && cachedReactor?.driveUrl) {
-              output(`  You may need to add the drive: ${cachedReactor.driveUrl}`);
-            }
+          // List all drives (replaces the old single-drive "You may need to add" message)
+          const drives = cachedReactor?.drives;
+          const baseDriveUrl = cachedReactor?.driveUrl;
+          const baseDriveId = cachedReactor?.driveId;
+          if (drives?.length) {
+            const driveLines = drives.map(d => {
+              const url = baseDriveUrl && baseDriveId
+                ? baseDriveUrl.replace(baseDriveId, d.id)
+                : `(drive: ${d.id})`;
+              return `    ${d.name} (${d.role}): ${url}`;
+            });
+            output(`  Drives:\n${driveLines.join('\n')}`);
           }
         }
 

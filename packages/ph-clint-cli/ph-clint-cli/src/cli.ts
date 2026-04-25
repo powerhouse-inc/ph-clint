@@ -77,7 +77,9 @@ export const cli = defineCli({
 cli.configureReactor({
   create: (ctx) => buildDefaultReactor(ctx, {
     documentModels,
-    drive: { name: 'Clint' },
+    drives: [
+      { name: 'Clint Folders', role: 'personal' },
+    ],
     subscriptions: { documentTypes: ['powerhouse/ph-clint-project'] },
   }),
   switchboard: { enabled: true },
