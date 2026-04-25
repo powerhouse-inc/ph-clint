@@ -62,9 +62,9 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   const agentName = mastra.agentName!;
   const defaultModel = mastra.models.find(m => m.isDefault) ?? mastra.models[0];
   const modelId = defaultModel?.id ?? 'anthropic/claude-sonnet-4-5';
-  const [provider] = modelId.split('/');
+  const [provider] = modelId.split(/[:/]/);
   const { pkg, fn } = providerImport(provider);
-  const envKey = `${provider.toUpperCase()}_API_KEY`;
+  const apiKeyField = `${provider}ApiKey`;
 
   const lines: string[] = [];
   lines.push("import { Agent } from '@mastra/core/agent';");
@@ -84,7 +84,7 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   lines.push(' * agent as a ph-clint AgentProvider.');
   lines.push(' */');
   lines.push('export async function createAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {');
-  lines.push(`  if (!ctx.config.apiKey) return createDemoAgent();`);
+  lines.push(`  if (!ctx.config.${apiKeyField}) return createDemoAgent();`);
   lines.push('');
   lines.push('  const m = createMastraHelpers(ctx);');
   lines.push('');
@@ -92,9 +92,9 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   lines.push(`    id: '${agentId}',`);
   lines.push(`    name: '${agentName}',`);
   lines.push(`    instructions: m.getAgentInstructions('${agentId}'),`);
-  lines.push('    model: ctx.config.apiKey');
-  lines.push("      ? { id: ctx.config.model as `${string}/${string}`, apiKey: ctx.config.apiKey }");
-  lines.push("      : (ctx.config.model as `${string}/${string}`),");
+  lines.push(`    model: ctx.config.${apiKeyField}`);
+  lines.push(`      ? { id: ctx.config.model as \`\${string}/\${string}\`, apiKey: ctx.config.${apiKeyField} }`);
+  lines.push(`      : (ctx.config.model as \`\${string}/\${string}\`),`);
   lines.push('    tools: async () => {');
   lines.push("      ctx.context.log?.debug('[agent] tools callback invoked');");
   lines.push('      const tools = await m.getTools({ MCPClient });');

@@ -18,16 +18,19 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push(' * Everything outside the markers is user-editable and preserved.');
   lines.push(' */');
 
+  const needsRoot = phAtLeast(ph, 'Reactor') || mastra.enabled;
+
+  lines.push('// @clint:begin imports');
   if (phAtLeast(ph, 'Reactor')) {
     lines.push(`import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';`);
   } else {
     lines.push(`import { defineCli } from '@powerhousedao/ph-clint';`);
   }
-  lines.push(`import { CLI_NAME, CLI_VERSION${phAtLeast(ph, 'Reactor') ? ', CLI_ROOT' : ''} } from './config.js';`);
+  if (needsRoot) {
+    lines.push("import path from 'node:path';");
+  }
+  lines.push(`import { CLI_NAME, CLI_VERSION${needsRoot ? ', CLI_ROOT' : ''} } from './config.js';`);
   lines.push(`import { configSchema, secretsSchema } from './framework.js';`);
-  lines.push('');
-
-  lines.push('// @clint:begin imports');
   if (phAtLeast(ph, 'Reactor')) {
     lines.push(`import { documentModels } from '${getAppPackageName(spec)}';`);
   }
@@ -65,15 +68,26 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('');
   lines.push('  // @clint:begin prompts');
   lines.push('  prompts: {');
-  lines.push('    artifacts: [],');
-  if (mastra.enabled && mastra.agentId && mastra.profiles.length > 0) {
+  if (mastra.enabled) {
+    lines.push("    artifacts: [path.join(CLI_ROOT, 'gen', 'skills'), path.join(CLI_ROOT, 'dist', 'gen', 'skills')],");
+  } else {
+    lines.push('    artifacts: [],');
+  }
+  if (mastra.enabled && mastra.agentId) {
     lines.push('    agents: {');
     lines.push(`      '${mastra.agentId}': {`);
-    lines.push('        sections: [');
-    for (const p of mastra.profiles) {
-      lines.push(`          { id: '${p.id}', title: '${p.title}', file: '${p.id}.md' },`);
+    if (mastra.profiles.length > 0) {
+      lines.push(`        name: '${mastra.profiles[0].id}',`);
+      lines.push('        sections: [');
+      for (const p of mastra.profiles) {
+        lines.push(`          '${p.id}.md',`);
+      }
+      lines.push('        ],');
+    } else {
+      lines.push("        name: 'AgentBase',");
+      lines.push("        sections: ['AgentBase.md'],");
     }
-    lines.push('        ],');
+    lines.push('        skills: [],');
     lines.push('      },');
     lines.push('    },');
   } else {

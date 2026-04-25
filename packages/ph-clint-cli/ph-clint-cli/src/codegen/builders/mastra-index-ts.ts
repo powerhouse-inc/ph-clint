@@ -10,11 +10,10 @@
 import { type ClintProjectSpec } from '../../spec/types.js';
 
 /**
- * Derive the `{PROVIDER}_API_KEY` env var name from a model ID like
- * `anthropic/claude-sonnet-4-5` or `openai:gpt-4o`.
+ * Derive the `{PROVIDER}_API_KEY` env var name from a provider prefix
+ * (e.g. `anthropic` → `ANTHROPIC_API_KEY`).
  */
-function getApiKeyEnvVar(modelId: string): string {
-  const provider = modelId.split(/[:/]/)[0];
+function getApiKeyEnvVar(provider: string): string {
   return `${provider.toUpperCase()}_API_KEY`;
 }
 
@@ -35,7 +34,7 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
 
   // Full agent config available — emit bootstrap-based Mastra instance
   if (mastra.agentId && mastra.models.length > 0) {
-    const envVars = [...new Set(mastra.models.map(m => getApiKeyEnvVar(m.id)))];
+    const providers = [...new Set(mastra.models.map(m => m.id.split(/[:/]/)[0]))];
 
     const lines: string[] = [
       '// @clint:begin mastra-index',
@@ -64,13 +63,15 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
     // API key env bridge for Studio
     lines.push(
       `// Workaround: Mastra Studio checks process.env for API keys directly.`,
-      `// Bridge the ph-clint resolved key so Studio's provider detection works.`,
-      `const apiKey = rt.config.apiKey as string | undefined;`,
+      `// Bridge the ph-clint resolved keys so Studio's provider detection works.`,
     );
-    for (const ev of envVars) {
+    for (const provider of providers) {
+      const field = `${provider}ApiKey`;
+      const envVar = getApiKeyEnvVar(provider);
       lines.push(
-        `if (apiKey && !process.env.${ev}) {`,
-        `  process.env.${ev} = apiKey;`,
+        `{`,
+        `  const key = rt.config.${field} as string | undefined;`,
+        `  if (key && !process.env.${envVar}) process.env.${envVar} = key;`,
         `}`,
       );
     }

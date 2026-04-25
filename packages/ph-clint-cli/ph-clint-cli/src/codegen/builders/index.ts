@@ -61,8 +61,8 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
   { relativePath: 'src/main.ts', build: () => buildMainTs() },
   { relativePath: 'src/cli.ts', build: buildCliTs },
   { relativePath: 'src/config.ts', build: buildConfigTs },
-  // User-owned; init-only. Holds `configSchema` + `secretsSchema` edits.
-  { relativePath: 'src/framework.ts', build: buildFrameworkTs, initOnly: true },
+  // User-owned outside markers; generated config/secrets inside markers.
+  { relativePath: 'src/framework.ts', build: buildFrameworkTs },
   // Machine-owned; regenerated on every run. Null when no document types.
   { relativePath: 'src/framework.gen.ts', build: buildFrameworkGenTs },
   { relativePath: 'src/mastra/index.ts', build: buildMastraIndexTs },

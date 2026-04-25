@@ -44,27 +44,33 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
   }
   lines.push('');
   lines.push('export const configSchema = z.object({');
+  lines.push('  // @clint:begin framework-config');
   if (mastra.enabled) {
     const defaultModel = mastra.models.find(m => m.isDefault)?.id ?? 'anthropic/claude-sonnet-4-5';
     lines.push(
       `  model: z.string().default('${defaultModel}').describe('LLM model to use'),`,
+      `  agentLogging: z.boolean().default(false).describe('Enable agent conversation logging'),`,
     );
   }
-  // Ports are derived from CLI name by resolveReactorDefaults() — no config fields needed.
-  // Override via switchboard.port / connect.port in configureReactor() if required.
-  lines.push('  // Add your own config fields here — this file survives regens.');
+  lines.push('  // @clint:end framework-config');
   lines.push('});');
   lines.push('');
   lines.push('export const secretsSchema = z.object({');
+  lines.push('  // @clint:begin framework-secrets');
   if (mastra.enabled) {
-    lines.push("  apiKey: z.string().optional().describe('LLM API key'),");
+    const providers = [...new Set(mastra.models.map(m => m.id.split(/[:/]/)[0]))];
+    for (const provider of providers) {
+      const field = `${provider}ApiKey`;
+      lines.push(`  ${field}: z.string().optional().describe('${provider} API key'),`);
+    }
   }
+  lines.push('  // @clint:end framework-secrets');
   lines.push('});');
   lines.push('');
   lines.push('export type Config = z.infer<typeof configSchema> &');
   lines.push('  z.infer<typeof secretsSchema>;');
   lines.push('');
-  lines.push('const fullConfigSchema = configSchema.merge(secretsSchema);');
+  lines.push('const fullConfigSchema = configSchema.extend(secretsSchema.shape);');
   lines.push('');
   if (hasGen) {
     lines.push('export const {');
