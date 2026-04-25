@@ -10,28 +10,23 @@
 import { type ClintProjectSpec } from '../../spec/types.js';
 
 /**
- * Map a model ID prefix (e.g. "anthropic:...") to the env var Mastra Studio
- * checks for provider connectivity.
+ * Derive the `{PROVIDER}_API_KEY` env var name from a model ID like
+ * `anthropic/claude-sonnet-4-5` or `openai:gpt-4o`.
  */
-function getApiKeyEnvVar(modelId: string): string | undefined {
-  const provider = modelId.split(':')[0];
-  switch (provider) {
-    case 'anthropic': return 'ANTHROPIC_API_KEY';
-    case 'openai': return 'OPENAI_API_KEY';
-    case 'google': return 'GOOGLE_API_KEY';
-    default: return undefined;
-  }
+function getApiKeyEnvVar(modelId: string): string {
+  const provider = modelId.split(/[:/]/)[0];
+  return `${provider.toUpperCase()}_API_KEY`;
 }
 
 export function buildMastraIndexTs(spec: ClintProjectSpec): string {
   const { mastra } = spec.features;
   if (!mastra.enabled) {
     return [
+      '// @clint:begin mastra-index',
       '/**',
       ' * Mastra Studio entry point — placeholder. Enable the `mastra` feature to',
       ' * populate this file. Until then `mastra:*` scripts are effectively no-ops.',
       ' */',
-      '// @clint:begin mastra-index',
       'export {};',
       '// @clint:end mastra-index',
       '',
@@ -40,17 +35,16 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
 
   // Full agent config available — emit bootstrap-based Mastra instance
   if (mastra.agentId && mastra.models.length > 0) {
-    const defaultModel = mastra.models.find(m => m.isDefault) ?? mastra.models[0];
-    const envVar = getApiKeyEnvVar(defaultModel.id);
+    const envVars = [...new Set(mastra.models.map(m => getApiKeyEnvVar(m.id)))];
 
     const lines: string[] = [
+      '// @clint:begin mastra-index',
       '/**',
       ' * Mastra Studio entry point for `mastra dev` / `mastra build` / `mastra start`.',
       ' *',
       ' * Bootstraps the CLI to get the configured agent, then exports a Mastra',
       ' * instance for Studio integration.',
       ' */',
-      '// @clint:begin mastra-index',
       "import { Mastra } from '@mastra/core/mastra';",
       "import type { Agent } from '@mastra/core/agent';",
       "import path from 'node:path';",
@@ -68,17 +62,19 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
     ];
 
     // API key env bridge for Studio
-    if (envVar) {
+    lines.push(
+      `// Workaround: Mastra Studio checks process.env for API keys directly.`,
+      `// Bridge the ph-clint resolved key so Studio's provider detection works.`,
+      `const apiKey = rt.config.apiKey as string | undefined;`,
+    );
+    for (const ev of envVars) {
       lines.push(
-        `// Workaround: Mastra Studio checks process.env for API keys directly.`,
-        `// Bridge the ph-clint resolved key so Studio's provider detection works.`,
-        `const apiKey = rt.config.apiKey as string | undefined;`,
-        `if (apiKey && !process.env.${envVar}) {`,
-        `  process.env.${envVar} = apiKey;`,
+        `if (apiKey && !process.env.${ev}) {`,
+        `  process.env.${ev} = apiKey;`,
         `}`,
-        '',
       );
     }
+    lines.push('');
 
     lines.push(
       'const mastraAgent = await rt.mastraAgent as Agent | undefined;',
@@ -95,13 +91,13 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
 
   // Mastra enabled but no full agent config yet — placeholder
   return [
+    '// @clint:begin mastra-index',
     '/**',
     ' * Mastra Studio entry point for `mastra dev` / `mastra build` / `mastra start`.',
     ' *',
     " * Re-export a configured `@mastra/core` Mastra instance from here once you",
     " * replace the demo createAgent shim with a real Mastra Agent.",
     ' */',
-    '// @clint:begin mastra-index',
     'export {};',
     '// @clint:end mastra-index',
     '',
