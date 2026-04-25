@@ -106,6 +106,8 @@ export type {
   AgentStreamOptions,
   AgentSetupContext,
   AgentLoader,
+  BootstrapOptions,
+  BootstrapResult,
   Logger,
   LogLevel,
   Resolvable,

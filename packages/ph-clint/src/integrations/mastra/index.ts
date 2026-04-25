@@ -133,6 +133,7 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
 
       return {
         id: agentId,
+        mastraAgent: agent,
         async *stream(prompt: string, opts?) {
           const streamOpts: Record<string, unknown> = { maxSteps };
           if (providerOptions) streamOpts.providerOptions = providerOptions;

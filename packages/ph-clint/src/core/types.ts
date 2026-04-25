@@ -247,6 +247,8 @@ export interface AgentStreamOptions {
  */
 export interface AgentProvider {
   id: string;
+  /** The underlying Mastra Agent instance, if one was used to create this provider. */
+  mastraAgent?: unknown;
   stream(
     prompt: string,
     opts?: AgentStreamOptions,
@@ -844,6 +846,43 @@ export interface Cli {
   configEnvVars(): ConfigEnvVar[];
   /** Return static, JSON-serializable metadata about this CLI. */
   getMetadata(): CliMetadata;
+  /**
+   * Initialize the CLI runtime (workdir, config, context, lazy agent) without
+   * entering the command/REPL dispatch loop.  Useful for programmatic access
+   * to the configured agent — e.g. in a generated `mastra/index.ts`.
+   */
+  bootstrap(opts?: BootstrapOptions): Promise<BootstrapResult>;
   run(argv: string[], options?: RunOptions): Promise<void>;
   stopRoutine?(): Promise<void>;
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────
+
+/**
+ * Options for `Cli.bootstrap()` — lightweight runtime init without dispatch.
+ */
+export interface BootstrapOptions {
+  /** Explicit workdir (skips resolveWorkdir flag/cwd logic). */
+  workdir?: string;
+  /** Config file override (equivalent to --config flag). */
+  configFile?: string;
+  /** Log level — default 'info'. */
+  logLevel?: LogLevel;
+  /** Custom stdout sink — default console.log. */
+  stdout?: (text: string) => void;
+  /** Custom stderr sink — default console.error. */
+  stderr?: (text: string) => void;
+}
+
+/**
+ * Result of `Cli.bootstrap()` — provides access to the initialized runtime.
+ */
+export interface BootstrapResult {
+  workdir: string;
+  config: Record<string, unknown>;
+  context: CommandContext;
+  /** Lazy-load the AgentProvider (calls the agent factory on first access). */
+  getAgent(): Promise<AgentProvider | undefined>;
+  /** The raw Mastra Agent from the provider, if available. Lazy-loads the agent. */
+  get mastraAgent(): Promise<unknown | undefined>;
 }

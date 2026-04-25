@@ -1,0 +1,52 @@
+/**
+ * Builds `src/agents/demo-agent.ts` — a deterministic echo agent fallback.
+ *
+ * Generated when `features.mastra.enabled` with full agent config so the real
+ * agent factory can fall back to demo mode when no API key is configured.
+ */
+import { type ClintProjectSpec } from '../../spec/types.js';
+
+export function buildDemoAgentTs(spec: ClintProjectSpec): string | null {
+  const { mastra } = spec.features;
+  // Only needed alongside the real agent (which imports it)
+  if (!mastra.enabled || !mastra.agentId || mastra.models.length === 0) return null;
+
+  const agentId = mastra.agentId;
+  return [
+    "import type { AgentProvider, StreamChunk } from '@powerhousedao/ph-clint';",
+    '',
+    '/**',
+    ' * Demo agent — deterministic echo responses without an API key.',
+    ' *',
+    ' * Echoes user prompts with conversation tracking per thread.',
+    ' */',
+    'export function createDemoAgent(): AgentProvider {',
+    '  const conversations = new Map<string, string[]>();',
+    '',
+    '  return {',
+    `    id: '${agentId}',`,
+    '    async *stream(prompt, opts) {',
+    "      const threadId = opts?.threadId ?? 'default';",
+    '      if (!conversations.has(threadId)) {',
+    '        conversations.set(threadId, []);',
+    '      }',
+    '      const history = conversations.get(threadId)!;',
+    '      history.push(prompt);',
+    '',
+    '      const turnCount = history.length;',
+    '      if (turnCount > 1) {',
+    '        yield {',
+    "          type: 'text-delta',",
+    '          text: `I understand you\'re continuing our conversation (turn ${turnCount}). `,',
+    '        } satisfies StreamChunk;',
+    '      }',
+    '      yield {',
+    "        type: 'text-delta',",
+    '        text: `You said: "${prompt}". I\'m the demo agent — set an API key for real LLM responses.`,',
+    '      } satisfies StreamChunk;',
+    '    },',
+    '  };',
+    '}',
+    '',
+  ].join('\n');
+}

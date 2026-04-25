@@ -17,6 +17,7 @@ import { buildMastraIndexTs } from './mastra-index-ts.js';
 import { buildBuildSkillsScript } from './build-skills-ts.js';
 import { buildAgentBaseMd } from './agent-base-md.js';
 import { buildAgentTs } from './agent-ts.js';
+import { buildDemoAgentTs } from './demo-agent-ts.js';
 import { buildFrameworkGenTs } from './framework-gen-ts.js';
 import { buildFrameworkTs } from './framework-ts.js';
 import { type ClintProjectSpec } from '../../spec/types.js';
@@ -74,6 +75,10 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
     relativePath: 'src/agents/agent.ts',
     build: (spec) => (spec.features.mastra.enabled ? buildAgentTs(spec) : null),
   },
+  {
+    relativePath: 'src/agents/demo-agent.ts',
+    build: buildDemoAgentTs,
+  },
   // Gitkeep placeholders so directories are tracked in git when otherwise empty.
   { relativePath: 'src/commands/.gitkeep', build: () => '' },
   { relativePath: 'src/services/.gitkeep', build: () => '' },
@@ -103,6 +108,7 @@ export {
   buildBuildSkillsScript,
   buildAgentBaseMd,
   buildAgentTs,
+  buildDemoAgentTs,
   buildFrameworkGenTs,
   buildFrameworkTs,
 };

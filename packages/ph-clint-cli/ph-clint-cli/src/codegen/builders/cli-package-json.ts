@@ -62,6 +62,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
   if (mastra.enabled) {
     dependencies['@mastra/core'] = '^1.22.0';
     dependencies['@mastra/libsql'] = '^1.7.4';
+    dependencies['@mastra/mcp'] = '^1.4.1';
     dependencies['@mastra/memory'] = '^1.13.1';
   }
   if (phAtLeast(powerhouse, 'Reactor')) {

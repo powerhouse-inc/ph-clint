@@ -5,6 +5,8 @@ import type {
   AgentSetupContext,
   AgentLoader,
   AgentProvider,
+  BootstrapOptions,
+  BootstrapResult,
   Cli,
   CliMetadata,
   CliOptions,
@@ -747,6 +749,124 @@ export function defineCli<
   }
 
   /**
+   * Initialize the CLI runtime without entering the dispatch loop.
+   * Returns resolved workdir, config, context, and lazy agent accessor.
+   */
+  async function bootstrap(opts?: BootstrapOptions): Promise<BootstrapResult> {
+    const stdoutFn = opts?.stdout ?? ((msg: string) => { console.log(msg); });
+    const stderrFn = opts?.stderr ?? ((msg: string) => { console.error(msg); });
+    const cwd = process.cwd();
+
+    // Resolve workdir: explicit override > implementation override > cwd
+    const workdir = opts?.workdir
+      ? resolveWorkdir({ implementationOverride: opts.workdir })
+      : resolveWorkdir({ implementationOverride: options.workdir, fallback: cwd });
+    activeWorkdir = workdir;
+
+    // Context store lives at {workdir}/.ph/{cli-name}/
+    const workspace = createWorkdirStore(workdir, options.name);
+
+    // Auto-initialize store and install skills on first use
+    if (options.prompts && options.prompts.artifacts.length > 0) {
+      const storeRoot = workspace.getStoreFolder();
+      if (!fs.existsSync(storeRoot)) {
+        fs.mkdirSync(storeRoot, { recursive: true });
+        const dbFolder = workspace.getStoreFolder('.mastra/db');
+        fs.mkdirSync(dbFolder, { recursive: true });
+        installSkills({
+          store: workspace,
+          skillArtifacts: options.prompts.artifacts,
+          stdout: () => {},
+        });
+      }
+    }
+
+    // Resolve config through 6 layers
+    const config = options.configSchema
+      ? resolveConfig({
+          configSchema: options.configSchema,
+          cliName: options.name,
+          workdir,
+          configFile: opts?.configFile,
+          cwd,
+          implementationDefaults: options.configDefaults,
+        })
+      : {};
+
+    const logLevel = opts?.logLevel ?? 'info';
+    const log = createLogger(logLevel, stderrFn);
+    const context = buildContext({ workdir, workspace, config, stdout: stdoutFn, log });
+
+    // Create ServiceManager when services are defined
+    {
+      const servicesNow = options.services && options.services.length > 0;
+      let processServiceManager: import('./types.js').ServiceManager | undefined;
+      if (servicesNow && options.services) {
+        const svcDir = userStoreFolder(options.name, 'services');
+        processServiceManager = createServiceManager(options.services as any[], {
+          config,
+          servicesDir: svcDir,
+          eventBus: getEventBus(),
+        });
+      }
+
+      if (processServiceManager && routineServiceAdapter) {
+        const routeMap = new Map<string, import('./types.js').ServiceManager>();
+        for (const svc of options.services!) {
+          routeMap.set(svc.id, processServiceManager);
+        }
+        routeMap.set(options.routine!.id!, routineServiceAdapter);
+        context.services = createCompositeServiceManager(
+          [processServiceManager, routineServiceAdapter],
+          routeMap,
+        );
+      } else if (processServiceManager) {
+        context.services = processServiceManager;
+      } else if (routineServiceAdapter) {
+        context.services = routineServiceAdapter;
+      }
+
+      if (_eventBus && options.events) {
+        for (const [event, handler] of Object.entries(options.events)) {
+          _eventBus.on(event, (data: unknown) => handler(data, log));
+        }
+      }
+    }
+
+    // Lazy agent provider
+    let cachedProvider: AgentProvider | undefined;
+    async function getAgent(): Promise<AgentProvider | undefined> {
+      if (cachedProvider) return cachedProvider;
+      if (!agentLoader) return undefined;
+      const agentCtx: AgentSetupContext = {
+        workdir,
+        config,
+        cliName: options.name,
+        cliVersion: options.version,
+        context,
+        commands: [...commandMap.values()].filter(c => !skillIds.has(c.id)),
+        skills: resolvedSkills,
+        prompts: options.prompts,
+      };
+      cachedProvider = await agentLoader(agentCtx);
+      return cachedProvider;
+    }
+
+    // Wire lazy accessors onto the context
+    context.agent = getAgent;
+
+    return {
+      workdir,
+      config,
+      context,
+      getAgent,
+      get mastraAgent() {
+        return getAgent().then(p => p?.mastraAgent);
+      },
+    };
+  }
+
+  /**
    * Public entry point — fills in process defaults, then delegates to runImpl.
    */
   async function run(argv: string[], runOptions?: RunOptions): Promise<void> {
@@ -1276,6 +1396,7 @@ export function defineCli<
           generateCompletion,
           configEnvVars,
           getMetadata,
+          bootstrap,
           run,
           stopRoutine,
         };
@@ -1570,6 +1691,7 @@ export function defineCli<
     generateCompletion,
     configEnvVars,
     getMetadata,
+    bootstrap,
     run,
     stopRoutine,
   };
