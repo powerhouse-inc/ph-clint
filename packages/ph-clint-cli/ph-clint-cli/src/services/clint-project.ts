@@ -43,6 +43,21 @@ export const clintProject = defineService({
         return !!json.dependencies?.['@powerhousedao/ph-clint'];
       } catch { return false; }
     },
+
+    getDocumentLink: (p) => {
+      const specPath = path.join(p, '.ph', 'ph-clint-cli', 'project-spec.json');
+      if (!fs.existsSync(specPath)) return undefined;
+      try {
+        const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
+        if (spec.documentId) {
+          return {
+            documentId: spec.documentId,
+            documentType: spec.documentType ?? 'powerhouse/ph-clint-project',
+          };
+        }
+      } catch { /* noop */ }
+      return undefined;
+    },
   },
 
   restart: { enabled: false, maxRetries: 0, delay: 0 },

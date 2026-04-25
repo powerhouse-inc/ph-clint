@@ -243,15 +243,34 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
         if (projects.length === 0) {
           return { text: `No ${resolveServiceName(def)} projects found`, data: [] };
         }
-        const lines = projects.map((p) => {
-          const rel = path.relative(context.workdir, p.path);
-          const display = rel ? './' + rel : '.';
-          return `  ${p.name}  ${display}`;
-        });
-        return {
-          text: `Found ${projects.length} project(s):\n${lines.join('\n')}`,
-          data: projects,
-        };
+
+        const hasDocLinks = projects.some(p => p.documentId);
+
+        if (hasDocLinks) {
+          const header = '  Name                Location              Document ID                          Type';
+          const sep = '  ' + '-'.repeat(header.length - 2);
+          const lines = projects.map((p) => {
+            const rel = path.relative(context.workdir, p.path);
+            const display = rel ? './' + rel : '.';
+            const docId = p.documentId ? p.documentId.slice(0, 36) : '(none)';
+            const docType = p.documentType ?? '-';
+            return `  ${p.name.padEnd(20)}${display.padEnd(22)}${docId.padEnd(37)}${docType}`;
+          });
+          return {
+            text: `Found ${projects.length} project(s):\n${header}\n${sep}\n${lines.join('\n')}`,
+            data: projects,
+          };
+        } else {
+          const lines = projects.map((p) => {
+            const rel = path.relative(context.workdir, p.path);
+            const display = rel ? './' + rel : '.';
+            return `  ${p.name}  ${display}`;
+          });
+          return {
+            text: `Found ${projects.length} project(s):\n${lines.join('\n')}`,
+            data: projects,
+          };
+        }
       },
     });
   }

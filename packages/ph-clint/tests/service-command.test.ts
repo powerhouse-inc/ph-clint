@@ -856,6 +856,84 @@ describe('createServiceCommands — {id}-ls', () => {
     expect(result.data).toEqual(scanResults);
   });
 
+  it('ls command renders table format when document links are present', async () => {
+    const def: ServiceDefinition = {
+      id: 'scan-svc',
+      name: 'Scan Service',
+      command: 'echo start',
+      projectScanner: {
+        isProjectFolder: () => true,
+      },
+    };
+    const cmds = createServiceCommands(def);
+    const lsCmd = cmds.find((c) => c.id === 'scan-svc-ls')!;
+    const scanResults = [
+      { name: 'proj-a', path: '/tmp/proj-a', documentId: 'abc-123', documentType: 'test/type' },
+      { name: 'proj-b', path: '/tmp/proj-b' },
+    ];
+    const mockMgr: ServiceManager = {
+      start: async () => '',
+      stop: async () => {},
+      list: () => [],
+      getDefinition: () => undefined,
+      logs: () => '',
+      watchLogs: () => () => {},
+      scanProjects: () => scanResults,
+      purgeStoppedInstances: () => {},
+    };
+    const ctx: CommandContext = {
+      workdir: '/tmp',
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      stdout: () => {},
+      services: mockMgr,
+    };
+    const result = await lsCmd.execute({}, ctx) as any;
+    expect(result.text).toContain('2 project');
+    expect(result.text).toContain('Name');
+    expect(result.text).toContain('Document ID');
+    expect(result.text).toContain('abc-123');
+    expect(result.text).toContain('test/type');
+    expect(result.text).toContain('(none)');
+    expect(result.data).toEqual(scanResults);
+  });
+
+  it('ls command uses simple format when no document links', async () => {
+    const def: ServiceDefinition = {
+      id: 'scan-svc',
+      name: 'Scan Service',
+      command: 'echo start',
+      projectScanner: {
+        isProjectFolder: () => true,
+      },
+    };
+    const cmds = createServiceCommands(def);
+    const lsCmd = cmds.find((c) => c.id === 'scan-svc-ls')!;
+    const scanResults = [
+      { name: 'proj-a', path: '/tmp/proj-a' },
+    ];
+    const mockMgr: ServiceManager = {
+      start: async () => '',
+      stop: async () => {},
+      list: () => [],
+      getDefinition: () => undefined,
+      logs: () => '',
+      watchLogs: () => () => {},
+      scanProjects: () => scanResults,
+      purgeStoppedInstances: () => {},
+    };
+    const ctx: CommandContext = {
+      workdir: '/tmp',
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      stdout: () => {},
+      services: mockMgr,
+    };
+    const result = await lsCmd.execute({}, ctx) as any;
+    expect(result.text).toContain('1 project');
+    expect(result.text).not.toContain('Document ID');
+  });
+
   it('ls command shows message when no projects found', async () => {
     const def: ServiceDefinition = {
       id: 'scan-svc',

@@ -99,6 +99,10 @@ export const clintProjectSpecSchema = z.object({
    * (kebab-case) and a GitHub URL for installation.
    */
   externalSkills: z.array(externalSkillSchema).default([]),
+  /** ID of the source specification document (if backed by a Powerhouse document). */
+  documentId: z.string().optional(),
+  /** Document type of the source specification document. */
+  documentType: z.string().optional(),
 });
 
 export type ClintProjectSpec = z.infer<typeof clintProjectSpecSchema>;

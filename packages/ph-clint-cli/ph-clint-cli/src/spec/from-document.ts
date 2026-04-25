@@ -21,6 +21,7 @@ import {
  */
 export function specFromDocumentState(
   state: PhClintProjectGlobalState,
+  meta?: { documentId?: string; documentType?: string },
 ): ClintProjectSpec | null {
   if (!state.name) return null;
 
@@ -45,6 +46,8 @@ export function specFromDocumentState(
       name: s.name,
       githubUrl: s.githubUrl,
     })),
+    documentId: meta?.documentId,
+    documentType: meta?.documentType,
   });
 
   return parsed.success ? parsed.data : null;

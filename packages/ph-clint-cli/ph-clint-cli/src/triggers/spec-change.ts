@@ -62,11 +62,13 @@ async function writeLastSpecHash(
   await fs.writeFile(file, hash + '\n', 'utf8');
 }
 
-/** Stable hash of a ClintProjectSpec (sha256 of canonical-key JSON). */
+/** Stable hash of a ClintProjectSpec (sha256 of canonical-key JSON).
+ *  Excludes documentId/documentType — they don't affect codegen output. */
 export function hashSpec(spec: ClintProjectSpec): string {
+  const { documentId, documentType, ...codegenRelevant } = spec;
   return crypto
     .createHash('sha256')
-    .update(canonicalJson(spec), 'utf8')
+    .update(canonicalJson(codegenRelevant), 'utf8')
     .digest('hex');
 }
 

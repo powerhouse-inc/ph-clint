@@ -87,11 +87,21 @@ export function scanProjects(
     scanner.getProjectConfig ? scanner.getProjectConfig(p) : undefined;
 
   function toResult(folderPath: string): ProjectScanResult {
-    return {
+    const result: ProjectScanResult = {
       name: getName(folderPath),
       path: folderPath,
       config: getConfig(folderPath),
     };
+
+    if (scanner.getDocumentLink) {
+      const link = scanner.getDocumentLink(folderPath);
+      if (link) {
+        result.documentId = link.documentId;
+        result.documentType = link.documentType;
+      }
+    }
+
+    return result;
   }
 
   // Check root first

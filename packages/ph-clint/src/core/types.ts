@@ -432,6 +432,8 @@ export interface ProjectScanner {
   isProjectFolder(folderPath: string): boolean;
   getProjectName?(folderPath: string): string;
   getProjectConfig?(folderPath: string): Record<string, unknown>;
+  /** Read document linkage from the project's spec/config file. */
+  getDocumentLink?(folderPath: string): { documentId: string; documentType: string } | undefined;
 }
 
 /**
@@ -441,6 +443,10 @@ export interface ProjectScanResult {
   name: string;
   path: string;
   config?: Record<string, unknown>;
+  /** Document ID linked to this project (from getDocumentLink). */
+  documentId?: string;
+  /** Document type linked to this project. */
+  documentType?: string;
 }
 
 // ── Preflight checks ─────────────────────────────────────────────

@@ -135,6 +135,46 @@ describe('scanProjects', () => {
     expect(results[0]!.config).toBeUndefined();
   });
 
+  it('populates documentId/documentType from getDocumentLink', () => {
+    mkdir('proj');
+    touch('proj', 'marker.txt');
+
+    const scanner: ProjectScanner = {
+      isProjectFolder: hasMarker.isProjectFolder,
+      getDocumentLink: (p) => {
+        if (p.endsWith('proj')) {
+          return { documentId: 'doc-123', documentType: 'test/type' };
+        }
+        return undefined;
+      },
+    };
+    const results = scanProjects(tmpDir, scanner);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.documentId).toBe('doc-123');
+    expect(results[0]!.documentType).toBe('test/type');
+  });
+
+  it('leaves documentId undefined when getDocumentLink returns undefined', () => {
+    mkdir('proj');
+    touch('proj', 'marker.txt');
+
+    const scanner: ProjectScanner = {
+      isProjectFolder: hasMarker.isProjectFolder,
+      getDocumentLink: () => undefined,
+    };
+    const results = scanProjects(tmpDir, scanner);
+    expect(results[0]!.documentId).toBeUndefined();
+    expect(results[0]!.documentType).toBeUndefined();
+  });
+
+  it('leaves documentId undefined when getDocumentLink not provided', () => {
+    mkdir('proj');
+    touch('proj', 'marker.txt');
+
+    const results = scanProjects(tmpDir, hasMarker);
+    expect(results[0]!.documentId).toBeUndefined();
+  });
+
   it('handles unreadable directories gracefully', () => {
     mkdir('no-read');
     touch('no-read', 'marker.txt');

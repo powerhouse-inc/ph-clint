@@ -17,6 +17,8 @@ export { createProcessManager } from './core/processes.js';
 export { defineService, createServiceManager, resolveServiceName } from './core/services.js';
 export { createServiceCommands, formatStatus } from './core/service-command.js';
 export { scanProjects, PROJECT_INDICATORS } from './core/project-scanner.js';
+export { getProjectMapping } from './core/project-mapping.js';
+export type { ProjectMapping } from './core/project-mapping.js';
 export { checkWorkdir, checkCommand, checkPort, isPortFree } from './core/preflight.js';
 export { createHelpCommand } from './core/help-command.js';
 export { installSkills } from './core/init.js';
