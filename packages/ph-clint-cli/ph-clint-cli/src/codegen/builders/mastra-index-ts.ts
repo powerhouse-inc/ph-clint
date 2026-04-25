@@ -3,6 +3,9 @@
  *
  * When Mastra is off, emit a no-op placeholder so the directory still exists
  * and `mastra dev` fails predictably rather than importing partial code.
+ *
+ * When Mastra is on with full agent config, emit a real Mastra instance
+ * that registers the agent.
  */
 import { type ClintProjectSpec } from '../../spec/types.js';
 
@@ -20,9 +23,31 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
       '',
     ].join('\n');
   }
-  // When Mastra is enabled but we still emit the demo `AgentProvider` shim
-  // (not a real `@mastra/core` Agent), there is no `mastra` export yet —
-  // `mastra dev` will surface a helpful message once you wire a real Agent.
+
+  // Full agent config available — emit real Mastra instance
+  if (mastra.agentId && mastra.models.length > 0) {
+    const agentId = mastra.agentId;
+    return [
+      '/**',
+      ' * Mastra Studio entry point for `mastra dev` / `mastra build` / `mastra start`.',
+      ' *',
+      ' * Exports a configured Mastra instance with the project agent registered.',
+      ' */',
+      "import { Mastra } from '@mastra/core/mastra';",
+      "import { Agent } from '@mastra/core/agent';",
+      '',
+      '// @clint:begin mastra-index',
+      `const agent = new Agent({ id: '${agentId}', model: '${(mastra.models.find(m => m.isDefault) ?? mastra.models[0]).id}' });`,
+      '',
+      'export const mastra = new Mastra({',
+      `  agents: { '${agentId}': agent },`,
+      '});',
+      '// @clint:end mastra-index',
+      '',
+    ].join('\n');
+  }
+
+  // Mastra enabled but no full agent config yet — placeholder
   return [
     '/**',
     ' * Mastra Studio entry point for `mastra dev` / `mastra build` / `mastra start`.',

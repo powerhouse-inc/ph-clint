@@ -66,7 +66,19 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('  // @clint:begin prompts');
   lines.push('  prompts: {');
   lines.push('    artifacts: [],');
-  lines.push('    agents: {},');
+  if (mastra.enabled && mastra.agentId && mastra.profiles.length > 0) {
+    lines.push('    agents: {');
+    lines.push(`      '${mastra.agentId}': {`);
+    lines.push('        sections: [');
+    for (const p of mastra.profiles) {
+      lines.push(`          { id: '${p.id}', title: '${p.title}', file: '${p.id}.md' },`);
+    }
+    lines.push('        ],');
+    lines.push('      },');
+    lines.push('    },');
+  } else {
+    lines.push('    agents: {},');
+  }
   lines.push('    skills: {},');
   lines.push('  },');
   lines.push('  // @clint:end prompts');

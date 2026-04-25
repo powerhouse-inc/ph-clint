@@ -81,4 +81,26 @@ describe('buildCliTs', () => {
     expect(code).toContain('cli.configureAgent(createAgent)');
     expect(code).toContain('documentModels');
   });
+
+  it('populates prompts.agents from spec profiles', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: {
+        mastra: {
+          enabled: true,
+          agentId: 'foo-agent',
+          agentName: 'Foo Agent',
+          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+          profiles: [
+            { id: 'base', title: 'Base', content: 'Base instructions.' },
+            { id: 'tools', title: 'Tools', content: 'Tool usage.' },
+          ],
+        },
+      },
+    });
+    const code = buildCliTs(spec);
+    expect(code).toContain("'foo-agent'");
+    expect(code).toContain("{ id: 'base', title: 'Base', file: 'base.md' }");
+    expect(code).toContain("{ id: 'tools', title: 'Tools', file: 'tools.md' }");
+  });
 });

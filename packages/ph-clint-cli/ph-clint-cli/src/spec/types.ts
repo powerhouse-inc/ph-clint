@@ -37,15 +37,40 @@ export function phAtLeast(
   );
 }
 
+export const agentModelSchema = z.object({
+  id: z.string(),
+  isDefault: z.boolean(),
+});
+
+export type AgentModel = z.infer<typeof agentModelSchema>;
+
+export const agentProfileSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+});
+
+export type AgentProfile = z.infer<typeof agentProfileSchema>;
+
 const mastraFeatureSchema = z.object({
   enabled: z.boolean().default(false),
+  agentId: z.string().nullable().default(null),
+  agentName: z.string().nullable().default(null),
+  models: z.array(agentModelSchema).default([]),
+  profiles: z.array(agentProfileSchema).default([]),
 });
 
 const routineFeatureSchema = z.object({
   enabled: z.boolean().default(false),
 });
 
-const DEFAULT_MASTRA = { enabled: false } as const;
+const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
+  enabled: false,
+  agentId: null,
+  agentName: null,
+  models: [],
+  profiles: [],
+};
 const DEFAULT_ROUTINE = { enabled: false } as const;
 
 export const powerhousePackageSchema = z.object({

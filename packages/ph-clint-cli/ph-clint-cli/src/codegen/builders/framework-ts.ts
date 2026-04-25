@@ -45,8 +45,9 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
   lines.push('');
   lines.push('export const configSchema = z.object({');
   if (mastra.enabled) {
+    const defaultModel = mastra.models.find(m => m.isDefault)?.id ?? 'anthropic/claude-sonnet-4-5';
     lines.push(
-      "  model: z.string().default('anthropic/claude-haiku-4-5').describe('LLM model to use'),",
+      `  model: z.string().default('${defaultModel}').describe('LLM model to use'),`,
     );
   }
   // Ports are derived from CLI name by resolveReactorDefaults() — no config fields needed.

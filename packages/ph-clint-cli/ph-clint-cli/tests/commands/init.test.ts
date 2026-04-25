@@ -46,6 +46,38 @@ describe('buildSpec', () => {
     expect(spec.features.routine.enabled).toBe(true);
   });
 
+  it('populates agent defaults when mastra is enabled', () => {
+    const spec = buildSpec({
+      name: 'foo',
+      enablePowerhouse: false,
+      enableMastra: true,
+      enableRoutine: false,
+      force: false,
+    });
+    expect(spec.features.mastra.agentId).toBe('foo-agent');
+    expect(spec.features.mastra.agentName).toBe('Foo Agent');
+    expect(spec.features.mastra.models).toEqual([
+      { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
+    ]);
+    expect(spec.features.mastra.profiles).toEqual([
+      { id: 'base', title: 'Base', content: 'You are a helpful assistant.' },
+    ]);
+  });
+
+  it('leaves agent fields null/empty when mastra is disabled', () => {
+    const spec = buildSpec({
+      name: 'foo',
+      enablePowerhouse: false,
+      enableMastra: false,
+      enableRoutine: false,
+      force: false,
+    });
+    expect(spec.features.mastra.agentId).toBeNull();
+    expect(spec.features.mastra.agentName).toBeNull();
+    expect(spec.features.mastra.models).toEqual([]);
+    expect(spec.features.mastra.profiles).toEqual([]);
+  });
+
   it('preserves routine off when mastra is off', () => {
     const spec = buildSpec({
       name: 'foo',

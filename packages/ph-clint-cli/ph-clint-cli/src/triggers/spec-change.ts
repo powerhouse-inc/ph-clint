@@ -100,6 +100,17 @@ export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
     powerhouse: spec.features.powerhouse,
     mastraEnabled: spec.features.mastra.enabled,
     routineEnabled: spec.features.routine.enabled,
+    agentId: spec.features.mastra.agentId ?? null,
+    agentName: spec.features.mastra.agentName ?? null,
+    models: spec.features.mastra.models.map(m => ({
+      id: m.id,
+      isDefault: m.isDefault,
+    })),
+    profiles: spec.features.mastra.profiles.map(p => ({
+      id: p.id,
+      title: p.title,
+      content: p.content,
+    })),
     packages: spec.packages.map(p => ({
       id: p.id,
       packageName: p.packageName,

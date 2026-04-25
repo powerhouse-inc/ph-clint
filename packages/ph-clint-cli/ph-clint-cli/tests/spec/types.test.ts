@@ -15,6 +15,10 @@ describe('clintProjectSpecSchema', () => {
     expect(parsed.description).toBe('');
     expect(parsed.features.powerhouse).toBe('Disabled');
     expect(parsed.features.mastra.enabled).toBe(false);
+    expect(parsed.features.mastra.agentId).toBeNull();
+    expect(parsed.features.mastra.agentName).toBeNull();
+    expect(parsed.features.mastra.models).toEqual([]);
+    expect(parsed.features.mastra.profiles).toEqual([]);
     expect(parsed.features.routine.enabled).toBe(false);
   });
 

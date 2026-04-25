@@ -38,6 +38,19 @@ export interface FileBuilder {
   initOnly?: boolean;
 }
 
+/**
+ * Generate dynamic file builders for agent profile markdown files.
+ * One file per profile in `prompts/agent-profiles/{id}.md`.
+ */
+export function getProfileFileBuilders(spec: ClintProjectSpec): FileBuilder[] {
+  const { mastra } = spec.features;
+  if (!mastra.enabled || mastra.profiles.length === 0) return [];
+  return mastra.profiles.map((profile) => ({
+    relativePath: `prompts/agent-profiles/${profile.id}.md`,
+    build: () => profile.content + '\n',
+  }));
+}
+
 export const CLI_FILE_BUILDERS: FileBuilder[] = [
   { relativePath: 'package.json', build: buildCliPackageJson },
   { relativePath: 'tsconfig.json', build: () => buildTsconfigJson() },
@@ -53,7 +66,10 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
   { relativePath: 'src/framework.gen.ts', build: buildFrameworkGenTs },
   { relativePath: 'src/mastra/index.ts', build: buildMastraIndexTs },
   { relativePath: 'scripts/build-skills.ts', build: () => buildBuildSkillsScript() },
-  { relativePath: 'prompts/agent-profiles/AgentBase.md', build: buildAgentBaseMd },
+  {
+    relativePath: 'prompts/agent-profiles/AgentBase.md',
+    build: (spec) => (spec.features.mastra.profiles.length > 0 ? null : buildAgentBaseMd(spec)),
+  },
   {
     relativePath: 'src/agents/agent.ts',
     build: (spec) => (spec.features.mastra.enabled ? buildAgentTs(spec) : null),

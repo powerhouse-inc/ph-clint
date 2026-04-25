@@ -51,6 +51,7 @@ import { writeFileEnsuringDir, isDirEmptyEnough } from './write.js';
 import { migrateFlatToSplit } from './migrate/flat-to-split.js';
 import {
   CLI_FILE_BUILDERS,
+  getProfileFileBuilders,
   buildReadme,
   buildRootPackageJson,
   buildPublishConfigTs,
@@ -165,7 +166,8 @@ function planFiles(
   const appDir = split ? path.join(targetDir, getAppFolderName(spec)) : null;
   const planned: PlannedFile[] = [];
 
-  for (const builder of CLI_FILE_BUILDERS) {
+  const allBuilders = [...CLI_FILE_BUILDERS, ...getProfileFileBuilders(spec)];
+  for (const builder of allBuilders) {
     const content = builder.build(spec);
     if (content === null) continue;
     const abs = path.join(cliDir, builder.relativePath);

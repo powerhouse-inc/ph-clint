@@ -88,13 +88,23 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
   // the agent routine loop is what most users actually want.
   const routine = input.enableRoutine || input.enableMastra;
 
+  const mastra = input.enableMastra
+    ? {
+        enabled: true,
+        agentId: `${name}-agent`,
+        agentName: `${name.charAt(0).toUpperCase()}${name.slice(1).replace(/-(\w)/g, (_, c: string) => ' ' + c.toUpperCase())} Agent`,
+        models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
+      }
+    : { enabled: false };
+
   const candidate = {
     name,
     scope,
     description: input.description ?? '',
     features: {
       powerhouse: input.enablePowerhouse ? 'Connect' as const : 'Disabled' as const,
-      mastra: { enabled: input.enableMastra },
+      mastra,
       routine: { enabled: routine },
     },
   };

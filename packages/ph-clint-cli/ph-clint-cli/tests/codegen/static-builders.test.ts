@@ -79,7 +79,7 @@ describe('buildMastraIndexTs', () => {
     expect(out).toContain('export {};');
   });
 
-  it('mastra on — placeholder until a real Mastra instance is wired', () => {
+  it('mastra on without agent config — placeholder', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       features: { mastra: { enabled: true } },
@@ -87,6 +87,25 @@ describe('buildMastraIndexTs', () => {
     const out = buildMastraIndexTs(spec);
     expect(out).toContain('export {};');
     expect(out).toContain('@mastra/core');
+  });
+
+  it('mastra on with full agent config — real Mastra instance', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: {
+        mastra: {
+          enabled: true,
+          agentId: 'foo-agent',
+          agentName: 'Foo Agent',
+          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+          profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
+        },
+      },
+    });
+    const out = buildMastraIndexTs(spec);
+    expect(out).toContain("import { Mastra } from '@mastra/core/mastra'");
+    expect(out).toContain("'foo-agent'");
+    expect(out).toContain('export const mastra');
   });
 });
 
@@ -100,11 +119,33 @@ describe('buildAgentBaseMd', () => {
 });
 
 describe('buildAgentTs', () => {
-  it('emits a createAgent factory whose id matches the project name', () => {
+  it('emits a demo agent when no agent config', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const out = buildAgentTs(spec);
     expect(out).toContain('export async function createAgent');
     expect(out).toContain("id: 'foo'");
+    expect(out).toContain('createDemoAgent');
+  });
+
+  it('emits a real Mastra agent when full config is present', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: {
+        mastra: {
+          enabled: true,
+          agentId: 'foo-agent',
+          agentName: 'Foo Agent',
+          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+          profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
+        },
+      },
+    });
+    const out = buildAgentTs(spec);
+    expect(out).toContain("import { Agent } from '@mastra/core/agent'");
+    expect(out).toContain("id: 'foo-agent'");
+    expect(out).toContain("name: 'Foo Agent'");
+    expect(out).toContain("import { createMastraHelpers }");
+    expect(out).toContain("m.getAgentInstructions('foo-agent')");
   });
 });
 

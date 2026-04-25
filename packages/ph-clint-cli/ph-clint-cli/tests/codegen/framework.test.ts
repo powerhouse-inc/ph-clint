@@ -133,7 +133,7 @@ describe('buildFrameworkTs', () => {
       features: { mastra: { enabled: true } },
     });
     const code = buildFrameworkTs(spec);
-    expect(code).toContain("model: z.string().default('anthropic/claude-haiku-4-5')");
+    expect(code).toContain("model: z.string().default('anthropic/claude-sonnet-4-5')");
     expect(code).toContain('apiKey: z.string().optional()');
   });
 });
