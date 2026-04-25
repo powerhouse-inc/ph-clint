@@ -46,6 +46,21 @@ enum PowerhouseLevel {
 
 type PhClintMastraFeature {
   enabled: Boolean!
+  agentId: String
+  agentName: String
+  models: [PhClintAgentModel!]!
+  profiles: [PhClintAgentProfile!]!
+}
+
+type PhClintAgentModel {
+  id: String!
+  isDefault: Boolean!
+}
+
+type PhClintAgentProfile {
+  id: String!
+  title: String!
+  content: String!
 }
 
 type PhClintRoutineFeature {
@@ -124,11 +139,55 @@ input SetPowerhouseLevelInput {
 # features_mastra
 
 input EnableMastraInput {
-  _: Boolean
+  agentId: String!
+  agentName: String!
 }
 
 input DisableMastraInput {
   _: Boolean
+}
+
+input SetAgentIdInput {
+  agentId: String!
+}
+
+input SetAgentNameInput {
+  agentName: String!
+}
+
+input AddModelInput {
+  id: String!
+  isDefault: Boolean
+}
+
+input RemoveModelInput {
+  id: String!
+}
+
+input SetDefaultModelInput {
+  id: String!
+}
+
+input AddProfileInput {
+  id: String!
+  title: String!
+  content: String!
+  insertBefore: String
+}
+
+input UpdateProfileInput {
+  id: String!
+  title: String
+  content: String
+}
+
+input RemoveProfileInput {
+  id: String!
+}
+
+input ReorderProfilesInput {
+  ids: [String!]!
+  insertBefore: String
 }
 
 # features_routine
@@ -223,6 +282,10 @@ input ImportSpecInput {
   routineEnabled: Boolean!
   packages: [ImportPackageInput!]!
   externalSkills: [ImportSkillInput!]!
+  agentId: String
+  agentName: String
+  models: [ImportModelInput!]
+  profiles: [ImportProfileInput!]
 }
 
 input ImportPackageInput {
@@ -235,4 +298,15 @@ input ImportSkillInput {
   id: OID!
   name: String!
   githubUrl: URL!
+}
+
+input ImportModelInput {
+  id: String!
+  isDefault: Boolean!
+}
+
+input ImportProfileInput {
+  id: String!
+  title: String!
+  content: String!
 }

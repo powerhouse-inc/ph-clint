@@ -16,9 +16,9 @@
           "initialValue": ""
         },
         "global": {
-          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}",
+          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}",
           "examples": [],
-          "initialValue": "{\n  \"name\": null,\n  \"scope\": null,\n  \"version\": \"0.1.0\",\n  \"description\": \"\",\n  \"bin\": null,\n  \"features\": {\n    \"powerhouse\": \"Disabled\",\n    \"mastra\": { \"enabled\": false },\n    \"routine\": { \"enabled\": false }\n  },\n  \"packages\": [],\n  \"externalSkills\": [],\n  \"publishHistory\": []\n}"
+          "initialValue": "{\n  \"name\": null,\n  \"scope\": null,\n  \"version\": \"0.1.0\",\n  \"description\": \"\",\n  \"bin\": null,\n  \"features\": {\n    \"powerhouse\": \"Disabled\",\n    \"mastra\": {\n      \"enabled\": false,\n      \"agentId\": null,\n      \"agentName\": null,\n      \"models\": [],\n      \"profiles\": []\n    },\n    \"routine\": { \"enabled\": false }\n  },\n  \"packages\": [],\n  \"externalSkills\": [],\n  \"publishHistory\": []\n}"
         }
       },
       "modules": [
@@ -173,10 +173,25 @@
               "id": "o-enable-mastra",
               "name": "ENABLE_MASTRA",
               "description": "Enable the Mastra agent feature. Mastra and Routine are orthogonal — enable Routine separately if needed. Idempotent.",
-              "schema": "input EnableMastraInput {\n  _: Boolean\n}",
+              "schema": "input EnableMastraInput {\n  agentId: String!\n  agentName: String!\n}",
               "template": "Enable the Mastra agent feature. Mastra and Routine are orthogonal — enable Routine separately if needed. Idempotent.",
-              "reducer": "state.features.mastra.enabled = true;",
-              "errors": [],
+              "reducer": "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(`Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`);\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nstate.features.mastra.agentId = action.input.agentId;\nstate.features.mastra.agentName = trimmedName;",
+              "errors": [
+                {
+                  "id": "e-enable-mastra-invalid-id",
+                  "name": "InvalidAgentIdError",
+                  "code": "INVALID_AGENT_ID",
+                  "description": "The agent ID must match /^[a-z][a-z0-9-]*$/ — lowercase kebab-case.",
+                  "template": ""
+                },
+                {
+                  "id": "e-enable-mastra-invalid-name",
+                  "name": "InvalidAgentNameError",
+                  "code": "INVALID_AGENT_NAME",
+                  "description": "The agent name must not be empty after trimming.",
+                  "template": ""
+                }
+              ],
               "examples": [],
               "scope": "global"
             },
@@ -186,8 +201,263 @@
               "description": "Disable the Mastra agent feature. Does not affect Routine — disable that separately if desired.",
               "schema": "input DisableMastraInput {\n  _: Boolean\n}",
               "template": "Disable the Mastra agent feature. Does not affect Routine — disable that separately if desired.",
-              "reducer": "state.features.mastra.enabled = false;",
+              "reducer": "state.features.mastra.enabled = false;\nstate.features.mastra.agentId = null;\nstate.features.mastra.agentName = null;\nstate.features.mastra.models = [];\nstate.features.mastra.profiles = [];",
               "errors": [],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-set-agent-id",
+              "name": "SET_AGENT_ID",
+              "description": "Set the agent ID. Must be lowercase kebab-case. Only valid when mastra is enabled.",
+              "schema": "input SetAgentIdInput {\n  agentId: String!\n}",
+              "template": "Set the agent ID. Must be lowercase kebab-case. Only valid when mastra is enabled.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent ID when Mastra is disabled.');\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(`Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`);\n}\nstate.features.mastra.agentId = action.input.agentId;",
+              "errors": [
+                {
+                  "id": "e-set-agent-id-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before setting agent identity.",
+                  "template": ""
+                },
+                {
+                  "id": "e-set-agent-id-invalid",
+                  "name": "InvalidAgentIdError",
+                  "code": "INVALID_AGENT_ID",
+                  "description": "The agent ID must match /^[a-z][a-z0-9-]*$/ — lowercase kebab-case.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-set-agent-name",
+              "name": "SET_AGENT_NAME",
+              "description": "Set the agent display name. Must be non-empty after trim. Only valid when mastra is enabled.",
+              "schema": "input SetAgentNameInput {\n  agentName: String!\n}",
+              "template": "Set the agent display name. Must be non-empty after trim. Only valid when mastra is enabled.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent name when Mastra is disabled.');\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.agentName = trimmedName;",
+              "errors": [
+                {
+                  "id": "e-set-agent-name-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before setting agent identity.",
+                  "template": ""
+                },
+                {
+                  "id": "e-set-agent-name-invalid",
+                  "name": "InvalidAgentNameError",
+                  "code": "INVALID_AGENT_NAME",
+                  "description": "The agent name must not be empty after trimming.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-add-model",
+              "name": "ADD_MODEL",
+              "description": "Add a model to the agent. ID must be provider/model-name format. First model is forced default. If isDefault is true, previous default is unset.",
+              "schema": "input AddModelInput {\n  id: String!\n  isDefault: Boolean\n}",
+              "template": "Add a model to the agent. ID must be provider/model-name format. First model is forced default. If isDefault is true, previous default is unset.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add model when Mastra is disabled.');\n}\nif (!/^[a-z0-9-]+\\/[a-z0-9._-]+$/.test(action.input.id)) {\n  throw new InvalidModelIdError(`Invalid model ID: ${action.input.id}. Must be provider/model-name format.`);\n}\nif (state.features.mastra.models.find(m => m.id === action.input.id)) {\n  throw new DuplicateModelError(`Model already exists: ${action.input.id}`);\n}\nconst isFirst = state.features.mastra.models.length === 0;\nconst makeDefault = isFirst || action.input.isDefault === true;\nif (makeDefault) {\n  for (const m of state.features.mastra.models) {\n    m.isDefault = false;\n  }\n}\nstate.features.mastra.models.push({\n  id: action.input.id,\n  isDefault: makeDefault,\n});",
+              "errors": [
+                {
+                  "id": "e-add-model-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before managing models.",
+                  "template": ""
+                },
+                {
+                  "id": "e-add-model-invalid-id",
+                  "name": "InvalidModelIdError",
+                  "code": "INVALID_MODEL_ID",
+                  "description": "Model ID must match provider/model-name format.",
+                  "template": ""
+                },
+                {
+                  "id": "e-add-model-duplicate",
+                  "name": "DuplicateModelError",
+                  "code": "DUPLICATE_MODEL",
+                  "description": "A model with this ID already exists.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-remove-model",
+              "name": "REMOVE_MODEL",
+              "description": "Remove a model. If removing the default and others remain, promotes first remaining to default.",
+              "schema": "input RemoveModelInput {\n  id: String!\n}",
+              "template": "Remove a model. If removing the default and others remain, promotes first remaining to default.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove model when Mastra is disabled.');\n}\nconst idx = state.features.mastra.models.findIndex(m => m.id === action.input.id);\nif (idx === -1) {\n  throw new ModelNotFoundError(`Model not found: ${action.input.id}`);\n}\nconst wasDefault = state.features.mastra.models[idx].isDefault;\nstate.features.mastra.models.splice(idx, 1);\nif (wasDefault && state.features.mastra.models.length > 0) {\n  state.features.mastra.models[0].isDefault = true;\n}",
+              "errors": [
+                {
+                  "id": "e-remove-model-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before managing models.",
+                  "template": ""
+                },
+                {
+                  "id": "e-remove-model-not-found",
+                  "name": "ModelNotFoundError",
+                  "code": "MODEL_NOT_FOUND",
+                  "description": "The specified model was not found.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-set-default-model",
+              "name": "SET_DEFAULT_MODEL",
+              "description": "Set a model as the default. Unsets the previous default.",
+              "schema": "input SetDefaultModelInput {\n  id: String!\n}",
+              "template": "Set a model as the default. Unsets the previous default.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set default model when Mastra is disabled.');\n}\nconst model = state.features.mastra.models.find(m => m.id === action.input.id);\nif (!model) {\n  throw new ModelNotFoundError(`Model not found: ${action.input.id}`);\n}\nfor (const m of state.features.mastra.models) {\n  m.isDefault = false;\n}\nmodel.isDefault = true;",
+              "errors": [
+                {
+                  "id": "e-set-default-model-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before managing models.",
+                  "template": ""
+                },
+                {
+                  "id": "e-set-default-model-not-found",
+                  "name": "ModelNotFoundError",
+                  "code": "MODEL_NOT_FOUND",
+                  "description": "The specified model was not found.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-add-profile",
+              "name": "ADD_PROFILE",
+              "description": "Add an agent profile section. Inserted before insertBefore if provided, otherwise appended to end.",
+              "schema": "input AddProfileInput {\n  id: String!\n  title: String!\n  content: String!\n  insertBefore: String\n}",
+              "template": "Add an agent profile section. Inserted before insertBefore if provided, otherwise appended to end.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add profile when Mastra is disabled.');\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.id)) {\n  throw new InvalidProfileIdError(`Invalid profile ID: ${action.input.id}. Must be lowercase kebab-case.`);\n}\nif (state.features.mastra.profiles.find(p => p.id === action.input.id)) {\n  throw new DuplicateProfileError(`Profile already exists: ${action.input.id}`);\n}\nconst profile = {\n  id: action.input.id,\n  title: action.input.title,\n  content: action.input.content,\n};\nif (action.input.insertBefore) {\n  const beforeIdx = state.features.mastra.profiles.findIndex(p => p.id === action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileNotFoundError(`insertBefore profile not found: ${action.input.insertBefore}`);\n  }\n  state.features.mastra.profiles.splice(beforeIdx, 0, profile);\n} else {\n  state.features.mastra.profiles.push(profile);\n}",
+              "errors": [
+                {
+                  "id": "e-add-profile-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before managing profiles.",
+                  "template": ""
+                },
+                {
+                  "id": "e-add-profile-invalid-id",
+                  "name": "InvalidProfileIdError",
+                  "code": "INVALID_PROFILE_ID",
+                  "description": "Profile ID must match /^[a-z][a-z0-9-]*$/ — lowercase kebab-case.",
+                  "template": ""
+                },
+                {
+                  "id": "e-add-profile-duplicate",
+                  "name": "DuplicateProfileError",
+                  "code": "DUPLICATE_PROFILE",
+                  "description": "A profile with this ID already exists.",
+                  "template": ""
+                },
+                {
+                  "id": "e-add-profile-not-found",
+                  "name": "ProfileNotFoundError",
+                  "code": "PROFILE_NOT_FOUND",
+                  "description": "The insertBefore profile was not found.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-update-profile",
+              "name": "UPDATE_PROFILE",
+              "description": "Update an existing profile's title and/or content. Only updates provided fields.",
+              "schema": "input UpdateProfileInput {\n  id: String!\n  title: String\n  content: String\n}",
+              "template": "Update an existing profile's title and/or content. Only updates provided fields.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot update profile when Mastra is disabled.');\n}\nconst profile = state.features.mastra.profiles.find(p => p.id === action.input.id);\nif (!profile) {\n  throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);\n}\nif (action.input.title) profile.title = action.input.title;\nif (action.input.content) profile.content = action.input.content;",
+              "errors": [
+                {
+                  "id": "e-update-profile-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before managing profiles.",
+                  "template": ""
+                },
+                {
+                  "id": "e-update-profile-not-found",
+                  "name": "ProfileNotFoundError",
+                  "code": "PROFILE_NOT_FOUND",
+                  "description": "The specified profile was not found.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-remove-profile",
+              "name": "REMOVE_PROFILE",
+              "description": "Remove an agent profile section.",
+              "schema": "input RemoveProfileInput {\n  id: String!\n}",
+              "template": "Remove an agent profile section.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove profile when Mastra is disabled.');\n}\nconst idx = state.features.mastra.profiles.findIndex(p => p.id === action.input.id);\nif (idx === -1) {\n  throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);\n}\nstate.features.mastra.profiles.splice(idx, 1);",
+              "errors": [
+                {
+                  "id": "e-remove-profile-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before managing profiles.",
+                  "template": ""
+                },
+                {
+                  "id": "e-remove-profile-not-found",
+                  "name": "ProfileNotFoundError",
+                  "code": "PROFILE_NOT_FOUND",
+                  "description": "The specified profile was not found.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-reorder-profiles",
+              "name": "REORDER_PROFILES",
+              "description": "Move one or more profiles before another profile, or to the end if insertBefore is null.",
+              "schema": "input ReorderProfilesInput {\n  ids: [String!]!\n  insertBefore: String\n}",
+              "template": "Move one or more profiles before another profile, or to the end if insertBefore is null.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot reorder profiles when Mastra is disabled.');\n}\nconst moving = [];\nfor (const id of action.input.ids) {\n  const profile = state.features.mastra.profiles.find(p => p.id === id);\n  if (!profile) {\n    throw new ProfileNotFoundError(`Profile not found: ${id}`);\n  }\n  moving.push(profile);\n}\n// Remove moved profiles\nstate.features.mastra.profiles = state.features.mastra.profiles.filter(p => !action.input.ids.includes(p.id));\n// Insert at target position\nif (action.input.insertBefore) {\n  const beforeIdx = state.features.mastra.profiles.findIndex(p => p.id === action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileNotFoundError(`insertBefore profile not found: ${action.input.insertBefore}`);\n  }\n  state.features.mastra.profiles.splice(beforeIdx, 0, ...moving);\n} else {\n  state.features.mastra.profiles.push(...moving);\n}",
+              "errors": [
+                {
+                  "id": "e-reorder-profiles-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before managing profiles.",
+                  "template": ""
+                },
+                {
+                  "id": "e-reorder-profiles-not-found",
+                  "name": "ProfileNotFoundError",
+                  "code": "PROFILE_NOT_FOUND",
+                  "description": "A referenced profile was not found.",
+                  "template": ""
+                }
+              ],
               "examples": [],
               "scope": "global"
             }
@@ -524,9 +794,9 @@
               "id": "o-import-spec",
               "name": "IMPORT_SPEC",
               "description": "Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.",
-              "schema": "input ImportSpecInput {\n  name: String!\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  powerhouse: PowerhouseLevel!\n  mastraEnabled: Boolean!\n  routineEnabled: Boolean!\n  packages: [ImportPackageInput!]!\n  externalSkills: [ImportSkillInput!]!\n}\n\ninput ImportPackageInput {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ninput ImportSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}",
+              "schema": "input ImportSpecInput {\n  name: String!\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  powerhouse: PowerhouseLevel!\n  mastraEnabled: Boolean!\n  routineEnabled: Boolean!\n  packages: [ImportPackageInput!]!\n  externalSkills: [ImportSkillInput!]!\n  agentId: String\n  agentName: String\n  models: [ImportModelInput!]\n  profiles: [ImportProfileInput!]\n}\n\ninput ImportPackageInput {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ninput ImportSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\ninput ImportModelInput {\n  id: String!\n  isDefault: Boolean!\n}\n\ninput ImportProfileInput {\n  id: String!\n  title: String!\n  content: String!\n}",
               "template": "Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.",
-              "reducer": "state.name = action.input.name;\nstate.scope = action.input.scope || null;\nstate.version = action.input.version;\nstate.description = action.input.description;\nstate.bin = action.input.bin || null;\nstate.features.powerhouse = action.input.powerhouse;\nstate.features.mastra.enabled = action.input.mastraEnabled;\nstate.features.routine.enabled = action.input.routineEnabled;\nstate.packages = action.input.packages.map(p => ({\n  id: p.id,\n  packageName: p.packageName,\n  documentTypes: [...p.documentTypes],\n}));\nstate.externalSkills = action.input.externalSkills.map(s => ({\n  id: s.id,\n  name: s.name,\n  githubUrl: s.githubUrl,\n}));",
+              "reducer": "state.name = action.input.name;\nstate.scope = action.input.scope || null;\nstate.version = action.input.version;\nstate.description = action.input.description;\nstate.bin = action.input.bin || null;\nstate.features.powerhouse = action.input.powerhouse;\nstate.features.mastra.enabled = action.input.mastraEnabled;\nstate.features.routine.enabled = action.input.routineEnabled;\nstate.packages = action.input.packages.map(p => ({\n  id: p.id,\n  packageName: p.packageName,\n  documentTypes: [...p.documentTypes],\n}));\nstate.externalSkills = action.input.externalSkills.map(s => ({\n  id: s.id,\n  name: s.name,\n  githubUrl: s.githubUrl,\n}));\nstate.features.mastra.agentId = action.input.agentId || null;\nstate.features.mastra.agentName = action.input.agentName || null;\nstate.features.mastra.models = action.input.models ? action.input.models.map(m => ({\n  id: m.id,\n  isDefault: m.isDefault,\n})) : [];\nstate.features.mastra.profiles = action.input.profiles ? action.input.profiles.map(p => ({\n  id: p.id,\n  title: p.title,\n  content: p.content,\n})) : [];",
               "errors": [],
               "examples": [],
               "scope": "global"

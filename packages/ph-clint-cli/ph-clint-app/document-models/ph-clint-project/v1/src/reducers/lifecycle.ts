@@ -20,5 +20,20 @@ export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperation
       name: s.name,
       githubUrl: s.githubUrl,
     }));
+    state.features.mastra.agentId = action.input.agentId || null;
+    state.features.mastra.agentName = action.input.agentName || null;
+    state.features.mastra.models = action.input.models
+      ? action.input.models.map((m) => ({
+          id: m.id,
+          isDefault: m.isDefault,
+        }))
+      : [];
+    state.features.mastra.profiles = action.input.profiles
+      ? action.input.profiles.map((p) => ({
+          id: p.id,
+          title: p.title,
+          content: p.content,
+        }))
+      : [];
   },
 };

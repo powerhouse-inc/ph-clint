@@ -15,7 +15,13 @@ export function defaultGlobalState(): PhClintProjectGlobalState {
     bin: null,
     features: {
       powerhouse: 'Disabled',
-      mastra: { enabled: false },
+      mastra: {
+        enabled: false,
+        agentId: null,
+        agentName: null,
+        models: [],
+        profiles: [],
+      },
       routine: { enabled: false },
     },
     packages: [],

@@ -13,9 +13,7 @@ export const phClintProjectFeaturesPowerhouseOperations: PhClintProjectFeaturesP
     state.features.powerhouse = action.input.level;
     // Auto-create app package when transitioning from Disabled to any higher level
     if (current === 0 && next >= 1 && state.name) {
-      const appName = state.scope
-        ? `@${state.scope}/${state.name}-app`
-        : `${state.name}-app`;
+      const appName = state.scope ? `@${state.scope}/${state.name}-app` : `${state.name}-app`;
       const exists = state.packages.find((p) => p.packageName === appName);
       if (!exists) {
         state.packages.push({

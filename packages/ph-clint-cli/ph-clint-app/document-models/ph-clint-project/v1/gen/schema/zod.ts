@@ -2,8 +2,10 @@
 import * as z from 'zod';
 import type {
   AddExternalSkillInput,
+  AddModelInput,
   AddPackageDocumentTypeInput,
   AddPowerhousePackageInput,
+  AddProfileInput,
   BumpVersionInput,
   ClearBinInput,
   ClearScopeInput,
@@ -12,9 +14,13 @@ import type {
   EnableMastraInput,
   EnableRoutineInput,
   ExternalSkill,
+  ImportModelInput,
   ImportPackageInput,
+  ImportProfileInput,
   ImportSkillInput,
   ImportSpecInput,
+  PhClintAgentModel,
+  PhClintAgentProfile,
   PhClintFeatures,
   PhClintMastraFeature,
   PhClintProjectState,
@@ -28,9 +34,15 @@ import type {
   PublishStatus,
   PublishTag,
   RemoveExternalSkillInput,
+  RemoveModelInput,
   RemovePackageDocumentTypeInput,
   RemovePowerhousePackageInput,
+  RemoveProfileInput,
+  ReorderProfilesInput,
+  SetAgentIdInput,
+  SetAgentNameInput,
   SetBinInput,
+  SetDefaultModelInput,
   SetDescriptionInput,
   SetExternalSkillGithubUrlInput,
   SetExternalSkillNameInput,
@@ -39,6 +51,7 @@ import type {
   SetPublishStatusInput,
   SetScopeInput,
   SetVersionInput,
+  UpdateProfileInput,
 } from './types.js';
 
 type Properties<T> = Required<{
@@ -65,6 +78,13 @@ export function AddExternalSkillInputSchema(): z.ZodObject<Properties<AddExterna
   });
 }
 
+export function AddModelInputSchema(): z.ZodObject<Properties<AddModelInput>> {
+  return z.object({
+    id: z.string(),
+    isDefault: z.boolean().nullish(),
+  });
+}
+
 export function AddPackageDocumentTypeInputSchema(): z.ZodObject<Properties<AddPackageDocumentTypeInput>> {
   return z.object({
     documentType: z.string(),
@@ -76,6 +96,15 @@ export function AddPowerhousePackageInputSchema(): z.ZodObject<Properties<AddPow
   return z.object({
     id: z.string(),
     packageName: z.string(),
+  });
+}
+
+export function AddProfileInputSchema(): z.ZodObject<Properties<AddProfileInput>> {
+  return z.object({
+    content: z.string(),
+    id: z.string(),
+    insertBefore: z.string().nullish(),
+    title: z.string(),
   });
 }
 
@@ -111,7 +140,8 @@ export function DisableRoutineInputSchema(): z.ZodObject<Properties<DisableRouti
 
 export function EnableMastraInputSchema(): z.ZodObject<Properties<EnableMastraInput>> {
   return z.object({
-    _: z.boolean().nullish(),
+    agentId: z.string(),
+    agentName: z.string(),
   });
 }
 
@@ -130,11 +160,26 @@ export function ExternalSkillSchema(): z.ZodObject<Properties<ExternalSkill>> {
   });
 }
 
+export function ImportModelInputSchema(): z.ZodObject<Properties<ImportModelInput>> {
+  return z.object({
+    id: z.string(),
+    isDefault: z.boolean(),
+  });
+}
+
 export function ImportPackageInputSchema(): z.ZodObject<Properties<ImportPackageInput>> {
   return z.object({
     documentTypes: z.array(z.string()),
     id: z.string(),
     packageName: z.string(),
+  });
+}
+
+export function ImportProfileInputSchema(): z.ZodObject<Properties<ImportProfileInput>> {
+  return z.object({
+    content: z.string(),
+    id: z.string(),
+    title: z.string(),
   });
 }
 
@@ -148,16 +193,37 @@ export function ImportSkillInputSchema(): z.ZodObject<Properties<ImportSkillInpu
 
 export function ImportSpecInputSchema(): z.ZodObject<Properties<ImportSpecInput>> {
   return z.object({
+    agentId: z.string().nullish(),
+    agentName: z.string().nullish(),
     bin: z.string().nullish(),
     description: z.string(),
     externalSkills: z.array(z.lazy(() => ImportSkillInputSchema())),
     mastraEnabled: z.boolean(),
+    models: z.array(z.lazy(() => ImportModelInputSchema())).nullish(),
     name: z.string(),
     packages: z.array(z.lazy(() => ImportPackageInputSchema())),
     powerhouse: PowerhouseLevelSchema,
+    profiles: z.array(z.lazy(() => ImportProfileInputSchema())).nullish(),
     routineEnabled: z.boolean(),
     scope: z.string().nullish(),
     version: z.string(),
+  });
+}
+
+export function PhClintAgentModelSchema(): z.ZodObject<Properties<PhClintAgentModel>> {
+  return z.object({
+    __typename: z.literal('PhClintAgentModel').optional(),
+    id: z.string(),
+    isDefault: z.boolean(),
+  });
+}
+
+export function PhClintAgentProfileSchema(): z.ZodObject<Properties<PhClintAgentProfile>> {
+  return z.object({
+    __typename: z.literal('PhClintAgentProfile').optional(),
+    content: z.string(),
+    id: z.string(),
+    title: z.string(),
   });
 }
 
@@ -173,7 +239,11 @@ export function PhClintFeaturesSchema(): z.ZodObject<Properties<PhClintFeatures>
 export function PhClintMastraFeatureSchema(): z.ZodObject<Properties<PhClintMastraFeature>> {
   return z.object({
     __typename: z.literal('PhClintMastraFeature').optional(),
+    agentId: z.string().nullish(),
+    agentName: z.string().nullish(),
     enabled: z.boolean(),
+    models: z.array(z.lazy(() => PhClintAgentModelSchema())),
+    profiles: z.array(z.lazy(() => PhClintAgentProfileSchema())),
   });
 }
 
@@ -246,6 +316,12 @@ export function RemoveExternalSkillInputSchema(): z.ZodObject<Properties<RemoveE
   });
 }
 
+export function RemoveModelInputSchema(): z.ZodObject<Properties<RemoveModelInput>> {
+  return z.object({
+    id: z.string(),
+  });
+}
+
 export function RemovePackageDocumentTypeInputSchema(): z.ZodObject<Properties<RemovePackageDocumentTypeInput>> {
   return z.object({
     documentType: z.string(),
@@ -259,9 +335,40 @@ export function RemovePowerhousePackageInputSchema(): z.ZodObject<Properties<Rem
   });
 }
 
+export function RemoveProfileInputSchema(): z.ZodObject<Properties<RemoveProfileInput>> {
+  return z.object({
+    id: z.string(),
+  });
+}
+
+export function ReorderProfilesInputSchema(): z.ZodObject<Properties<ReorderProfilesInput>> {
+  return z.object({
+    ids: z.array(z.string()),
+    insertBefore: z.string().nullish(),
+  });
+}
+
+export function SetAgentIdInputSchema(): z.ZodObject<Properties<SetAgentIdInput>> {
+  return z.object({
+    agentId: z.string(),
+  });
+}
+
+export function SetAgentNameInputSchema(): z.ZodObject<Properties<SetAgentNameInput>> {
+  return z.object({
+    agentName: z.string(),
+  });
+}
+
 export function SetBinInputSchema(): z.ZodObject<Properties<SetBinInput>> {
   return z.object({
     bin: z.string(),
+  });
+}
+
+export function SetDefaultModelInputSchema(): z.ZodObject<Properties<SetDefaultModelInput>> {
+  return z.object({
+    id: z.string(),
   });
 }
 
@@ -313,5 +420,13 @@ export function SetScopeInputSchema(): z.ZodObject<Properties<SetScopeInput>> {
 export function SetVersionInputSchema(): z.ZodObject<Properties<SetVersionInput>> {
   return z.object({
     version: z.string(),
+  });
+}
+
+export function UpdateProfileInputSchema(): z.ZodObject<Properties<UpdateProfileInput>> {
+  return z.object({
+    content: z.string().nullish(),
+    id: z.string(),
+    title: z.string().nullish(),
   });
 }

@@ -62,8 +62,14 @@ export default function Editor() {
   // feature dispatchers
   const setPowerhouseLevel = (level: PowerhouseLevel) => dispatch(actions.setPowerhouseLevel({ level }));
   const toggleMastra = (enabled: boolean) => {
-    if (enabled) dispatch(actions.enableMastra({ _: true }));
-    else dispatch(actions.disableMastra({ _: true }));
+    if (enabled) {
+      const baseName = state.name || 'my-agent';
+      const agentId = `${baseName}-agent`;
+      const agentName = `${baseName.charAt(0).toUpperCase()}${baseName.slice(1).replace(/-([a-z])/g, (_, c: string) => ` ${c.toUpperCase()}`)} Agent`;
+      dispatch(actions.enableMastra({ agentId, agentName }));
+    } else {
+      dispatch(actions.disableMastra({ _: true }));
+    }
   };
   const toggleRoutine = (enabled: boolean) => {
     if (enabled) dispatch(actions.enableRoutine({ _: true }));

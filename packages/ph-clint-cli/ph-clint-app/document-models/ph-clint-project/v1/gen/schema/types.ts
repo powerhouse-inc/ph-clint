@@ -62,6 +62,11 @@ export type AddExternalSkillInput = {
   name: Scalars['String']['input'];
 };
 
+export type AddModelInput = {
+  id: Scalars['String']['input'];
+  isDefault?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
 export type AddPackageDocumentTypeInput = {
   documentType: Scalars['String']['input'];
   packageId: Scalars['OID']['input'];
@@ -70,6 +75,13 @@ export type AddPackageDocumentTypeInput = {
 export type AddPowerhousePackageInput = {
   id: Scalars['OID']['input'];
   packageName: Scalars['String']['input'];
+};
+
+export type AddProfileInput = {
+  content: Scalars['String']['input'];
+  id: Scalars['String']['input'];
+  insertBefore?: InputMaybe<Scalars['String']['input']>;
+  title: Scalars['String']['input'];
 };
 
 export type BumpVersionInput = {
@@ -93,7 +105,8 @@ export type DisableRoutineInput = {
 };
 
 export type EnableMastraInput = {
-  _?: InputMaybe<Scalars['Boolean']['input']>;
+  agentId: Scalars['String']['input'];
+  agentName: Scalars['String']['input'];
 };
 
 export type EnableRoutineInput = {
@@ -106,10 +119,21 @@ export type ExternalSkill = {
   name: Scalars['String']['output'];
 };
 
+export type ImportModelInput = {
+  id: Scalars['String']['input'];
+  isDefault: Scalars['Boolean']['input'];
+};
+
 export type ImportPackageInput = {
   documentTypes: Array<Scalars['String']['input']>;
   id: Scalars['OID']['input'];
   packageName: Scalars['String']['input'];
+};
+
+export type ImportProfileInput = {
+  content: Scalars['String']['input'];
+  id: Scalars['String']['input'];
+  title: Scalars['String']['input'];
 };
 
 export type ImportSkillInput = {
@@ -119,16 +143,31 @@ export type ImportSkillInput = {
 };
 
 export type ImportSpecInput = {
+  agentId?: InputMaybe<Scalars['String']['input']>;
+  agentName?: InputMaybe<Scalars['String']['input']>;
   bin?: InputMaybe<Scalars['String']['input']>;
   description: Scalars['String']['input'];
   externalSkills: Array<ImportSkillInput>;
   mastraEnabled: Scalars['Boolean']['input'];
+  models?: InputMaybe<Array<ImportModelInput>>;
   name: Scalars['String']['input'];
   packages: Array<ImportPackageInput>;
   powerhouse: PowerhouseLevel;
+  profiles?: InputMaybe<Array<ImportProfileInput>>;
   routineEnabled: Scalars['Boolean']['input'];
   scope?: InputMaybe<Scalars['String']['input']>;
   version: Scalars['String']['input'];
+};
+
+export type PhClintAgentModel = {
+  id: Scalars['String']['output'];
+  isDefault: Scalars['Boolean']['output'];
+};
+
+export type PhClintAgentProfile = {
+  content: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  title: Scalars['String']['output'];
 };
 
 export type PhClintFeatures = {
@@ -138,7 +177,11 @@ export type PhClintFeatures = {
 };
 
 export type PhClintMastraFeature = {
+  agentId: Maybe<Scalars['String']['output']>;
+  agentName: Maybe<Scalars['String']['output']>;
   enabled: Scalars['Boolean']['output'];
+  models: Array<PhClintAgentModel>;
+  profiles: Array<PhClintAgentProfile>;
 };
 
 export type PhClintProjectState = {
@@ -196,6 +239,10 @@ export type RemoveExternalSkillInput = {
   id: Scalars['OID']['input'];
 };
 
+export type RemoveModelInput = {
+  id: Scalars['String']['input'];
+};
+
 export type RemovePackageDocumentTypeInput = {
   documentType: Scalars['String']['input'];
   packageId: Scalars['OID']['input'];
@@ -205,8 +252,29 @@ export type RemovePowerhousePackageInput = {
   id: Scalars['OID']['input'];
 };
 
+export type RemoveProfileInput = {
+  id: Scalars['String']['input'];
+};
+
+export type ReorderProfilesInput = {
+  ids: Array<Scalars['String']['input']>;
+  insertBefore?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type SetAgentIdInput = {
+  agentId: Scalars['String']['input'];
+};
+
+export type SetAgentNameInput = {
+  agentName: Scalars['String']['input'];
+};
+
 export type SetBinInput = {
   bin: Scalars['String']['input'];
+};
+
+export type SetDefaultModelInput = {
+  id: Scalars['String']['input'];
 };
 
 export type SetDescriptionInput = {
@@ -242,4 +310,10 @@ export type SetScopeInput = {
 
 export type SetVersionInput = {
   version: Scalars['String']['input'];
+};
+
+export type UpdateProfileInput = {
+  content?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  title?: InputMaybe<Scalars['String']['input']>;
 };

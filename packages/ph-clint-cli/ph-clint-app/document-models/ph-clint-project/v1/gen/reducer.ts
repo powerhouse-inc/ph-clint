@@ -24,6 +24,15 @@ import {
   SetPowerhouseLevelInputSchema,
   EnableMastraInputSchema,
   DisableMastraInputSchema,
+  SetAgentIdInputSchema,
+  SetAgentNameInputSchema,
+  AddModelInputSchema,
+  RemoveModelInputSchema,
+  SetDefaultModelInputSchema,
+  AddProfileInputSchema,
+  UpdateProfileInputSchema,
+  RemoveProfileInputSchema,
+  ReorderProfilesInputSchema,
   EnableRoutineInputSchema,
   DisableRoutineInputSchema,
   AddPowerhousePackageInputSchema,
@@ -123,6 +132,78 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispat
       DisableMastraInputSchema().parse(action.input);
 
       phClintProjectFeaturesMastraOperations.disableMastraOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_AGENT_ID': {
+      SetAgentIdInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.setAgentIdOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_AGENT_NAME': {
+      SetAgentNameInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.setAgentNameOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'ADD_MODEL': {
+      AddModelInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.addModelOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'REMOVE_MODEL': {
+      RemoveModelInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.removeModelOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_DEFAULT_MODEL': {
+      SetDefaultModelInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.setDefaultModelOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'ADD_PROFILE': {
+      AddProfileInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.addProfileOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'UPDATE_PROFILE': {
+      UpdateProfileInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.updateProfileOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'REMOVE_PROFILE': {
+      RemoveProfileInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.removeProfileOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'REORDER_PROFILES': {
+      ReorderProfilesInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.reorderProfilesOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
