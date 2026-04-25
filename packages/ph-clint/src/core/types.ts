@@ -116,6 +116,8 @@ export interface CommandContext<
   services?: ServiceManager;
   emit?: EmitFn<R>;
   on?: OnFn<R>;
+  /** Folder operations on the agent's personal drive. Available when a personal drive is configured. */
+  folders?: import('../integrations/powerhouse/types.js').FolderOperations;
   /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
   reactor?: () => Promise<ReactorContext<R> | undefined>;
   /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */

@@ -48,6 +48,8 @@ export type {
   ReactorConfiguration,
   DriveConfig,
   DriveEntry,
+  FolderEntry,
+  FolderOperations,
   SubscriptionConfig,
   SwitchboardConfig,
   ConnectConfig,

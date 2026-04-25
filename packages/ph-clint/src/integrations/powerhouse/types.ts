@@ -241,6 +241,43 @@ export interface DriveEntry {
   remoteUrl?: string;
 }
 
+// ── Folder operations ────────────────────────────────────────────
+
+/**
+ * An entry in a drive folder listing — either a folder node or a document node.
+ */
+export interface FolderEntry {
+  /** Document ID of the folder or document node. */
+  id: string;
+  /** Display name. */
+  name: string;
+  /** Whether this is a folder node or a document node. */
+  type: 'folder' | 'document';
+  /** Document type (only for type: 'document'). */
+  documentType?: string;
+  /** Full path from drive root, e.g. "specs/my-project". */
+  path: string;
+}
+
+/**
+ * Programmatic API for managing documents in the agent's personal drive
+ * using the reactor's native folder hierarchy.
+ */
+export interface FolderOperations {
+  /** Add/link a document to the personal drive at the given folder path. Creates folders as needed. */
+  addDocument(documentId: string, folderPath: string, name?: string): Promise<void>;
+  /** Remove a document from the personal drive (unlink, not delete the document itself). */
+  removeDocument(documentId: string, folderPath?: string): Promise<void>;
+  /** Get a document by ID from the personal drive. */
+  getDocument(documentId: string): Promise<unknown>;
+  /** List contents of a folder in the personal drive. Root when folderPath is omitted. */
+  listFolder(folderPath?: string): Promise<FolderEntry[]>;
+  /** Ensure a folder path exists, creating intermediate folders as needed. Returns leaf folder ID. */
+  ensureFolder(folderPath: string): Promise<string>;
+  /** Find documents in the personal drive by document type. */
+  findByType(documentType: string): Promise<FolderEntry[]>;
+}
+
 // ── Reactor context ───────────────────────────────────────────────
 
 /**

@@ -16,6 +16,8 @@ export type {
   PowerhouseIntegrationOptions,
   DriveConfig,
   DriveEntry,
+  FolderEntry,
+  FolderOperations,
   SubscriptionConfig,
   SwitchboardConfig,
   ConnectConfig,
@@ -41,6 +43,7 @@ export type { StartSwitchboardOptions } from './switchboard.js';
 export { createDocumentChangeTrigger } from './change-trigger.js';
 export type { DocumentChangeTriggerOptions } from './change-trigger.js';
 export { isDocType } from './type-guard.js';
+export { createFolderOperations, createFolderCommands } from './folders.js';
 
 import type { DocumentModelModule } from 'document-model';
 import type {

@@ -1016,6 +1016,22 @@ export function defineCli<
           await getReactor();
           log.debug(`Reactor storage: ${workspace.getStoreFolder('reactor-storage')}`);
           output(`Reactor ready (drive: ${cachedReactor!.driveId})`);
+
+          // Inject folder operations when a personal drive is available
+          if (cachedReactor!.personalDriveId) {
+            const { createFolderOperations, createFolderCommands } = await import(
+              '../integrations/powerhouse/folders.js'
+            );
+            const folderOps = createFolderOperations(
+              cachedReactor!.client,
+              cachedReactor!.personalDriveId,
+            );
+            context.folders = folderOps;
+            const folderCmds = createFolderCommands(folderOps);
+            for (const cmd of folderCmds) {
+              commandMap.set(cmd.id, cmd);
+            }
+          }
         }
 
         // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor) — skipped when --no-api
