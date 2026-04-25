@@ -462,6 +462,15 @@ td code { font-size: 0.82em; }
     <a href="#skill-helpers" class="sub">Template Helpers</a>
     <a href="#skill-extract" class="sub">Variable Extraction</a>
     <a href="#logging">Conversation Logging</a>
+    <a href="#typed-factories">Typed Factories</a>
+    <a href="#powerhouse">Powerhouse Integration</a>
+    <a href="#ph-registry" class="sub">Document Registry</a>
+    <a href="#ph-reactor" class="sub">Building the Reactor</a>
+    <a href="#ph-drives" class="sub">Multi-Drive Support</a>
+    <a href="#ph-folders" class="sub">Folder Operations</a>
+    <a href="#ph-change-trigger" class="sub">Change Trigger</a>
+    <a href="#ph-project-mapping" class="sub">Project Mapping</a>
+    <a href="#bootstrap">Bootstrapping</a>
     <a href="#testing">Testing</a>
   </div>
 
@@ -475,7 +484,8 @@ td code { font-size: 0.82em; }
     <a href="#api-completion" class="sub">Completion &amp; Routing</a>
     <a href="#api-preflight" class="sub">Preflight Checks</a>
     <a href="#api-skills" class="sub">Skills &amp; Templates</a>
-    <a href="#api-scanner" class="sub">Project Scanner</a>
+    <a href="#api-scanner" class="sub">Project Scanner &amp; Mapping</a>
+    <a href="#api-powerhouse" class="sub">Powerhouse Integration</a>
     <a href="#api-mastra" class="sub">Mastra Integration</a>
     <a href="#api-types" class="sub">Key Types</a>
   </div>
@@ -488,7 +498,9 @@ td code { font-size: 0.82em; }
     <a href="#ex-03">03 — File Watcher</a>
     <a href="#ex-04">04 — Chat Assistant</a>
     <a href="#ex-05">05 — ph-rupert</a>
-    <a href="#ex-06" class="sub">(06–08 planned)</a>
+    <a href="#ex-06">06 — Connect Agent</a>
+    <a href="#ex-07">07 — Doc Agent</a>
+    <a href="#ex-08">08 — Reactor Dev</a>
   </div>
 </nav>
 
@@ -540,11 +552,11 @@ td code { font-size: 0.82em; }
 <h2 id="quick-start">Quick Start</h2>
 
 <h3>Installation</h3>
-<pre><code>pnpm add ph-clint zod</code></pre>
+<pre><code>pnpm add @powerhousedao/ph-clint zod</code></pre>
 
 <h3>Minimal CLI</h3>
 <pre><code><span class="cm">#!/usr/bin/env node</span>
-<span class="kw">import</span> { <span class="fn">defineCli</span>, <span class="fn">defineCommand</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<span class="kw">import</span> { <span class="fn">defineCli</span>, <span class="fn">defineCommand</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 <span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>;
 
 <span class="kw">const</span> greet = <span class="fn">defineCommand</span>({
@@ -613,7 +625,7 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
 <h2 id="defining-commands">Defining Commands</h2>
 
 <h3 id="cmd-basic">Basic Command</h3>
-<pre><code><span class="kw">import</span> { <span class="fn">defineCommand</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">defineCommand</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 <span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>;
 
 <span class="kw">export const</span> greet = <span class="fn">defineCommand</span>({
@@ -800,7 +812,7 @@ cli.<span class="fn">setAgentLoader</span>(loader)       <span class="cm">// Set
 </table>
 
 <h3 id="config-typed">Type-Safe Config Access</h3>
-<pre><code><span class="kw">import type</span> { <span class="tp">InferConfig</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import type</span> { <span class="tp">InferConfig</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">const</span> configSchema = z.object({
   connectPort: z.number().<span class="fn">default</span>(<span class="num">3000</span>),
@@ -849,7 +861,7 @@ cli.<span class="fn">setAgentLoader</span>(loader)       <span class="cm">// Set
 }</code></pre>
 
 <p>For testing, use the in-memory store:</p>
-<pre><code><span class="kw">import</span> { <span class="fn">createMemoryWorkdirStore</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">createMemoryWorkdirStore</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">const</span> workspace = <span class="fn">createMemoryWorkdirStore</span>();
 <span class="cm">// Same API, no filesystem I/O</span></code></pre>
@@ -875,7 +887,7 @@ cli.<span class="fn">setAgentLoader</span>(loader)       <span class="cm">// Set
 </ul>
 
 <h3>Programmatic REPL (Testing)</h3>
-<pre><code><span class="kw">import</span> { <span class="fn">createReplSession</span>, <span class="fn">createMemoryWorkdirStore</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">createReplSession</span>, <span class="fn">createMemoryWorkdirStore</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">const</span> session = <span class="fn">createReplSession</span>({
   cli,
@@ -937,7 +949,7 @@ The <code>interactiveInput</code> option in RunOptions is the testing equivalent
 <p>Triggers are polling-based condition checks that produce work items for automatic execution.</p>
 
 <h3>Defining a Trigger</h3>
-<pre><code><span class="kw">import</span> { <span class="fn">defineTrigger</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">defineTrigger</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">const</span> fileChangeTrigger = <span class="fn">defineTrigger</span>({
   id: <span class="str">'file-change'</span>,
@@ -1045,7 +1057,7 @@ handles.<span class="fn">forEach</span>(h =&gt; {
 <p>Services are long-running background processes (dev servers, databases, etc.) with readiness detection, health checks, and lifecycle management.</p>
 
 <h3 id="svc-define">Defining a Service</h3>
-<pre><code><span class="kw">import</span> { <span class="fn">defineService</span>, <span class="fn">checkWorkdir</span>, <span class="fn">checkCommand</span>, <span class="fn">checkPort</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">defineService</span>, <span class="fn">checkWorkdir</span>, <span class="fn">checkCommand</span>, <span class="fn">checkPort</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">const</span> devServer = <span class="fn">defineService</span>&lt;<span class="tp">Config</span>&gt;({
   id: <span class="str">'dev-server'</span>,
@@ -1208,7 +1220,7 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
   <span class="kw">if</span> (!ctx.config.apiKey) <span class="kw">return</span> <span class="fn">createDemoAgent</span>();
 
   <span class="cm">// Lazy-load Mastra only when needed</span>
-  <span class="kw">const</span> { createMastraHelpers } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">'ph-clint/mastra'</span>);
+  <span class="kw">const</span> { createMastraHelpers } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">'@powerhousedao/ph-clint/mastra'</span>);
   <span class="kw">const</span> { Agent } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">'@mastra/core/agent'</span>);
   <span class="kw">const</span> m = <span class="fn">createMastraHelpers</span>(ctx);
 
@@ -1254,7 +1266,7 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
 
 <h3 id="agent-demo">Demo Agent</h3>
 <p>Implement <code>AgentProvider</code> directly for testing or when no API key is available:</p>
-<pre><code><span class="kw">import type</span> { <span class="tp">AgentProvider</span>, <span class="tp">StreamChunk</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import type</span> { <span class="tp">AgentProvider</span>, <span class="tp">StreamChunk</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">function</span> <span class="fn">createDemoAgent</span>(): <span class="tp">AgentProvider</span> {
   <span class="kw">return</span> {
@@ -1285,7 +1297,7 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
   | { type: <span class="str">'error'</span>; error: <span class="tp">string</span> }</code></pre>
 
 <h3>Formatting Utilities</h3>
-<pre><code><span class="kw">import</span> { <span class="fn">formatStreamChunk</span>, <span class="fn">renderStream</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">formatStreamChunk</span>, <span class="fn">renderStream</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="cm">// Format a single chunk (with ANSI colors)</span>
 <span class="kw">const</span> formatted = <span class="fn">formatStreamChunk</span>(chunk);
@@ -1350,7 +1362,7 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
 <h3 id="skill-config">Configuration</h3>
 
 <p>Skills are configured via <code>PromptsConfig</code> on <code>defineCli()</code>:</p>
-<pre><code><span class="kw">import</span> { <span class="fn">defineCli</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">defineCli</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="fn">defineCli</span>({
   <span class="cm">// ...other config...</span>
@@ -1490,7 +1502,7 @@ The Switchboard API is at port {{switchboardPort}}.</code></pre>
 <h3 id="skill-extract">Variable Extraction</h3>
 
 <p>Use <code>extractTemplateVars</code> for build-time validation of template variables:</p>
-<pre><code><span class="kw">import</span> { <span class="fn">extractTemplateVars</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">extractTemplateVars</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">const</span> vars = <span class="fn">extractTemplateVars</span>(<span class="str">'{{name}} uses {{#each tools}}{{this}}{{/each}}'</span>);
 <span class="cm">// Set { 'name', 'tools' }</span></code></pre>
@@ -1500,7 +1512,7 @@ The Switchboard API is at port {{switchboardPort}}.</code></pre>
 <h2 id="logging">Conversation Logging</h2>
 
 <p>The Mastra integration includes an append-only markdown logger for agent conversations:</p>
-<pre><code><span class="kw">import</span> { <span class="fn">MarkdownConversationLogger</span>, <span class="fn">loggedStream</span> } <span class="kw">from</span> <span class="str">'ph-clint/mastra'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">MarkdownConversationLogger</span>, <span class="fn">loggedStream</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint/mastra'</span>;
 
 <span class="kw">const</span> logger = <span class="kw">new</span> <span class="fn">MarkdownConversationLogger</span>({
   directory: <span class="str">'/path/to/logs'</span>,
@@ -1520,6 +1532,147 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
 
 <p>Log files are written as markdown at <code>{directory}/{agentName}/{YYYYMMDD_HHMM_NNN}.md</code> with full conversation transcripts including tool calls and results.</p>
 
+<!-- ── Typed Factories ────────────────────────────────────────── -->
+
+<h2 id="typed-factories">Typed Factories (createTypes)</h2>
+
+<p>When building a CLI with a config schema and/or a Powerhouse document registry, <code>createTypes()</code> returns pre-typed versions of <code>defineCommand</code>, <code>defineTrigger</code>, <code>defineService</code>, and <code>createDocumentChangeTrigger</code> &mdash; no need to repeat generic type parameters at every call site:</p>
+
+<pre><code><span class="kw">import</span> { <span class="fn">createTypes</span>, <span class="fn">defineRegistry</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>;
+<span class="kw">import</span> { MyDocModel } <span class="kw">from</span> <span class="str">'./document-models/my-doc.js'</span>;
+
+<span class="kw">const</span> configSchema = z.object({
+  switchboardPort: z.number().<span class="fn">default</span>(<span class="num">4001</span>),
+});
+
+<span class="kw">const</span> registry = <span class="fn">defineRegistry</span>([MyDocModel] <span class="kw">as const</span>);
+
+<span class="kw">const</span> { defineCommand, defineTrigger, defineService, createDocumentChangeTrigger } =
+  <span class="fn">createTypes</span>({ configSchema, registry });
+
+<span class="cm">// ctx.config is typed as { switchboardPort: number }</span>
+<span class="cm">// ctx.reactor().client is typed with registry-derived methods</span>
+<span class="kw">const</span> myCmd = <span class="fn">defineCommand</span>({
+  id: <span class="str">'my-cmd'</span>,
+  description: <span class="str">'A typed command'</span>,
+  inputSchema: z.object({ name: z.string() }),
+  <span class="kw">execute</span>: <span class="kw">async</span> ({ name }, ctx) =&gt; {
+    ctx.config.switchboardPort;  <span class="cm">// number (typed)</span>
+    <span class="kw">return</span> <span class="str">`Hello ${name}`</span>;
+  },
+});</code></pre>
+
+<!-- ── Powerhouse Integration ────────────────────────────────── -->
+
+<h2 id="powerhouse">Powerhouse Integration</h2>
+
+<p>ph-clint integrates with the <a href="https://www.powerhouse.inc/">Powerhouse</a> document reactor via <code>@powerhousedao/reactor</code>. The integration is optional &mdash; Powerhouse dependencies are only loaded when features are configured.</p>
+
+<h3 id="ph-registry">Document Registry</h3>
+
+<p>Define a typed registry from your document model modules:</p>
+<pre><code><span class="kw">import</span> { <span class="fn">defineRegistry</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
+<span class="kw">import</span> { MyDocModel } <span class="kw">from</span> <span class="str">'./document-models/my-doc.js'</span>;
+<span class="kw">import</span> { OtherDocModel } <span class="kw">from</span> <span class="str">'./document-models/other-doc.js'</span>;
+
+<span class="kw">const</span> registry = <span class="fn">defineRegistry</span>([MyDocModel, OtherDocModel] <span class="kw">as const</span>);
+<span class="cm">// Type: { 'my-doc-type': RegistryEntry&lt;MyState, MyActions&gt;, ... }</span></code></pre>
+<p>The registry enables type-safe document operations &mdash; <code>client.get()</code>, <code>client.execute()</code>, etc. are narrowed by document type.</p>
+
+<h3 id="ph-reactor">Building the Reactor</h3>
+
+<p>Use <code>buildDefaultReactor()</code> in the CLI&rsquo;s <code>configureReactor.create</code> callback:</p>
+<pre><code><span class="kw">import</span> { <span class="fn">defineCli</span>, <span class="fn">buildDefaultReactor</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
+
+<span class="kw">const</span> cli = <span class="fn">defineCli</span>({
+  name: <span class="str">'my-agent'</span>,
+  configureReactor: {
+    documentModels: [MyDocModel],
+    create: <span class="kw">async</span> (ctx) =&gt; <span class="fn">buildDefaultReactor</span>(ctx, {
+      documentModels: [MyDocModel],
+      drive: { name: <span class="str">'my-drive'</span> },
+      subscriptions: {
+        documentTypes: [<span class="str">'my-doc-type'</span>],
+        onChange: (event) =&gt; { <span class="cm">/* handle change */</span> },
+      },
+    }),
+  },
+});</code></pre>
+
+<h3 id="ph-drives">Multi-Drive Support</h3>
+
+<p>Configure multiple drives with <code>personal</code> and <code>watched</code> roles:</p>
+<pre><code><span class="fn">buildDefaultReactor</span>(ctx, {
+  documentModels: [MyDocModel],
+  drives: [
+    { name: <span class="str">'my-projects'</span>, role: <span class="str">'personal'</span> },
+    { name: <span class="str">'shared-specs'</span>, role: <span class="str">'watched'</span>,
+      remoteUrl: <span class="str">'https://switchboard.example.com/d/shared'</span> },
+  ],
+});</code></pre>
+<ul>
+  <li><strong><code>personal</code></strong> &mdash; the agent&rsquo;s own drive for creating/editing documents. The first personal drive sets <code>driveId</code> and <code>personalDriveId</code> on <code>ReactorContext</code>.</li>
+  <li><strong><code>watched</code></strong> &mdash; remote drives synced for reading. Created via <code>ensureRemoteDrive()</code>.</li>
+</ul>
+
+<h3 id="ph-folders">Folder Operations</h3>
+
+<p>The <code>FolderOperations</code> API provides a file-system-like interface over a drive&rsquo;s folder hierarchy:</p>
+<pre><code><span class="kw">import</span> { <span class="fn">createFolderOperations</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
+
+<span class="kw">const</span> folders = <span class="fn">createFolderOperations</span>(reactor.client, reactor.personalDriveId);
+
+<span class="cm">// List contents of a folder</span>
+<span class="kw">const</span> entries = <span class="kw">await</span> folders.<span class="fn">listFolder</span>(<span class="str">'projects/active'</span>);
+
+<span class="cm">// Create a nested folder</span>
+<span class="kw">await</span> folders.<span class="fn">createFolder</span>(<span class="str">'projects/active/new-project'</span>);
+
+<span class="cm">// Find a document by name</span>
+<span class="kw">const</span> doc = <span class="kw">await</span> folders.<span class="fn">findDocument</span>(<span class="str">'projects/active'</span>, <span class="str">'my-spec'</span>);</code></pre>
+
+<p>Auto-generated folder commands can be added with <code>createFolderCommands()</code>.</p>
+
+<h3 id="ph-change-trigger">Document Change Trigger</h3>
+
+<p>Watch for document changes and react automatically:</p>
+<pre><code><span class="kw">const</span> { createDocumentChangeTrigger } = <span class="fn">createTypes</span>({ configSchema, registry });
+
+<span class="kw">const</span> specChangeTrigger = <span class="fn">createDocumentChangeTrigger</span>({
+  id: <span class="str">'spec-change'</span>,
+  documentType: <span class="str">'my-doc-type'</span>,  <span class="cm">// or ['type-a', 'type-b']</span>
+  initialReconcile: <span class="num">true</span>,
+  onChange: <span class="kw">async</span> (docs, ctx) =&gt; {
+    <span class="kw">return</span> {
+      type: <span class="str">'command'</span>,
+      params: { commandId: <span class="str">'regen'</span>, args: {} },
+    };
+  },
+});</code></pre>
+<p>Options: <code>documentType</code> (single or array), <code>documentId</code> (string or async resolver), <code>initialReconcile</code> (default: true), <code>filter</code> (per-document predicate).</p>
+
+<h3 id="ph-project-mapping">Project-Document Mapping</h3>
+
+<p><code>getProjectMapping()</code> merges on-disk project scan results with personal drive folder entries into a unified mapping:</p>
+<pre><code><span class="kw">import</span> { <span class="fn">getProjectMapping</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
+
+<span class="kw">const</span> mapping = <span class="kw">await</span> <span class="fn">getProjectMapping</span>(scanResults, folders, specJsonPath);
+<span class="cm">// Array&lt;{ name, path, documentId, documentType, folderPath }&gt;</span></code></pre>
+
+<!-- ── Bootstrapping ─────────────────────────────────────────── -->
+
+<h2 id="bootstrap">Bootstrapping</h2>
+
+<p><code>Cli.bootstrap()</code> resolves workdir, config, and context without entering the full <code>run()</code> pipeline. Useful for codegen scripts or programmatic access:</p>
+<pre><code><span class="kw">const</span> cli = <span class="fn">defineCli</span>({ name: <span class="str">'my-cli'</span>, configSchema, commands: [...] });
+
+<span class="kw">const</span> { workdir, config, context } = <span class="kw">await</span> cli.<span class="fn">bootstrap</span>({
+  workdir: <span class="str">'/path/to/project'</span>,
+  logLevel: <span class="str">'warn'</span>,
+});</code></pre>
+<p>Accepts <code>BootstrapOptions</code>: <code>workdir</code>, <code>stdout</code>, <code>stderr</code>, <code>logLevel</code>.</p>
+
 <!-- ── Testing ───────────────────────────────────────────────── -->
 
 <h2 id="testing">Testing</h2>
@@ -1527,7 +1680,7 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
 <p>ph-clint is designed for testability at every level, without mocks. Process-boundary concerns (stdout, stderr, exit) are always injectable via <code>RunOptions</code>.</p>
 
 <h3>Unit Testing Commands</h3>
-<pre><code><span class="kw">import</span> { <span class="fn">createMemoryWorkdirStore</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<pre><code><span class="kw">import</span> { <span class="fn">createMemoryWorkdirStore</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 <span class="kw">import</span> { add } <span class="kw">from</span> <span class="str">'./commands/add.js'</span>;
 
 <span class="fn">test</span>(<span class="str">'add creates a task'</span>, <span class="kw">async</span> () =&gt; {
@@ -1597,17 +1750,23 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
 <h3 id="api-factory">Factory Functions</h3>
 <table>
   <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>createTypes(options)</code></td><td>Create pre-typed define factories from config schema and registry</td></tr>
   <tr><td><code>createServiceManager(defs, opts)</code></td><td>Create a service lifecycle manager</td></tr>
   <tr><td><code>createProcessManager()</code></td><td>Create a bounded shell command executor</td></tr>
   <tr><td><code>createRoutine(options)</code></td><td>Create a tick-based execution loop</td></tr>
+  <tr><td><code>createRoutineServiceAdapter(routine)</code></td><td>Wrap a routine as a service for composite management</td></tr>
+  <tr><td><code>createCompositeServiceManager(managers)</code></td><td>Merge multiple service managers into one</td></tr>
   <tr><td><code>createEventBus()</code></td><td>Create a central event emitter</td></tr>
   <tr><td><code>createLogger(level?, sink?)</code></td><td>Create a structured logger</td></tr>
   <tr><td><code>createWorkdirStore(workdir, cliName)</code></td><td>Create file-based workspace persistence</td></tr>
   <tr><td><code>createMemoryWorkdirStore()</code></td><td>Create in-memory workspace (for testing)</td></tr>
   <tr><td><code>createReplSession(options)</code></td><td>Create a testable REPL session</td></tr>
   <tr><td><code>createConfigCommand(options)</code></td><td>Create the <code>config</code> command (auto-injected)</td></tr>
+  <tr><td><code>generateConfigCommandHelp(options)</code></td><td>Generate help text for the config command</td></tr>
   <tr><td><code>createHelpCommand(cli)</code></td><td>Create the <code>cli-docs</code> help command</td></tr>
   <tr><td><code>createServiceCommands(defs, events)</code></td><td>Create per-service management commands</td></tr>
+  <tr><td><code>resolveServiceName(def, cliName)</code></td><td>Resolve namespaced service name</td></tr>
+  <tr><td><code>formatStatus(status)</code></td><td>Format a service status for display</td></tr>
 </table>
 
 <h3 id="api-config">Config Utilities</h3>
@@ -1621,12 +1780,14 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
   <tr><td><code>userConfigPath(cliName)</code></td><td>Path to user-level config file</td></tr>
   <tr><td><code>userStoreFolder(cliName, ...sub)</code></td><td>Path to user-level store directory</td></tr>
   <tr><td><code>getMissingRequiredFields(schema, config)</code></td><td>Find required fields with no value</td></tr>
+  <tr><td><code>readPackageInfo(importMetaUrl)</code></td><td>Read name/version from nearest package.json</td></tr>
 </table>
 
 <h3 id="api-schema">Schema &amp; Formatting</h3>
 <table>
   <tr><th>Function</th><th>Description</th></tr>
   <tr><td><code>getSchemaFields(schema)</code></td><td>Extract field metadata from a Zod object schema</td></tr>
+  <tr><td><code>slugToTitle(slug)</code></td><td>Convert a kebab-case slug to a title string</td></tr>
   <tr><td><code>formatZodError(err, commandId?)</code></td><td>Format Zod validation errors for display</td></tr>
   <tr><td><code>formatStreamChunk(chunk)</code></td><td>Format a StreamChunk with ANSI colors</td></tr>
   <tr><td><code>renderStream(stream)</code></td><td>Transform a chunk stream to formatted strings</td></tr>
@@ -1656,8 +1817,9 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
 <h3 id="api-skills">Skills &amp; Templates</h3>
 <table>
   <tr><th>Function</th><th>Description</th></tr>
-  <tr><td><code>readSkillsFromSources(dirs)</code></td><td>Scan directories for SKILL.md files</td></tr>
+  <tr><td><code>readSkills(artifacts)</code></td><td>Scan artifact directories for SKILL.md files</td></tr>
   <tr><td><code>installSkills(options)</code></td><td>Copy skill folders into the workspace store</td></tr>
+  <tr><td><code>DEFAULT_SKILL_INSTRUCTION</code></td><td>Default instruction string for skill commands</td></tr>
   <tr><td><code>createSkillCommands(skills)</code></td><td>Create CLI commands from skill metadata</td></tr>
   <tr><td><code>isSkillInvocation(value)</code></td><td>Type guard for <code>SkillInvocation</code> results</td></tr>
   <tr><td><code>renderSkillTemplate(template, ctx, opts?)</code></td><td>Render a Handlebars template with default helpers</td></tr>
@@ -1665,11 +1827,32 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
   <tr><td><code>registerDefaultHelpers(hbs)</code></td><td>Register the 8 standard helpers on a Handlebars instance</td></tr>
 </table>
 
-<h3 id="api-scanner">Project Scanner</h3>
+<h3 id="api-scanner">Project Scanner &amp; Mapping</h3>
 <table>
   <tr><th>Function</th><th>Description</th></tr>
   <tr><td><code>scanProjects(rootDir, scanner)</code></td><td>Breadth-first search for project folders</td></tr>
   <tr><td><code>PROJECT_INDICATORS</code></td><td>Array of common project indicator files (package.json, Cargo.toml, etc.)</td></tr>
+  <tr><td><code>getProjectMapping(scanResults, folders, specJson?)</code></td><td>Merge on-disk scan with drive folders into unified mapping</td></tr>
+</table>
+
+<h3 id="api-powerhouse">Powerhouse Integration</h3>
+<table>
+  <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>buildDefaultReactor(ctx, options)</code></td><td>Build a ReactorContext with standard composition (reactor + drives + subscriptions)</td></tr>
+  <tr><td><code>buildReactor(options)</code></td><td>Low-level: create an in-process Reactor with document models</td></tr>
+  <tr><td><code>startSwitchboard(options)</code></td><td>Start a Switchboard (GraphQL + MCP) wrapping the Reactor</td></tr>
+  <tr><td><code>defineRegistry(modules)</code></td><td>Build a typed DocumentRegistry from document model modules</td></tr>
+  <tr><td><code>createDocumentChangeTrigger(options)</code></td><td>Create a trigger that fires on document changes</td></tr>
+  <tr><td><code>ensureDrive(reactor, config)</code></td><td>Create or find a local drive</td></tr>
+  <tr><td><code>ensureRemoteDrive(reactor, url, name)</code></td><td>Create or find a remote (synced) drive</td></tr>
+  <tr><td><code>bridgeSubscriptions(client, config, emit)</code></td><td>Wire reactor subscriptions to the event bus</td></tr>
+  <tr><td><code>createFolderOperations(client, driveId)</code></td><td>Create a file-system-like API over a drive's folder hierarchy</td></tr>
+  <tr><td><code>createFolderCommands(folders)</code></td><td>Auto-generate CLI commands for folder operations</td></tr>
+  <tr><td><code>connectServiceDefinition</code></td><td>Pre-built service definition for the Connect SPA</td></tr>
+  <tr><td><code>defaultPort(service)</code></td><td>Default port for a Powerhouse service</td></tr>
+  <tr><td><code>resolvePort(service, config)</code></td><td>Resolve port from config with fallback to defaults</td></tr>
+  <tr><td><code>resolveReactorDefaults(config)</code></td><td>Resolve all Powerhouse-related config defaults</td></tr>
+  <tr><td><code>isDocType(doc, type)</code></td><td>Type guard: narrow a PHDocument by documentType string</td></tr>
 </table>
 
 <h3 id="api-mastra">Mastra Integration (<code>ph-clint/mastra</code>)</h3>
@@ -1730,8 +1913,34 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
   <tr><td><code>CliMetadata</code></td><td>JSON-serializable CLI metadata (from <code>getMetadata()</code>)</td></tr>
   <tr><td><code>MetadataField</code></td><td>Field metadata in CLI metadata output</td></tr>
   <tr><td><code>ConfigMetadataField</code></td><td>Config field metadata with env var name</td></tr>
+  <tr><td><code>BootstrapOptions</code></td><td>Options for <code>Cli.bootstrap()</code></td></tr>
+  <tr><td><code>BootstrapResult</code></td><td>Result of bootstrap (workdir, config, context)</td></tr>
+  <tr><td><code>PackageInfo</code></td><td>Result of <code>readPackageInfo()</code></td></tr>
+  <tr><td><code>CreateTypesOptions&lt;TSchema, R&gt;</code></td><td>Options for <code>createTypes()</code></td></tr>
+  <tr><td><code>TypedFactory&lt;TConfig, R&gt;</code></td><td>Bundle of pre-typed define factories</td></tr>
   <tr><td><code>ProjectScanner</code></td><td>Pluggable project detection interface</td></tr>
   <tr><td><code>ProjectScanResult</code></td><td>Result of project scanning (<code>{ name, path, config? }</code>)</td></tr>
+  <tr><td><code>ProjectMapping</code></td><td>Unified project-to-document mapping entry</td></tr>
+  <tr><td><code>DocumentRegistry</code></td><td>Maps documentType strings to RegistryEntry</td></tr>
+  <tr><td><code>AnyRegistry</code></td><td>Fallback registry (base PHDocument/Action shapes)</td></tr>
+  <tr><td><code>RegistryEntry&lt;S, A&gt;</code></td><td>One entry: <code>{ document, actions, state }</code></td></tr>
+  <tr><td><code>InferRegistry&lt;T&gt;</code></td><td>Infer a registry from a tuple of DocumentModelModules</td></tr>
+  <tr><td><code>ActionOf&lt;M&gt;</code></td><td>Extract the action union from a DocumentModelModule</td></tr>
+  <tr><td><code>TypedReactorClient&lt;R&gt;</code></td><td>Registry-typed view over IReactorClient</td></tr>
+  <tr><td><code>ReactorContext&lt;R&gt;</code></td><td>Reactor state: client, drives, driveId, shutdown</td></tr>
+  <tr><td><code>ReactorSetupContext&lt;R&gt;</code></td><td>Context passed to <code>configureReactor.create</code></td></tr>
+  <tr><td><code>ReactorConfiguration&lt;R&gt;</code></td><td>Full reactor configuration for <code>defineCli</code></td></tr>
+  <tr><td><code>DriveConfig</code></td><td>Configuration for a single drive</td></tr>
+  <tr><td><code>DriveEntry</code></td><td>Runtime drive state: id, name, role, remoteUrl</td></tr>
+  <tr><td><code>FolderEntry</code></td><td>Entry in a folder listing: type, name, id, path</td></tr>
+  <tr><td><code>FolderOperations</code></td><td>File-system-like API over drive folders</td></tr>
+  <tr><td><code>SubscriptionConfig&lt;R&gt;</code></td><td>Document subscription configuration</td></tr>
+  <tr><td><code>SwitchboardConfig</code></td><td>Switchboard service configuration</td></tr>
+  <tr><td><code>ConnectConfig</code></td><td>Connect SPA service configuration</td></tr>
+  <tr><td><code>TypedDocumentChangeEvent&lt;R, T&gt;</code></td><td>Registry-typed document change event</td></tr>
+  <tr><td><code>DocumentChangeTriggerOptions&lt;R, T&gt;</code></td><td>Options for <code>createDocumentChangeTrigger()</code></td></tr>
+  <tr><td><code>BuildDefaultReactorOptions&lt;R&gt;</code></td><td>Options for <code>buildDefaultReactor()</code></td></tr>
+  <tr><td><code>StartSwitchboardOptions</code></td><td>Options for <code>startSwitchboard()</code></td></tr>
   <tr><td><code>RenderOptions</code></td><td>Options for <code>renderSkillTemplate()</code></td></tr>
   <tr><td><code>RenderResult</code></td><td>Result of template rendering (<code>{ rendered, warnings }</code>)</td></tr>
   <tr><td><code>IConversationLogger</code></td><td>Interface for agent conversation loggers</td></tr>
@@ -1753,7 +1962,7 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
   <tr><td>03</td><td>File Watcher</td><td>Triggers, routine loop, process management</td><td>Done</td></tr>
   <tr><td>04</td><td>Chat Assistant</td><td>Mastra agent, streaming, memory, demo agent</td><td>Done</td></tr>
   <tr><td>05</td><td>ph-rupert</td><td>Services, agent, MCP discovery, skills, prompts</td><td>Done</td></tr>
-  <tr><td>06</td><td>Doc Browser</td><td>Powerhouse reactor, drives, document operations</td><td>Planned</td></tr>
+  <tr><td>06</td><td>Connect Agent</td><td>Powerhouse reactor, drives, document operations, Connect web UI</td><td>Done</td></tr>
   <tr><td>07</td><td>Doc Agent</td><td>Mastra + Powerhouse, routine loop, document triggers</td><td>Planned</td></tr>
   <tr><td>08</td><td>Reactor Dev</td><td>Full reference: multi-agent, services, skills, MCP</td><td>Planned</td></tr>
 </table>
@@ -1771,7 +1980,7 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
   <p>Minimal setup: one command, interactive mode, auto-generated help.</p>
 
   <h4>src/commands/greet.ts</h4>
-  <pre><code><span class="kw">import</span> { <span class="fn">defineCommand</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+  <pre><code><span class="kw">import</span> { <span class="fn">defineCommand</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 <span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>;
 
 <span class="kw">export const</span> greet = <span class="fn">defineCommand</span>({
@@ -1789,7 +1998,7 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
 
   <h4>src/cli.ts</h4>
   <pre><code><span class="cm">#!/usr/bin/env node</span>
-<span class="kw">import</span> { <span class="fn">defineCli</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+<span class="kw">import</span> { <span class="fn">defineCli</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 <span class="kw">import</span> { greet } <span class="kw">from</span> <span class="str">'./commands/greet.js'</span>;
 
 <span class="kw">const</span> cli = <span class="fn">defineCli</span>({
@@ -1901,7 +2110,7 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
   <p>File change detection with automatic build triggering via the routine loop.</p>
 
   <h4>src/trigger.ts</h4>
-  <pre><code><span class="kw">import</span> { <span class="fn">defineTrigger</span> } <span class="kw">from</span> <span class="str">'ph-clint'</span>;
+  <pre><code><span class="kw">import</span> { <span class="fn">defineTrigger</span> } <span class="kw">from</span> <span class="str">'@powerhousedao/ph-clint'</span>;
 
 <span class="kw">export const</span> fileChangeTrigger = <span class="fn">defineTrigger</span>({
   id: <span class="str">'file-change'</span>,
@@ -1966,7 +2175,7 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
   <span class="kw">if</span> (!ctx.config.apiKey) <span class="kw">return</span> <span class="fn">createAssistant</span>();  <span class="cm">// Demo mode</span>
 
   <span class="cm">// Lazy-load Mastra only when an API key is configured</span>
-  <span class="kw">const</span> { createMastraHelpers } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">'ph-clint/mastra'</span>);
+  <span class="kw">const</span> { createMastraHelpers } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">'@powerhousedao/ph-clint/mastra'</span>);
   <span class="kw">const</span> { Agent } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">'@mastra/core/agent'</span>);
   <span class="kw">const</span> m = <span class="fn">createMastraHelpers</span>(ctx);
 
@@ -2053,7 +2262,7 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
 
   <h4>Prompts configuration</h4>
   <pre><code>prompts: {
-  sources: [path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'prompts'</span>)],
+  artifacts: [path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'prompts'</span>)],
   skills: {
     <span class="str">'document-modeling'</span>: { description: <span class="str">'Create document models'</span> },
     <span class="str">'document-editor-creation'</span>: { description: <span class="str">'Create document editors'</span> },
@@ -2081,6 +2290,76 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
     <li>Project scanner for auto-discovering Reactor Package projects</li>
     <li>Config-aware welcome with mode indicator</li>
     <li>Conversation logging via <code>MarkdownConversationLogger</code></li>
+  </ul>
+</div>
+
+<!-- ── Example 06 ────────────────────────────────────────────── -->
+
+<div class="example-card" id="ex-06">
+  <h3>06 — Connect Agent</h3>
+  <div class="meta">
+    <span class="badge badge-service">reactor</span>
+    <span class="badge badge-service">drives</span>
+    <span class="badge badge-service">connect</span>
+    <span class="badge badge-agent">agent</span>
+    <code>examples/06-connect-agent/</code>
+  </div>
+  <p>AI chat agent backed by Powerhouse documents, with both a CLI REPL and a Connect web UI. Demonstrates the full Powerhouse integration: in-process reactor, drives, document CRUD, subscriptions, Switchboard, and Connect SPA serving.</p>
+
+  <h4>What it demonstrates</h4>
+  <ul>
+    <li><code>configureReactor</code> with <code>buildDefaultReactor()</code></li>
+    <li>In-process Reactor with document model registration</li>
+    <li>Drive management and document CRUD via typed <code>ReactorContext</code></li>
+    <li>Switchboard (GraphQL + MCP) endpoint</li>
+    <li>Connect SPA served via static file server</li>
+    <li>Agent with Powerhouse document tools</li>
+    <li>Split layout: <code>agent-app/</code> (Powerhouse reactor package) + <code>agent-cli/</code> (ph-clint CLI)</li>
+  </ul>
+</div>
+
+<!-- ── Example 07 ────────────────────────────────────────────── -->
+
+<div class="example-card" id="ex-07">
+  <h3>07 — Doc Agent</h3>
+  <div class="meta">
+    <span class="badge badge-trigger">triggers</span>
+    <span class="badge badge-service">reactor</span>
+    <span class="badge badge-agent">agent</span>
+    <code>examples/07-doc-agent/</code>
+  </div>
+  <p>Mastra agent combined with Powerhouse document triggers — reacts to document changes automatically via the routine loop.</p>
+
+  <h4>What it demonstrates</h4>
+  <ul>
+    <li><code>createDocumentChangeTrigger()</code> for reactive document watching</li>
+    <li>Mastra + Powerhouse combined: agent tools operate on documents</li>
+    <li>Routine loop driven by document change events</li>
+    <li>Typed document operations via registry</li>
+  </ul>
+</div>
+
+<!-- ── Example 08 ────────────────────────────────────────────── -->
+
+<div class="example-card" id="ex-08">
+  <h3>08 — Reactor Dev</h3>
+  <div class="meta">
+    <span class="badge badge-service">services</span>
+    <span class="badge badge-trigger">triggers</span>
+    <span class="badge badge-agent">agent</span>
+    <span class="badge badge-agent">mcp</span>
+    <span class="badge badge-agent">skills</span>
+    <code>examples/08-reactor-dev/</code>
+  </div>
+  <p>Full reference implementation: multi-agent, services, skills, MCP transport, and everything else combined.</p>
+
+  <h4>What it demonstrates</h4>
+  <ul>
+    <li>All framework features combined in a single CLI</li>
+    <li>Multi-agent setup</li>
+    <li>Service management with MCP tool discovery</li>
+    <li>Skills and agent profiles</li>
+    <li>Complete MCP transport</li>
   </ul>
 </div>
 

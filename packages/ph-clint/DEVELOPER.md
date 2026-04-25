@@ -20,6 +20,9 @@ Build CLI tools that work as command-line programs, interactive REPLs, and AI ag
 - [CLI Metadata](#cli-metadata)
 - [Handlebars Templates](#handlebars-templates)
 - [Conversation Logging](#conversation-logging)
+- [Typed Factories (createTypes)](#typed-factories-createtypes)
+- [Powerhouse Integration](#powerhouse-integration)
+- [Bootstrapping](#bootstrapping)
 - [Testing](#testing)
 - [API Reference](#api-reference)
 
@@ -30,14 +33,14 @@ Build CLI tools that work as command-line programs, interactive REPLs, and AI ag
 ### Installation
 
 ```bash
-pnpm add ph-clint zod
+pnpm add @powerhousedao/ph-clint zod
 ```
 
 ### Minimal CLI
 
 ```typescript
 #!/usr/bin/env node
-import { defineCli, defineCommand } from 'ph-clint';
+import { defineCli, defineCommand } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 
 const greet = defineCommand({
@@ -107,7 +110,7 @@ Both modes share the same command definitions and routing logic.
 ### Basic Command
 
 ```typescript
-import { defineCommand } from 'ph-clint';
+import { defineCommand } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 
 export const greet = defineCommand({
@@ -210,7 +213,7 @@ const init = defineCommand<typeof inputSchema, { text: string }, Config>({
 ### Basic CLI
 
 ```typescript
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 
 const cli = defineCli({
   name: 'mycli',
@@ -240,7 +243,7 @@ const cli = defineCli({
   events: { 'service:ready': handler },       // Event handlers
   secretsSchema: mySecretsSchema,             // Zod schema for sensitive config (censored)
   skills: {                                    // Agent skill management
-    sources: ['./skills', './dist/skills'],    // Candidate dirs (first existing wins)
+    artifacts: ['./skills', './dist/skills'],  // Candidate dirs (first existing wins)
     agents: { 'my-agent': ['skill-a'] },      // Per-agent skill assignments
   },
   workdir: '/custom/default/path',            // Implementation-level workdir override
@@ -277,6 +280,7 @@ When you define a CLI, these commands are automatically available:
 
 ```typescript
 cli.run(argv, options?)          // Run CLI (command mode or REPL)
+cli.bootstrap(options?)          // Resolve workdir/config/context without entering run()
 cli.execute(commandId, args)     // Execute a command directly
 cli.parseArgs(commandId, argv)   // Parse CLI args for a command
 cli.getCommand(id)               // Get a command by ID
@@ -365,7 +369,7 @@ Env vars are derived from the CLI name and field name in UPPER_SNAKE_CASE:
 Use `InferConfig` to derive the TypeScript type from a config schema:
 
 ```typescript
-import type { InferConfig } from 'ph-clint';
+import type { InferConfig } from '@powerhousedao/ph-clint';
 
 const configSchema = z.object({
   connectPort: z.number().default(3000),
@@ -447,7 +451,7 @@ execute: async (input, { workspace }) => {
 For testing, use the in-memory store:
 
 ```typescript
-import { createMemoryWorkdirStore } from 'ph-clint';
+import { createMemoryWorkdirStore } from '@powerhousedao/ph-clint';
 
 const workspace = createMemoryWorkdirStore();
 // Same API, no filesystem I/O
@@ -500,7 +504,7 @@ The REPL provides automatic completion for:
 For integration testing without spawning a subprocess:
 
 ```typescript
-import { createReplSession, createMemoryWorkdirStore } from 'ph-clint';
+import { createReplSession, createMemoryWorkdirStore } from '@powerhousedao/ph-clint';
 
 const session = createReplSession({
   cli,
@@ -569,7 +573,7 @@ In piped mode, the welcome message is printed to stdout (downstream consumers ca
 Triggers are polling-based condition checks that produce work items:
 
 ```typescript
-import { defineTrigger } from 'ph-clint';
+import { defineTrigger } from '@powerhousedao/ph-clint';
 
 const fileChangeTrigger = defineTrigger({
   id: 'file-change',
@@ -712,7 +716,7 @@ Services are long-running background processes (dev servers, databases, etc.) wi
 ### Defining a Service
 
 ```typescript
-import { defineService, checkWorkdir, checkCommand, checkPort } from 'ph-clint';
+import { defineService, checkWorkdir, checkCommand, checkPort } from '@powerhousedao/ph-clint';
 
 const devServer = defineService<Config>({
   id: 'dev-server',
@@ -921,7 +925,7 @@ ph-clint supports optional AI agent integration via [Mastra](https://mastra.ai).
 ### Setting Up an Agent
 
 ```typescript
-import { defineCli } from 'ph-clint';
+import { defineCli } from '@powerhousedao/ph-clint';
 
 const cli = defineCli({
   name: 'assist',
@@ -1004,7 +1008,7 @@ const tools = await m.getTools({ MCPClient });
 For testing or when no API key is available, implement the `AgentProvider` interface directly:
 
 ```typescript
-import type { AgentProvider, StreamChunk } from 'ph-clint';
+import type { AgentProvider, StreamChunk } from '@powerhousedao/ph-clint';
 
 function createDemoAgent(): AgentProvider {
   return {
@@ -1054,7 +1058,7 @@ type StreamChunk =
 ### Formatting Utilities
 
 ```typescript
-import { formatStreamChunk, renderStream } from 'ph-clint';
+import { formatStreamChunk, renderStream } from '@powerhousedao/ph-clint';
 
 // Format a single chunk (with ANSI colors)
 const formatted = formatStreamChunk(chunk);
@@ -1129,7 +1133,7 @@ The metadata is designed for build-time tooling (e.g., generating agent skill te
 ph-clint includes a Handlebars template engine for agent skill rendering with missing-variable detection:
 
 ```typescript
-import { renderSkillTemplate } from 'ph-clint';
+import { renderSkillTemplate } from '@powerhousedao/ph-clint';
 
 const { rendered, warnings } = renderSkillTemplate(
   'Hello {{name}}, you have {{count}} tasks. {{missing}}',
@@ -1157,7 +1161,7 @@ Eight default helpers are registered automatically:
 ### Template Variable Extraction
 
 ```typescript
-import { extractTemplateVars } from 'ph-clint';
+import { extractTemplateVars } from '@powerhousedao/ph-clint';
 
 const vars = extractTemplateVars('{{name}} uses {{#each tools}}{{this}}{{/each}}');
 // Set { 'name', 'tools' }
@@ -1170,7 +1174,7 @@ const vars = extractTemplateVars('{{name}} uses {{#each tools}}{{this}}{{/each}}
 The Mastra integration includes an append-only markdown logger for agent conversations:
 
 ```typescript
-import { MarkdownConversationLogger, loggedStream } from 'ph-clint/mastra';
+import { MarkdownConversationLogger, loggedStream } from '@powerhousedao/ph-clint/mastra';
 
 const logger = new MarkdownConversationLogger({
   directory: '/path/to/logs',
@@ -1193,6 +1197,229 @@ Log files are written as markdown at `{directory}/{agentName}/{YYYYMMDD_HHMM_NNN
 
 ---
 
+## Typed Factories (createTypes)
+
+When building a CLI with a config schema and/or a Powerhouse document registry, you can use `createTypes()` to get pre-typed versions of `defineCommand`, `defineTrigger`, `defineService`, and `createDocumentChangeTrigger` — avoiding the need to repeat generic type parameters at every call site:
+
+```typescript
+import { createTypes, defineRegistry } from '@powerhousedao/ph-clint';
+import { z } from 'zod';
+import { MyDocumentModel } from './document-models/my-doc.js';
+
+const configSchema = z.object({
+  switchboardPort: z.number().default(4001),
+});
+
+const registry = defineRegistry([MyDocumentModel] as const);
+
+const { defineCommand, defineTrigger, defineService, createDocumentChangeTrigger } =
+  createTypes({ configSchema, registry });
+
+// Now ctx.config is typed as { switchboardPort: number }
+// and ctx.reactor().client is typed with registry-derived methods
+const myCmd = defineCommand({
+  id: 'my-cmd',
+  description: 'A typed command',
+  inputSchema: z.object({ name: z.string() }),
+  execute: async ({ name }, ctx) => {
+    ctx.config.switchboardPort;         // number (typed)
+    const reactor = await ctx.reactor();
+    const doc = await reactor.client.get('doc-id'); // typed per registry
+    return `Hello ${name}`;
+  },
+});
+```
+
+The `TypedFactory` bundle returned by `createTypes()` includes:
+
+| Factory | Description |
+|---------|-------------|
+| `defineCommand(options)` | Pre-typed command definition |
+| `defineTrigger(options)` | Pre-typed trigger definition |
+| `defineService(options)` | Pre-typed service definition |
+| `createDocumentChangeTrigger(options)` | Pre-typed change trigger (see [Powerhouse Integration](#powerhouse-integration)) |
+
+---
+
+## Powerhouse Integration
+
+ph-clint integrates with the [Powerhouse](https://www.powerhouse.inc/) document reactor via `@powerhousedao/reactor`. The integration is optional — Powerhouse dependencies are only loaded when features are configured.
+
+### Document Registry
+
+Define a typed registry from your document model modules:
+
+```typescript
+import { defineRegistry } from '@powerhousedao/ph-clint';
+import { MyDocModel } from './document-models/my-doc.js';
+import { OtherDocModel } from './document-models/other-doc.js';
+
+const registry = defineRegistry([MyDocModel, OtherDocModel] as const);
+// Type: { 'my-doc-type': RegistryEntry<MyState, MyActions>, ... }
+```
+
+The registry enables type-safe document operations — `client.get()`, `client.execute()`, etc. are narrowed by document type.
+
+### Building the Reactor
+
+Use `buildDefaultReactor()` in the CLI's `configureReactor.create` callback:
+
+```typescript
+import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
+
+const cli = defineCli({
+  name: 'my-agent',
+  configureReactor: {
+    documentModels: [MyDocModel],
+    create: async (ctx) => buildDefaultReactor(ctx, {
+      documentModels: [MyDocModel],
+      drive: { name: 'my-drive' },
+      subscriptions: {
+        documentTypes: ['my-doc-type'],
+        onChange: (event) => { /* handle change */ },
+      },
+    }),
+  },
+});
+```
+
+### Multi-Drive Support
+
+Configure multiple drives with `personal` and `watched` roles:
+
+```typescript
+buildDefaultReactor(ctx, {
+  documentModels: [MyDocModel],
+  drives: [
+    { name: 'my-projects', role: 'personal' },
+    { name: 'shared-specs', role: 'watched', remoteUrl: 'https://switchboard.example.com/d/shared' },
+  ],
+});
+```
+
+- **`personal`** — the agent's own drive for creating/editing documents. The first personal drive sets `driveId` and `personalDriveId` on `ReactorContext`.
+- **`watched`** — remote drives synced for reading. Created via `ensureRemoteDrive()`.
+
+### Folder Operations
+
+The `FolderOperations` API provides a file-system-like interface over a drive's folder hierarchy:
+
+```typescript
+import { createFolderOperations } from '@powerhousedao/ph-clint';
+
+const folders = createFolderOperations(reactor.client, reactor.personalDriveId);
+
+// List contents of a folder
+const entries = await folders.listFolder('projects/active');
+// entries: Array<{ type: 'folder' | 'document', name, id, path, documentType? }>
+
+// Create a nested folder
+await folders.createFolder('projects/active/new-project');
+
+// Find a document by name
+const doc = await folders.findDocument('projects/active', 'my-spec');
+```
+
+Auto-generated folder commands can be added to the CLI with `createFolderCommands()`:
+
+```typescript
+import { createFolderCommands } from '@powerhousedao/ph-clint';
+
+const folderCmds = createFolderCommands(folders);
+// Returns: [ls-folder, mkdir, find-document] commands
+```
+
+### Document Change Trigger
+
+Watch for document changes and react automatically:
+
+```typescript
+const { createDocumentChangeTrigger } = createTypes({ configSchema, registry });
+
+const specChangeTrigger = createDocumentChangeTrigger({
+  id: 'spec-change',
+  documentType: 'my-doc-type',  // or ['type-a', 'type-b'] for multi-type
+  initialReconcile: true,       // fire once on startup
+  onChange: async (docs, ctx) => {
+    // docs: typed array of documents matching the registry
+    return {
+      type: 'command',
+      params: { commandId: 'regen', args: {} },
+    };
+  },
+});
+```
+
+Options:
+- **`documentType`** — single type or array of types to watch
+- **`documentId`** — optional; specific document ID or async resolver function
+- **`initialReconcile`** — fire on startup before any events arrive (default: `true`)
+- **`filter`** — per-document predicate called after loading
+
+### Switchboard & Connect
+
+The integration manages Switchboard (GraphQL + MCP endpoint) and Connect (web UI) as child services:
+
+```typescript
+import { startSwitchboard, connectServiceDefinition } from '@powerhousedao/ph-clint';
+
+// Switchboard is started automatically by buildDefaultReactor when enabled in config.
+// Connect is auto-registered as a service when configureReactor is set.
+```
+
+The Connect service definition (`connectServiceDefinition`) serves a pre-built Connect SPA via a static file server, with automatic port resolution and drive URL hints.
+
+### Project-Document Mapping
+
+`getProjectMapping()` merges on-disk project scan results with personal drive folder entries:
+
+```typescript
+import { getProjectMapping } from '@powerhousedao/ph-clint';
+
+const mapping = await getProjectMapping(scanResults, folders, specJsonPath);
+// Returns: Array<{ name, path, documentId, documentType, folderPath }>
+```
+
+### Helper: readPackageInfo
+
+Read `package.json` fields without manual file I/O — useful for CLI version/name bootstrapping:
+
+```typescript
+import { readPackageInfo } from '@powerhousedao/ph-clint';
+
+const pkg = readPackageInfo(import.meta.url);
+// { name: '@powerhousedao/my-cli', version: '0.1.0', ... }
+```
+
+---
+
+## Bootstrapping
+
+`Cli.bootstrap()` resolves workdir, config, and context without entering the full `run()` pipeline. Useful for codegen scripts or programmatic access:
+
+```typescript
+const cli = defineCli({ name: 'my-cli', configSchema, commands: [...] });
+
+const { workdir, config, context } = await cli.bootstrap({
+  workdir: '/path/to/project',
+  logLevel: 'warn',
+});
+
+// Use context for programmatic operations
+const result = await cli.execute('my-command', { name: 'test' });
+```
+
+`bootstrap()` accepts `BootstrapOptions`:
+
+| Option | Description |
+|--------|-------------|
+| `workdir` | Override working directory |
+| `stdout` | Custom stdout handler |
+| `stderr` | Custom stderr handler |
+| `logLevel` | Log level (`debug`, `info`, `warn`, `error`) |
+
+---
+
 ## Testing
 
 ph-clint is designed for testability at every level, without mocks.
@@ -1202,7 +1429,7 @@ ph-clint is designed for testability at every level, without mocks.
 Test `execute()` directly with a mock context:
 
 ```typescript
-import { createMemoryWorkdirStore } from 'ph-clint';
+import { createMemoryWorkdirStore } from '@powerhousedao/ph-clint';
 import { add } from './commands/add.js';
 
 test('add creates a task', async () => {
@@ -1242,7 +1469,7 @@ test('greet command via CLI', async () => {
 Use `createReplSession()` for headless REPL testing:
 
 ```typescript
-import { createReplSession, createMemoryWorkdirStore } from 'ph-clint';
+import { createReplSession, createMemoryWorkdirStore } from '@powerhousedao/ph-clint';
 
 test('REPL processes commands', async () => {
   const session = createReplSession({
@@ -1305,9 +1532,12 @@ Coverage target: 95% (statements, branches, functions, lines).
 
 | Function | Description |
 |----------|-------------|
+| `createTypes(options)` | Create pre-typed define factories from config schema and registry |
 | `createServiceManager(defs, opts)` | Create a service lifecycle manager |
 | `createProcessManager()` | Create a bounded shell command executor |
 | `createRoutine(options)` | Create a tick-based execution loop |
+| `createRoutineServiceAdapter(routine)` | Wrap a routine as a service for composite management |
+| `createCompositeServiceManager(managers)` | Merge multiple service managers into one |
 | `createEventBus()` | Create a central event emitter |
 | `createLogger(level?, sink?)` | Create a structured logger |
 | `createWorkdirStore(workdir, cliName)` | Create file-based workspace persistence |
@@ -1320,7 +1550,10 @@ Coverage target: 95% (statements, branches, functions, lines).
 |----------|-------------|
 | `createConfigCommand(options)` | Create the `config` command (auto-injected with `configSchema`) |
 | `createHelpCommand(cli)` | Create the `cli-docs` help command |
+| `generateConfigCommandHelp(options)` | Generate help text for the config command |
 | `createServiceCommands(defs, events)` | Create per-service management commands |
+| `resolveServiceName(def, cliName)` | Resolve namespaced service name |
+| `formatStatus(status)` | Format a service status for display |
 
 ### Config Utilities
 
@@ -1334,12 +1567,14 @@ Coverage target: 95% (statements, branches, functions, lines).
 | `userConfigPath(cliName)` | Path to user-level config file |
 | `userStoreFolder(cliName, ...sub)` | Path to user-level store directory |
 | `getMissingRequiredFields(schema, config)` | Find required fields with no value |
+| `readPackageInfo(importMetaUrl)` | Read name/version from nearest package.json |
 
 ### Schema & Formatting
 
 | Function | Description |
 |----------|-------------|
 | `getSchemaFields(schema)` | Extract field metadata from a Zod object schema |
+| `slugToTitle(slug)` | Convert a kebab-case slug to a title string |
 | `formatZodError(err, commandId?)` | Format Zod validation errors for display |
 | `formatStreamChunk(chunk)` | Format a StreamChunk with ANSI colors |
 | `renderStream(stream)` | Transform a chunk stream to formatted strings |
@@ -1370,6 +1605,7 @@ Coverage target: 95% (statements, branches, functions, lines).
 | Function | Description |
 |----------|-------------|
 | `readSkills(artifacts)` | Scan artifact directories for SKILL.md files |
+| `DEFAULT_SKILL_INSTRUCTION` | Default instruction string for skill commands |
 | `installSkills(options)` | Copy skill folders into the workspace store |
 | `createSkillCommands(skills)` | Create CLI commands from skill metadata |
 | `isSkillInvocation(value)` | Type guard for `SkillInvocation` results |
@@ -1377,12 +1613,33 @@ Coverage target: 95% (statements, branches, functions, lines).
 | `extractTemplateVars(template)` | Extract referenced variable names from a template |
 | `registerDefaultHelpers(hbs)` | Register the 8 standard helpers on a Handlebars instance |
 
-### Project Scanner
+### Project Scanner & Mapping
 
 | Function | Description |
 |----------|-------------|
 | `scanProjects(rootDir, scanner)` | Breadth-first search for project folders |
 | `PROJECT_INDICATORS` | Array of common project indicator files (package.json, Cargo.toml, etc.) |
+| `getProjectMapping(scanResults, folders, specJson?)` | Merge on-disk scan with drive folders into unified mapping |
+
+### Powerhouse Integration
+
+| Function | Description |
+|----------|-------------|
+| `buildDefaultReactor(ctx, options)` | Build a ReactorContext with standard composition (reactor + drives + subscriptions) |
+| `buildReactor(options)` | Low-level: create an in-process Reactor with document models |
+| `startSwitchboard(options)` | Start a Switchboard (GraphQL + MCP) wrapping the Reactor |
+| `defineRegistry(modules)` | Build a typed DocumentRegistry from document model modules |
+| `createDocumentChangeTrigger(options)` | Create a trigger that fires on document changes |
+| `ensureDrive(reactor, config)` | Create or find a local drive |
+| `ensureRemoteDrive(reactor, url, name)` | Create or find a remote (synced) drive |
+| `bridgeSubscriptions(client, config, emit)` | Wire reactor subscriptions to the event bus |
+| `createFolderOperations(client, driveId)` | Create a file-system-like API over a drive's folder hierarchy |
+| `createFolderCommands(folders)` | Auto-generate CLI commands for folder operations |
+| `connectServiceDefinition` | Pre-built service definition for the Connect SPA |
+| `defaultPort(service)` | Default port for a Powerhouse service |
+| `resolvePort(service, config)` | Resolve port from config with fallback to defaults |
+| `resolveReactorDefaults(config)` | Resolve all Powerhouse-related config defaults |
+| `isDocType(doc, type)` | Type guard: narrow a PHDocument by documentType string |
 
 ### Mastra Integration (`ph-clint/mastra`)
 
@@ -1443,8 +1700,34 @@ Coverage target: 95% (statements, branches, functions, lines).
 | `CliMetadata` | JSON-serializable CLI metadata (from `getMetadata()`) |
 | `MetadataField` | Field metadata in CLI metadata output |
 | `ConfigMetadataField` | Config field metadata with env var name |
+| `BootstrapOptions` | Options for `Cli.bootstrap()` |
+| `BootstrapResult` | Result of bootstrap (workdir, config, context) |
 | `ProjectScanner` | Pluggable project detection interface |
 | `ProjectScanResult` | Result of project scanning (`{ name, path, config? }`) |
+| `ProjectMapping` | Unified project-to-document mapping entry |
+| `PackageInfo` | Result of `readPackageInfo()` |
+| `CreateTypesOptions<TSchema, R>` | Options for `createTypes()` |
+| `TypedFactory<TConfig, R>` | Bundle of pre-typed define factories |
+| `DocumentRegistry` | Maps documentType strings to RegistryEntry |
+| `AnyRegistry` | Fallback registry (base PHDocument/Action shapes) |
+| `RegistryEntry<S, A>` | One entry: `{ document, actions, state }` |
+| `InferRegistry<T>` | Infer a registry from a tuple of DocumentModelModules |
+| `ActionOf<M>` | Extract the action union from a DocumentModelModule |
+| `TypedReactorClient<R>` | Registry-typed view over IReactorClient |
+| `ReactorContext<R>` | Reactor state: client, drives, driveId, shutdown |
+| `ReactorSetupContext<R>` | Context passed to `configureReactor.create` |
+| `ReactorConfiguration<R>` | Full reactor configuration for `defineCli` |
+| `DriveConfig` | Configuration for a single drive |
+| `DriveEntry` | Runtime drive state: id, name, role, remoteUrl |
+| `FolderEntry` | Entry in a folder listing: type, name, id, path |
+| `FolderOperations` | File-system-like API over drive folders |
+| `SubscriptionConfig<R>` | Document subscription configuration |
+| `SwitchboardConfig` | Switchboard service configuration |
+| `ConnectConfig` | Connect SPA service configuration |
+| `TypedDocumentChangeEvent<R, T>` | Registry-typed document change event |
+| `DocumentChangeTriggerOptions<R, T>` | Options for `createDocumentChangeTrigger()` |
+| `BuildDefaultReactorOptions<R>` | Options for `buildDefaultReactor()` |
+| `StartSwitchboardOptions` | Options for `startSwitchboard()` |
 | `RenderOptions` | Options for `renderSkillTemplate()` |
 | `RenderResult` | Result of template rendering (`{ rendered, warnings }`) |
 | `IConversationLogger` | Interface for agent conversation loggers |
