@@ -613,7 +613,7 @@ describe('buildDefaultReactor (real)', () => {
   });
 
   it('creates reactor context with client and driveId', async () => {
-    const workspace = createMemoryWorkdirStore();
+    const workspace = createMemoryWorkdirStore(testDir);
     const events: Array<{ event: string; data: unknown }> = [];
 
     // Pass empty documentModels — buildReactor already includes base models

@@ -178,9 +178,20 @@ export function createDocumentChangeTrigger<
         const doc = await reactor.client.get<T>(docId);
         docs = [doc];
       } else {
-        // Multi-doc path: find all matching documents
-        const result = await reactor.client.find<T>({ documentTypes: types });
-        docs = (result?.results ?? []) as Array<R[T]['document']>;
+        // Multi-doc path: find all matching documents.
+        // The native Reactor SearchFilter uses `type` (singular string).
+        // ph-clint's TypedReactorClient remaps to `documentTypes` (plural)
+        // for type-safety, but the reactor ignores that field at runtime.
+        // We pass `type` directly to the underlying IReactorClient.
+        const allDocs: Array<R[T]['document']> = [];
+        for (const t of types) {
+          const result = await reactor.client.find<T>(
+            { type: t } as Parameters<typeof reactor.client.find<T>>[0],
+          );
+          const found = result?.results ?? [];
+          allDocs.push(...(found as Array<R[T]['document']>));
+        }
+        docs = allDocs;
         if (docs.length === 0) return null;
       }
 

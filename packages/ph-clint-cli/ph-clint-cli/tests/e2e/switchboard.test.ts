@@ -397,8 +397,9 @@ describe('Switchboard e2e — full project lifecycle', () => {
   it(
     'spec-change trigger generates the project and initializes the app',
     async () => {
-      const cliDir = path.join(workdir, `${PROJECT_NAME}-cli`);
-      const appDir = path.join(workdir, `${PROJECT_NAME}-app`);
+      const projectDir = path.join(workdir, PROJECT_NAME);
+      const cliDir = path.join(projectDir, `${PROJECT_NAME}-cli`);
+      const appDir = path.join(projectDir, `${PROJECT_NAME}-app`);
 
       log(`[step 4] Waiting for codegen + ph init...`);
       log(`[step 4]   cli dir: ${cliDir}`);
@@ -446,21 +447,35 @@ describe('Switchboard e2e — full project lifecycle', () => {
       ) as { name: string };
       expect(appPkg.name).toBe(APP_PKG_NAME);
 
+      // Verify project-spec.json was written with documentId
+      const specJson = JSON.parse(
+        await fs.readFile(
+          path.join(projectDir, '.ph', 'ph-clint-cli', 'project-spec.json'),
+          'utf8',
+        ),
+      ) as { documentId?: string; documentType?: string; name: string };
+      expect(specJson.name).toBe(PROJECT_NAME);
+      expect(specJson.documentId).toBe(docId);
+      expect(specJson.documentType).toBe('powerhouse/ph-clint-project');
+
       // Verify publish.config.ts
       const publishConfig = await fs.readFile(
-        path.join(workdir, 'publish.config.ts'),
+        path.join(projectDir, 'publish.config.ts'),
         'utf8',
       );
       expect(publishConfig).toContain(`'${PROJECT_NAME}'`);
       expect(publishConfig).toContain(`'${PROJECT_NAME}-app'`);
       expect(publishConfig).toContain(`'${PROJECT_NAME}-cli'`);
 
-      log(`[step 4] Project generated: cli=${cliPkg.name}, app=${appPkg.name}`);
+      log(`[step 4] Project generated at ${projectDir}: cli=${cliPkg.name}, app=${appPkg.name}`);
       log(`[step 4] publish.config.ts exists and references all packages`);
+      log(`[step 4] project-spec.json written with documentId=${specJson.documentId}`);
 
       // Log the generated project structure
       const workdirContents = await fs.readdir(workdir);
+      const projectContents = await fs.readdir(projectDir);
       log(`[step 4] Workdir contents: ${workdirContents.join(', ')}`);
+      log(`[step 4] Project contents: ${projectContents.join(', ')}`);
     },
     PUBLISH_TIMEOUT,
   );

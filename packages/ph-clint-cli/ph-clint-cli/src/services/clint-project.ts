@@ -36,6 +36,10 @@ export const clintProject = defineService({
 
   projectScanner: {
     isProjectFolder: (p) => {
+      // Match if a project-spec.json exists (split-layout root)
+      const specPath = path.join(p, '.ph', 'ph-clint-cli', 'project-spec.json');
+      if (fs.existsSync(specPath)) return true;
+      // Match if package.json has ph-clint as a dependency (flat layout or cli subfolder)
       const pkg = path.join(p, 'package.json');
       if (!fs.existsSync(pkg)) return false;
       try {

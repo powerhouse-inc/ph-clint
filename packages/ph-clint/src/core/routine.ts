@@ -132,8 +132,16 @@ export function createRoutine(options: RoutineOptions): Routine {
           if (item) {
             queue.push(item);
           }
-        } catch {
-          // Trigger poll errors are swallowed to keep the loop alive
+        } catch (err) {
+          // Trigger poll errors are logged but swallowed to keep the loop alive.
+          // Use `ctx` (the live mutable reference) rather than `options.context`
+          // which may be undefined when the routine was created without context.
+          ctx.log?.warn?.(
+            `[routine] trigger ${trigger.id} poll error: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          ctx.log?.debug?.(
+            `[routine] trigger ${trigger.id} stack: ${err instanceof Error ? err.stack : ''}`,
+          );
         }
       }
 

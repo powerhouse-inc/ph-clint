@@ -30,12 +30,6 @@ export const configSchema = z.object({
     .describe(
       'Pinned Powerhouse version used when emitting a new impl project',
     ),
-  projectDocumentId: z
-    .string()
-    .optional()
-    .describe(
-      'ID of the powerhouse/ph-clint-project document that drives codegen (set on first regen; edit to switch projects)',
-    ),
 });
 
 export const secretsSchema = z.object({

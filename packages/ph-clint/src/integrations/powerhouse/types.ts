@@ -383,6 +383,13 @@ export interface PowerhouseIntegrationOptions<
 /**
  * Context passed to the reactor factory in configureReactor().
  * Provides core infrastructure the factory needs to build the reactor.
+ *
+ * **Important:** `workspace` must be rooted at `workdir`. In normal framework
+ * usage the CLI assembles both from a single workdir value, so they always
+ * agree. When constructing this context manually (e.g. in tests or custom
+ * reactor factories), ensure `workspace` was created with the same directory
+ * as `workdir` — otherwise storage paths (reactor database, config) will
+ * land in unexpected locations.
  */
 export interface ReactorSetupContext<
   R extends DocumentRegistry = AnyRegistry,
