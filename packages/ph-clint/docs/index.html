@@ -724,9 +724,10 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
   services: [myService],                      <span class="cm">// Managed background services</span>
   events: { <span class="str">'service:ready'</span>: handler },       <span class="cm">// Event handlers</span>
   secretsSchema: mySecretsSchema,             <span class="cm">// Sensitive config (censored in output)</span>
-  skills: {                                    <span class="cm">// Agent skill management</span>
-    sources: [<span class="str">'./skills'</span>, <span class="str">'./dist/skills'</span>],
-    agents: { <span class="str">'my-agent'</span>: [<span class="str">'skill-a'</span>] },
+  prompts: {                                   <span class="cm">// Agent skill management</span>
+    artifacts: [<span class="str">'./skills'</span>, <span class="str">'./dist/skills'</span>],
+    agents: { <span class="str">'my-agent'</span>: { skills: [<span class="str">'skill-a'</span>] } },
+    skills: { <span class="str">'skill-a'</span>: <span class="str">'Skill description'</span> },
   },
   workdir: <span class="str">'/custom/default/path'</span>,            <span class="cm">// Implementation-level override</span>
   configDefaults: { key: <span class="str">'value'</span> },           <span class="cm">// Default config values</span>
@@ -761,7 +762,7 @@ cli.<span class="fn">generateCommandHelp</span>(id)      <span class="cm">// Hel
 cli.<span class="fn">generateCompletion</span>(shell)    <span class="cm">// Shell completion script ('bash'|'zsh'|'fish')</span>
 cli.<span class="fn">configEnvVars</span>()              <span class="cm">// List config env var mappings</span>
 cli.<span class="fn">getMetadata</span>()                <span class="cm">// JSON-serializable CLI metadata</span>
-cli.<span class="fn">setAgentLoader</span>(loader)       <span class="cm">// Set lazy agent loader (for Mastra)</span></code></pre>
+cli.<span class="fn">configureAgent</span>(loader)        <span class="cm">// Set lazy agent loader (for Mastra)</span></code></pre>
 
 <h3 id="cli-runoptions">RunOptions</h3>
 <p><code>cli.run()</code> accepts optional <code>RunOptions</code> for testing and embedding:</p>
@@ -980,10 +981,12 @@ The <code>interactiveInput</code> option in RunOptions is the testing equivalent
 <h3>TriggerContext</h3>
 <table>
   <tr><th>Property</th><th>Description</th></tr>
-  <tr><td><code>context.config</code></td><td>Resolved CLI config</td></tr>
+  <tr><td><code>context.context</code></td><td>Core context (config, emit, services, workspace, etc.)</td></tr>
   <tr><td><code>context.state</code></td><td>Persistent per-trigger state (survives across polls)</td></tr>
-  <tr><td><code>context.emit</code></td><td>Emit events to the event bus</td></tr>
+  <tr><td><code>context.reactor()</code></td><td>Lazy accessor — returns <code>ReactorContext</code> or <code>undefined</code></td></tr>
+  <tr><td><code>context.agent()</code></td><td>Lazy accessor — returns <code>AgentProvider</code> or <code>undefined</code></td></tr>
 </table>
+<p>Access config and emit via <code>context.context.config</code> and <code>context.context.emit</code>.</p>
 
 <h3>WorkItem</h3>
 <pre><code><span class="kw">interface</span> <span class="tp">WorkItem</span> {
@@ -1215,7 +1218,7 @@ services.<span class="fn">purgeStoppedInstances</span>(<span class="str">'dev-se
   },
 });
 
-cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =&gt; {
+cli.<span class="fn">configureAgent</span>(<span class="kw">async</span> (ctx) =&gt; {
   <span class="cm">// Return demo agent when no API key</span>
   <span class="kw">if</span> (!ctx.config.apiKey) <span class="kw">return</span> <span class="fn">createDemoAgent</span>();
 
@@ -1235,8 +1238,8 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
   }));
 });</code></pre>
 
-<h4>AgentContext</h4>
-<pre><code><span class="kw">interface</span> <span class="tp">AgentContext</span>&lt;<span class="tp">TConfig</span>&gt; {
+<h4>AgentSetupContext</h4>
+<pre><code><span class="kw">interface</span> <span class="tp">AgentSetupContext</span>&lt;<span class="tp">TConfig</span>&gt; {
   workdir: <span class="tp">string</span>;         <span class="cm">// Working directory</span>
   config: <span class="tp">TConfig</span>;         <span class="cm">// Resolved config</span>
   cliName: <span class="tp">string</span>;         <span class="cm">// CLI name</span>
@@ -1251,6 +1254,7 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
 <table>
   <tr><th>Method</th><th>Description</th></tr>
   <tr><td><code>getTools(options?)</code></td><td>Converts CLI commands to Mastra tools. With <code>includeMcp: true</code> (default), also discovers MCP tools from running services.</td></tr>
+  <tr><td><code>getAgentInstructions(agentId)</code></td><td>Loads compiled agent profile instructions for the given agent ID from prompts config.</td></tr>
   <tr><td><code>createWorkspace()</code></td><td>Creates a Mastra Workspace with LocalFilesystem rooted at workdir.</td></tr>
   <tr><td><code>createMemory()</code></td><td>Creates thread-based Memory backed by LibSQL at <code>{workspace}/.ph/{cliName}/.mastra/db/mastra.db</code>.</td></tr>
   <tr><td><code>wrapAgent(agent, opts?)</code></td><td>Wraps a Mastra Agent as an <code>AgentProvider</code> yielding <code>StreamChunk</code>s. <code>maxSteps</code> defaults to 30.</td></tr>
@@ -1368,7 +1372,7 @@ cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =
   <span class="cm">// ...other config...</span>
   prompts: {
     <span class="cm">// Directories containing built skill folders (first existing wins)</span>
-    sources: [
+    artifacts: [
       path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'gen'</span>, <span class="str">'skills'</span>),
       path.<span class="fn">join</span>(PROJECT_ROOT, <span class="str">'dist'</span>, <span class="str">'gen'</span>, <span class="str">'skills'</span>),
     ],
@@ -1482,7 +1486,7 @@ The Switchboard API is at port {{switchboardPort}}.</code></pre>
 <p>Add a build script to <code>package.json</code>:</p>
 <pre><code><span class="str">"build:skills"</span>: <span class="str">"tsx scripts/build-skills.ts"</span></code></pre>
 
-<p>The <code>prompts.sources</code> config should point to the output directories so the CLI finds the compiled skills at runtime.</p>
+<p>The <code>prompts.artifacts</code> config should point to the output directories so the CLI finds the compiled skills at runtime.</p>
 
 <h3 id="skill-helpers">Template Helpers</h3>
 
@@ -1839,16 +1843,9 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
 <table>
   <tr><th>Function</th><th>Description</th></tr>
   <tr><td><code>buildDefaultReactor(ctx, options)</code></td><td>Build a ReactorContext with standard composition (reactor + drives + subscriptions)</td></tr>
-  <tr><td><code>buildReactor(options)</code></td><td>Low-level: create an in-process Reactor with document models</td></tr>
   <tr><td><code>startSwitchboard(options)</code></td><td>Start a Switchboard (GraphQL + MCP) wrapping the Reactor</td></tr>
   <tr><td><code>defineRegistry(modules)</code></td><td>Build a typed DocumentRegistry from document model modules</td></tr>
   <tr><td><code>createDocumentChangeTrigger(options)</code></td><td>Create a trigger that fires on document changes</td></tr>
-  <tr><td><code>ensureDrive(reactor, config)</code></td><td>Create or find a local drive</td></tr>
-  <tr><td><code>ensureRemoteDrive(reactor, url, name)</code></td><td>Create or find a remote (synced) drive</td></tr>
-  <tr><td><code>bridgeSubscriptions(client, config, emit)</code></td><td>Wire reactor subscriptions to the event bus</td></tr>
-  <tr><td><code>createFolderOperations(client, driveId)</code></td><td>Create a file-system-like API over a drive's folder hierarchy</td></tr>
-  <tr><td><code>createFolderCommands(folders)</code></td><td>Auto-generate CLI commands for folder operations</td></tr>
-  <tr><td><code>connectServiceDefinition</code></td><td>Pre-built service definition for the Connect SPA</td></tr>
   <tr><td><code>defaultPort(service)</code></td><td>Default port for a Powerhouse service</td></tr>
   <tr><td><code>resolvePort(service, config)</code></td><td>Resolve port from config with fallback to defaults</td></tr>
   <tr><td><code>resolveReactorDefaults(config)</code></td><td>Resolve all Powerhouse-related config defaults</td></tr>
@@ -1880,7 +1877,7 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
   <tr><td><code>InferConfig&lt;TSchema&gt;</code></td><td>Derive TypeScript type from Zod config schema</td></tr>
   <tr><td><code>StreamChunk</code></td><td>Union of text-delta, tool-call, tool-result, error</td></tr>
   <tr><td><code>AgentProvider</code></td><td>Interface for agent implementations</td></tr>
-  <tr><td><code>AgentContext&lt;TConfig&gt;</code></td><td>Context passed to agent loaders</td></tr>
+  <tr><td><code>AgentSetupContext&lt;TConfig&gt;</code></td><td>Context passed to agent loaders</td></tr>
   <tr><td><code>AgentLoader&lt;TConfig&gt;</code></td><td>Type for the agent factory function</td></tr>
   <tr><td><code>Trigger</code></td><td>Trigger definition (poll-based)</td></tr>
   <tr><td><code>TriggerContext</code></td><td>Context passed to trigger poll/setup</td></tr>
@@ -1908,7 +1905,7 @@ logger.<span class="fn">endSession</span>(<span class="str">'session-1'</span>);
   <tr><td><code>PromptConfig</code></td><td>Parameter prompting configuration</td></tr>
   <tr><td><code>FieldInfo</code></td><td>Zod schema field metadata</td></tr>
   <tr><td><code>SkillInfo</code></td><td>Agent skill metadata (name, description)</td></tr>
-  <tr><td><code>SkillsConfig</code></td><td>Skills configuration (sources, agent assignments)</td></tr>
+  <tr><td><code>PromptsConfig</code></td><td>Prompts configuration (artifacts, agents, skills)</td></tr>
   <tr><td><code>SkillInvocation</code></td><td>Result of a skill command (routes to agent)</td></tr>
   <tr><td><code>CliMetadata</code></td><td>JSON-serializable CLI metadata (from <code>getMetadata()</code>)</td></tr>
   <tr><td><code>MetadataField</code></td><td>Field metadata in CLI metadata output</td></tr>
@@ -2171,7 +2168,7 @@ cli.<span class="fn">run</span>(process.argv);</code></pre>
   <p>AI-powered image-to-ASCII assistant with optional Mastra agent and demo fallback.</p>
 
   <h4>src/cli.ts (agent setup)</h4>
-  <pre><code>cli.<span class="fn">setAgentLoader</span>(<span class="kw">async</span> (ctx) =&gt; {
+  <pre><code>cli.<span class="fn">configureAgent</span>(<span class="kw">async</span> (ctx) =&gt; {
   <span class="kw">if</span> (!ctx.config.apiKey) <span class="kw">return</span> <span class="fn">createAssistant</span>();  <span class="cm">// Demo mode</span>
 
   <span class="cm">// Lazy-load Mastra only when an API key is configured</span>
