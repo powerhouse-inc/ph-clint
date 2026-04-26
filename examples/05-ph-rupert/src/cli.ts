@@ -164,7 +164,10 @@ export const cli = defineCli({
 
 cli.configureReactor({
   create: buildRupertReactor,
-  switchboard: { enabled: true },
+  // Switchboard requires @powerhousedao/reactor-api peer dep.
+  // Disabled by default; enable via configureReactor override when deploying
+  // alongside a Switchboard service.
+  switchboard: { enabled: false },
 });
 
 cli.configureAgent(createAgent);

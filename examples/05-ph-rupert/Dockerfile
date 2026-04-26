@@ -1,40 +1,51 @@
 # syntax=docker/dockerfile:1.7
+#
+# Build context = ph-clint repo root (so this Dockerfile can see the
+# library packages that examples/05-ph-rupert references via file:).
+#
+# Build with:
+#   docker build -f examples/05-ph-rupert/Dockerfile -t rupert:dev .
 
-# Build stage — install deps + run the build pipeline (skills + tsc).
+# ── Build stage ─────────────────────────────────────────────────────
 FROM node:24-alpine AS build
 WORKDIR /app
 
 RUN apk add --no-cache git \
   && corepack enable
 
-# Copy the workspace pieces we need. ph-clint examples reference the
-# library via file: protocol — we need the package source available at
-# install time. The actual deployment target is the example dir; we
-# include the sibling library packages so pnpm can resolve them.
-COPY ../../packages/ph-clint /app/packages/ph-clint
-COPY ../../packages/ph-clint-dev /app/packages/ph-clint-dev
-COPY package.json pnpm-lock.yaml* /app/examples/05-ph-rupert/
-COPY . /app/examples/05-ph-rupert/
+# Copy package manifests first so dependency installs can be cached
+# independently of source changes.
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+COPY packages/ph-clint/package.json packages/ph-clint/
+COPY packages/ph-clint-dev/package.json packages/ph-clint-dev/
+COPY examples/05-ph-rupert/package.json examples/05-ph-rupert/
 
-WORKDIR /app/examples/05-ph-rupert
+# Now copy sources and run the build.
+COPY packages/ph-clint packages/ph-clint
+COPY packages/ph-clint-dev packages/ph-clint-dev
+COPY examples/05-ph-rupert examples/05-ph-rupert
+
+# Build the framework first, then the example.
 RUN pnpm install --frozen-lockfile=false \
-  && pnpm build
+  && pnpm --filter @powerhousedao/ph-clint-dev build \
+  && pnpm --filter @powerhousedao/ph-clint build \
+  && pnpm --filter @powerhousedao/ph-rupert-cli build
 
-# Runtime stage — minimal image with just the built dist + node_modules.
+# ── Runtime stage ───────────────────────────────────────────────────
 FROM node:24-alpine AS runtime
 WORKDIR /app
 
 RUN corepack enable
 
-COPY --from=build /app/packages/ph-clint /app/packages/ph-clint
-COPY --from=build /app/packages/ph-clint-dev /app/packages/ph-clint-dev
-COPY --from=build /app/examples/05-ph-rupert /app/examples/05-ph-rupert
+# Copy the built workspace. The example references the library packages
+# via file:; pnpm symlinks them — we ship the whole tree so symlinks
+# resolve at runtime.
+COPY --from=build /app /app
 
 WORKDIR /app/examples/05-ph-rupert
 
-# Headless service mode: drop straight into agent prompt with no TTY.
-# The triggers (inbox/WBS) drive work — the entrypoint just keeps the
-# process alive while the routine loop polls.
+# Headless service mode — the routine loop drives work via inbox + WBS
+# triggers without prompting for a TTY.
 ENV PH_NONINTERACTIVE=1
 ENV NODE_ENV=production
 

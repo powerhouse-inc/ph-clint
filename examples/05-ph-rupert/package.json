@@ -33,13 +33,16 @@
     "@mastra/memory": "^1.13.1",
     "@powerhousedao/agent-manager": "^1.0.0",
     "@powerhousedao/ph-clint": "file:../../packages/ph-clint",
+    "@powerhousedao/reactor": "^6.0.0-dev.199",
     "@powerhousedao/shared": "6.0.0-dev.174",
     "@renown/sdk": "6.0.0-dev.174",
-    "document-model": "^5.3.6",
+    "document-model": "^6.0.0-dev.199",
     "zod": "^4.3.6"
   },
   "pnpm": {
     "overrides": {
+      "@powerhousedao/reactor": "^6.0.0-dev.199",
+      "document-model": "^6.0.0-dev.199",
       "mastra>@mastra/deployer": "1.22.0"
     }
   },

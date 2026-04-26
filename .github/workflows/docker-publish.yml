@@ -1,0 +1,140 @@
+name: Build and Publish Rupert Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (defaults to latest git tag)'
+        type: string
+  push:
+    tags:
+      - '*-dev.*'
+      - '*-staging.*'
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  HARBOR_REGISTRY: cr.vetra.io
+  HARBOR_PATH: powerhouse-inc/powerhouse/rupert
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          else
+            git fetch --tags origin
+            TAG=$(git for-each-ref --sort=creatordate --format '%(refname:short)' refs/tags | tail -n 1)
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag resolved — pass inputs.tag or push a tag"
+            exit 1
+          fi
+          # Validate: only allow alphanumerics, dots, dashes, underscores.
+          if ! [[ "$TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Tag contains invalid characters: $TAG"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Using tag: $TAG"
+
+      - name: Determine dist tag
+        id: dist
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if [[ "$TAG" == *"-dev."* ]]; then
+            echo "dist=dev" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == *"-staging."* ]]; then
+            echo "dist=staging" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "dist=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "dist=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push Rupert image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: examples/05-ph-rupert/Dockerfile
+          push: true
+          tags: |
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PATH }}:${{ steps.tag.outputs.tag }}
+            ${{ steps.dist.outputs.dist != '' && format('{0}/{1}:{2}', env.HARBOR_REGISTRY, env.HARBOR_PATH, steps.dist.outputs.dist) || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: TAG=${{ steps.tag.outputs.tag }}
+
+  update-k8s-rupert:
+    name: Update Rupert Image Tag in K8s Hosting (dev only)
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ contains(needs.build.outputs.tag, '-dev.') }}
+    steps:
+      - name: Update tenants/dev/powerhouse-values.yaml
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+          K8S_REPO_PAT: ${{ secrets.K8S_REPO_PAT }}
+        run: |
+          # Defensive: re-validate tag format before using it in shell ops.
+          if ! [[ "$TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Tag contains invalid characters: $TAG"
+            exit 1
+          fi
+          git clone "https://x-access-token:${K8S_REPO_PAT}@github.com/powerhouse-inc/powerhouse-k8s-hosting.git"
+          cd powerhouse-k8s-hosting
+
+          git config user.name "Github Actions Bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          python3 - "tenants/dev/powerhouse-values.yaml" "$TAG" <<'PYEOF'
+          import sys, re
+          path, tag = sys.argv[1], sys.argv[2]
+          src = open(path).read()
+          # Replace the rupert image.tag value (handles "" or any quoted string).
+          new_src, n = re.subn(
+              r'(rupert:[\s\S]*?image:\s*\n\s*(?:repository:[^\n]*\n\s*)?tag:\s*)"[^"]*"',
+              lambda m: m.group(1) + f'"{tag}"',
+              src,
+              count=1,
+          )
+          if n == 0:
+              # No match — surface clearly so the run fails rather than silently no-oping.
+              print('::error::could not find rupert.image.tag in', path)
+              sys.exit(1)
+          open(path, 'w').write(new_src)
+          PYEOF
+
+          git add tenants/dev/powerhouse-values.yaml
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore(rupert): update dev tenant image tag to ${TAG}"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
