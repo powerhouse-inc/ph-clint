@@ -10,6 +10,8 @@ import { reactorProjectBuild } from './commands/reactor-project-build.js';
 import { createAgent } from './agents/agent-rupert.js';
 import { reactorProject } from './services/reactor-project.js';
 import { fusionProject } from './services/fusion-project.js';
+import { inboxChangeTrigger } from './triggers/inbox.js';
+import { wbsGoalTrigger } from './triggers/wbs.js';
 
 // ── CLI ──────────────────────────────────────────────────────────
 
@@ -21,6 +23,7 @@ export const cli = defineCli({
   secretsSchema,
   commands: [reactorProjectInit, fusionProjectInit, phLogin, phLogout, phAccessToken, reactorProjectPublish, reactorProjectBuild],
   services: [reactorProject, fusionProject],
+  triggers: [inboxChangeTrigger, wbsGoalTrigger],
   prompts: {
     artifacts: [path.join(CLI_ROOT, 'gen', 'skills'), path.join(CLI_ROOT, 'dist', 'gen', 'skills')],
     agents: {
