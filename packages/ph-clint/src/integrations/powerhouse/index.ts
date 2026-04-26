@@ -44,6 +44,18 @@ export { createDocumentChangeTrigger } from './change-trigger.js';
 export type { DocumentChangeTriggerOptions } from './change-trigger.js';
 export { isDocType } from './type-guard.js';
 export { createFolderOperations, createFolderCommands } from './folders.js';
+export {
+  findNextLeafGoal,
+  ancestorChain,
+  resolveSkillFromGoal,
+} from './wbs.js';
+export type {
+  WbsState,
+  WbsGoal,
+  WbsGoalStatus,
+  NextWbsWork,
+  ResolvedSkillWork,
+} from './wbs.js';
 
 import type { DocumentModelModule } from 'document-model';
 import type {

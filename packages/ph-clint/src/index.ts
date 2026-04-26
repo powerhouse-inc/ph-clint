@@ -44,6 +44,14 @@ export { defineRegistry } from './integrations/powerhouse/registry.js';
 export { createDocumentChangeTrigger } from './integrations/powerhouse/change-trigger.js';
 export type { DocumentChangeTriggerOptions } from './integrations/powerhouse/change-trigger.js';
 export { isDocType } from './integrations/powerhouse/type-guard.js';
+export { findNextLeafGoal, ancestorChain, resolveSkillFromGoal } from './integrations/powerhouse/wbs.js';
+export type {
+  WbsState,
+  WbsGoal,
+  WbsGoalStatus,
+  NextWbsWork,
+  ResolvedSkillWork,
+} from './integrations/powerhouse/wbs.js';
 export type {
   ReactorContext,
   ReactorSetupContext,
