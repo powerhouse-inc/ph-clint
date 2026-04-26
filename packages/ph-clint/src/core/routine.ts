@@ -15,6 +15,11 @@ import type { ReactorContext } from '../integrations/powerhouse/types.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
 import { createMemoryWorkdirStore } from './store.js';
+import {
+  isSkillInvocation,
+  DEFAULT_SKILL_INSTRUCTION,
+} from './skill-commands.js';
+import { renderSkillTemplate } from './templates.js';
 
 export interface RoutineOptions {
   triggers: Trigger<any, any, any>[];
@@ -101,6 +106,53 @@ export function createRoutine(options: RoutineOptions): Routine {
           emit: (event: string, data?: unknown) => bus.emit(event, data),
         };
         return cmd.execute(parsed, extCtx);
+      }
+
+      case 'skill': {
+        const skillId = item.params.skillId as string;
+        const prompt = item.params.prompt as string | undefined;
+        const inputs = (item.params.inputs ?? {}) as Record<string, unknown>;
+        const cmd = options.commands.get(skillId);
+        if (!cmd) {
+          throw new Error(`Unknown skill: ${skillId}`);
+        }
+        const agent = await getAgent?.();
+        if (!agent) {
+          throw new Error(
+            `Skill work-item '${skillId}' requires an agent — none configured on the routine`,
+          );
+        }
+        // The skill command's execute returns a SkillInvocation describing
+        // how the agent should be prompted.
+        const extCtx: CommandContext = {
+          ...ctx,
+          routine: routine,
+          processes: pm,
+          emit: (event: string, data?: unknown) => bus.emit(event, data),
+        };
+        const parsed = cmd.inputSchema.parse({ prompt, ...inputs });
+        const invocation = await cmd.execute(parsed, extCtx);
+        if (!isSkillInvocation(invocation)) {
+          throw new Error(
+            `Command '${skillId}' is not a skill (returned ${typeof invocation})`,
+          );
+        }
+        const template = invocation.instructionTemplate ?? DEFAULT_SKILL_INSTRUCTION;
+        const renderCtx: Record<string, unknown> = {
+          skillId: invocation.skillName,
+          prompt: invocation.userMessage ?? '',
+          ...(invocation.inputValues ?? {}),
+        };
+        const rendered = renderSkillTemplate(template, renderCtx).rendered.trim();
+
+        // Stream the agent and concatenate text output.
+        const chunks: string[] = [];
+        for await (const chunk of agent.stream(rendered)) {
+          if (chunk.type === 'text-delta') {
+            chunks.push(chunk.text);
+          }
+        }
+        return chunks.join('');
       }
 
       default: {
