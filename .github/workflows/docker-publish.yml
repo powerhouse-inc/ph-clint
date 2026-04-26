@@ -18,7 +18,9 @@ permissions:
 
 env:
   HARBOR_REGISTRY: cr.vetra.io
-  HARBOR_PATH: powerhouse-inc/powerhouse/rupert
+  # Harbor project path follows the existing powerhouse convention:
+  # `${owner}-${repo}/${image}`.
+  HARBOR_PATH: powerhouse-inc-ph-clint/rupert
 
 jobs:
   build:
