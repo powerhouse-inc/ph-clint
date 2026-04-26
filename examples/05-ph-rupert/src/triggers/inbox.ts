@@ -2,6 +2,7 @@ import {
   createDocumentChangeTrigger,
   type WorkItem,
 } from '@powerhousedao/ph-clint';
+import { markMessageRead } from '@powerhousedao/agent-manager/document-models/agent-inbox';
 
 /**
  * Inbox trigger — fires when a `powerhouse/agent-inbox` document changes.
@@ -48,13 +49,22 @@ export const inboxChangeTrigger = createDocumentChangeTrigger({
             },
           },
           callbacks: {
-            onSuccess: () => {
-              // TODO: reactor.dispatch(MARK_MESSAGE_READ on inbox doc)
-              // Requires importing markMessageRead creator from
-              // @powerhousedao/agent-manager/document-models/agent-inbox.
-              ctx.context.log?.info?.(
-                `[inbox] handled message ${message.id} in thread ${thread.id}`,
-              );
+            onSuccess: async () => {
+              const reactor = await ctx.reactor();
+              const inboxId = (doc as { header?: { id?: string } }).header?.id;
+              if (!reactor || !inboxId) return;
+              try {
+                await reactor.client.execute(inboxId, 'main', [
+                  markMessageRead({ id: message.id }),
+                ]);
+                ctx.context.log?.info?.(
+                  `[inbox] handled message ${message.id} in thread ${thread.id}`,
+                );
+              } catch (err) {
+                ctx.context.log?.error?.(
+                  `[inbox] failed to mark ${message.id} read: ${(err as Error).message}`,
+                );
+              }
             },
             onFailure: (err) => {
               ctx.context.log?.error?.(

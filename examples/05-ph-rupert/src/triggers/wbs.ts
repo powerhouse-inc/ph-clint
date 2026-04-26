@@ -5,6 +5,10 @@ import {
   type WorkItem,
   type WbsState,
 } from '@powerhousedao/ph-clint';
+import {
+  markCompleted,
+  reportBlocked,
+} from '@powerhousedao/agent-manager/document-models/work-breakdown-structure';
 
 /**
  * WBS trigger — fires when a `powerhouse/work-breakdown-structure` document
@@ -56,19 +60,47 @@ export const wbsGoalTrigger = createDocumentChangeTrigger({
         },
       },
       callbacks: {
-        onSuccess: (result) => {
-          // TODO: reactor.dispatch(MARK_COMPLETED { id: resolved.goalId, note, outcome })
-          // Requires markCompleted creator from
-          // @powerhousedao/agent-manager/document-models/work-breakdown-structure.
-          ctx.context.log?.info?.(
-            `[wbs] goal ${resolved.goalId} done — outcome: ${typeof result === 'string' ? result.slice(0, 80) : '<non-string>'}`,
-          );
+        onSuccess: async (result) => {
+          const reactor = await ctx.reactor();
+          if (!reactor || !wbsDocId) return;
+          const summary = typeof result === 'string' ? result.slice(0, 500) : '';
+          try {
+            await reactor.client.execute(wbsDocId, 'main', [
+              markCompleted({
+                id: resolved.goalId,
+                note: summary
+                  ? { id: `note-${Date.now()}`, note: summary, author: 'rupert' }
+                  : undefined,
+              }),
+            ]);
+            ctx.context.log?.info?.(
+              `[wbs] goal ${resolved.goalId} marked COMPLETED`,
+            );
+          } catch (err) {
+            ctx.context.log?.error?.(
+              `[wbs] failed to mark ${resolved.goalId} completed: ${(err as Error).message}`,
+            );
+          }
         },
-        onFailure: (err) => {
-          // TODO: reactor.dispatch(REPORT_BLOCKED { id, type: 'OTHER', comment: err.message })
-          ctx.context.log?.error?.(
-            `[wbs] goal ${resolved.goalId} blocked: ${err.message}`,
-          );
+        onFailure: async (err) => {
+          const reactor = await ctx.reactor();
+          if (!reactor || !wbsDocId) return;
+          try {
+            await reactor.client.execute(wbsDocId, 'main', [
+              reportBlocked({
+                id: resolved.goalId,
+                type: 'OTHER',
+                comment: err.message.slice(0, 500),
+              }),
+            ]);
+            ctx.context.log?.error?.(
+              `[wbs] goal ${resolved.goalId} marked BLOCKED: ${err.message}`,
+            );
+          } catch (e) {
+            ctx.context.log?.error?.(
+              `[wbs] failed to report ${resolved.goalId} blocked: ${(e as Error).message}`,
+            );
+          }
         },
       },
     };

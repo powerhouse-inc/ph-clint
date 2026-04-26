@@ -12,6 +12,7 @@ import { reactorProject } from './services/reactor-project.js';
 import { fusionProject } from './services/fusion-project.js';
 import { inboxChangeTrigger } from './triggers/inbox.js';
 import { wbsGoalTrigger } from './triggers/wbs.js';
+import { buildRupertReactor } from './reactor.js';
 
 // ── CLI ──────────────────────────────────────────────────────────
 
@@ -159,6 +160,11 @@ export const cli = defineCli({
       ].join('\n');
     },
   },
+});
+
+cli.configureReactor({
+  create: buildRupertReactor,
+  switchboard: { enabled: true },
 });
 
 cli.configureAgent(createAgent);
