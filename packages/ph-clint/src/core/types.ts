@@ -259,9 +259,17 @@ export interface AgentProvider {
 
 /**
  * A work item produced by a trigger for the routine loop to execute.
+ *
+ * Supported types:
+ * - 'command' — execute a registered Command. params: `{ commandId, args? }`.
+ * - 'function' — invoke an arbitrary async function. params: `{ fn }`.
+ * - 'skill'   — invoke a registered skill against the configured agent.
+ *               params: `{ skillId, prompt?, inputs? }`. Requires the routine
+ *               to be configured with `getAgent`. Returns the agent's
+ *               concatenated text output as a string.
  */
 export interface WorkItem {
-  type: 'command' | 'function';
+  type: 'command' | 'function' | 'skill';
   params: Record<string, unknown>;
   callbacks?: {
     onSuccess?: (result: unknown) => void;

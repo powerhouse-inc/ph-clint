@@ -229,6 +229,123 @@ describe('createRoutine', () => {
       expect(buildCalled).toBe(true);
     });
 
+    it('dispatches skill work items to the agent', async () => {
+      let triggerFired = false;
+      const promptsSeen: string[] = [];
+
+      const trigger = defineTrigger({
+        id: 'skill-trigger',
+        type: 'condition',
+        poll: async () => {
+          if (!triggerFired) {
+            triggerFired = true;
+            return {
+              type: 'skill' as const,
+              params: {
+                skillId: 'handle-stakeholder-message',
+                prompt: 'process the latest message',
+              },
+            };
+          }
+          return null;
+        },
+      });
+
+      // A skill command is just a Command whose execute returns a SkillInvocation.
+      const skillCmd = defineCommand({
+        id: 'handle-stakeholder-message',
+        description: 'Handle a stakeholder message',
+        inputSchema: z.object({ prompt: z.string().optional() }),
+        execute: async (input) => ({
+          type: 'skill-invocation' as const,
+          skillName: 'handle-stakeholder-message',
+          userMessage: input.prompt,
+          inputValues: input,
+        }),
+      });
+
+      // Mock agent that records the prompt it received and returns text.
+      const fakeAgent = {
+        id: 'fake',
+        async *stream(prompt: string) {
+          promptsSeen.push(prompt);
+          yield { type: 'text-delta' as const, text: 'ok' };
+        },
+      };
+
+      let result: unknown;
+      const wrappedTrigger = defineTrigger({
+        id: 'wrap-trigger',
+        type: 'condition',
+        poll: async () => {
+          const item = await (trigger as any).poll();
+          if (!item) return null;
+          return { ...item, callbacks: { onSuccess: (r: unknown) => { result = r; } } };
+        },
+      });
+
+      routine = makeRoutine({
+        triggers: [wrappedTrigger],
+        commands: new Map([['handle-stakeholder-message', skillCmd]]),
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
+        getAgent: async () => fakeAgent,
+      });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT));
+      await routine.stop();
+
+      expect(promptsSeen).toHaveLength(1);
+      expect(promptsSeen[0]).toContain('handle-stakeholder-message');
+      expect(promptsSeen[0]).toContain('process the latest message');
+      expect(result).toBe('ok');
+    });
+
+    it('throws when a skill work item is dispatched without an agent', async () => {
+      let triggerFired = false;
+      let errorCaught: Error | undefined;
+
+      const trigger = defineTrigger({
+        id: 'no-agent',
+        type: 'condition',
+        poll: async () => {
+          if (!triggerFired) {
+            triggerFired = true;
+            return {
+              type: 'skill' as const,
+              params: { skillId: 'noop' },
+              callbacks: {
+                onFailure: (e: Error) => { errorCaught = e; },
+              },
+            };
+          }
+          return null;
+        },
+      });
+
+      const skillCmd = defineCommand({
+        id: 'noop',
+        description: 'noop',
+        inputSchema: z.object({ prompt: z.string().optional() }),
+        execute: async () => ({
+          type: 'skill-invocation' as const,
+          skillName: 'noop',
+        }),
+      });
+
+      routine = makeRoutine({
+        triggers: [trigger],
+        commands: new Map([['noop', skillCmd]]),
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
+        // no getAgent
+      });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT));
+      await routine.stop();
+
+      expect(errorCaught).toBeDefined();
+      expect(errorCaught?.message).toMatch(/requires an agent/);
+    });
+
     it('calls onSuccess on successful work item', async () => {
       let successCalled = false;
       let triggerFired = false;
