@@ -18,9 +18,11 @@ permissions:
 
 env:
   HARBOR_REGISTRY: cr.vetra.io
-  # Harbor project path follows the existing powerhouse convention:
-  # `${owner}-${repo}/${image}`.
-  HARBOR_PATH: powerhouse-inc-ph-clint/rupert
+  # Harbor project — reuse the existing powerhouse-inc-powerhouse project
+  # (the org-level HARBOR_USERNAME / HARBOR_PASSWORD credentials are
+  # authorized to push there). A separate Harbor project for ph-clint
+  # would be cleaner long-term but requires Harbor admin to create.
+  HARBOR_PATH: powerhouse-inc-powerhouse/rupert
 
 jobs:
   build:
