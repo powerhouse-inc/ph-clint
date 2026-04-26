@@ -7,6 +7,7 @@ import { fusionProjectInit } from './commands/fusion-project-init.js';
 import { phLogin, phLogout, phAccessToken } from './commands/ph-auth.js';
 import { reactorProjectPublish } from './commands/reactor-project-publish.js';
 import { reactorProjectBuild } from './commands/reactor-project-build.js';
+import { smokeTest } from './commands/smoke-test.js';
 import { createAgent } from './agents/agent-rupert.js';
 import { reactorProject } from './services/reactor-project.js';
 import { fusionProject } from './services/fusion-project.js';
@@ -22,7 +23,7 @@ export const cli = defineCli({
   description: `Powerhouse Rupert CLI v${CLI_VERSION}\nFull-stack Development of Local-first Apps and Platforms`,
   configSchema,
   secretsSchema,
-  commands: [reactorProjectInit, fusionProjectInit, phLogin, phLogout, phAccessToken, reactorProjectPublish, reactorProjectBuild],
+  commands: [reactorProjectInit, fusionProjectInit, phLogin, phLogout, phAccessToken, reactorProjectPublish, reactorProjectBuild, smokeTest],
   services: [reactorProject, fusionProject],
   triggers: [inboxChangeTrigger, wbsGoalTrigger],
   prompts: {
