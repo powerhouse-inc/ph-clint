@@ -25,17 +25,18 @@ const LOG_FILE = path.resolve(
   `../../switchboard-e2e-${new Date().toISOString().replace(/[:.]/g, '-')}.log`,
 );
 
+// Open log file eagerly at module load time so it's visible immediately.
 let logFd: number | null = null;
+if (WRITE_TO_LOG) {
+  logFd = fsSync.openSync(LOG_FILE, 'w');
+  fsSync.writeSync(logFd, `=== E2E switchboard test loaded at ${new Date().toISOString()} ===\n`);
+}
 
 function log(msg: string): void {
   const ts = new Date().toISOString();
   const line = `[${ts}] ${msg}\n`;
   console.log(msg);
-  if (WRITE_TO_LOG) {
-    if (logFd === null) {
-      logFd = fsSync.openSync(LOG_FILE, 'w');
-      fsSync.writeSync(logFd, `=== E2E switchboard test started at ${ts} ===\n`);
-    }
+  if (WRITE_TO_LOG && logFd !== null) {
     fsSync.writeSync(logFd, line);
   }
 }
