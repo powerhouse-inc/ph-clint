@@ -1,12 +1,11 @@
 import { defineCommand } from '../framework.js';
 import { z } from 'zod';
-import { spawn } from 'node:child_process';
+import { createProcessManager } from '@powerhousedao/ph-clint';
 import fs from 'node:fs';
 import path from 'node:path';
 
 export interface BuildResult {
   success: boolean;
-  exitCode: number;
 }
 
 /**
@@ -14,32 +13,15 @@ export interface BuildResult {
  * Streams output via the `onData` callback.
  */
 export async function runBuild(projectPath: string, onData?: (chunk: string) => void): Promise<BuildResult> {
-  const exitCode = await new Promise<number>((resolve, reject) => {
-    const child = spawn('ph', ['build'], {
-      cwd: projectPath,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, FORCE_COLOR: '1' },
-    });
-
-    child.stdout.on('data', (chunk: Buffer) => onData?.(chunk.toString()));
-    child.stderr.on('data', (chunk: Buffer) => onData?.(chunk.toString()));
-
-    const timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      reject(new Error('ph build timed out after 2 minutes'));
-    }, 120_000);
-
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      resolve(code ?? 1);
-    });
-    child.on('error', (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
+  const pm = createProcessManager();
+  const { success } = await pm.run('ph build', {
+    label: 'ph-build',
+    timeout: 120_000,
+    cwd: projectPath,
+    env: { FORCE_COLOR: '1' },
+    onOutput: onData ? (line) => onData(line + '\n') : undefined,
   });
-
-  return { success: exitCode === 0, exitCode };
+  return { success };
 }
 
 const inputSchema = z.object({
@@ -51,7 +33,7 @@ export const reactorProjectBuild = defineCommand({
   id: 'reactor-project-build',
   description: 'Build a Reactor package project (runs ph build)',
   inputSchema,
-  execute: async ({ name, log }, { workdir, stdout }) => {
+  execute: async ({ name, log }, { workdir, stdout, runProcess }) => {
     const projectPath = name ? path.join(workdir, name) : workdir;
 
     if (!fs.existsSync(projectPath)) {
@@ -66,14 +48,15 @@ export const reactorProjectBuild = defineCommand({
       };
     }
 
-    const { success, exitCode } = await runBuild(projectPath, (stdoutChunk) => {
-      if (log) {
-        stdout(stdoutChunk);
-      }
+    const { success } = await runProcess('ph build', {
+      label: 'ph-build',
+      timeout: 120_000,
+      cwd: projectPath,
+      env: { FORCE_COLOR: '1' },
     });
 
     if (!success) {
-      return { text: `**Build failed** (exit code ${exitCode})` };
+      return { text: `**Build failed**` };
     }
 
     const hasDistDir = fs.existsSync(path.join(projectPath, 'dist'));

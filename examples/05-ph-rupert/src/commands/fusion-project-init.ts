@@ -1,6 +1,5 @@
 import { defineCommand } from '../framework.js';
 import { z } from 'zod';
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -15,7 +14,7 @@ export const fusionProjectInit = defineCommand({
   id: 'fusion-project-init',
   description: 'Initialize a new Fusion project from the boilerplate',
   inputSchema,
-  execute: async ({ name }, { workdir, stdout }) => {
+  execute: async ({ name }, { workdir, runProcess }) => {
     const projectPath = path.join(workdir, name);
 
     // Idempotent: if project already has valid structure, succeed
@@ -31,31 +30,32 @@ export const fusionProjectInit = defineCommand({
     }
 
     // Step 1: git clone
-    const cloneCode = await runCommand(
-      'git',
-      ['clone', 'https://github.com/powerhouse-inc/fusion-boilerplate.git', name],
-      workdir,
-      stdout,
+    const clone = await runProcess(
+      `git clone https://github.com/powerhouse-inc/fusion-boilerplate.git ${name}`,
+      { label: 'git-clone', timeout: 300_000, cwd: workdir },
     );
-    if (cloneCode !== 0) {
-      return { text: `Failed to clone fusion-boilerplate (exit code ${cloneCode})` };
+    if (!clone.success) {
+      return { text: `Failed to clone fusion-boilerplate` };
     }
 
     // Step 2: rename project in package.json
-    const sedCode = await runCommand(
-      'sed',
-      ['-i', '-e', `s/fusion-boilerplate/${name}/g`, './package.json'],
-      projectPath,
-      stdout,
+    const sed = await runProcess(
+      `sed -i -e s/fusion-boilerplate/${name}/g ./package.json`,
+      { label: 'sed-rename', cwd: projectPath },
     );
-    if (sedCode !== 0) {
-      return { text: `Failed to update package.json (exit code ${sedCode})` };
+    if (!sed.success) {
+      return { text: `Failed to update package.json` };
     }
 
     // Step 3: install dependencies
-    const installCode = await runCommand('pnpm', ['install'], projectPath, stdout);
-    if (installCode !== 0) {
-      return { text: `Failed to install dependencies (exit code ${installCode})` };
+    const install = await runProcess('pnpm install', {
+      label: 'pnpm-install',
+      timeout: 300_000,
+      cwd: projectPath,
+      env: { CI: 'true' },
+    });
+    if (!install.success) {
+      return { text: `Failed to install dependencies` };
     }
 
     // Verify
@@ -67,35 +67,3 @@ export const fusionProjectInit = defineCommand({
     return { text: `Project created but missing expected config files at ${projectPath}` };
   },
 });
-
-function runCommand(
-  cmd: string,
-  args: string[],
-  cwd: string,
-  stdout: (text: string) => void,
-): Promise<number> {
-  return new Promise<number>((resolve, reject) => {
-    const child = spawn(cmd, args, {
-      cwd,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, CI: 'true' },
-    });
-
-    child.stdout.on('data', (chunk: Buffer) => stdout(chunk.toString()));
-    child.stderr.on('data', (chunk: Buffer) => stdout(chunk.toString()));
-
-    const timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      reject(new Error(`${cmd} timed out after 5 minutes`));
-    }, 300_000);
-
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      resolve(code ?? 1);
-    });
-    child.on('error', (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-  });
-}

@@ -19,7 +19,7 @@ import path from 'node:path';
 
 // ── Logging ─────────────────────────────────────────────────────────────
 
-const WRITE_TO_LOG = false;
+const WRITE_TO_LOG = true;
 const LOG_FILE = path.resolve(
   import.meta.dirname,
   `../../switchboard-e2e-${new Date().toISOString().replace(/[:.]/g, '-')}.log`,

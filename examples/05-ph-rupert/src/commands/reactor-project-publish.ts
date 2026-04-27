@@ -114,7 +114,7 @@ Run \`npm login --registry <url>\` to create an account with a username, passwor
       });
       if (!buildResult.success) {
         return {
-          text: `**Build failed** (exit code ${buildResult.exitCode}). Publish aborted.`,
+          text: `**Build failed**. Publish aborted.`,
         };
       }
     }

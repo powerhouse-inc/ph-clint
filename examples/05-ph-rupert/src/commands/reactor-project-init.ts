@@ -1,6 +1,6 @@
 import { defineCommand } from '../framework.js';
 import { z } from 'zod';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -46,7 +46,7 @@ export const reactorProjectInit = defineCommand({
   id: 'reactor-project-init',
   description: 'Initialize a new Reactor package project',
   inputSchema,
-  execute: async ({ name, version }, { workdir, config, stdout }) => {
+  execute: async ({ name, version }, { workdir, config, stdout, runProcess }) => {
     const projectPath = path.join(workdir, name);
     const phVersion = version ?? config.phVersion ?? getPhVersion();
 
@@ -64,37 +64,16 @@ export const reactorProjectInit = defineCommand({
 
     // Run ph init with streaming output
     const tags = ['dev', 'staging', 'latest'];
-    const exitCode = await new Promise<number>((resolve, reject) => {
-      const versionArgs = tags.includes(phVersion)
-        ? [`--${phVersion}`]
-        : ['--version', phVersion];
-      const child = spawn('ph', ['init', name, ...versionArgs, '--pnpm'], {
-        cwd: workdir,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, FORCE_COLOR: '1' },
-        shell: process.platform === 'win32',
-      });
+    const versionArgs = tags.includes(phVersion)
+      ? [`--${phVersion}`]
+      : ['--version', phVersion];
+    const { success } = await runProcess(
+      `ph init ${name} ${versionArgs.join(' ')} --pnpm`,
+      { label: 'ph-init', timeout: 300_000, cwd: workdir, env: { FORCE_COLOR: '1' } },
+    );
 
-      child.stdout.on('data', (chunk: Buffer) => stdout(chunk.toString()));
-      child.stderr.on('data', (chunk: Buffer) => stdout(chunk.toString()));
-
-      const timer = setTimeout(() => {
-        child.kill('SIGTERM');
-        reject(new Error('ph init timed out after 5 minutes'));
-      }, 300_000);
-
-      child.on('close', (code) => {
-        clearTimeout(timer);
-        resolve(code ?? 1);
-      });
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
-
-    if (exitCode !== 0) {
-      return { text: `Failed to initialize project (exit code ${exitCode})` };
+    if (!success) {
+      return { text: `Failed to initialize project` };
     }
 
     // Verify

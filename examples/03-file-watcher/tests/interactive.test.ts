@@ -66,6 +66,7 @@ describe('Interactive mode', () => {
       stdout: () => {},
       config: { watchDir: './src', buildCommand: 'echo test-build' },
       processes: processManager,
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
     };
     session = createReplSession({ cli, context });
   });
