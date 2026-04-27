@@ -123,9 +123,14 @@ export function createFolderOperations(
   }
 
   async function listFolder(folderPath?: string): Promise<FolderEntry[]> {
-    const parentId = folderPath
-      ? (await resolveFolder(folderPath)) ?? personalDriveId
-      : personalDriveId;
+    let parentId: string;
+    if (folderPath) {
+      const resolved = await resolveFolder(folderPath);
+      if (!resolved) return []; // folder doesn't exist (yet) — avoid falling back to root
+      parentId = resolved;
+    } else {
+      parentId = personalDriveId;
+    }
     const prefix = folderPath ? folderPath.replace(/\/+$/, '') : '';
 
     const children = await getChildNodes(parentId);
