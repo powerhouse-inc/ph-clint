@@ -234,7 +234,7 @@ export const specChangeTrigger = createDocumentChangeTrigger({
             appDir: result.appDir,
             spec,
             log: (msg) => log?.info(`${TAG} ${msg}`),
-            stdio: 'ignore',
+            runProcess: ctx.context.runProcess,
           });
           if (!phResult.ran) {
             log?.warn(`${TAG} ph init skipped: ${phResult.reason ?? 'unknown'}`);

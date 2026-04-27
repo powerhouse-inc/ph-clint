@@ -94,6 +94,7 @@ export type {
   Routine,
   ProcessHandle,
   ProcessManager,
+  ProcessRunOptions,
   EventBus,
   RoutineConfig,
   StreamChunk,

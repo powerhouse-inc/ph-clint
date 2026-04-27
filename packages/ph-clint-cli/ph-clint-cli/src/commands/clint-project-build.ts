@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { defineCommand } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import { detectLayout } from '@powerhousedao/ph-clint-dev';
@@ -9,45 +8,25 @@ const inputSchema = z.object({
   verbose: z.boolean().default(false),
 });
 
-function execInDir(dir: string, cmd: string, verbose: boolean): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, {
-      cwd: dir,
-      shell: true,
-      stdio: verbose ? 'inherit' : 'pipe',
-    });
-
-    let stderr = '';
-    if (!verbose && proc.stderr) {
-      proc.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
-      });
-    }
-
-    proc.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Command "${cmd}" failed in ${dir} (exit ${code})${stderr ? `:\n${stderr}` : ''}`));
-    });
-    proc.on('error', (err) => reject(err));
-  });
-}
-
 export const build = defineCommand({
   id: 'clint-project-build',
   description: 'Build all packages in the project',
   inputSchema,
-  execute: async (input, { workdir, stdout }) => {
+  execute: async (input, { workdir, stdout, runProcess }) => {
     const dir = path.resolve(input.dir ?? workdir);
     const layout = detectLayout(dir);
 
     if (layout?.type === 'split') {
       stdout(`Building app package (${layout.app})...\n`);
-      await execInDir(layout.app, 'pnpm build', input.verbose);
+      const appResult = await runProcess('pnpm build', { cwd: layout.app, timeout: 120_000 });
+      if (!appResult.success) return { text: `App build failed.` };
       stdout(`Building cli package (${layout.cli})...\n`);
-      await execInDir(layout.cli, 'pnpm build', input.verbose);
+      const cliResult = await runProcess('pnpm build', { cwd: layout.cli, timeout: 120_000 });
+      if (!cliResult.success) return { text: `CLI build failed.` };
     } else {
       stdout(`Building project...\n`);
-      await execInDir(layout?.cli ?? dir, 'pnpm build', input.verbose);
+      const result = await runProcess('pnpm build', { cwd: layout?.cli ?? dir, timeout: 120_000 });
+      if (!result.success) return { text: `Build failed.` };
     }
 
     return { text: 'Build complete.' };

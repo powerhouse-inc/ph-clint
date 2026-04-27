@@ -187,7 +187,7 @@ export function defineCli<
     return _eventBus;
   }
   const eventBus = (hasTriggers || hasServices) ? getEventBus() : undefined;
-  const processManager = hasTriggers ? createProcessManager() : undefined;
+  const processManager = createProcessManager();
   let routine: Routine | undefined;
 
   // RoutineServiceAdapter for auto-injected service commands
@@ -286,18 +286,23 @@ export function defineCli<
     return [...commandMap.values()];
   }
 
-  function buildContext(base?: CommandContext): CommandContext {
-    const ctx: CommandContext = base ?? {
+  function buildContext(base?: Partial<CommandContext>): CommandContext {
+    const noop = () => Promise.resolve({ success: true, output: '' });
+    const ctx: CommandContext = {
       workdir: process.cwd(),
       workspace: createMemoryWorkdirStore(),
       config: options.configSchema
         ? (options.configSchema.parse({}) as Record<string, unknown>)
         : {},
       stdout: defaultStdout,
+      runProcess: noop,
+      ...base,
     };
     // Extend with runtime services if available
     if (routine) ctx.routine = routine;
-    if (processManager) ctx.processes = processManager;
+    ctx.processes = processManager;
+    // Wire runProcess to use ctx's current stdout (may be intercepted by session)
+    ctx.runProcess = (cmd, opts) => processManager.run(cmd, { ...opts, onOutput: (line) => ctx.stdout(line + '\n') });
     // Always wire emit/on through getEventBus() — late-bound so the bus is
     // created on demand even if services are added after defineCli().
     ctx.emit = (event: string, data?: unknown) => getEventBus().emit(event, data);

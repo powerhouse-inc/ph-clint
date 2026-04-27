@@ -247,6 +247,7 @@ describe('createServiceCommands — no services', () => {
       workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: emptyMgr,
     };
     const result = await psCmd.execute({}, ctx) as any;
@@ -311,6 +312,7 @@ describe('createServiceCommands — with real services', () => {
       workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: mgr,
     };
   }
@@ -848,6 +850,7 @@ describe('createServiceCommands — {id}-ls', () => {
       workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: mockMgr,
     };
     const result = await lsCmd.execute({}, ctx) as any;
@@ -886,6 +889,7 @@ describe('createServiceCommands — {id}-ls', () => {
       workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: mockMgr,
     };
     const result = await lsCmd.execute({}, ctx) as any;
@@ -927,6 +931,7 @@ describe('createServiceCommands — {id}-ls', () => {
       workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: mockMgr,
     };
     const result = await lsCmd.execute({}, ctx) as any;
@@ -960,6 +965,7 @@ describe('createServiceCommands — {id}-ls', () => {
       workspace: createMemoryWorkdirStore(),
       config: {},
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: mockMgr,
     };
     const result = await lsCmd.execute({}, ctx) as any;

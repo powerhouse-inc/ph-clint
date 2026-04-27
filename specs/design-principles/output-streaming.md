@@ -20,6 +20,16 @@ These are resolved once at startup (`cli.ts:56-66`) and threaded through the ent
 
 Each command receives `ctx.stdout: (text: string) => void` bound to `writeRaw`. Commands use this for progressive output during execution (e.g., subprocess logs). This is a raw write — no formatting, no newline, no ANSI wrapping.
 
+### CommandContext.runProcess (`core/types.ts:127`)
+
+Convenience helper for running bounded subprocesses. Wraps `ProcessManager.run()` with auto-wired `onOutput` that routes each line through `ctx.stdout()`. This ensures subprocess output flows through the session's chunk system instead of writing directly to the terminal.
+
+```typescript
+const result = await ctx.runProcess('pnpm install', { cwd: dir, timeout: 120_000 });
+```
+
+When the session intercepts `ctx.stdout`, the first call opens a tool-segment (`tool-call` chunk), subsequent calls emit `tool-output` chunks (rolling window), and after execute completes, a `tool-result` chunk closes the segment. Commands that don't produce progressive output (no `ctx.stdout` calls) skip the segment wrapper entirely.
+
 ### StreamChunk (`core/types.ts:188-215`)
 
 The atomic unit of agent streaming output:
@@ -161,10 +171,6 @@ In the REPL, service events flow through `onMessage` callback → `setStatusLine
 
 ## Known Issues
 
-### Command stdout bypasses REPL (`specs/issues/command-stdout-bypasses-repl.md`)
-
-Commands that call `ctx.stdout()` for progressive output (e.g., subprocess logs) write directly to `process.stdout.write`, bypassing Ink's rendering. In the REPL, this corrupts the display. A `tool-output` chunk type for incremental body content would route this through the segment system.
-
 ### Streaming-to-history jump
 
 When streaming completes and the display transitions from dynamic segments to static history, a one-line vertical jump can occur if the line counts differ (e.g., extra blank lines between tool segments during streaming vs. history rendering).
@@ -177,6 +183,6 @@ When streaming completes and the display transitions from dynamic segments to st
 | Agent tool-call | `writeRaw(▶ ...)` | segment → `⎿` indent → `stdout` | segment → `⎿` indent + rolling window |
 | Agent tool-result | `writeRaw(✓ ...)` | segment → crop → `⎿` indent → `stdout` | segment → crop → `⎿` indent + rolling window |
 | Command result | `stdout(text)` | `renderMarkdown` → `stdout` | `renderMarkdown` → history entry |
-| Command stdout | `writeRaw(text)` | `writeRaw(text)` (bypasses session) | `writeRaw(text)` (bypasses Ink) |
+| Command stdout | `writeRaw(text)` | `tool-output` chunk → rolling window | `tool-output` chunk → rolling window |
 | Service status | N/A | `stdout(status)` | status bar line |
 | Errors | `stderr(msg)` | `log.error(msg)` → stderr | red text in history |

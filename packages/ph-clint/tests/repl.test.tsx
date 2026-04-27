@@ -61,7 +61,7 @@ function makeSession() {
 
   return createReplSession({
     cli,
-    context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
+    context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) },
   });
 }
 
@@ -411,7 +411,7 @@ describe('Repl component', () => {
       });
       const slowSession = createReplSession({
         cli,
-        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) },
       });
       const { stdin, lastFrame, unmount } = render(<Repl session={slowSession} />);
 
@@ -728,7 +728,7 @@ describe('Repl component', () => {
 
       return createReplSession({
         cli,
-        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) },
       });
     }
 

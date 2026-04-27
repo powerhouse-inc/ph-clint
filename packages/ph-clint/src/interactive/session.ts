@@ -187,18 +187,29 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
 
   /**
    * Execute a command while capturing ctx.stdout() calls.
-   * Streams output progressively via onStreamChunk (no rolling window),
-   * and returns the captured output prepended to the formatted result.
+   * When the command produces progressive output (calls ctx.stdout),
+   * emits tool-call / tool-output / tool-result chunks so the REPL
+   * renders it in a rolling window. Commands without progressive output
+   * stream as text-delta (no segment overhead).
    */
   async function executeCommandWithCapture(commandId: string, args: Record<string, unknown>): Promise<ReplOutput> {
     const captured: string[] = [];
     const streamParts: string[] = [];
+    let segmentOpened = false;
+
     const origStdout = context.stdout;
     context.stdout = (text: string) => {
       captured.push(text);
-      // Stream progressively through the REPL
-      const chunk: StreamChunk = { type: 'text-delta', text };
-      streamParts.push(text);
+      // On first stdout call, open a tool segment for the rolling window
+      if (!segmentOpened) {
+        segmentOpened = true;
+        const callChunk: StreamChunk = { type: 'tool-call', toolName: commandId, args };
+        streamParts.push(formatStreamChunk(callChunk));
+        sessionRef?.onStreamChunk?.(callChunk, streamParts.join(''));
+      }
+      // Stream as tool-output so the REPL shows it in the rolling window
+      const chunk: StreamChunk = { type: 'tool-output', toolName: commandId, text };
+      streamParts.push(formatStreamChunk(chunk));
       sessionRef?.onStreamChunk?.(chunk, streamParts.join(''));
     };
     try {
@@ -208,6 +219,14 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
         return handleAgentPrompt(renderSkillPromptFromInvocation(result));
       }
       const text = formatResult(result);
+
+      // Close the tool segment if one was opened
+      if (segmentOpened) {
+        const resultChunk: StreamChunk = { type: 'tool-result', toolName: commandId, result: { text }, isError: false };
+        streamParts.push(formatStreamChunk(resultChunk));
+        sessionRef?.onStreamChunk?.(resultChunk, streamParts.join(''));
+      }
+
       const rendered = renderMarkdown(text);
       const prefix = captured.length > 0 ? captured.join('') : '';
       const combined = prefix && rendered ? prefix + rendered : prefix + rendered;

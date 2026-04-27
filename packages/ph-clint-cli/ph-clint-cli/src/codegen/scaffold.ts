@@ -8,8 +8,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { hasCommandOnPath, runCommand } from './exec.js';
+import { hasCommandOnPath } from './exec.js';
 import type { ClintProjectSpec } from '../spec/types.js';
+import type { ProcessRunOptions } from '@powerhousedao/ph-clint';
+
+/**
+ * Signature for the subprocess runner — matches CommandContext.runProcess.
+ */
+type RunProcess = (
+  command: string,
+  opts?: Omit<ProcessRunOptions, 'onOutput'>,
+) => Promise<{ success: boolean; output: string }>;
 
 export interface PhInitOptions {
   /** Absolute path to the project root. */
@@ -21,8 +30,8 @@ export interface PhInitOptions {
   log?: (msg: string) => void;
   /** Override `ph` binary name (for tests). */
   binName?: string;
-  /** Stdio passthrough (tests pass 'ignore'). */
-  stdio?: 'inherit' | 'ignore';
+  /** Subprocess runner — uses CommandContext.runProcess when available. */
+  runProcess?: RunProcess;
   /** Explicit Powerhouse version to pin `ph init` to (tag or semver). */
   phVersion?: string;
 }
@@ -81,17 +90,30 @@ export async function runPhInit(
   // ph init has a blank slate to work with.
   await fs.rm(options.appDir, { recursive: true, force: true });
 
+  const args = ['init', appFolder, ...versionArgs, '--pnpm'];
   log(`Running \`${binName} init ${appFolder}\` (version: ${phVersion ?? 'auto'}) in ${options.targetDir} …`);
-  const result = await runCommand(
-    binName,
-    [
-      'init',
-      appFolder,
-      ...versionArgs,
-      '--pnpm',
-    ],
-    { cwd: options.targetDir, stdio: options.stdio ?? 'inherit' },
-  );
+
+  const run = options.runProcess;
+  if (run) {
+    const result = await run(`${binName} ${args.join(' ')}`, {
+      cwd: options.targetDir,
+      timeout: 300_000, // ph init + pnpm install can be slow
+    });
+    const exitCode = result.success ? 0 : 1;
+    if (!result.success) {
+      log(
+        `\`${binName} init\` failed. ` +
+          'You can re-run it manually after resolving the issue.',
+      );
+    }
+    // Patch scoped name
+    await patchScopedName(options, appFolder, log);
+    return { ran: true, exitCode };
+  }
+
+  // Fallback: direct spawn with stdio inherit (for backward compat / tests without context)
+  const { runCommand } = await import('./exec.js');
+  const result = await runCommand(binName, args, { cwd: options.targetDir, stdio: 'inherit' });
 
   if (result.exitCode !== 0) {
     log(
@@ -100,30 +122,28 @@ export async function runPhInit(
     );
   }
 
-  // ph init creates an unscoped package name. If the spec has a scope, patch
-  // the app's package.json to use the scoped name so `file:` deps and publish
-  // both resolve correctly. Run even on non-zero exit — ph init may have
-  // partially succeeded and created package.json.
-  if (options.spec.scope) {
-    const appPkgJsonPath = path.join(options.appDir, 'package.json');
-    try {
-      const raw = await fs.readFile(appPkgJsonPath, 'utf8');
-      const pkg = JSON.parse(raw);
-      const scopedName = `@${options.spec.scope}/${appFolder}`;
-      if (pkg.name !== scopedName) {
-        pkg.name = scopedName;
-        pkg.publishConfig = { access: 'public' };
-        await fs.writeFile(appPkgJsonPath, JSON.stringify(pkg, null, 2) + '\n');
-        log(`Patched app package name to ${scopedName}`);
-      }
-    } catch (err) {
-      log(
-        `Warning: could not patch app package name: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
-
+  await patchScopedName(options, appFolder, log);
   return { ran: true, exitCode: result.exitCode };
+}
+
+async function patchScopedName(options: PhInitOptions, appFolder: string, log: (msg: string) => void): Promise<void> {
+  if (!options.spec.scope) return;
+  const appPkgJsonPath = path.join(options.appDir, 'package.json');
+  try {
+    const raw = await fs.readFile(appPkgJsonPath, 'utf8');
+    const pkg = JSON.parse(raw);
+    const scopedName = `@${options.spec.scope}/${appFolder}`;
+    if (pkg.name !== scopedName) {
+      pkg.name = scopedName;
+      pkg.publishConfig = { access: 'public' };
+      await fs.writeFile(appPkgJsonPath, JSON.stringify(pkg, null, 2) + '\n');
+      log(`Patched app package name to ${scopedName}`);
+    }
+  } catch (err) {
+    log(
+      `Warning: could not patch app package name: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 export interface PnpmInstallOptions {
@@ -132,7 +152,8 @@ export interface PnpmInstallOptions {
   log?: (msg: string) => void;
   /** Override `pnpm` binary name (for tests). */
   binName?: string;
-  stdio?: 'inherit' | 'ignore';
+  /** Subprocess runner — uses CommandContext.runProcess when available. */
+  runProcess?: RunProcess;
 }
 
 export interface PnpmInstallResult {
@@ -158,16 +179,31 @@ export async function runPnpmInstall(
   const ran: string[] = [];
   for (const dir of options.dirs) {
     log(`Running \`${binName} install\` in ${dir} …`);
-    const result = await runCommand(binName, ['install'], {
-      cwd: dir,
-      stdio: options.stdio ?? 'inherit',
-    });
-    if (result.exitCode !== 0) {
-      log(
-        `\`${binName} install\` exited with code ${result.exitCode} in ${dir}. ` +
-          'Retry manually once the underlying issue is resolved.',
-      );
-      // Don't abort the whole chain — subsequent dirs may still work.
+
+    const run = options.runProcess;
+    if (run) {
+      const result = await run(`${binName} install`, {
+        cwd: dir,
+        timeout: 300_000,
+      });
+      if (!result.success) {
+        log(
+          `\`${binName} install\` failed in ${dir}. ` +
+            'Retry manually once the underlying issue is resolved.',
+        );
+      }
+    } else {
+      const { runCommand } = await import('./exec.js');
+      const result = await runCommand(binName, ['install'], {
+        cwd: dir,
+        stdio: 'inherit',
+      });
+      if (result.exitCode !== 0) {
+        log(
+          `\`${binName} install\` exited with code ${result.exitCode} in ${dir}. ` +
+            'Retry manually once the underlying issue is resolved.',
+        );
+      }
     }
     ran.push(dir);
   }

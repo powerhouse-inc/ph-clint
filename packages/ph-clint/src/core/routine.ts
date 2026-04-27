@@ -44,6 +44,7 @@ export function createRoutine(options: RoutineOptions): Routine {
     config: {},
     workdir: '',
     stdout: console.log,
+    runProcess: (cmd, opts) => pm.run(cmd, { ...opts, onOutput: (line) => ctx.stdout(line + '\n') }),
   };
   // Ensure emit/on are wired from the event bus
   if (!ctx.emit) ctx.emit = (event: string, data?: unknown) => bus.emit(event, data);

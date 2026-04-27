@@ -122,6 +122,14 @@ export interface CommandContext<
   reactor?: () => Promise<ReactorContext<R> | undefined>;
   /** Lazy agent accessor — returns the AgentProvider or undefined if not configured. */
   agent?: () => Promise<AgentProvider | undefined>;
+  /**
+   * Run a bounded subprocess, routing each output line through `stdout()`.
+   * Convenience wrapper around `processes.run()` with auto-wired `onOutput`.
+   */
+  runProcess: (
+    command: string,
+    opts?: Omit<ProcessRunOptions, 'onOutput'>,
+  ) => Promise<{ success: boolean; output: string }>;
   /** @internal Hook for interactive mode to capture progressive tool output. */
   _onToolOutput?: (toolName: string, text: string) => void;
 }
@@ -363,12 +371,24 @@ export interface ProcessHandle {
 }
 
 /**
+ * Options for running a bounded shell command.
+ */
+export interface ProcessRunOptions {
+  label?: string;
+  timeout?: number;
+  cwd?: string;
+  env?: Record<string, string>;
+  /** Called for each line of output (stdout + stderr combined) as it arrives. */
+  onOutput?: (line: string) => void;
+}
+
+/**
  * Manages bounded shell command execution.
  */
 export interface ProcessManager {
   run(
     command: string,
-    opts?: { label?: string; timeout?: number },
+    opts?: ProcessRunOptions,
   ): Promise<{ success: boolean; output: string }>;
   list(): ProcessHandle[];
 }

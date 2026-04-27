@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import type { ProcessHandle, ProcessManager } from './types.js';
+import type { ProcessHandle, ProcessManager, ProcessRunOptions } from './types.js';
 
 /**
  * Create a process manager for running bounded shell commands.
@@ -10,7 +10,7 @@ export function createProcessManager(): ProcessManager {
 
   async function run(
     command: string,
-    opts?: { label?: string; timeout?: number },
+    opts?: ProcessRunOptions,
   ): Promise<{ success: boolean; output: string }> {
     const label = opts?.label ?? command;
     const timeout = opts?.timeout ?? 30_000;
@@ -18,11 +18,14 @@ export function createProcessManager(): ProcessManager {
     return new Promise((resolve) => {
       const chunks: string[] = [];
       let resolved = false;
+      let lineBuffer = '';
 
       const child = spawn(command, {
         shell: true,
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: true, // Create process group for clean kill
+        cwd: opts?.cwd,
+        env: opts?.env ? { ...process.env, ...opts.env } : undefined,
       });
 
       function killProcess() {
@@ -45,12 +48,21 @@ export function createProcessManager(): ProcessManager {
       };
       handles.push(handle);
 
-      child.stdout?.on('data', (data: Buffer) => {
-        chunks.push(data.toString());
-      });
-      child.stderr?.on('data', (data: Buffer) => {
-        chunks.push(data.toString());
-      });
+      function handleData(data: Buffer) {
+        const text = data.toString();
+        chunks.push(text);
+        if (opts?.onOutput) {
+          lineBuffer += text;
+          let nlIdx: number;
+          while ((nlIdx = lineBuffer.indexOf('\n')) !== -1) {
+            opts.onOutput(lineBuffer.slice(0, nlIdx));
+            lineBuffer = lineBuffer.slice(nlIdx + 1);
+          }
+        }
+      }
+
+      child.stdout?.on('data', handleData);
+      child.stderr?.on('data', handleData);
 
       // Prevent the child from keeping the parent alive if we've already resolved
       child.unref();
@@ -59,6 +71,11 @@ export function createProcessManager(): ProcessManager {
         if (resolved) return;
         resolved = true;
         clearTimeout(timer);
+        // Flush any remaining partial line
+        if (opts?.onOutput && lineBuffer.length > 0) {
+          opts.onOutput(lineBuffer);
+          lineBuffer = '';
+        }
         handle.status = success ? 'succeeded' : 'failed';
         resolve({ success, output });
       }

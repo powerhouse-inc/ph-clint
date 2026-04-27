@@ -52,7 +52,7 @@ describe('createReplSession', () => {
   let context: CommandContext;
 
   beforeEach(() => {
-    context = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    context = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     session = createReplSession({ cli, context });
   });
 
@@ -125,7 +125,7 @@ describe('createReplSession', () => {
         interactive: { welcome: '' },
       });
 
-      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
       const s = createReplSession({ cli: cli2, context: ctx });
       const result = await s.processInput('/verbose');
 
@@ -155,7 +155,7 @@ describe('createReplSession', () => {
         interactive: { welcome: '' },
       });
 
-      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
       const s = createReplSession({ cli: cli2, context: ctx });
 
       const streamed: { type: string; text?: string }[] = [];
@@ -165,10 +165,12 @@ describe('createReplSession', () => {
 
       await s.processInput('/build');
 
-      // Each stdout call should have emitted a text-delta chunk
-      expect(streamed).toHaveLength(2);
-      expect(streamed[0]).toEqual({ type: 'text-delta', text: 'Compiling...\n' });
-      expect(streamed[1]).toEqual({ type: 'text-delta', text: 'Linking...\n' });
+      // Should emit: tool-call (on first stdout), tool-output (x2), tool-result
+      expect(streamed).toHaveLength(4);
+      expect(streamed[0]!.type).toBe('tool-call');
+      expect(streamed[1]).toEqual({ type: 'tool-output', text: 'Compiling...\n' });
+      expect(streamed[2]).toEqual({ type: 'tool-output', text: 'Linking...\n' });
+      expect(streamed[3]!.type).toBe('tool-result');
     });
 
     it('does not leak captured stdout to process.stdout', async () => {
@@ -191,7 +193,7 @@ describe('createReplSession', () => {
         interactive: { welcome: '' },
       });
 
-      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: (t) => { leaked.push(t); } };
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: (t) => { leaked.push(t); }, runProcess: () => Promise.resolve({ success: true, output: '' }) };
       const s = createReplSession({ cli: cli2, context: ctx });
       await s.processInput('/leaky');
 
@@ -242,7 +244,7 @@ describe('createReplSession', () => {
       });
       const s = createReplSession({
         cli: nullCli,
-        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
+        context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) },
       });
       const result = await s.processInput('/null');
       expect(result.type).toBe('result');
@@ -339,7 +341,7 @@ describe('parameter prompting', () => {
     });
     return createReplSession({
       cli,
-      context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} },
+      context: { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) },
     });
   }
 
@@ -817,7 +819,7 @@ describe('default command — agent routing', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('What is TypeScript?');
@@ -837,7 +839,7 @@ describe('default command — agent routing', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('/search --query "hello"');
@@ -863,7 +865,7 @@ describe('default command — agent routing', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('search for cats');
@@ -890,7 +892,7 @@ describe('default command — agent routing', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('break');
@@ -907,7 +909,7 @@ describe('default command — agent routing', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context });
 
     const result = await session.processInput('just some text');
@@ -924,7 +926,7 @@ describe('default command — agent routing', () => {
     });
     cli.configureAgent(async () => ({ id: 'x', async *stream() {} }));
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     // No agentProvider passed — session should still route text to agent handler
     const session = createReplSession({ cli, context });
 
@@ -954,7 +956,7 @@ describe('onStreamChunk callback', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const chunks: { type: string; fullText: string }[] = [];
@@ -1019,7 +1021,7 @@ describe('onStreamChunk callback', () => {
     });
     cli2.configureAgent(async () => agent);
 
-    const context2: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context2: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     contextRef = context2;
     const session2 = createReplSession({ cli: cli2, context: context2, agentProvider: agent });
 
@@ -1068,7 +1070,7 @@ describe('session edge cases', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} };
+    const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context });
 
     const result = await session.processInput('/foo-manage');
@@ -1093,7 +1095,7 @@ describe('session edge cases', () => {
     });
     cli.configureAgent(async () => failingAgent);
 
-    const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} };
+    const context: CommandContext = { workdir: '', workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: failingAgent });
 
     const result = await session.processInput('hello agent');
@@ -1134,7 +1136,7 @@ describe('session edge cases', () => {
         },
       };
 
-      const ctx = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+      const ctx = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
       const session = createReplSession({ cli: skillCli, context: ctx, agentProvider: agent });
 
       const result = await session.processInput('/my-skill --prompt "build an invoice model"');
@@ -1158,7 +1160,7 @@ describe('outputWindow', () => {
       interactive: { welcome: '' },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context });
 
     expect(session.outputWindow).toBe(6);
@@ -1173,7 +1175,7 @@ describe('outputWindow', () => {
       interactive: { welcome: '', outputWindow: 3 },
     });
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context });
 
     expect(session.outputWindow).toBe(3);
@@ -1200,7 +1202,7 @@ describe('outputWindow', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('install stuff');
@@ -1232,7 +1234,7 @@ describe('outputWindow', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('write something long');
@@ -1261,7 +1263,7 @@ describe('outputWindow', () => {
     });
     cli.configureAgent(async () => agent);
 
-    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {} };
+    const context: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
     const session = createReplSession({ cli, context, agentProvider: agent });
 
     const result = await session.processInput('ping');
@@ -1296,6 +1298,7 @@ describe('outputWindow', () => {
       config: {},
       workdir: '',
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: stubServices,
     };
 
@@ -1349,6 +1352,7 @@ describe('outputWindow', () => {
       config: {},
       workdir: '',
       stdout: () => {},
+      runProcess: () => Promise.resolve({ success: true, output: '' }),
       services: stubServices,
     };
 

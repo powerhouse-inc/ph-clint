@@ -114,4 +114,42 @@ describe('createProcessManager', () => {
     await pm.run(fixture('echo'), { label: 'b' });
     expect(pm.list()).toHaveLength(2);
   });
+
+  it('calls onOutput for each line of output', async () => {
+    const pm = createProcessManager();
+    const lines: string[] = [];
+    const result = await pm.run(fixture('stream'), {
+      onOutput: (line) => lines.push(line),
+    });
+    expect(result.success).toBe(true);
+    expect(lines.length).toBeGreaterThanOrEqual(3);
+    expect(lines[0]).toBe('line-1');
+    expect(lines[1]).toBe('line-2');
+    expect(lines[2]).toBe('line-3');
+  });
+
+  it('flushes partial line on close', async () => {
+    const pm = createProcessManager();
+    const lines: string[] = [];
+    // 'echo -n' outputs text without trailing newline
+    await pm.run('echo -n partial', { onOutput: (line) => lines.push(line) });
+    expect(lines).toContain('partial');
+  });
+
+  it('passes cwd to the child process', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run('pwd', { cwd: '/tmp' });
+    expect(result.success).toBe(true);
+    // /tmp may resolve to a symlink on some systems
+    expect(result.output.trim()).toMatch(/\/tmp|\/private\/tmp/);
+  });
+
+  it('passes env to the child process', async () => {
+    const pm = createProcessManager();
+    const result = await pm.run('echo $TEST_PROC_VAR', {
+      env: { TEST_PROC_VAR: 'hello-from-env' },
+    });
+    expect(result.success).toBe(true);
+    expect(result.output.trim()).toBe('hello-from-env');
+  });
 });

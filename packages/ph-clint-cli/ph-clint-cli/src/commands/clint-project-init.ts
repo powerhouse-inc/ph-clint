@@ -119,7 +119,7 @@ export const init = defineCommand({
     promptForDefaults: true,
     promptOptional: ['description'],
   },
-  execute: async (input, { workdir, stdout, reactor: getReactor, folders }) => {
+  execute: async (input, { workdir, stdout, reactor: getReactor, folders, runProcess }) => {
     const { name: bareName } = splitPackageName(input.name);
     const targetDir = path.resolve(workdir, input.dir ?? bareName);
 
@@ -179,6 +179,7 @@ export const init = defineCommand({
         appDir: result.appDir,
         spec,
         log: (msg) => stdout(msg + '\n'),
+        runProcess,
       });
       if (!phResult.ran) {
         stdout(
@@ -199,6 +200,7 @@ export const init = defineCommand({
       await runPnpmInstall({
         dirs,
         log: (msg) => stdout(msg + '\n'),
+        runProcess,
       });
     }
 
