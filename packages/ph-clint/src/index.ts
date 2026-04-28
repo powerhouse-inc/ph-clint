@@ -29,6 +29,16 @@ export { registerDefaultHelpers, extractTemplateVars, renderSkillTemplate } from
 export type { RenderOptions, RenderResult } from './core/templates.js';
 export { createRoutine } from './core/routine.js';
 export { createRoutineServiceAdapter, createCompositeServiceManager } from './core/routine-service.js';
+export {
+  announceEndpoints,
+  resolveAnnounceConfig,
+  toAnnouncedEndpointType,
+} from './core/announce.js';
+export type {
+  AnnouncedEndpoint,
+  AnnouncedEndpointType,
+  AnnounceConfig,
+} from './core/announce.js';
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export type { RenderedChunk } from './core/stream.js';
 export { createReplSession } from './interactive/session.js';
