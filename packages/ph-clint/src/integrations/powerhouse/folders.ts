@@ -9,8 +9,10 @@ import { z } from 'zod';
 import type { TypedReactorClient } from './types.js';
 import type { FolderEntry, FolderOperations } from './types.js';
 import type { Command } from '../../core/types.js';
+import type { Logger } from '../../core/types.js';
 
 const DRIVE_TYPE = 'powerhouse/document-drive';
+const TAG = '[folders]';
 
 /** Minimal shape we read from child nodes. */
 interface ChildNode {
@@ -40,7 +42,13 @@ function isFolder(node: ChildNode): boolean {
 export function createFolderOperations(
   client: TypedReactorClient<any>,
   personalDriveId: string,
+  log?: Logger,
 ): FolderOperations {
+  // Session-level cache: folder path → folder document ID.
+  // Prevents duplicate folder creation when the reactor's read model
+  // hasn't indexed a prior rename/addChildren by the time we re-query.
+  const folderCache = new Map<string, string>();
+
   function splitPath(folderPath: string): string[] {
     return folderPath.split('/').filter(Boolean);
   }
@@ -51,25 +59,65 @@ export function createFolderOperations(
   }
 
   async function ensureFolder(folderPath: string): Promise<string> {
+    const cached = folderCache.get(folderPath);
+    if (cached) {
+      log?.debug(`${TAG} ensureFolder("${folderPath}") → cache hit ${cached.slice(0, 8)}…`);
+      return cached;
+    }
+
     const segments = splitPath(folderPath);
     let currentId = personalDriveId;
+    let currentPath = '';
 
     for (const segment of segments) {
+      currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+
+      // Check local cache first (handles back-to-back creates)
+      const cachedSegment = folderCache.get(currentPath);
+      if (cachedSegment) {
+        log?.debug(`${TAG} ensureFolder segment "${currentPath}" → cache hit ${cachedSegment.slice(0, 8)}…`);
+        currentId = cachedSegment;
+        continue;
+      }
+
       const children = await getChildNodes(currentId);
+      log?.debug(
+        `${TAG} ensureFolder segment "${segment}" in ${currentId.slice(0, 8)}…: ` +
+        `${children.length} children [${children.map(c => `${isFolder(c) ? 'folder' : 'doc'}:"${nodeName(c)}"`).join(', ')}]`,
+      );
+
       const existing = children.find(
         (c) => nodeName(c) === segment && isFolder(c),
       );
       if (existing) {
         currentId = nodeId(existing);
+        folderCache.set(currentPath, currentId);
+        log?.debug(`${TAG} ensureFolder segment "${segment}" → exists ${currentId.slice(0, 8)}…`);
         continue;
       }
 
-      // Create folder node and link it
-      const folder = await client.createEmpty(DRIVE_TYPE);
+      // Create folder node within the current parent and link it.
+      // Use parentIdentifier so createEmpty registers the relationship.
+      log?.debug(`${TAG} ensureFolder creating folder "${segment}" under ${currentId.slice(0, 8)}…`);
+      const folder = await client.createEmpty(DRIVE_TYPE, { parentIdentifier: currentId });
       const folderId = folder.header.id;
-      await client.rename(folderId, segment);
-      await client.addChildren(currentId, [folderId]);
+
+      // Rename and verify the result
+      const renamed = await client.rename(folderId, segment);
+      const actualName = renamed.name ?? (renamed as ChildNode).header?.name ?? '';
+      if (actualName !== segment) {
+        log?.warn(
+          `${TAG} ensureFolder: rename("${segment}") returned name="${actualName}" ` +
+          `(header.name="${(renamed as ChildNode).header?.name}") — name may not persist in read model`,
+        );
+      }
+      log?.debug(
+        `${TAG} ensureFolder created folder "${segment}" → ${folderId.slice(0, 8)}… ` +
+        `(rename verified: "${actualName}")`,
+      );
+
       currentId = folderId;
+      folderCache.set(currentPath, currentId);
     }
 
     return currentId;
@@ -80,10 +128,13 @@ export function createFolderOperations(
     folderPath: string,
     name?: string,
   ): Promise<void> {
+    log?.debug(`${TAG} addDocument ${documentId.slice(0, 8)}… to "${folderPath}" name=${name ?? '(none)'}`);
     const folderId = await ensureFolder(folderPath);
     await client.addChildren(folderId, [documentId]);
     if (name) {
-      await client.rename(documentId, name);
+      const renamed = await client.rename(documentId, name);
+      const actualName = renamed.name ?? (renamed as ChildNode).header?.name ?? '';
+      log?.debug(`${TAG} addDocument renamed ${documentId.slice(0, 8)}… → "${actualName}"`);
     }
   }
 
@@ -103,16 +154,30 @@ export function createFolderOperations(
   }
 
   async function resolveFolder(folderPath: string): Promise<string | undefined> {
+    // Check cache first
+    const cached = folderCache.get(folderPath);
+    if (cached) return cached;
+
     const segments = splitPath(folderPath);
     let currentId = personalDriveId;
+    let currentPath = '';
 
     for (const segment of segments) {
+      currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+
+      const cachedSegment = folderCache.get(currentPath);
+      if (cachedSegment) {
+        currentId = cachedSegment;
+        continue;
+      }
+
       const children = await getChildNodes(currentId);
       const match = children.find(
         (c) => nodeName(c) === segment && isFolder(c),
       );
       if (!match) return undefined;
       currentId = nodeId(match);
+      folderCache.set(currentPath, currentId);
     }
 
     return currentId;

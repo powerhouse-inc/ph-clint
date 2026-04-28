@@ -1150,6 +1150,7 @@ export function defineCli<
             const folderOps = createFolderOperations(
               cachedReactor!.client,
               cachedReactor!.personalDriveId,
+              log,
             );
             context.folders = folderOps;
             const folderCmds = createFolderCommands(folderOps);

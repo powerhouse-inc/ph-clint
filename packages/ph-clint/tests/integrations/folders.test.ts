@@ -48,10 +48,15 @@ function createMockClient() {
         existing.filter((id) => !docIds.includes(id)),
       );
     }),
-    createEmpty: jest.fn(async (docType: string) => {
+    createEmpty: jest.fn(async (docType: string, options?: { parentIdentifier?: string }) => {
       const id = `node-${nextId++}`;
       addNode(id, '', docType);
       children.set(id, []);
+      if (options?.parentIdentifier) {
+        const parentChildren = children.get(options.parentIdentifier) ?? [];
+        if (!parentChildren.includes(id)) parentChildren.push(id);
+        children.set(options.parentIdentifier, parentChildren);
+      }
       return nodes.get(id)!;
     }),
     rename: jest.fn(async (id: string, name: string) => {
@@ -60,6 +65,7 @@ function createMockClient() {
         node.name = name;
         node.header.name = name;
       }
+      return nodes.get(id)!;
     }),
     find: jest.fn(async (search: { documentTypes?: string[] }) => {
       const types = search.documentTypes ?? [];
@@ -84,9 +90,13 @@ describe('createFolderOperations', () => {
 
     // Two folders created: specs, project-a
     expect(client.createEmpty).toHaveBeenCalledTimes(2);
+    // createEmpty now uses parentIdentifier to link folders
+    expect(client.createEmpty).toHaveBeenCalledWith('powerhouse/document-drive', { parentIdentifier: 'drive-root' });
+    expect(client.createEmpty).toHaveBeenCalledWith('powerhouse/document-drive', { parentIdentifier: expect.any(String) });
     expect(client.rename).toHaveBeenCalledWith(expect.any(String), 'specs');
     expect(client.rename).toHaveBeenCalledWith(expect.any(String), 'project-a');
-    expect(client.addChildren).toHaveBeenCalledTimes(2);
+    // addChildren is NOT called for folders (parentIdentifier handles it)
+    expect(client.addChildren).not.toHaveBeenCalled();
     expect(typeof leafId).toBe('string');
   });
 
