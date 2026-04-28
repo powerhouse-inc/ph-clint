@@ -116,6 +116,6 @@ describe('buildCliTs', () => {
   it('omits serviceAnnouncement when deployment.serviceAnnouncement is false', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const code = buildCliTs(spec);
-    expect(code).not.toContain('serviceAnnouncement');
+    expect(code).not.toContain('serviceAnnouncement: { enabled: true }');
   });
 });

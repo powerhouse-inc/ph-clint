@@ -100,10 +100,12 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('  // @clint:begin events');
   lines.push('  events: {},');
   lines.push('  // @clint:end events');
+  lines.push('');
+  lines.push('  // @clint:begin serviceAnnouncement');
   if (spec.deployment.serviceAnnouncement) {
-    lines.push('');
     lines.push('  serviceAnnouncement: { enabled: true },');
   }
+  lines.push('  // @clint:end serviceAnnouncement');
   lines.push('');
   lines.push('  // @clint:begin interactive');
   lines.push('  interactive: {');

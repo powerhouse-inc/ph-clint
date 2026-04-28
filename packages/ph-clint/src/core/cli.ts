@@ -768,6 +768,76 @@ export function defineCli<
   }
 
   /**
+   * Wire up ServiceManager (process + routine), event handlers, and service
+   * announcement onto a freshly-built context.  Shared by bootstrap() and
+   * the interactive-mode startup in runImpl().
+   */
+  function wireServices(
+    context: CommandContext,
+    config: Record<string, unknown>,
+    log: import('./types.js').Logger,
+  ): void {
+    const servicesNow = options.services && options.services.length > 0;
+    let processServiceManager: import('./types.js').ServiceManager | undefined;
+    if (servicesNow && options.services) {
+      const svcDir = userStoreFolder(options.name, 'services');
+      processServiceManager = createServiceManager(options.services as any[], {
+        config,
+        servicesDir: svcDir,
+        eventBus: getEventBus(),
+      });
+    }
+
+    if (processServiceManager && routineServiceAdapter) {
+      const routeMap = new Map<string, import('./types.js').ServiceManager>();
+      for (const svc of options.services!) {
+        routeMap.set(svc.id, processServiceManager);
+      }
+      routeMap.set(options.routine!.id!, routineServiceAdapter);
+      context.services = createCompositeServiceManager(
+        [processServiceManager, routineServiceAdapter],
+        routeMap,
+      );
+    } else if (processServiceManager) {
+      context.services = processServiceManager;
+    } else if (routineServiceAdapter) {
+      context.services = routineServiceAdapter;
+    }
+
+    if (_eventBus && options.events) {
+      for (const [event, handler] of Object.entries(options.events)) {
+        _eventBus.on(event, (data: unknown) => handler(data, log));
+      }
+    }
+
+    // Service announcement
+    if (options.serviceAnnouncement?.enabled) {
+      const announceUrl = (config as Record<string, unknown>).serviceAnnounceUrl as string | undefined;
+      const announceToken = (config as Record<string, unknown>).serviceAnnounceToken as string | undefined;
+      if (announceUrl) {
+        const announcer = new ServiceAnnouncer({
+          cliName: options.name,
+          url: announceUrl,
+          token: announceToken,
+          serviceDefinitions: (options.services ?? []) as ServiceDefinition[],
+          serviceManager: context.services!,
+          excludePowerhouseServices: options.serviceAnnouncement.excludePowerhouseServices,
+          excludeCliServices: options.serviceAnnouncement.excludeCliServices,
+          logger: log,
+        });
+        announcer.announce().catch(() => {});
+        if (_eventBus) {
+          _eventBus.on('service:ready', () => announcer.scheduleAnnounce());
+          _eventBus.on('service:failed', () => announcer.scheduleAnnounce());
+          _eventBus.on('service:stopped', () => announcer.scheduleAnnounce());
+        }
+      } else {
+        log.info('Service announcement enabled but no URL configured — skipping announcements');
+      }
+    }
+  }
+
+  /**
    * Initialize the CLI runtime without entering the dispatch loop.
    * Returns resolved workdir, config, context, and lazy agent accessor.
    */
@@ -816,69 +886,7 @@ export function defineCli<
     const log = createLogger(logLevel, stderrFn);
     const context = buildContext({ workdir, workspace, config, stdout: stdoutFn, log });
 
-    // Create ServiceManager when services are defined
-    {
-      const servicesNow = options.services && options.services.length > 0;
-      let processServiceManager: import('./types.js').ServiceManager | undefined;
-      if (servicesNow && options.services) {
-        const svcDir = userStoreFolder(options.name, 'services');
-        processServiceManager = createServiceManager(options.services as any[], {
-          config,
-          servicesDir: svcDir,
-          eventBus: getEventBus(),
-        });
-      }
-
-      if (processServiceManager && routineServiceAdapter) {
-        const routeMap = new Map<string, import('./types.js').ServiceManager>();
-        for (const svc of options.services!) {
-          routeMap.set(svc.id, processServiceManager);
-        }
-        routeMap.set(options.routine!.id!, routineServiceAdapter);
-        context.services = createCompositeServiceManager(
-          [processServiceManager, routineServiceAdapter],
-          routeMap,
-        );
-      } else if (processServiceManager) {
-        context.services = processServiceManager;
-      } else if (routineServiceAdapter) {
-        context.services = routineServiceAdapter;
-      }
-
-      if (_eventBus && options.events) {
-        for (const [event, handler] of Object.entries(options.events)) {
-          _eventBus.on(event, (data: unknown) => handler(data, log));
-        }
-      }
-
-      // Service announcement
-      if (options.serviceAnnouncement?.enabled) {
-        const announceUrl = (config as Record<string, unknown>).serviceAnnounceUrl as string | undefined;
-        const announceToken = (config as Record<string, unknown>).serviceAnnounceToken as string | undefined;
-        if (announceUrl) {
-          const announcer = new ServiceAnnouncer({
-            cliName: options.name,
-            url: announceUrl,
-            token: announceToken,
-            serviceDefinitions: (options.services ?? []) as ServiceDefinition[],
-            serviceManager: context.services!,
-            excludePowerhouseServices: options.serviceAnnouncement.excludePowerhouseServices,
-            excludeCliServices: options.serviceAnnouncement.excludeCliServices,
-            logger: log,
-          });
-          // Initial announcement
-          announcer.announce().catch(() => {});
-          // Subscribe to service lifecycle events
-          if (_eventBus) {
-            _eventBus.on('service:ready', () => announcer.scheduleAnnounce());
-            _eventBus.on('service:failed', () => announcer.scheduleAnnounce());
-            _eventBus.on('service:stopped', () => announcer.scheduleAnnounce());
-          }
-        } else {
-          log.info('Service announcement enabled but no URL configured — skipping announcements');
-        }
-      }
-    }
+    wireServices(context, config, log);
 
     // Lazy agent provider
     let cachedProvider: AgentProvider | undefined;
@@ -1031,45 +1039,7 @@ export function defineCli<
     const log = createLogger(logLevel, stderr);
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
 
-    // Create ServiceManager when services and/or routine-as-service are defined
-    // Re-check options.services because configureReactor() may have added services after defineCli()
-    {
-      const servicesNow = options.services && options.services.length > 0;
-      let processServiceManager: import('./types.js').ServiceManager | undefined;
-      if (servicesNow && options.services) {
-        const svcDir = userStoreFolder(options.name, 'services');
-        processServiceManager = createServiceManager(options.services as any[], {
-          config,
-          servicesDir: svcDir,
-          eventBus: getEventBus(),
-        });
-      }
-
-      // Wire up composite or single ServiceManager
-      if (processServiceManager && routineServiceAdapter) {
-        // Both process services and routine — create composite
-        const routeMap = new Map<string, import('./types.js').ServiceManager>();
-        for (const svc of options.services!) {
-          routeMap.set(svc.id, processServiceManager);
-        }
-        routeMap.set(options.routine!.id!, routineServiceAdapter);
-        context.services = createCompositeServiceManager(
-          [processServiceManager, routineServiceAdapter],
-          routeMap,
-        );
-      } else if (processServiceManager) {
-        context.services = processServiceManager;
-      } else if (routineServiceAdapter) {
-        context.services = routineServiceAdapter;
-      }
-
-      // Register event handlers on the event bus
-      if (_eventBus && options.events) {
-        for (const [event, handler] of Object.entries(options.events)) {
-          _eventBus.on(event, (data: unknown) => handler(data, log));
-        }
-      }
-    }
+    wireServices(context, config, log);
 
     // Resolve Resolvable values now that workdir/config are known.
     // Cast config to the inferred type — at runtime it IS that type (Zod parsed it).
