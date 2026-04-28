@@ -293,6 +293,27 @@ describe('ServiceAnnouncer', () => {
       expect(studio!.type).toBe('website');
     });
 
+    it('includes Powerhouse services after setPowerhouseConfig', () => {
+      announcer = new ServiceAnnouncer(createDefaults());
+      // Initially no Powerhouse services
+      expect(announcer.buildPayload().services).toHaveLength(0);
+
+      // Simulate switchboard becoming ready
+      announcer.setPowerhouseConfig(
+        { switchboard: { enabled: true }, connect: { enabled: false } },
+        {
+          'switchboard-graphql': 'http://localhost:5000/graphql',
+          'switchboard-mcp': 'http://localhost:5000/mcp',
+        },
+      );
+      const payload = announcer.buildPayload();
+      expect(payload.services).toHaveLength(2);
+      expect(payload.services.find(s => s.id === 'agent-switchboard-graphql')!.url)
+        .toBe('http://localhost:5000/graphql');
+      expect(payload.services.find(s => s.id === 'agent-switchboard-mcp')!.url)
+        .toBe('http://localhost:5000/mcp');
+    });
+
     it('filters excluded Powerhouse services', () => {
       announcer = new ServiceAnnouncer(createDefaults({
         reactorConfig: { switchboard: { enabled: true } },

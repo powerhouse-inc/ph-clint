@@ -776,7 +776,7 @@ export function defineCli<
     context: CommandContext,
     config: Record<string, unknown>,
     log: import('./types.js').Logger,
-  ): void {
+  ): ServiceAnnouncer | undefined {
     const servicesNow = options.services && options.services.length > 0;
     let processServiceManager: import('./types.js').ServiceManager | undefined;
     if (servicesNow && options.services) {
@@ -826,15 +826,26 @@ export function defineCli<
           logger: log,
         });
         announcer.announce().catch(() => {});
-        if (_eventBus) {
-          _eventBus.on('service:ready', () => announcer.scheduleAnnounce());
-          _eventBus.on('service:failed', () => announcer.scheduleAnnounce());
-          _eventBus.on('service:stopped', () => announcer.scheduleAnnounce());
-        }
+        const bus = getEventBus();
+        bus.on('service:ready', () => announcer.scheduleAnnounce());
+        bus.on('service:failed', () => announcer.scheduleAnnounce());
+        bus.on('service:stopped', () => announcer.scheduleAnnounce());
+        bus.on('powerhouse:switchboard:ready', (data: any) => {
+            announcer.setPowerhouseConfig(
+              { switchboard: { enabled: true }, connect: { enabled: !!reactorConfig?.connect?.enabled } },
+              {
+                'switchboard-graphql': data.switchboardUrl,
+                'switchboard-mcp': data.mcpUrl,
+              },
+            );
+            announcer.scheduleAnnounce();
+          });
+        return announcer;
       } else {
         log.info('Service announcement enabled but no URL configured — skipping announcements');
       }
     }
+    return undefined;
   }
 
   /**
@@ -886,7 +897,7 @@ export function defineCli<
     const log = createLogger(logLevel, stderrFn);
     const context = buildContext({ workdir, workspace, config, stdout: stdoutFn, log });
 
-    wireServices(context, config, log);
+    void wireServices(context, config, log);
 
     // Lazy agent provider
     let cachedProvider: AgentProvider | undefined;
@@ -1039,7 +1050,7 @@ export function defineCli<
     const log = createLogger(logLevel, stderr);
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
 
-    wireServices(context, config, log);
+    const serviceAnnouncer = wireServices(context, config, log);
 
     // Resolve Resolvable values now that workdir/config are known.
     // Cast config to the inferred type — at runtime it IS that type (Zod parsed it).
@@ -1115,6 +1126,12 @@ export function defineCli<
       if (switchboardInstance) {
         log.debug('Stopping Switchboard...');
         await switchboardInstance.shutdown();
+      }
+      // Final announcement with Powerhouse services removed (they're now stopped)
+      if (serviceAnnouncer) {
+        serviceAnnouncer.setPowerhouseConfig({ switchboard: { enabled: false } }, {});
+        await serviceAnnouncer.announce().catch(() => {});
+        serviceAnnouncer.dispose();
       }
       if (cachedReactor) {
         log.debug('Stopping Reactor...');
@@ -1487,9 +1504,14 @@ export function defineCli<
             stdout('Stdin closed — still serving. Press Ctrl+C to stop.');
             await new Promise<void>((resolve) => {
               const onSignal = async () => {
+                const suppress = () => {};
                 process.removeListener('SIGINT', onSignal);
                 process.removeListener('SIGTERM', onSignal);
+                process.on('SIGINT', suppress);
+                process.on('SIGTERM', suppress);
                 await teardown();
+                process.removeListener('SIGINT', suppress);
+                process.removeListener('SIGTERM', suppress);
                 resolve();
               };
               process.on('SIGINT', onSignal);
@@ -1517,10 +1539,16 @@ export function defineCli<
           stdout('Serving — press Ctrl+C to stop.');
           await new Promise<void>((resolve) => {
             const onSignal = async () => {
+              // Suppress duplicate signals from parent (pnpm) during teardown
+              const suppress = () => {};
               process.removeListener('SIGINT', onSignal);
               process.removeListener('SIGTERM', onSignal);
+              process.on('SIGINT', suppress);
+              process.on('SIGTERM', suppress);
               reportActiveServices(stdout);
               await teardown();
+              process.removeListener('SIGINT', suppress);
+              process.removeListener('SIGTERM', suppress);
               resolve();
             };
             process.on('SIGINT', onSignal);

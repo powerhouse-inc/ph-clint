@@ -71,8 +71,8 @@ export class ServiceAnnouncer {
   private readonly excludePH: Set<string>;
   private readonly excludeCli: Set<string>;
   private readonly logger: Logger;
-  private readonly reactorConfig?: { switchboard?: { enabled: boolean }; connect?: { enabled: boolean } };
-  private readonly powerhouseEndpoints?: Record<string, string>;
+  private reactorConfig?: { switchboard?: { enabled: boolean }; connect?: { enabled: boolean } };
+  private powerhouseEndpoints?: Record<string, string>;
 
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -212,6 +212,15 @@ export class ServiceAnnouncer {
     this.debounceTimer = setTimeout(() => {
       this.announce().catch(() => {});
     }, 2000);
+  }
+
+  /** Update Powerhouse configuration after Switchboard becomes ready. */
+  setPowerhouseConfig(
+    reactorConfig: { switchboard?: { enabled: boolean }; connect?: { enabled: boolean } },
+    endpoints: Record<string, string>,
+  ): void {
+    this.reactorConfig = reactorConfig;
+    this.powerhouseEndpoints = endpoints;
   }
 
   /** Clean up timers. */

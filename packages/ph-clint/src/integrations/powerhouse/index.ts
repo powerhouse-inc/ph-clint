@@ -138,7 +138,10 @@ export async function buildDefaultReactor<
       unsubscribe?.();
       try {
         const status = reactorModule.reactor.kill();
-        await status.completed;
+        await Promise.race([
+          status.completed,
+          new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+        ]);
       } catch {
         // Best-effort shutdown
       }
