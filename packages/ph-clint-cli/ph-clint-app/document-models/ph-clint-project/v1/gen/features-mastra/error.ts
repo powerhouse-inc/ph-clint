@@ -83,4 +83,6 @@ export const errors = {
   UpdateProfile: { MastraNotEnabledError, ProfileNotFoundError },
   RemoveProfile: { MastraNotEnabledError, ProfileNotFoundError },
   ReorderProfiles: { MastraNotEnabledError, ProfileNotFoundError },
+  SetAgentDescription: { MastraNotEnabledError },
+  SetAgentImage: { MastraNotEnabledError },
 };

@@ -31,6 +31,8 @@ export { createRoutine } from './core/routine.js';
 export { createRoutineServiceAdapter, createCompositeServiceManager } from './core/routine-service.js';
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export type { RenderedChunk } from './core/stream.js';
+export { ServiceAnnouncer } from './core/service-announcer.js';
+export type { AnnouncementPayload, AnnouncedService, ServiceAnnouncerOptions } from './core/service-announcer.js';
 export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';

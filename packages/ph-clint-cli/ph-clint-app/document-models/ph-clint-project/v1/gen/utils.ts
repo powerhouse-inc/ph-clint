@@ -17,6 +17,8 @@ export const initialGlobalState: PhClintProjectGlobalState = {
       enabled: false,
       agentId: null,
       agentName: null,
+      agentDescription: null,
+      agentImage: null,
       models: [],
       profiles: [],
     },
@@ -25,6 +27,10 @@ export const initialGlobalState: PhClintProjectGlobalState = {
   packages: [],
   externalSkills: [],
   publishHistory: [],
+  deployment: {
+    serviceAnnouncement: false,
+    supportedResources: ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'],
+  },
 };
 export const initialLocalState: PhClintProjectLocalState = {};
 

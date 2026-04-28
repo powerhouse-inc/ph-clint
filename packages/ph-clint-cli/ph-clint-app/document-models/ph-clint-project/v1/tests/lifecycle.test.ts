@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reducer, utils, importSpec } from 'document-models/ph-clint-project/v1';
+import { reducer, utils, importSpec, isPhClintProjectDocument, ImportSpecInputSchema } from 'document-models/ph-clint-project/v1';
 
 describe('IMPORT_SPEC', () => {
   const baseInput = {

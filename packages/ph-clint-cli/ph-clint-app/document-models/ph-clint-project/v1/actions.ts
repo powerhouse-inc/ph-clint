@@ -1,4 +1,4 @@
-import { baseActions } from "document-model";
+import { baseActions } from 'document-model';
 import {
   phClintProjectIdentityActions,
   phClintProjectFeaturesPowerhouseActions,
@@ -8,7 +8,8 @@ import {
   phClintProjectExternalSkillsActions,
   phClintProjectPublishingActions,
   phClintProjectLifecycleActions,
-} from "./gen/creators.js";
+  phClintProjectDeploymentActions,
+} from './gen/creators.js';
 
 /** Actions for the PhClintProject document model */
 
@@ -22,4 +23,5 @@ export const actions = {
   ...phClintProjectExternalSkillsActions,
   ...phClintProjectPublishingActions,
   ...phClintProjectLifecycleActions,
+  ...phClintProjectDeploymentActions,
 };

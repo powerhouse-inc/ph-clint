@@ -100,7 +100,22 @@ describe('buildCliTs', () => {
     });
     const code = buildCliTs(spec);
     expect(code).toContain("'foo-agent'");
-    expect(code).toContain("{ id: 'base', title: 'Base', file: 'base.md' }");
-    expect(code).toContain("{ id: 'tools', title: 'Tools', file: 'tools.md' }");
+    expect(code).toContain("'base.md'");
+    expect(code).toContain("'tools.md'");
+  });
+
+  it('emits serviceAnnouncement when deployment.serviceAnnouncement is true', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      deployment: { serviceAnnouncement: true },
+    });
+    const code = buildCliTs(spec);
+    expect(code).toContain('serviceAnnouncement: { enabled: true }');
+  });
+
+  it('omits serviceAnnouncement when deployment.serviceAnnouncement is false', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const code = buildCliTs(spec);
+    expect(code).not.toContain('serviceAnnouncement');
   });
 });

@@ -16,9 +16,9 @@
           "initialValue": ""
         },
         "global": {
-          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}",
+          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  serviceAnnouncement: Boolean!\n  supportedResources: [String!]!\n}",
           "examples": [],
-          "initialValue": "{\n  \"name\": null,\n  \"scope\": null,\n  \"version\": \"0.1.0\",\n  \"description\": \"\",\n  \"bin\": null,\n  \"features\": {\n    \"powerhouse\": \"Disabled\",\n    \"mastra\": {\n      \"enabled\": false,\n      \"agentId\": null,\n      \"agentName\": null,\n      \"models\": [],\n      \"profiles\": []\n    },\n    \"routine\": { \"enabled\": false }\n  },\n  \"packages\": [],\n  \"externalSkills\": [],\n  \"publishHistory\": []\n}"
+          "initialValue": "{\n  \"name\": null,\n  \"scope\": null,\n  \"version\": \"0.1.0\",\n  \"description\": \"\",\n  \"bin\": null,\n  \"features\": {\n    \"powerhouse\": \"Disabled\",\n    \"mastra\": {\n      \"enabled\": false,\n      \"agentId\": null,\n      \"agentName\": null,\n      \"agentDescription\": null,\n      \"agentImage\": null,\n      \"models\": [],\n      \"profiles\": []\n    },\n    \"routine\": { \"enabled\": false }\n  },\n  \"packages\": [],\n  \"externalSkills\": [],\n  \"publishHistory\": [],\n  \"deployment\": {\n    \"serviceAnnouncement\": false,\n    \"supportedResources\": [\n      \"vetra-agent-s\",\n      \"vetra-agent-m\",\n      \"vetra-agent-l\",\n      \"vetra-agent-xl\",\n      \"vetra-agent-xxl\"\n    ]\n  }\n}"
         }
       },
       "modules": [
@@ -147,9 +147,9 @@
               "id": "o-set-powerhouse-level",
               "name": "SET_POWERHOUSE_LEVEL",
               "description": "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
-              "schema": "input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n}",
+              "schema": "input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n  skipAutoAnnounce: Boolean\n}",
               "template": "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
-              "reducer": "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const appName = `${state.name}-app`;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}",
+              "reducer": "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const appName = `${state.name}-app`;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}\n// Auto-enable service announcement when reaching Switchboard or above\nif (next >= 2 && !action.input.skipAutoAnnounce) {\n  state.deployment.serviceAnnouncement = true;\n}",
               "errors": [
                 {
                   "id": "e-cannot-lower-powerhouse",
@@ -201,7 +201,7 @@
               "description": "Disable the Mastra agent feature. Does not affect Routine — disable that separately if desired.",
               "schema": "input DisableMastraInput {\n  _: Boolean\n}",
               "template": "Disable the Mastra agent feature. Does not affect Routine — disable that separately if desired.",
-              "reducer": "state.features.mastra.enabled = false;\nstate.features.mastra.agentId = null;\nstate.features.mastra.agentName = null;\nstate.features.mastra.models = [];\nstate.features.mastra.profiles = [];",
+              "reducer": "state.features.mastra.enabled = false;\nstate.features.mastra.agentId = null;\nstate.features.mastra.agentName = null;\nstate.features.mastra.agentDescription = null;\nstate.features.mastra.agentImage = null;\nstate.features.mastra.models = [];\nstate.features.mastra.profiles = [];",
               "errors": [],
               "examples": [],
               "scope": "global"
@@ -455,6 +455,44 @@
                   "name": "ProfileNotFoundError",
                   "code": "PROFILE_NOT_FOUND",
                   "description": "A referenced profile was not found.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-set-agent-description",
+              "name": "SET_AGENT_DESCRIPTION",
+              "description": "Set the agent description. Only valid when mastra is enabled.",
+              "schema": "input SetAgentDescriptionInput {\n  description: String!\n}",
+              "template": "Set the agent description. Only valid when mastra is enabled.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent description when Mastra is disabled.');\n}\nstate.features.mastra.agentDescription = action.input.description;",
+              "errors": [
+                {
+                  "id": "e-set-agent-desc-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before setting agent description.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-set-agent-image",
+              "name": "SET_AGENT_IMAGE",
+              "description": "Set the agent image URL (avatar). Only valid when mastra is enabled.",
+              "schema": "input SetAgentImageInput {\n  image: URL!\n}",
+              "template": "Set the agent image URL (avatar). Only valid when mastra is enabled.",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent image when Mastra is disabled.');\n}\nstate.features.mastra.agentImage = action.input.image;",
+              "errors": [
+                {
+                  "id": "e-set-agent-image-not-enabled",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled before setting agent image.",
                   "template": ""
                 }
               ],
@@ -798,6 +836,62 @@
               "template": "Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.",
               "reducer": "state.name = action.input.name;\nstate.scope = action.input.scope || null;\nstate.version = action.input.version;\nstate.description = action.input.description;\nstate.bin = action.input.bin || null;\nstate.features.powerhouse = action.input.powerhouse;\nstate.features.mastra.enabled = action.input.mastraEnabled;\nstate.features.routine.enabled = action.input.routineEnabled;\nstate.packages = action.input.packages.map(p => ({\n  id: p.id,\n  packageName: p.packageName,\n  documentTypes: [...p.documentTypes],\n}));\nstate.externalSkills = action.input.externalSkills.map(s => ({\n  id: s.id,\n  name: s.name,\n  githubUrl: s.githubUrl,\n}));\nstate.features.mastra.agentId = action.input.agentId || null;\nstate.features.mastra.agentName = action.input.agentName || null;\nstate.features.mastra.models = action.input.models ? action.input.models.map(m => ({\n  id: m.id,\n  isDefault: m.isDefault,\n})) : [];\nstate.features.mastra.profiles = action.input.profiles ? action.input.profiles.map(p => ({\n  id: p.id,\n  title: p.title,\n  content: p.content,\n})) : [];",
               "errors": [],
+              "examples": [],
+              "scope": "global"
+            }
+          ]
+        },
+        {
+          "id": "m-deployment",
+          "name": "deployment",
+          "description": "Deployment settings: service announcement toggle and supported resource tiers.",
+          "operations": [
+            {
+              "id": "o-set-service-announcement",
+              "name": "SET_SERVICE_ANNOUNCEMENT",
+              "description": "Toggle the service announcement feature.",
+              "schema": "input SetServiceAnnouncementInput {\n  enabled: Boolean!\n}",
+              "template": "Toggle the service announcement feature.",
+              "reducer": "state.deployment.serviceAnnouncement = action.input.enabled;",
+              "errors": [],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-add-supported-resource",
+              "name": "ADD_SUPPORTED_RESOURCE",
+              "description": "Add a supported resource tier. Guards against duplicates.",
+              "schema": "input AddSupportedResourceInput {\n  resource: String!\n}",
+              "template": "Add a supported resource tier. Guards against duplicates.",
+              "reducer": "if (state.deployment.supportedResources.includes(action.input.resource)) {\n  throw new DuplicateResourceError(`Resource already exists: ${action.input.resource}`);\n}\nstate.deployment.supportedResources.push(action.input.resource);",
+              "errors": [
+                {
+                  "id": "e-duplicate-resource",
+                  "name": "DuplicateResourceError",
+                  "code": "DUPLICATE_RESOURCE",
+                  "description": "This resource is already in the supported resources list.",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-remove-supported-resource",
+              "name": "REMOVE_SUPPORTED_RESOURCE",
+              "description": "Remove a supported resource tier.",
+              "schema": "input RemoveSupportedResourceInput {\n  resource: String!\n}",
+              "template": "Remove a supported resource tier.",
+              "reducer": "const idx = state.deployment.supportedResources.indexOf(action.input.resource);\nif (idx === -1) {\n  throw new ResourceNotFoundError(`Resource not found: ${action.input.resource}`);\n}\nstate.deployment.supportedResources.splice(idx, 1);",
+              "errors": [
+                {
+                  "id": "e-resource-not-found",
+                  "name": "ResourceNotFoundError",
+                  "code": "RESOURCE_NOT_FOUND",
+                  "description": "The specified resource was not found in the supported resources list.",
+                  "template": ""
+                }
+              ],
               "examples": [],
               "scope": "global"
             }

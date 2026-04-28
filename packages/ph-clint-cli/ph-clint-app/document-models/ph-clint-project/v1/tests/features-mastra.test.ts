@@ -1,5 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { reducer, utils, enableMastra, disableMastra, setAgentId, setAgentName, addModel, removeModel, setDefaultModel, addProfile, updateProfile, removeProfile, reorderProfiles } from 'document-models/ph-clint-project/v1';
+import {
+  reducer,
+  utils,
+  enableMastra,
+  disableMastra,
+  setAgentId,
+  setAgentName,
+  addModel,
+  removeModel,
+  setDefaultModel,
+  addProfile,
+  updateProfile,
+  removeProfile,
+  reorderProfiles,
+  isPhClintProjectDocument,
+  EnableMastraInputSchema,
+  DisableMastraInputSchema,
+  SetAgentIdInputSchema,
+  SetAgentNameInputSchema,
+  AddModelInputSchema,
+  RemoveModelInputSchema,
+  SetDefaultModelInputSchema,
+  AddProfileInputSchema,
+  UpdateProfileInputSchema,
+  RemoveProfileInputSchema,
+  ReorderProfilesInputSchema,
+  setAgentDescription,
+  setAgentImage,
+  SetAgentDescriptionInputSchema,
+  SetAgentImageInputSchema,
+} from 'document-models/ph-clint-project/v1';
 
 /** Helper: creates a document with mastra enabled */
 function createEnabledDoc() {
@@ -420,5 +450,54 @@ describe('REORDER_PROFILES', () => {
     const updated = reducer(doc, reorderProfiles({ ids: ['base'], insertBefore: null }));
 
     expect(updated.operations.global[0].error).toContain('Mastra is disabled');
+  });
+});
+
+describe('FeaturesMastraOperations', () => {
+  describe('SET_AGENT_DESCRIPTION', () => {
+    it('should set agent description when enabled', () => {
+      const doc = createEnabledDoc();
+      const updated = reducer(doc, setAgentDescription({ description: 'A helpful assistant' }));
+
+      expect(updated.state.global.features.mastra.agentDescription).toBe('A helpful assistant');
+      expect(updated.operations.global[1].error).toBeUndefined();
+    });
+
+    it('should reject when mastra is disabled', () => {
+      const doc = utils.createDocument();
+      const updated = reducer(doc, setAgentDescription({ description: 'A helpful assistant' }));
+
+      expect(updated.operations.global[0].error).toContain('Mastra is disabled');
+    });
+  });
+
+  describe('SET_AGENT_IMAGE', () => {
+    it('should set agent image URL when enabled', () => {
+      const doc = createEnabledDoc();
+      const updated = reducer(doc, setAgentImage({ image: 'https://example.com/avatar.png' }));
+
+      expect(updated.state.global.features.mastra.agentImage).toBe('https://example.com/avatar.png');
+      expect(updated.operations.global[1].error).toBeUndefined();
+    });
+
+    it('should reject when mastra is disabled', () => {
+      const doc = utils.createDocument();
+      const updated = reducer(doc, setAgentImage({ image: 'https://example.com/avatar.png' }));
+
+      expect(updated.operations.global[0].error).toContain('Mastra is disabled');
+    });
+  });
+
+  describe('DISABLE_MASTRA clears new fields', () => {
+    it('should clear agentDescription and agentImage on disable', () => {
+      let doc = createEnabledDoc();
+      doc = reducer(doc, setAgentDescription({ description: 'desc' }));
+      doc = reducer(doc, setAgentImage({ image: 'https://example.com/img.png' }));
+
+      const disabled = reducer(doc, disableMastra({ _: true }));
+
+      expect(disabled.state.global.features.mastra.agentDescription).toBeNull();
+      expect(disabled.state.global.features.mastra.agentImage).toBeNull();
+    });
   });
 });

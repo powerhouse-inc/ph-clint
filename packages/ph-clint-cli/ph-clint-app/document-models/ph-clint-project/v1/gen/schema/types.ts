@@ -84,6 +84,10 @@ export type AddProfileInput = {
   title: Scalars['String']['input'];
 };
 
+export type AddSupportedResourceInput = {
+  resource: Scalars['String']['input'];
+};
+
 export type BumpVersionInput = {
   version: Scalars['String']['input'];
 };
@@ -170,6 +174,11 @@ export type PhClintAgentProfile = {
   title: Scalars['String']['output'];
 };
 
+export type PhClintDeployment = {
+  serviceAnnouncement: Scalars['Boolean']['output'];
+  supportedResources: Array<Scalars['String']['output']>;
+};
+
 export type PhClintFeatures = {
   mastra: PhClintMastraFeature;
   powerhouse: PowerhouseLevel;
@@ -177,7 +186,9 @@ export type PhClintFeatures = {
 };
 
 export type PhClintMastraFeature = {
+  agentDescription: Maybe<Scalars['String']['output']>;
   agentId: Maybe<Scalars['String']['output']>;
+  agentImage: Maybe<Scalars['URL']['output']>;
   agentName: Maybe<Scalars['String']['output']>;
   enabled: Scalars['Boolean']['output'];
   models: Array<PhClintAgentModel>;
@@ -186,6 +197,7 @@ export type PhClintMastraFeature = {
 
 export type PhClintProjectState = {
   bin: Maybe<Scalars['String']['output']>;
+  deployment: PhClintDeployment;
   description: Scalars['String']['output'];
   externalSkills: Array<ExternalSkill>;
   features: PhClintFeatures;
@@ -256,13 +268,25 @@ export type RemoveProfileInput = {
   id: Scalars['String']['input'];
 };
 
+export type RemoveSupportedResourceInput = {
+  resource: Scalars['String']['input'];
+};
+
 export type ReorderProfilesInput = {
   ids: Array<Scalars['String']['input']>;
   insertBefore?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type SetAgentDescriptionInput = {
+  description: Scalars['String']['input'];
+};
+
 export type SetAgentIdInput = {
   agentId: Scalars['String']['input'];
+};
+
+export type SetAgentImageInput = {
+  image: Scalars['URL']['input'];
 };
 
 export type SetAgentNameInput = {
@@ -297,6 +321,7 @@ export type SetPackageNameInput = {
 
 export type SetPowerhouseLevelInput = {
   level: PowerhouseLevel;
+  skipAutoAnnounce?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type SetPublishStatusInput = {
@@ -306,6 +331,10 @@ export type SetPublishStatusInput = {
 
 export type SetScopeInput = {
   scope: Scalars['String']['input'];
+};
+
+export type SetServiceAnnouncementInput = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type SetVersionInput = {

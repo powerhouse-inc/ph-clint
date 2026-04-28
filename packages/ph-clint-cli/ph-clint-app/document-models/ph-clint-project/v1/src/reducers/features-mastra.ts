@@ -18,6 +18,8 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
     state.features.mastra.enabled = false;
     state.features.mastra.agentId = null;
     state.features.mastra.agentName = null;
+    state.features.mastra.agentDescription = null;
+    state.features.mastra.agentImage = null;
     state.features.mastra.models = [];
     state.features.mastra.profiles = [];
   },
@@ -159,5 +161,17 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
     } else {
       state.features.mastra.profiles.push(...moving);
     }
+  },
+  setAgentDescriptionOperation(state, action) {
+    if (!state.features.mastra.enabled) {
+      throw new MastraNotEnabledError('Cannot set agent description when Mastra is disabled.');
+    }
+    state.features.mastra.agentDescription = action.input.description;
+  },
+  setAgentImageOperation(state, action) {
+    if (!state.features.mastra.enabled) {
+      throw new MastraNotEnabledError('Cannot set agent image when Mastra is disabled.');
+    }
+    state.features.mastra.agentImage = action.input.image;
   },
 };

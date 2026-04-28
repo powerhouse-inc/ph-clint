@@ -11,8 +11,24 @@ import {
   UpdateProfileInputSchema,
   RemoveProfileInputSchema,
   ReorderProfilesInputSchema,
+  SetAgentDescriptionInputSchema,
+  SetAgentImageInputSchema,
 } from '../schema/zod.js';
-import type { EnableMastraInput, DisableMastraInput, SetAgentIdInput, SetAgentNameInput, AddModelInput, RemoveModelInput, SetDefaultModelInput, AddProfileInput, UpdateProfileInput, RemoveProfileInput, ReorderProfilesInput } from '../types.js';
+import type {
+  EnableMastraInput,
+  DisableMastraInput,
+  SetAgentIdInput,
+  SetAgentNameInput,
+  AddModelInput,
+  RemoveModelInput,
+  SetDefaultModelInput,
+  AddProfileInput,
+  UpdateProfileInput,
+  RemoveProfileInput,
+  ReorderProfilesInput,
+  SetAgentDescriptionInput,
+  SetAgentImageInput,
+} from '../types.js';
 import type {
   EnableMastraAction,
   DisableMastraAction,
@@ -25,6 +41,8 @@ import type {
   UpdateProfileAction,
   RemoveProfileAction,
   ReorderProfilesAction,
+  SetAgentDescriptionAction,
+  SetAgentImageAction,
 } from './actions.js';
 
 export const enableMastra = (input: EnableMastraInput) => createAction<EnableMastraAction>('ENABLE_MASTRA', { ...input }, undefined, EnableMastraInputSchema, 'global');
@@ -48,3 +66,7 @@ export const updateProfile = (input: UpdateProfileInput) => createAction<UpdateP
 export const removeProfile = (input: RemoveProfileInput) => createAction<RemoveProfileAction>('REMOVE_PROFILE', { ...input }, undefined, RemoveProfileInputSchema, 'global');
 
 export const reorderProfiles = (input: ReorderProfilesInput) => createAction<ReorderProfilesAction>('REORDER_PROFILES', { ...input }, undefined, ReorderProfilesInputSchema, 'global');
+
+export const setAgentDescription = (input: SetAgentDescriptionInput) => createAction<SetAgentDescriptionAction>('SET_AGENT_DESCRIPTION', { ...input }, undefined, SetAgentDescriptionInputSchema, 'global');
+
+export const setAgentImage = (input: SetAgentImageInput) => createAction<SetAgentImageAction>('SET_AGENT_IMAGE', { ...input }, undefined, SetAgentImageInputSchema, 'global');

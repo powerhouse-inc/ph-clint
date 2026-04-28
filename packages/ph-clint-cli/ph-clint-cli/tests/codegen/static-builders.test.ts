@@ -104,7 +104,7 @@ describe('buildMastraIndexTs', () => {
     });
     const out = buildMastraIndexTs(spec);
     expect(out).toContain("import { Mastra } from '@mastra/core/mastra'");
-    expect(out).toContain("'foo-agent'");
+    expect(out).toContain('mastraAgent.id');
     expect(out).toContain('export const mastra');
   });
 });

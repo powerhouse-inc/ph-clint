@@ -11,6 +11,8 @@ import type {
   UpdateProfileAction,
   RemoveProfileAction,
   ReorderProfilesAction,
+  SetAgentDescriptionAction,
+  SetAgentImageAction,
 } from './actions.js';
 import type { PhClintProjectState } from '../types.js';
 
@@ -26,4 +28,6 @@ export interface PhClintProjectFeaturesMastraOperations {
   updateProfileOperation: (state: PhClintProjectState, action: UpdateProfileAction, dispatch?: SignalDispatch) => void;
   removeProfileOperation: (state: PhClintProjectState, action: RemoveProfileAction, dispatch?: SignalDispatch) => void;
   reorderProfilesOperation: (state: PhClintProjectState, action: ReorderProfilesAction, dispatch?: SignalDispatch) => void;
+  setAgentDescriptionOperation: (state: PhClintProjectState, action: SetAgentDescriptionAction, dispatch?: SignalDispatch) => void;
+  setAgentImageOperation: (state: PhClintProjectState, action: SetAgentImageAction, dispatch?: SignalDispatch) => void;
 }

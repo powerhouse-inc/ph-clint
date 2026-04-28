@@ -127,14 +127,19 @@ describe('buildFrameworkTs', () => {
     expect(code).toContain('export const configSchema = z.object({');
   });
 
-  it('Mastra on — seeds model + apiKey defaults in configSchema/secretsSchema', () => {
+  it('Mastra on — seeds model + per-provider apiKey defaults in configSchema/secretsSchema', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      features: { mastra: { enabled: true } },
+      features: {
+        mastra: {
+          enabled: true,
+          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        },
+      },
     });
     const code = buildFrameworkTs(spec);
     expect(code).toContain("model: z.string().default('anthropic/claude-sonnet-4-5')");
-    expect(code).toContain('apiKey: z.string().optional()');
+    expect(code).toContain('anthropicApiKey: z.string().optional()');
   });
 });
 

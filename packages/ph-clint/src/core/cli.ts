@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Command as Commander } from 'commander';
+import { z } from 'zod';
 import type {
   AgentSetupContext,
   AgentLoader,
@@ -17,6 +18,7 @@ import type {
   ResolvedInteractiveConfig,
   Routine,
   RunOptions,
+  ServiceDefinition,
 } from './types.js';
 import type {
   ReactorConfiguration,
@@ -51,6 +53,7 @@ import { createRoutineServiceAdapter, createCompositeServiceManager } from './ro
 import { createReplSession } from '../interactive/session.js';
 import { formatZodError } from './errors.js';
 import { createLogger } from './logger.js';
+import { ServiceAnnouncer } from './service-announcer.js';
 
 /* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
 const defaultStdout = (text: string) => { process.stdout.write(text); };
@@ -116,6 +119,17 @@ export function defineCli<
     }
     const configObj = options.configSchema as any;
     options = { ...options, configSchema: configObj.merge(secretsObj) as unknown as TSchema };
+  }
+
+  // Auto-inject service announcement config fields when enabled
+  if (options.serviceAnnouncement?.enabled && options.configSchema) {
+    const announceSchema = z.object({
+      serviceAnnounceUrl: z.string().url().optional(),
+      serviceAnnounceToken: z.string().optional(),
+    });
+    sensitiveKeys.add('serviceAnnounceToken');
+    const configObj = options.configSchema as any;
+    options = { ...options, configSchema: configObj.merge(announceSchema) as unknown as TSchema };
   }
 
   const commandMap = new Map<string, Command>();
@@ -834,6 +848,34 @@ export function defineCli<
       if (_eventBus && options.events) {
         for (const [event, handler] of Object.entries(options.events)) {
           _eventBus.on(event, (data: unknown) => handler(data, log));
+        }
+      }
+
+      // Service announcement
+      if (options.serviceAnnouncement?.enabled) {
+        const announceUrl = (config as Record<string, unknown>).serviceAnnounceUrl as string | undefined;
+        const announceToken = (config as Record<string, unknown>).serviceAnnounceToken as string | undefined;
+        if (announceUrl) {
+          const announcer = new ServiceAnnouncer({
+            cliName: options.name,
+            url: announceUrl,
+            token: announceToken,
+            serviceDefinitions: (options.services ?? []) as ServiceDefinition[],
+            serviceManager: context.services!,
+            excludePowerhouseServices: options.serviceAnnouncement.excludePowerhouseServices,
+            excludeCliServices: options.serviceAnnouncement.excludeCliServices,
+            logger: log,
+          });
+          // Initial announcement
+          announcer.announce().catch(() => {});
+          // Subscribe to service lifecycle events
+          if (_eventBus) {
+            _eventBus.on('service:ready', () => announcer.scheduleAnnounce());
+            _eventBus.on('service:failed', () => announcer.scheduleAnnounce());
+            _eventBus.on('service:stopped', () => announcer.scheduleAnnounce());
+          }
+        } else {
+          log.info('Service announcement enabled but no URL configured — skipping announcements');
         }
       }
     }

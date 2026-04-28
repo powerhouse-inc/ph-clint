@@ -12,6 +12,7 @@ import { phClintProjectPowerhousePackagesOperations } from '../src/reducers/powe
 import { phClintProjectExternalSkillsOperations } from '../src/reducers/external-skills.js';
 import { phClintProjectPublishingOperations } from '../src/reducers/publishing.js';
 import { phClintProjectLifecycleOperations } from '../src/reducers/lifecycle.js';
+import { phClintProjectDeploymentOperations } from '../src/reducers/deployment.js';
 
 import {
   SetPackageNameInputSchema,
@@ -33,6 +34,8 @@ import {
   UpdateProfileInputSchema,
   RemoveProfileInputSchema,
   ReorderProfilesInputSchema,
+  SetAgentDescriptionInputSchema,
+  SetAgentImageInputSchema,
   EnableRoutineInputSchema,
   DisableRoutineInputSchema,
   AddPowerhousePackageInputSchema,
@@ -49,6 +52,9 @@ import {
   PublishProductionInputSchema,
   SetPublishStatusInputSchema,
   ImportSpecInputSchema,
+  SetServiceAnnouncementInputSchema,
+  AddSupportedResourceInputSchema,
+  RemoveSupportedResourceInputSchema,
 } from './schema/zod.js';
 
 const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispatch) => {
@@ -208,6 +214,22 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispat
       break;
     }
 
+    case 'SET_AGENT_DESCRIPTION': {
+      SetAgentDescriptionInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.setAgentDescriptionOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_AGENT_IMAGE': {
+      SetAgentImageInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.setAgentImageOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
     case 'ENABLE_ROUTINE': {
       EnableRoutineInputSchema().parse(action.input);
 
@@ -332,6 +354,30 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispat
       ImportSpecInputSchema().parse(action.input);
 
       phClintProjectLifecycleOperations.importSpecOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_SERVICE_ANNOUNCEMENT': {
+      SetServiceAnnouncementInputSchema().parse(action.input);
+
+      phClintProjectDeploymentOperations.setServiceAnnouncementOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'ADD_SUPPORTED_RESOURCE': {
+      AddSupportedResourceInputSchema().parse(action.input);
+
+      phClintProjectDeploymentOperations.addSupportedResourceOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'REMOVE_SUPPORTED_RESOURCE': {
+      RemoveSupportedResourceInputSchema().parse(action.input);
+
+      phClintProjectDeploymentOperations.removeSupportedResourceOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }

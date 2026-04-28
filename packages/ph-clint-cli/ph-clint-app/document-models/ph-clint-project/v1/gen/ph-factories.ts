@@ -19,6 +19,8 @@ export function defaultGlobalState(): PhClintProjectGlobalState {
         enabled: false,
         agentId: null,
         agentName: null,
+        agentDescription: null,
+        agentImage: null,
         models: [],
         profiles: [],
       },
@@ -27,6 +29,10 @@ export function defaultGlobalState(): PhClintProjectGlobalState {
     packages: [],
     externalSkills: [],
     publishHistory: [],
+    deployment: {
+      serviceAnnouncement: false,
+      supportedResources: ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'],
+    },
   };
 }
 

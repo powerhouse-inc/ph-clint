@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { generateId } from 'document-model';
 import { DocumentToolbar } from '@powerhousedao/design-system/connect';
 import { useSelectedPhClintProjectDocument, actions } from 'document-models/ph-clint-project';
-import type { PowerhouseLevel, PowerhousePackage, ExternalSkill, PublishRecord, PhClintProjectState, PhClintMastraFeature, PhClintAgentModel, PhClintAgentProfile } from '../../document-models/ph-clint-project/v1/gen/types.js';
+import type { PowerhouseLevel, PowerhousePackage, ExternalSkill, PublishRecord, PhClintProjectState, PhClintMastraFeature, PhClintAgentModel, PhClintAgentProfile, PhClintDeployment } from '../../document-models/ph-clint-project/v1/gen/types.js';
 
 const POWERHOUSE_LEVELS: { value: PowerhouseLevel; description: string }[] = [
   { value: 'Disabled', description: 'No Powerhouse integration' },
@@ -43,7 +43,7 @@ function Toggle(props: { label: string; checked: boolean; disabled?: boolean; hi
   );
 }
 
-type Tab = 'spec' | 'agent' | 'skills' | 'publish';
+type Tab = 'spec' | 'agent' | 'powerhouse' | 'skills' | 'publish';
 
 export default function Editor() {
   const [document, dispatch] = useSelectedPhClintProjectDocument();
@@ -107,6 +107,13 @@ export default function Editor() {
   const updateProfile = (id: string, title?: string, content?: string) => dispatch(actions.updateProfile({ id, title, content }));
   const removeProfile = (id: string) => dispatch(actions.removeProfile({ id }));
   const reorderProfiles = (ids: string[], insertBefore: string | null) => dispatch(actions.reorderProfiles({ ids, insertBefore }));
+  const setAgentDescription = (description: string) => dispatch(actions.setAgentDescription({ description }));
+  const setAgentImage = (image: string) => dispatch(actions.setAgentImage({ image }));
+
+  // deployment dispatchers
+  const setServiceAnnouncement = (enabled: boolean) => dispatch(actions.setServiceAnnouncement({ enabled }));
+  const addSupportedResource = (resource: string) => dispatch(actions.addSupportedResource({ resource }));
+  const removeSupportedResource = (resource: string) => dispatch(actions.removeSupportedResource({ resource }));
 
   const isAboveDisabled = powerhouse !== 'Disabled';
 
@@ -125,6 +132,9 @@ export default function Editor() {
           </button>
           <button className={tabClasses('agent')} onClick={() => setActiveTab('agent')}>
             Agent
+          </button>
+          <button className={tabClasses('powerhouse')} onClick={() => setActiveTab('powerhouse')}>
+            Powerhouse
           </button>
           <button className={tabClasses('skills')} onClick={() => setActiveTab('skills')}>
             Skills
@@ -149,10 +159,6 @@ export default function Editor() {
             setPowerhouseLevel={setPowerhouseLevel}
             toggleMastra={toggleMastra}
             toggleRoutine={toggleRoutine}
-            addPackage={addPackage}
-            removePackage={removePackage}
-            addDocType={addDocType}
-            removeDocType={removeDocType}
           />
         )}
 
@@ -161,6 +167,8 @@ export default function Editor() {
             mastra={mastra}
             setAgentId={setAgentId}
             setAgentName={setAgentName}
+            setAgentDescription={setAgentDescription}
+            setAgentImage={setAgentImage}
             addModel={addModel}
             removeModel={removeModel}
             setDefaultModel={setDefaultModel}
@@ -171,10 +179,34 @@ export default function Editor() {
           />
         )}
 
+        {activeTab === 'powerhouse' && (
+          <PowerhouseTab
+            packages={state.packages}
+            isAboveDisabled={isAboveDisabled}
+            appPackageName={state.name ? `${state.name}-app` : null}
+            addPackage={addPackage}
+            removePackage={removePackage}
+            addDocType={addDocType}
+            removeDocType={removeDocType}
+          />
+        )}
+
         {activeTab === 'skills' && <SkillsTab skills={state.externalSkills} addSkill={addSkill} removeSkill={removeSkill} />}
 
         {activeTab === 'publish' && (
-          <PublishTab version={state.version} publishHistory={state.publishHistory} documentHeader={document.header} bumpVersion={bumpVersion} publishDev={publishDev} publishStaging={publishStaging} publishProduction={publishProduction} />
+          <PublishTab
+            version={state.version}
+            publishHistory={state.publishHistory}
+            documentHeader={document.header}
+            deployment={state.deployment}
+            bumpVersion={bumpVersion}
+            publishDev={publishDev}
+            publishStaging={publishStaging}
+            publishProduction={publishProduction}
+            setServiceAnnouncement={setServiceAnnouncement}
+            addSupportedResource={addSupportedResource}
+            removeSupportedResource={removeSupportedResource}
+          />
         )}
       </div>
     </div>
@@ -197,10 +229,6 @@ function SpecTab(props: {
   setPowerhouseLevel: (level: PowerhouseLevel) => void;
   toggleMastra: (enabled: boolean) => void;
   toggleRoutine: (enabled: boolean) => void;
-  addPackage: (packageName: string) => void;
-  removePackage: (id: string) => void;
-  addDocType: (packageId: string, documentType: string) => void;
-  removeDocType: (packageId: string, documentType: string) => void;
 }) {
   const { state } = props;
 
@@ -248,16 +276,31 @@ function SpecTab(props: {
           <Toggle label="Routine loop" checked={props.routine.enabled} hint="tick-based execution loop with triggers" onChange={props.toggleRoutine} />
         </div>
       </section>
-
-      {/* Packages — only visible when Powerhouse >= Reactor */}
-      {props.isAboveDisabled && (
-        <>
-          <hr />
-          <PackagesSection packages={state.packages} addPackage={props.addPackage} removePackage={props.removePackage} addDocType={props.addDocType} removeDocType={props.removeDocType} appPackageName={state.name ? `${state.name}-app` : null} />
-        </>
-      )}
     </>
   );
+}
+
+/* ── Powerhouse Tab ──────────────────────────────────────────── */
+
+function PowerhouseTab(props: {
+  packages: PowerhousePackage[];
+  isAboveDisabled: boolean;
+  appPackageName: string | null;
+  addPackage: (packageName: string) => void;
+  removePackage: (id: string) => void;
+  addDocType: (packageId: string, documentType: string) => void;
+  removeDocType: (packageId: string, documentType: string) => void;
+}) {
+  if (!props.isAboveDisabled) {
+    return (
+      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+        <h3 className="text-lg font-semibold">Powerhouse</h3>
+        <p className="mt-2">Enable Powerhouse in the Spec tab (set level to Reactor or above) to manage packages.</p>
+      </section>
+    );
+  }
+
+  return <PackagesSection packages={props.packages} addPackage={props.addPackage} removePackage={props.removePackage} addDocType={props.addDocType} removeDocType={props.removeDocType} appPackageName={props.appPackageName} />;
 }
 
 /* ── Agent Tab ────────────────────────────────────────────────── */
@@ -266,6 +309,8 @@ function AgentTab(props: {
   mastra: PhClintMastraFeature;
   setAgentId: (agentId: string) => void;
   setAgentName: (agentName: string) => void;
+  setAgentDescription: (description: string) => void;
+  setAgentImage: (image: string) => void;
   addModel: (id: string, isDefault?: boolean) => void;
   removeModel: (id: string) => void;
   setDefaultModel: (id: string) => void;
@@ -292,6 +337,8 @@ function AgentTab(props: {
         <h3 className="text-lg font-semibold">Agent Identity</h3>
         <TextField label="Agent ID" value={mastra.agentId ?? ''} placeholder="my-agent" onCommit={props.setAgentId} />
         <TextField label="Agent Name" value={mastra.agentName ?? ''} placeholder="My Agent" onCommit={props.setAgentName} />
+        <TextField label="Agent Description" value={mastra.agentDescription ?? ''} placeholder="A brief description of what this agent does" onCommit={props.setAgentDescription} />
+        <TextField label="Agent Image URL" value={mastra.agentImage ?? ''} placeholder="https://example.com/avatar.png" onCommit={props.setAgentImage} />
       </section>
 
       <hr />
@@ -574,10 +621,14 @@ function PublishTab(props: {
   version: string;
   publishHistory: PublishRecord[];
   documentHeader: { id: string; documentType: string };
+  deployment: PhClintDeployment;
   bumpVersion: (version: string) => void;
   publishDev: () => void;
   publishStaging: () => void;
   publishProduction: () => void;
+  setServiceAnnouncement: (enabled: boolean) => void;
+  addSupportedResource: (resource: string) => void;
+  removeSupportedResource: (resource: string) => void;
 }) {
   const recentHistory = props.publishHistory.slice(-5).reverse();
 
@@ -624,6 +675,11 @@ function PublishTab(props: {
 
       <hr />
 
+      {/* Deployment */}
+      <DeploymentSection deployment={props.deployment} setServiceAnnouncement={props.setServiceAnnouncement} addSupportedResource={props.addSupportedResource} removeSupportedResource={props.removeSupportedResource} />
+
+      <hr />
+
       {/* Document Metadata */}
       <section className="my-6 grid grid-cols-2 gap-x-8">
         <label>
@@ -636,6 +692,90 @@ function PublishTab(props: {
         </label>
       </section>
     </>
+  );
+}
+
+/* ── Deployment Section ───────────────────────────────────────── */
+
+const KNOWN_RESOURCES = ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'];
+
+function DeploymentSection(props: { deployment: PhClintDeployment; setServiceAnnouncement: (enabled: boolean) => void; addSupportedResource: (resource: string) => void; removeSupportedResource: (resource: string) => void }) {
+  const [newResource, setNewResource] = useState('');
+  const { deployment } = props;
+  const customResources = deployment.supportedResources.filter((r) => !KNOWN_RESOURCES.includes(r));
+
+  const handleAddCustom = () => {
+    const resource = newResource.trim();
+    if (resource) {
+      props.addSupportedResource(resource);
+      setNewResource('');
+    }
+  };
+
+  return (
+    <section className="my-6">
+      <h3 className="text-lg font-semibold">Deployment</h3>
+
+      <div className="my-3 rounded border border-gray-200 bg-white p-4">
+        <Toggle label="Service Announcement" checked={deployment.serviceAnnouncement} hint="Announce this service to the network on startup" onChange={props.setServiceAnnouncement} />
+      </div>
+
+      <div className="my-3 rounded border border-gray-200 bg-white p-4">
+        <h4 className="text-base font-semibold">Supported Resources</h4>
+        <p className="text-sm text-gray-600">Resource tiers this project supports.</p>
+
+        <div className="mt-3 space-y-1">
+          {KNOWN_RESOURCES.map((resource) => {
+            const checked = deployment.supportedResources.includes(resource);
+            return (
+              <label key={resource} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    if (checked) props.removeSupportedResource(resource);
+                    else props.addSupportedResource(resource);
+                  }}
+                />
+                <span className="font-mono text-sm">{resource}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        {customResources.length > 0 && (
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <h5 className="text-sm font-medium text-gray-600">Custom resources</h5>
+            <ul className="mt-1 space-y-1">
+              {customResources.map((resource) => (
+                <li key={resource} className="flex items-center gap-2 text-sm">
+                  <span className="font-mono">{resource}</span>
+                  <button className="text-xs text-red-400 hover:text-red-600" onClick={() => props.removeSupportedResource(resource)}>
+                    x
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="custom-resource"
+            value={newResource}
+            onChange={(e) => setNewResource(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddCustom();
+            }}
+            className="flex-1 rounded border p-2 font-mono text-sm"
+          />
+          <button className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50" disabled={!newResource.trim()} onClick={handleAddCustom}>
+            Add
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 

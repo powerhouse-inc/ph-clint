@@ -20,6 +20,7 @@ import { buildAgentTs } from './agent-ts.js';
 import { buildDemoAgentTs } from './demo-agent-ts.js';
 import { buildFrameworkGenTs } from './framework-gen-ts.js';
 import { buildFrameworkTs } from './framework-ts.js';
+import { buildManifestJson } from './manifest-json.js';
 import { type ClintProjectSpec } from '../../spec/types.js';
 
 /**
@@ -53,6 +54,7 @@ export function getProfileFileBuilders(spec: ClintProjectSpec): FileBuilder[] {
 }
 
 export const CLI_FILE_BUILDERS: FileBuilder[] = [
+  { relativePath: 'powerhouse.manifest.json', build: buildManifestJson },
   { relativePath: 'package.json', build: buildCliPackageJson },
   { relativePath: 'tsconfig.json', build: () => buildTsconfigJson() },
   { relativePath: 'jest.config.js', build: () => buildJestConfigJs() },
@@ -111,6 +113,7 @@ export {
   buildDemoAgentTs,
   buildFrameworkGenTs,
   buildFrameworkTs,
+  buildManifestJson,
 };
 export { buildRootPackageJson } from './root-package-json.js';
 export { buildPublishConfigTs } from './publish-config-ts.js';

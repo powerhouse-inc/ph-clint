@@ -800,6 +800,15 @@ export interface CliOptions<
    * When set, skills are available as CLI commands and auto-installed on first run.
    */
   prompts?: PromptsConfig;
+  /**
+   * Service announcement configuration. When enabled, the CLI periodically
+   * POSTs its service status to a central endpoint for network discovery.
+   */
+  serviceAnnouncement?: {
+    enabled: boolean;
+    excludePowerhouseServices?: string[];
+    excludeCliServices?: string[];
+  };
 }
 
 /**

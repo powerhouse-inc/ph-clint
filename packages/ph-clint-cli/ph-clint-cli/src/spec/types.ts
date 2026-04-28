@@ -56,6 +56,8 @@ const mastraFeatureSchema = z.object({
   enabled: z.boolean().default(false),
   agentId: z.string().nullable().default(null),
   agentName: z.string().nullable().default(null),
+  agentDescription: z.string().nullable().default(null),
+  agentImage: z.string().nullable().default(null),
   models: z.array(agentModelSchema).default([]),
   profiles: z.array(agentProfileSchema).default([]),
 });
@@ -68,6 +70,8 @@ const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
   enabled: false,
   agentId: null,
   agentName: null,
+  agentDescription: null,
+  agentImage: null,
   models: [],
   profiles: [],
 };
@@ -124,6 +128,10 @@ export const clintProjectSpecSchema = z.object({
    * (kebab-case) and a GitHub URL for installation.
    */
   externalSkills: z.array(externalSkillSchema).default([]),
+  deployment: z.object({
+    serviceAnnouncement: z.boolean().default(false),
+    supportedResources: z.array(z.string()).default([]),
+  }).default({ serviceAnnouncement: false, supportedResources: [] }),
   /** ID of the source specification document (if backed by a Powerhouse document). */
   documentId: z.string().optional(),
   /** Document type of the source specification document. */

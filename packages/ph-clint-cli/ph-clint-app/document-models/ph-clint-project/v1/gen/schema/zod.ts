@@ -6,6 +6,7 @@ import type {
   AddPackageDocumentTypeInput,
   AddPowerhousePackageInput,
   AddProfileInput,
+  AddSupportedResourceInput,
   BumpVersionInput,
   ClearBinInput,
   ClearScopeInput,
@@ -21,6 +22,7 @@ import type {
   ImportSpecInput,
   PhClintAgentModel,
   PhClintAgentProfile,
+  PhClintDeployment,
   PhClintFeatures,
   PhClintMastraFeature,
   PhClintProjectState,
@@ -38,8 +40,11 @@ import type {
   RemovePackageDocumentTypeInput,
   RemovePowerhousePackageInput,
   RemoveProfileInput,
+  RemoveSupportedResourceInput,
   ReorderProfilesInput,
+  SetAgentDescriptionInput,
   SetAgentIdInput,
+  SetAgentImageInput,
   SetAgentNameInput,
   SetBinInput,
   SetDefaultModelInput,
@@ -50,6 +55,7 @@ import type {
   SetPowerhouseLevelInput,
   SetPublishStatusInput,
   SetScopeInput,
+  SetServiceAnnouncementInput,
   SetVersionInput,
   UpdateProfileInput,
 } from './types.js';
@@ -105,6 +111,12 @@ export function AddProfileInputSchema(): z.ZodObject<Properties<AddProfileInput>
     id: z.string(),
     insertBefore: z.string().nullish(),
     title: z.string(),
+  });
+}
+
+export function AddSupportedResourceInputSchema(): z.ZodObject<Properties<AddSupportedResourceInput>> {
+  return z.object({
+    resource: z.string(),
   });
 }
 
@@ -227,6 +239,14 @@ export function PhClintAgentProfileSchema(): z.ZodObject<Properties<PhClintAgent
   });
 }
 
+export function PhClintDeploymentSchema(): z.ZodObject<Properties<PhClintDeployment>> {
+  return z.object({
+    __typename: z.literal('PhClintDeployment').optional(),
+    serviceAnnouncement: z.boolean(),
+    supportedResources: z.array(z.string()),
+  });
+}
+
 export function PhClintFeaturesSchema(): z.ZodObject<Properties<PhClintFeatures>> {
   return z.object({
     __typename: z.literal('PhClintFeatures').optional(),
@@ -239,7 +259,9 @@ export function PhClintFeaturesSchema(): z.ZodObject<Properties<PhClintFeatures>
 export function PhClintMastraFeatureSchema(): z.ZodObject<Properties<PhClintMastraFeature>> {
   return z.object({
     __typename: z.literal('PhClintMastraFeature').optional(),
+    agentDescription: z.string().nullish(),
     agentId: z.string().nullish(),
+    agentImage: z.url().nullish(),
     agentName: z.string().nullish(),
     enabled: z.boolean(),
     models: z.array(z.lazy(() => PhClintAgentModelSchema())),
@@ -251,6 +273,7 @@ export function PhClintProjectStateSchema(): z.ZodObject<Properties<PhClintProje
   return z.object({
     __typename: z.literal('PhClintProjectState').optional(),
     bin: z.string().nullish(),
+    deployment: z.lazy(() => PhClintDeploymentSchema()),
     description: z.string(),
     externalSkills: z.array(z.lazy(() => ExternalSkillSchema())),
     features: z.lazy(() => PhClintFeaturesSchema()),
@@ -341,6 +364,12 @@ export function RemoveProfileInputSchema(): z.ZodObject<Properties<RemoveProfile
   });
 }
 
+export function RemoveSupportedResourceInputSchema(): z.ZodObject<Properties<RemoveSupportedResourceInput>> {
+  return z.object({
+    resource: z.string(),
+  });
+}
+
 export function ReorderProfilesInputSchema(): z.ZodObject<Properties<ReorderProfilesInput>> {
   return z.object({
     ids: z.array(z.string()),
@@ -348,9 +377,21 @@ export function ReorderProfilesInputSchema(): z.ZodObject<Properties<ReorderProf
   });
 }
 
+export function SetAgentDescriptionInputSchema(): z.ZodObject<Properties<SetAgentDescriptionInput>> {
+  return z.object({
+    description: z.string(),
+  });
+}
+
 export function SetAgentIdInputSchema(): z.ZodObject<Properties<SetAgentIdInput>> {
   return z.object({
     agentId: z.string(),
+  });
+}
+
+export function SetAgentImageInputSchema(): z.ZodObject<Properties<SetAgentImageInput>> {
+  return z.object({
+    image: z.url(),
   });
 }
 
@@ -401,6 +442,7 @@ export function SetPackageNameInputSchema(): z.ZodObject<Properties<SetPackageNa
 export function SetPowerhouseLevelInputSchema(): z.ZodObject<Properties<SetPowerhouseLevelInput>> {
   return z.object({
     level: PowerhouseLevelSchema,
+    skipAutoAnnounce: z.boolean().nullish(),
   });
 }
 
@@ -414,6 +456,12 @@ export function SetPublishStatusInputSchema(): z.ZodObject<Properties<SetPublish
 export function SetScopeInputSchema(): z.ZodObject<Properties<SetScopeInput>> {
   return z.object({
     scope: z.string(),
+  });
+}
+
+export function SetServiceAnnouncementInputSchema(): z.ZodObject<Properties<SetServiceAnnouncementInput>> {
+  return z.object({
+    enabled: z.boolean(),
   });
 }
 

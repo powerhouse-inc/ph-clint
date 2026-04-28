@@ -46,6 +46,10 @@ export function specFromDocumentState(
       name: s.name,
       githubUrl: s.githubUrl,
     })),
+    deployment: {
+      serviceAnnouncement: state.deployment.serviceAnnouncement,
+      supportedResources: [...state.deployment.supportedResources],
+    },
     documentId: meta?.documentId,
     documentType: meta?.documentType,
   });

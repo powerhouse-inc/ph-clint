@@ -29,6 +29,7 @@ type PhClintProjectState {
   packages: [PowerhousePackage!]!
   externalSkills: [ExternalSkill!]!
   publishHistory: [PublishRecord!]!
+  deployment: PhClintDeployment!
 }
 
 type PhClintFeatures {
@@ -48,6 +49,8 @@ type PhClintMastraFeature {
   enabled: Boolean!
   agentId: String
   agentName: String
+  agentDescription: String
+  agentImage: URL
   models: [PhClintAgentModel!]!
   profiles: [PhClintAgentProfile!]!
 }
@@ -100,6 +103,11 @@ type PublishRecord {
   status: PublishStatus!
 }
 
+type PhClintDeployment {
+  serviceAnnouncement: Boolean!
+  supportedResources: [String!]!
+}
+
 # identity
 
 input SetPackageNameInput {
@@ -134,6 +142,7 @@ input SetScopeInput {
 
 input SetPowerhouseLevelInput {
   level: PowerhouseLevel!
+  skipAutoAnnounce: Boolean
 }
 
 # features_mastra
@@ -188,6 +197,14 @@ input RemoveProfileInput {
 input ReorderProfilesInput {
   ids: [String!]!
   insertBefore: String
+}
+
+input SetAgentDescriptionInput {
+  description: String!
+}
+
+input SetAgentImageInput {
+  image: URL!
 }
 
 # features_routine
@@ -309,4 +326,18 @@ input ImportProfileInput {
   id: String!
   title: String!
   content: String!
+}
+
+# deployment
+
+input SetServiceAnnouncementInput {
+  enabled: Boolean!
+}
+
+input AddSupportedResourceInput {
+  resource: String!
+}
+
+input RemoveSupportedResourceInput {
+  resource: String!
 }

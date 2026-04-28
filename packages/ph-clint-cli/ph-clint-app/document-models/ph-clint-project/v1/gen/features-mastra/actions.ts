@@ -1,5 +1,19 @@
 import type { Action } from 'document-model';
-import type { EnableMastraInput, DisableMastraInput, SetAgentIdInput, SetAgentNameInput, AddModelInput, RemoveModelInput, SetDefaultModelInput, AddProfileInput, UpdateProfileInput, RemoveProfileInput, ReorderProfilesInput } from '../types.js';
+import type {
+  EnableMastraInput,
+  DisableMastraInput,
+  SetAgentIdInput,
+  SetAgentNameInput,
+  AddModelInput,
+  RemoveModelInput,
+  SetDefaultModelInput,
+  AddProfileInput,
+  UpdateProfileInput,
+  RemoveProfileInput,
+  ReorderProfilesInput,
+  SetAgentDescriptionInput,
+  SetAgentImageInput,
+} from '../types.js';
 
 export type EnableMastraAction = Action & {
   type: 'ENABLE_MASTRA';
@@ -45,6 +59,14 @@ export type ReorderProfilesAction = Action & {
   type: 'REORDER_PROFILES';
   input: ReorderProfilesInput;
 };
+export type SetAgentDescriptionAction = Action & {
+  type: 'SET_AGENT_DESCRIPTION';
+  input: SetAgentDescriptionInput;
+};
+export type SetAgentImageAction = Action & {
+  type: 'SET_AGENT_IMAGE';
+  input: SetAgentImageInput;
+};
 
 export type PhClintProjectFeaturesMastraAction =
   | EnableMastraAction
@@ -57,4 +79,6 @@ export type PhClintProjectFeaturesMastraAction =
   | AddProfileAction
   | UpdateProfileAction
   | RemoveProfileAction
-  | ReorderProfilesAction;
+  | ReorderProfilesAction
+  | SetAgentDescriptionAction
+  | SetAgentImageAction;
