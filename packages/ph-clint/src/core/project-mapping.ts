@@ -16,19 +16,26 @@ export interface ProjectMapping {
 
 /**
  * Walk the drive folder tree recursively, collecting all document entries.
+ * Uses a visited set to break cycles (e.g. self-referencing folder nodes).
  */
 async function walkFolders(
   folders: FolderOperations,
   folderPath?: string,
+  visited?: Set<string>,
 ): Promise<FolderEntry[]> {
-  const entries = await folders.listFolder(folderPath);
+  const seen = visited ?? new Set<string>();
+  const key = folderPath ?? '';
+  if (seen.has(key)) return [];
+  seen.add(key);
+
+  const entries = await folders.listFolder(folderPath || undefined);
   const results: FolderEntry[] = [];
 
   for (const entry of entries) {
     if (entry.type === 'document') {
       results.push(entry);
     } else if (entry.type === 'folder') {
-      results.push(...await walkFolders(folders, entry.path));
+      results.push(...await walkFolders(folders, entry.path, seen));
     }
   }
 

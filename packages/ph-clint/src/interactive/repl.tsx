@@ -300,14 +300,21 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
       setCurrentInput(trimmed);
       interruptedRef.current = false;
 
-      // Wire up streaming callback so chunks appear incrementally
+      // Wire up streaming callback so chunks appear incrementally.
+      // Text-delta chunks (agent streaming) go through the throttle for smooth
+      // animation. All other chunks (tool-call, tool-output, tool-result, error)
+      // are command output that should appear immediately.
       session.onStreamChunk = (chunk, fullText) => {
         streamingFullRef.current = fullText;
         setSegments(prev => updateSegments(prev, chunk));
         const chunkLen = chunk.type === 'text-delta' || chunk.type === 'tool-output'
           ? chunk.text.length
           : formatStreamChunk(chunk).length;
-        throttle.addChars(chunkLen);
+        if (chunk.type === 'text-delta') {
+          throttle.addChars(chunkLen);
+        } else {
+          throttle.addImmediate(chunkLen);
+        }
       };
 
       const result = await session.processInput(trimmed);

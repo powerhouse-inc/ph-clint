@@ -40,6 +40,11 @@ export class ThrottleState {
     if (n > 0) this.backlog += n;
   }
 
+  /** Immediately release characters, bypassing the backlog. */
+  addImmediate(n: number): void {
+    if (n > 0) this.totalDrained += n;
+  }
+
   /**
    * Advance one tick: adjust velocity, drain characters from backlog.
    * Returns the number of characters drained this tick.
@@ -101,6 +106,8 @@ export interface OutputThrottle {
   visibleChars: number;
   /** Call when new characters arrive (increases backlog). */
   addChars: (n: number) => void;
+  /** Immediately approve characters for display, bypassing the backlog. */
+  addImmediate: (n: number) => void;
   /** Returns a promise that resolves when the backlog is fully drained. */
   waitForDrain: () => Promise<void>;
   /** Reset all state (call when a new execution starts). */
@@ -162,6 +169,11 @@ export function createOutputThrottle(
       ts.addChars(n);
       startTimer();
     },
+    addImmediate(n: number) {
+      if (n <= 0) return;
+      ts.addImmediate(n);
+      _visibleChars += n;
+    },
     waitForDrain(): Promise<void> {
       if (ts.isDrained && !timer) return Promise.resolve();
       return new Promise(resolve => { drainResolve = resolve; });
@@ -198,6 +210,10 @@ export function useOutputThrottle(options?: CreateOutputThrottleOptions): Output
   return {
     visibleChars,
     addChars: useCallback((n: number) => throttle.current.addChars(n), []),
+    addImmediate: useCallback((n: number) => {
+      throttle.current.addImmediate(n);
+      setVisibleChars(prev => prev + n);
+    }, []),
     waitForDrain: useCallback(() => throttle.current.waitForDrain(), []),
     reset: useCallback(() => {
       throttle.current.reset();
