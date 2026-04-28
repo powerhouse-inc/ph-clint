@@ -1,0 +1,90 @@
+name: Build and Publish clint-runtime Docker Image
+
+# Generic clint runtime image — installs an arbitrary clint-project
+# package globally at start. Decoupled from the per-package Rupert
+# workflow. See docker/clint-runtime/Dockerfile for the runtime contract.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (e.g. v0.1.0, dev-2026-04-28)'
+        type: string
+        required: true
+      dist:
+        description: 'Optional dist-tag alias (dev/staging/latest); leave empty to skip'
+        type: string
+        required: false
+  push:
+    branches: [main]
+    paths:
+      - 'docker/clint-runtime/**'
+      - '.github/workflows/clint-runtime-publish.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  HARBOR_REGISTRY: cr.vetra.io
+  # Reuse the existing powerhouse-inc-powerhouse Harbor project — same
+  # auth pattern as the rupert workflow. A dedicated clint-runtime
+  # project would be cleaner long-term but requires Harbor admin.
+  HARBOR_PATH: powerhouse-inc-powerhouse/clint-runtime
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_DIST: ${{ inputs.dist }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+            DIST="$INPUT_DIST"
+          else
+            # Path-triggered build on main — tag with short SHA + dev alias.
+            TAG="dev-${COMMIT_SHA:0:7}"
+            DIST="dev"
+          fi
+          # Validate: only allow alphanumerics, dots, dashes, underscores.
+          if ! [[ "$TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Tag contains invalid characters: $TAG"
+            exit 1
+          fi
+          if [ -n "$DIST" ] && ! [[ "$DIST" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Dist contains invalid characters: $DIST"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "dist=$DIST" >> "$GITHUB_OUTPUT"
+          echo "Using tag=$TAG dist=${DIST:-<none>}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push clint-runtime image
+        uses: docker/build-push-action@v5
+        with:
+          context: docker/clint-runtime
+          file: docker/clint-runtime/Dockerfile
+          push: true
+          tags: |
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PATH }}:${{ steps.tag.outputs.tag }}
+            ${{ steps.tag.outputs.dist != '' && format('{0}/{1}:{2}', env.HARBOR_REGISTRY, env.HARBOR_PATH, steps.tag.outputs.dist) || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
