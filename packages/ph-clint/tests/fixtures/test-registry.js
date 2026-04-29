@@ -19,15 +19,20 @@ const port = parseInt(process.env.PORT || '0', 10);
 const announcements = [];
 
 const server = http.createServer((req, res) => {
+  console.log(`${req.method} ${req.url}`);
+
   if (req.method === 'POST') {
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
       try {
-        announcements.push(JSON.parse(body));
+        const payload = JSON.parse(body);
+        console.log(JSON.stringify(payload, null, 2));
+        announcements.push(payload);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('{"ok":true}');
       } catch {
+        console.log('  (invalid JSON)');
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end('{"error":"invalid json"}');
       }
