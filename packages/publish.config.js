@@ -1,6 +1,6 @@
-import { definePublishConfig } from './ph-clint-dev/src/publish/index.js';
-
-export default definePublishConfig({
+// Publish config for the ph-clint framework itself (bootstrapping).
+// No import needed — definePublishConfig is an identity function.
+export default {
   groups: {
     'ph-clint': {
       version: '0.1.0',
@@ -12,4 +12,4 @@ export default definePublishConfig({
       ],
     },
   },
-});
+};
