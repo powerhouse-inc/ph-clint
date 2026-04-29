@@ -1,0 +1,353 @@
+/**
+ * Tests for post-generation actions: collectPostGenActions + runPostGenActions.
+ */
+import { describe, it, expect } from '@jest/globals';
+import path from 'node:path';
+import {
+  collectPostGenActions,
+  runPostGenActions,
+  type PostGenAction,
+  type PostGenActionKind,
+} from '../../src/codegen/actions.js';
+import type { GenerateProjectResult, GeneratedFile } from '../../src/codegen/index.js';
+import { clintProjectSpecSchema } from '../../src/spec/types.js';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeFile(rel: string, base = '/project'): GeneratedFile {
+  return { relativePath: rel, absolutePath: path.join(base, rel) };
+}
+
+function makeResult(
+  overrides: Partial<GenerateProjectResult> & { files?: GeneratedFile[] },
+): GenerateProjectResult {
+  return {
+    mode: 'update',
+    files: [],
+    skipped: [],
+    deleted: [],
+    migrated: false,
+    cliDir: '/project',
+    appDir: null,
+    pendingActions: [],
+    ...overrides,
+  };
+}
+
+function flatSpec() {
+  return clintProjectSpecSchema.parse({ name: 'foo' });
+}
+
+function splitSpec() {
+  return clintProjectSpecSchema.parse({
+    name: 'foo',
+    features: { powerhouse: 'Connect' },
+  });
+}
+
+function kinds(actions: PostGenAction[]): PostGenActionKind[] {
+  return actions.map((a) => a.kind);
+}
+
+// ---------------------------------------------------------------------------
+// collectPostGenActions
+// ---------------------------------------------------------------------------
+
+describe('collectPostGenActions', () => {
+  it('returns empty array when no files changed', () => {
+    const result = makeResult({ files: [] });
+    const actions = collectPostGenActions(result, flatSpec());
+    expect(actions).toEqual([]);
+  });
+
+  it('flat layout, package.json changed → cli-install + cli-build', () => {
+    const result = makeResult({
+      files: [makeFile('package.json')],
+    });
+    const actions = collectPostGenActions(result, flatSpec());
+    expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
+  });
+
+  it('flat layout, only .ts source changed → cli-build', () => {
+    const result = makeResult({
+      files: [makeFile('src/cli.ts')],
+    });
+    const actions = collectPostGenActions(result, flatSpec());
+    expect(kinds(actions)).toEqual(['cli-build']);
+  });
+
+  it('split layout, app package.json changed → app-install + app-build + cli-install + cli-build', () => {
+    const spec = splitSpec();
+    const result = makeResult({
+      cliDir: '/project/foo-cli',
+      appDir: '/project/foo-app',
+      files: [makeFile('foo-app/package.json')],
+    });
+    const actions = collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual([
+      'app-install',
+      'app-build',
+      'cli-install',
+      'cli-build',
+    ]);
+  });
+
+  it('split layout, ph-init needed (gitkeep written, no pkg.json) → full chain', () => {
+    const spec = splitSpec();
+    const result = makeResult({
+      cliDir: '/project/foo-cli',
+      appDir: '/project/foo-app',
+      files: [
+        makeFile('foo-app/.gitkeep'),
+        makeFile('foo-cli/package.json'),
+        makeFile('foo-cli/src/cli.ts'),
+      ],
+    });
+    const actions = collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual([
+      'ph-init',
+      'app-install',
+      'app-build',
+      'cli-install',
+      'cli-build',
+    ]);
+  });
+
+  it('split layout, only framework.gen.ts changed → app-build + cli-build', () => {
+    const spec = splitSpec();
+    const result = makeResult({
+      cliDir: '/project/foo-cli',
+      appDir: '/project/foo-app',
+      files: [makeFile('foo-app/index.ts')],
+    });
+    const actions = collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual([
+      'app-build',
+      'cli-install',
+      'cli-build',
+    ]);
+  });
+
+  it('migration occurred → app-install through cli-build', () => {
+    const spec = splitSpec();
+    const result = makeResult({
+      cliDir: '/project/foo-cli',
+      appDir: '/project/foo-app',
+      migrated: true,
+      files: [makeFile('foo-cli/src/cli.ts')],
+    });
+    const actions = collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual([
+      'app-install',
+      'app-build',
+      'cli-install',
+      'cli-build',
+    ]);
+  });
+
+  it('externalSkills present → skills-sync appended', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      externalSkills: [
+        { id: 'sk1', name: 'my-skill', githubUrl: 'https://github.com/x/y' },
+      ],
+    });
+    const result = makeResult({
+      files: [makeFile('src/cli.ts')],
+    });
+    const actions = collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual(['cli-build', 'skills-sync']);
+  });
+
+  it('split layout, CLI package.json changed → cli-install + cli-build', () => {
+    const spec = splitSpec();
+    const result = makeResult({
+      cliDir: '/project/foo-cli',
+      appDir: '/project/foo-app',
+      files: [makeFile('foo-cli/package.json')],
+    });
+    const actions = collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
+  });
+
+  it('split layout, only CLI .ts files changed → cli-build', () => {
+    const spec = splitSpec();
+    const result = makeResult({
+      cliDir: '/project/foo-cli',
+      appDir: '/project/foo-app',
+      files: [makeFile('foo-cli/src/framework.gen.ts')],
+    });
+    const actions = collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual(['cli-build']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// runPostGenActions
+// ---------------------------------------------------------------------------
+
+describe('runPostGenActions', () => {
+  it('returns empty array when no actions', async () => {
+    const logs: string[] = [];
+    const results = await runPostGenActions([], {
+      log: (m) => logs.push(m),
+    });
+    expect(results).toEqual([]);
+    expect(logs).toEqual([]);
+  });
+
+  it('executes actions in order and records calls', async () => {
+    const calls: string[] = [];
+    const fakeRunProcess = async (cmd: string, opts?: { cwd?: string }) => {
+      calls.push(`${cmd} @ ${opts?.cwd ?? '?'}`);
+      return { success: true, output: '' };
+    };
+
+    const actions: PostGenAction[] = [
+      { kind: 'cli-install', dir: '/project' },
+      { kind: 'cli-build', dir: '/project' },
+    ];
+
+    const logs: string[] = [];
+    const results = await runPostGenActions(actions, {
+      log: (m) => logs.push(m),
+      runProcess: fakeRunProcess,
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0].status).toBe('success');
+    expect(results[1].status).toBe('success');
+    expect(calls).toEqual([
+      'pnpm install @ /project',
+      'pnpm build @ /project',
+    ]);
+    // Summary line should mention success
+    expect(logs.some((l) => /completed successfully/.test(l))).toBe(true);
+  });
+
+  it('skips actions in the skip set', async () => {
+    const calls: string[] = [];
+    const fakeRunProcess = async (cmd: string, opts?: { cwd?: string }) => {
+      calls.push(`${cmd} @ ${opts?.cwd ?? '?'}`);
+      return { success: true, output: '' };
+    };
+
+    const actions: PostGenAction[] = [
+      { kind: 'cli-install', dir: '/project' },
+      { kind: 'cli-build', dir: '/project' },
+    ];
+
+    const logs: string[] = [];
+    const results = await runPostGenActions(actions, {
+      log: (m) => logs.push(m),
+      runProcess: fakeRunProcess,
+      skip: new Set<PostGenActionKind>(['cli-install']),
+    });
+
+    // Both should be filtered: cli-install is skipped, cli-build is skipped
+    // because its corresponding install is skipped.
+    expect(results).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('cascades failure to downstream dependencies', async () => {
+    let callCount = 0;
+    const fakeRunProcess = async (cmd: string) => {
+      callCount++;
+      // First call (install) fails
+      if (cmd.includes('install')) {
+        return { success: false, output: 'ERR' };
+      }
+      return { success: true, output: '' };
+    };
+
+    const actions: PostGenAction[] = [
+      { kind: 'app-install', dir: '/project/foo-app' },
+      { kind: 'app-build', dir: '/project/foo-app' },
+      { kind: 'cli-install', dir: '/project/foo-cli' },
+      { kind: 'cli-build', dir: '/project/foo-cli' },
+    ];
+
+    const logs: string[] = [];
+    const results = await runPostGenActions(actions, {
+      log: (m) => logs.push(m),
+      runProcess: fakeRunProcess,
+    });
+
+    expect(results).toHaveLength(4);
+    expect(results[0].status).toBe('failed');
+    expect(results[1].status).toBe('skipped');
+    expect(results[1].reason).toBe('dependency failed');
+    expect(results[2].status).toBe('skipped');
+    expect(results[2].reason).toBe('dependency failed');
+    expect(results[3].status).toBe('skipped');
+    expect(results[3].reason).toBe('dependency failed');
+    // Only the install was actually called
+    expect(callCount).toBe(1);
+    // Summary mentions failure
+    expect(logs.some((l) => /1 failed/.test(l))).toBe(true);
+  });
+
+  it('skills-sync still runs even when build chain fails', async () => {
+    const calls: string[] = [];
+    const fakeRunProcess = async (cmd: string) => {
+      calls.push(cmd);
+      if (cmd.includes('install')) {
+        return { success: false, output: 'ERR' };
+      }
+      return { success: true, output: '' };
+    };
+
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      externalSkills: [
+        { id: 'sk1', name: 'my-skill', githubUrl: 'https://github.com/x/y' },
+      ],
+    });
+
+    const actions: PostGenAction[] = [
+      { kind: 'cli-install', dir: '/project' },
+      { kind: 'cli-build', dir: '/project' },
+      {
+        kind: 'skills-sync',
+        targetDir: '/project',
+        desired: spec.externalSkills,
+      },
+    ];
+
+    const logs: string[] = [];
+    const results = await runPostGenActions(actions, {
+      log: (m) => logs.push(m),
+      runProcess: fakeRunProcess,
+    });
+
+    expect(results).toHaveLength(3);
+    expect(results[0].status).toBe('failed'); // cli-install
+    expect(results[1].status).toBe('skipped'); // cli-build (dep failed)
+    // skills-sync is independent — it runs (and may succeed or fail depending
+    // on git clone, but it's attempted)
+    expect(results[2].action.kind).toBe('skills-sync');
+    // It was attempted, not skipped due to dependency
+    expect(results[2].status).not.toBe('skipped');
+  });
+
+  it('captures timing for each action', async () => {
+    const fakeRunProcess = async () => {
+      return { success: true, output: '' };
+    };
+
+    const actions: PostGenAction[] = [
+      { kind: 'cli-install', dir: '/project' },
+    ];
+
+    const results = await runPostGenActions(actions, {
+      log: () => {},
+      runProcess: fakeRunProcess,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].durationMs).toBeGreaterThanOrEqual(0);
+  });
+});

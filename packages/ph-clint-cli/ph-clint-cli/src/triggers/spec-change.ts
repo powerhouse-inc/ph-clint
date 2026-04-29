@@ -21,10 +21,9 @@ import { importSpec } from '@powerhousedao/ph-clint-app/document-models/ph-clint
 import type { ImportSpecInput } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import { createDocumentChangeTrigger } from '../framework.js';
 import { generateProject } from '../codegen/index.js';
-import { runPhInit } from '../codegen/scaffold.js';
+import { runPostGenActions } from '../codegen/actions.js';
 import { specFromDocumentState } from '../spec/from-document.js';
 import { readProjectSpec, writeProjectSpec } from '../spec/file.js';
-import { syncExternalSkills } from '../skills/sync.js';
 import { clintProject } from '../services/clint-project.js';
 import type { ClintProjectSpec } from '../spec/types.js';
 
@@ -222,62 +221,11 @@ export const specChangeTrigger = createDocumentChangeTrigger({
         for (const w of warnings) log.warn(`${TAG} ${w}`);
       }
 
-      // Scaffold the reactor package (app dir) if it hasn't been initialized yet.
-      if (result.appDir) {
-        const appPkgJson = path.join(result.appDir, 'package.json');
-        let appExists = false;
-        try { await fs.access(appPkgJson); appExists = true; } catch { /* noop */ }
-        if (!appExists) {
-          log?.info(`${TAG} initializing reactor package at ${result.appDir}`);
-          const phResult = await runPhInit({
-            targetDir,
-            appDir: result.appDir,
-            spec,
-            log: (msg) => log?.info(`${TAG} ${msg}`),
-            runProcess: ctx.context.runProcess,
-          });
-          if (!phResult.ran) {
-            log?.warn(`${TAG} ph init skipped: ${phResult.reason ?? 'unknown'}`);
-          } else if (phResult.exitCode !== 0) {
-            log?.warn(`${TAG} ph init exited with code ${phResult.exitCode}`);
-          }
-        }
-
-        // Always ensure the app package name matches the spec's scope,
-        // even if ph init ran in a previous trigger cycle without scope.
-        if (spec.scope) {
-          try {
-            const raw = await fs.readFile(appPkgJson, 'utf8');
-            const pkg = JSON.parse(raw);
-            const appFolder = path.basename(result.appDir);
-            const scopedName = `@${spec.scope}/${appFolder}`;
-            if (pkg.name !== scopedName) {
-              pkg.name = scopedName;
-              pkg.publishConfig = { access: 'public' };
-              await fs.writeFile(appPkgJson, JSON.stringify(pkg, null, 2) + '\n');
-              log?.info(`${TAG} patched app package name to ${scopedName}`);
-            }
-          } catch (err) {
-            log?.warn(
-              `${TAG} could not patch app package name: ${err instanceof Error ? err.message : String(err)}`,
-            );
-          }
-        }
-      }
-
-      // Sync external skills after codegen.
-      if (spec.externalSkills.length > 0) {
-        const skillsResult = await syncExternalSkills({
-          targetDir,
-          desired: spec.externalSkills,
-          log: (msg) => log?.info(`${TAG} ${msg}`),
-        });
-        if (log && (skillsResult.added.length > 0 || skillsResult.removed.length > 0)) {
-          log.info(
-            `${TAG} skills sync: +${skillsResult.added.length} -${skillsResult.removed.length}`,
-          );
-        }
-      }
+      // Run post-generation actions (ph-init, install, build, skills-sync).
+      await runPostGenActions(result.pendingActions, {
+        log: (msg) => log?.info(`${TAG} ${msg}`),
+        runProcess: ctx.context.runProcess,
+      });
     }
 
     // Work done inline, no additional work item needed

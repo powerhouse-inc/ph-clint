@@ -11,6 +11,7 @@ import { defineCommand } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import { readProjectSpec } from '../spec/file.js';
 import { generateProject } from '../codegen/index.js';
+import { runPostGenActions } from '../codegen/actions.js';
 
 const inputSchema = z.object({
   dir: z
@@ -29,7 +30,7 @@ export const regen = defineCommand({
   id: 'clint-project-regen',
   description: 'Regenerate project files from the persisted spec',
   inputSchema,
-  execute: async (input, { workdir, stdout, log }) => {
+  execute: async (input, { workdir, stdout, log, runProcess }) => {
     const targetDir = path.resolve(workdir, input.dir ?? '.');
     const spec = await readProjectSpec(targetDir);
     if (!spec) {
@@ -60,6 +61,13 @@ export const regen = defineCommand({
     }
 
     stdout(lines.join('\n') + '\n');
+
+    // Run post-generation actions (install, build, skills-sync).
+    await runPostGenActions(result.pendingActions, {
+      log: (msg) => stdout(msg + '\n'),
+      runProcess,
+    });
+
     return {
       text: lines.join('\n'),
       data: {

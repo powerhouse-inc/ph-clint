@@ -21,7 +21,7 @@ import {
 } from '../spec/types.js';
 import { generateProject } from '../codegen/index.js';
 import { isDirEmptyEnough } from '../codegen/write.js';
-import { runPhInit, runPnpmInstall } from '../codegen/scaffold.js';
+import { runPostGenActions, type PostGenActionKind } from '../codegen/actions.js';
 import { writeProjectSpec } from '../spec/file.js';
 import { specToImportInput } from '../triggers/spec-change.js';
 
@@ -170,39 +170,20 @@ export const init = defineCommand({
       }
     }
 
+    // Run post-generation actions (ph-init, install, build, skills-sync).
+    const skip = new Set<PostGenActionKind>();
+    if (input.skipPhInit) skip.add('ph-init');
+    if (input.skipInstall) {
+      skip.add('app-install');
+      skip.add('cli-install');
+    }
+    await runPostGenActions(result.pendingActions, {
+      log: (msg) => stdout(msg + '\n'),
+      runProcess,
+      skip,
+    });
+
     const split = spec.features.powerhouse !== 'Disabled';
-
-    // Reactor package scaffolding (split layout only).
-    if (split && result.appDir && !input.skipPhInit) {
-      const phResult = await runPhInit({
-        targetDir,
-        appDir: result.appDir,
-        spec,
-        log: (msg) => stdout(msg + '\n'),
-        runProcess,
-      });
-      if (!phResult.ran) {
-        stdout(
-          `Note: \`ph init\` did not run — ${phResult.reason ?? 'see above'}.\n`,
-        );
-      }
-    }
-
-    // Dependency installation.
-    if (!input.skipInstall) {
-      const dirs: string[] = [];
-      if (split) {
-        if (result.appDir) dirs.push(result.appDir);
-        dirs.push(result.cliDir);
-      } else {
-        dirs.push(targetDir);
-      }
-      await runPnpmInstall({
-        dirs,
-        log: (msg) => stdout(msg + '\n'),
-        runProcess,
-      });
-    }
 
     const next: string[] = [];
     next.push('');

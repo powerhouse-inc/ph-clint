@@ -57,6 +57,10 @@ import {
   buildPublishConfigJs,
   buildAppIndexTs,
 } from './builders/index.js';
+import {
+  collectPostGenActions,
+  type PostGenAction,
+} from './actions.js';
 
 export type GenerateMode = 'create' | 'update' | 'auto';
 
@@ -94,6 +98,8 @@ export interface GenerateProjectResult {
   migrated: boolean;
   cliDir: string;
   appDir: string | null;
+  /** Pending post-generation actions derived from what changed. */
+  pendingActions: PostGenAction[];
 }
 
 type PlannedFile = {
@@ -279,7 +285,7 @@ async function runCreate(
   });
   await writeHashes(targetDir, hashes);
 
-  return {
+  const result: GenerateProjectResult = {
     mode: 'create',
     files,
     skipped: [],
@@ -287,7 +293,10 @@ async function runCreate(
     migrated: false,
     cliDir,
     appDir,
+    pendingActions: [],
   };
+  result.pendingActions = collectPostGenActions(result, spec);
+  return result;
 }
 
 /** Update mode — reconcile against an existing project. */
@@ -405,7 +414,7 @@ async function runUpdate(
   await writeProjectSpec(targetDir, spec);
   await writeHashes(targetDir, next);
 
-  return {
+  const result: GenerateProjectResult = {
     mode: 'update',
     files,
     skipped,
@@ -413,5 +422,8 @@ async function runUpdate(
     migrated,
     cliDir,
     appDir,
+    pendingActions: [],
   };
+  result.pendingActions = collectPostGenActions(result, spec);
+  return result;
 }
