@@ -46,7 +46,7 @@ export const clintProjectPublish = defineCommand({
     };
 
     // 1. Resolve plan — discover config from the target dir, not process.cwd().
-    const configFile = path.join(dir, 'publish.config.ts');
+    const configFile = path.join(dir, 'publish.config.js');
     const plan = await resolvePublishPlan({
       tag: input.tag,
       configPath: configFile,

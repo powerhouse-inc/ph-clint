@@ -110,7 +110,7 @@ const REQUIRED_FILES: Record<string, string[]> = {
     'test-reactor-cli/src/framework.ts',
     'test-reactor-cli/src/framework.gen.ts',
     'package.json',
-    'publish.config.ts',
+    'publish.config.js',
   ],
   switchboard: [
     'test-switchboard-cli/package.json',
@@ -127,7 +127,7 @@ const REQUIRED_FILES: Record<string, string[]> = {
     'test-connect-cli/prompts/agent-profiles/base.md',
     'test-connect-cli/prompts/agent-profiles/ops.md',
     'package.json',
-    'publish.config.ts',
+    'publish.config.js',
   ],
 };
 

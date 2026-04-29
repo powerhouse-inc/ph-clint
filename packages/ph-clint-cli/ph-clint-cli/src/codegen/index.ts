@@ -54,7 +54,7 @@ import {
   getProfileFileBuilders,
   buildReadme,
   buildRootPackageJson,
-  buildPublishConfigTs,
+  buildPublishConfigJs,
   buildAppIndexTs,
 } from './builders/index.js';
 
@@ -188,11 +188,11 @@ function planFiles(
   });
 
   // Publish config — always at the project root (both layouts).
-  const publishConfig = path.join(targetDir, 'publish.config.ts');
+  const publishConfig = path.join(targetDir, 'publish.config.js');
   planned.push({
-    relativePath: 'publish.config.ts',
+    relativePath: 'publish.config.js',
     absolutePath: publishConfig,
-    content: buildPublishConfigTs(spec),
+    content: buildPublishConfigJs(spec),
   });
 
   // Split-layout only: root package.json + app placeholder files.

@@ -459,9 +459,9 @@ describe('Switchboard e2e — full project lifecycle', () => {
       expect(specJson.documentId).toBe(docId);
       expect(specJson.documentType).toBe('powerhouse/ph-clint-project');
 
-      // Verify publish.config.ts
+      // Verify publish.config.js
       const publishConfig = await fs.readFile(
-        path.join(projectDir, 'publish.config.ts'),
+        path.join(projectDir, 'publish.config.js'),
         'utf8',
       );
       expect(publishConfig).toContain(`'${PROJECT_NAME}'`);
@@ -469,7 +469,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
       expect(publishConfig).toContain(`'${PROJECT_NAME}-cli'`);
 
       log(`[step 4] Project generated at ${projectDir}: cli=${cliPkg.name}, app=${appPkg.name}`);
-      log(`[step 4] publish.config.ts exists and references all packages`);
+      log(`[step 4] publish.config.js exists and references all packages`);
       log(`[step 4] project-spec.json written with documentId=${specJson.documentId}`);
 
       // Log the generated project structure

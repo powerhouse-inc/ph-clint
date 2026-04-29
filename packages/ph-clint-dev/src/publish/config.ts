@@ -9,14 +9,14 @@ export function definePublishConfig(config: PublishConfig): PublishConfig {
 
 /**
  * Discover config file by walking up from startDir.
- * Looks for publish.config.ts in the start dir and ancestors.
+ * Looks for publish.config.js in the start dir and ancestors.
  */
 export function discoverConfigPath(startDir: string): string | null {
   let dir = path.resolve(startDir);
   const root = path.parse(dir).root;
 
   while (dir !== root) {
-    const candidate = path.join(dir, 'publish.config.ts');
+    const candidate = path.join(dir, 'publish.config.js');
     if (fs.existsSync(candidate)) {
       return candidate;
     }
@@ -25,7 +25,7 @@ export function discoverConfigPath(startDir: string): string | null {
   return null;
 }
 
-/** Load a publish config from a .ts file via dynamic import. */
+/** Load a publish config from a .js file via dynamic import. */
 export async function loadConfig(configPath: string): Promise<{
   config: PublishConfig;
   configDir: string;

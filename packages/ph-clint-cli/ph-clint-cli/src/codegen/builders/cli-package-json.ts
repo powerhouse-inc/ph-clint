@@ -83,7 +83,8 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
 
   const scripts: Record<string, string> = {
     'build:skills': 'tsx scripts/build-skills.ts',
-    build: 'pnpm build:skills && tsc',
+    'build:manifest': 'build-manifest',
+    build: 'pnpm build:skills && tsc && pnpm build:manifest',
     dev: 'tsx src/main.ts',
     start: 'node dist/main.js',
     test: "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles",
@@ -97,9 +98,12 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
   // Single-layout: publish scripts live in the CLI package.json (which IS the
   // root). Split-layout gets these from root-package-json.ts instead.
   if (!phAtLeast(powerhouse, 'Reactor')) {
-    scripts['publish:dev'] = 'ph-publish dev -c ./publish.config.ts';
-    scripts['publish:staging'] = 'ph-publish staging -c ./publish.config.ts';
-    scripts['publish:production'] = 'ph-publish production -c ./publish.config.ts';
+    scripts['publish:dev'] = 'ph-publish dev -c ./publish.config.js';
+    scripts['publish:staging'] = 'ph-publish staging -c ./publish.config.js';
+    scripts['publish:production'] = 'ph-publish production -c ./publish.config.js';
+  }
+  if (spec.deployment.serviceAnnouncement) {
+    scripts['test-service-registry'] = 'vetra-graphql-registry --withAuth';
   }
   const pkg: Record<string, unknown> = {
     name: pkgName,

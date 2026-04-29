@@ -53,7 +53,7 @@ export async function resolvePublishPlan(options: PublishOptions): Promise<Publi
     options.configPath ?? discoverConfigPath(process.cwd());
   if (!configPath) {
     throw new Error(
-      'No publish.config.ts found. Specify one with --config.',
+      'No publish.config.js found. Specify one with --config.',
     );
   }
 
@@ -350,7 +350,7 @@ export async function bump(options: BumpOptions): Promise<void> {
     options.configPath ?? discoverConfigPath(process.cwd());
   if (!configPath) {
     throw new Error(
-      'No publish.config.ts found. Specify one with --config.',
+      'No publish.config.js found. Specify one with --config.',
     );
   }
 

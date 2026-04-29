@@ -13,7 +13,7 @@ Tags: dev, staging, production
 
 Options:
   -g, --group <name>       Named group to publish
-  -c, --config <path>      Path to publish.config.ts
+  -c, --config <path>      Path to publish.config.js
   -r, --registry <url>     npm registry URL
   -b, --base-version <ver> Set new base version before publishing
   -n, --dry-run            Build but skip actual publish

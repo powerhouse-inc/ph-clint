@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-dev",
-  "version": "0.1.0-dev.21",
+  "version": "0.1.0-dev.32",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -15,11 +15,18 @@
     "./publish": {
       "types": "./dist/publish/index.d.ts",
       "import": "./dist/publish/index.js"
+    },
+    "./manifest": {
+      "types": "./dist/manifest/build-manifest.d.ts",
+      "import": "./dist/manifest/build-manifest.js"
     }
   },
   "bin": {
     "build-skills": "./dist/cli.js",
-    "ph-publish": "./dist/publish-cli.js"
+    "ph-publish": "./dist/publish-cli.js",
+    "json-post-registry": "./dist/registries/json-post-registry.js",
+    "vetra-graphql-registry": "./dist/registries/vetra-graphql-registry.js",
+    "build-manifest": "./dist/manifest/build-manifest.js"
   },
   "files": [
     "dist"

@@ -116,6 +116,6 @@ export {
   buildManifestJson,
 };
 export { buildRootPackageJson } from './root-package-json.js';
-export { buildPublishConfigTs } from './publish-config-ts.js';
+export { buildPublishConfigJs } from './publish-config-js.js';
 export { buildReadme } from './readme-md.js';
 export { buildAppIndexTs } from './app-index-ts.js';

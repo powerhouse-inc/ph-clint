@@ -71,9 +71,9 @@ describe('buildCliPackageJson', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const pkg = parseBuilt(spec);
     const scripts = pkg.scripts as Record<string, string>;
-    expect(scripts['publish:dev']).toBe('ph-publish dev -c ./publish.config.ts');
-    expect(scripts['publish:staging']).toBe('ph-publish staging -c ./publish.config.ts');
-    expect(scripts['publish:production']).toBe('ph-publish production -c ./publish.config.ts');
+    expect(scripts['publish:dev']).toBe('ph-publish dev -c ./publish.config.js');
+    expect(scripts['publish:staging']).toBe('ph-publish staging -c ./publish.config.js');
+    expect(scripts['publish:production']).toBe('ph-publish production -c ./publish.config.js');
   });
 
   it('split layout — omits publish scripts (root-package-json owns them)', () => {
@@ -86,6 +86,31 @@ describe('buildCliPackageJson', () => {
     expect(scripts['publish:dev']).toBeUndefined();
     expect(scripts['publish:staging']).toBeUndefined();
     expect(scripts['publish:production']).toBeUndefined();
+  });
+
+  it('includes test-service-registry when serviceAnnouncement enabled', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      deployment: { serviceAnnouncement: true },
+    });
+    const pkg = parseBuilt(spec);
+    const scripts = pkg.scripts as Record<string, string>;
+    expect(scripts['test-service-registry']).toBe('vetra-graphql-registry --withAuth');
+  });
+
+  it('includes build:manifest script and updated build script', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const pkg = parseBuilt(spec);
+    const scripts = pkg.scripts as Record<string, string>;
+    expect(scripts['build:manifest']).toBe('build-manifest');
+    expect(scripts.build).toBe('pnpm build:skills && tsc && pnpm build:manifest');
+  });
+
+  it('omits test-service-registry when serviceAnnouncement disabled', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const pkg = parseBuilt(spec);
+    const scripts = pkg.scripts as Record<string, string>;
+    expect(scripts['test-service-registry']).toBeUndefined();
   });
 
   it('output always ends with a trailing newline', () => {

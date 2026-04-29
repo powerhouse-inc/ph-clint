@@ -41,14 +41,39 @@ describe('buildRootPackageJson', () => {
       scripts: Record<string, string>;
     };
     expect(pkg.scripts['publish:dev']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish dev -c ../publish.config.ts',
+      'pnpm --prefix foo-cli exec ph-publish dev -c ../publish.config.js',
     );
     expect(pkg.scripts['publish:staging']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish staging -c ../publish.config.ts',
+      'pnpm --prefix foo-cli exec ph-publish staging -c ../publish.config.js',
     );
     expect(pkg.scripts['publish:production']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish production -c ../publish.config.ts',
+      'pnpm --prefix foo-cli exec ph-publish production -c ../publish.config.js',
     );
+  });
+
+  it('includes test-service-registry when serviceAnnouncement enabled', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+      deployment: { serviceAnnouncement: true },
+    });
+    const pkg = JSON.parse(buildRootPackageJson(spec)) as {
+      scripts: Record<string, string>;
+    };
+    expect(pkg.scripts['test-service-registry']).toBe(
+      'pnpm --prefix foo-cli test-service-registry',
+    );
+  });
+
+  it('omits test-service-registry when serviceAnnouncement disabled', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+    });
+    const pkg = JSON.parse(buildRootPackageJson(spec)) as {
+      scripts: Record<string, string>;
+    };
+    expect(pkg.scripts['test-service-registry']).toBeUndefined();
   });
 
   it('preserves a scoped package name at the root', () => {
