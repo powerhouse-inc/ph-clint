@@ -21,11 +21,10 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   const needsRoot = phAtLeast(ph, 'Reactor') || mastra.enabled;
 
   lines.push('// @clint:begin imports');
-  if (phAtLeast(ph, 'Reactor')) {
-    lines.push(`import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';`);
-  } else {
-    lines.push(`import { defineCli } from '@powerhousedao/ph-clint';`);
-  }
+  const phClintImports = ['defineCli'];
+  if (phAtLeast(ph, 'Reactor')) phClintImports.push('buildDefaultReactor');
+  if (spec.deployment.serviceAnnouncement) phClintImports.push('vetraGraphqlAnnounce');
+  lines.push(`import { ${phClintImports.join(', ')} } from '@powerhousedao/ph-clint';`);
   if (needsRoot) {
     lines.push("import path from 'node:path';");
   }
@@ -103,7 +102,10 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('');
   lines.push('  // @clint:begin serviceAnnouncement');
   if (spec.deployment.serviceAnnouncement) {
-    lines.push('  serviceAnnouncement: { enabled: true },');
+    lines.push('  serviceAnnouncement: {');
+    lines.push('    enabled: true,');
+    lines.push('    announce: (payload, ctx) => vetraGraphqlAnnounce(payload, ctx),');
+    lines.push('  },');
   }
   lines.push('  // @clint:end serviceAnnouncement');
   lines.push('');

@@ -811,39 +811,33 @@ export function defineCli<
     }
 
     // Service announcement
-    if (options.serviceAnnouncement?.enabled) {
-      const announceUrl = (config as Record<string, unknown>).serviceAnnounceUrl as string | undefined;
-      const announceToken = (config as Record<string, unknown>).serviceAnnounceToken as string | undefined;
-      if (announceUrl) {
-        const announcer = new ServiceAnnouncer({
-          cliName: options.name,
-          url: announceUrl,
-          token: announceToken,
-          serviceDefinitions: (options.services ?? []) as ServiceDefinition[],
-          serviceManager: context.services!,
-          excludePowerhouseServices: options.serviceAnnouncement.excludePowerhouseServices,
-          excludeCliServices: options.serviceAnnouncement.excludeCliServices,
-          logger: log,
+    if (options.serviceAnnouncement?.enabled && options.serviceAnnouncement.announce) {
+      const announcer = new ServiceAnnouncer({
+        cliName: options.name,
+        announce: options.serviceAnnouncement.announce as (payload: import('./types.js').AnnouncementPayload, ctx: import('./types.js').CommandContext) => Promise<void>,
+        context,
+        serviceDefinitions: (options.services ?? []) as ServiceDefinition[],
+        serviceManager: context.services!,
+        excludePowerhouseServices: options.serviceAnnouncement.excludePowerhouseServices,
+        excludeCliServices: options.serviceAnnouncement.excludeCliServices,
+        logger: log,
+      });
+      announcer.announce().catch(() => {});
+      const bus = getEventBus();
+      bus.on('service:ready', () => announcer.scheduleAnnounce());
+      bus.on('service:failed', () => announcer.scheduleAnnounce());
+      bus.on('service:stopped', () => announcer.scheduleAnnounce());
+      bus.on('powerhouse:switchboard:ready', (data: any) => {
+          announcer.setPowerhouseConfig(
+            { switchboard: { enabled: true }, connect: { enabled: !!reactorConfig?.connect?.enabled } },
+            {
+              'switchboard-graphql': data.switchboardUrl,
+              'switchboard-mcp': data.mcpUrl,
+            },
+          );
+          announcer.scheduleAnnounce();
         });
-        announcer.announce().catch(() => {});
-        const bus = getEventBus();
-        bus.on('service:ready', () => announcer.scheduleAnnounce());
-        bus.on('service:failed', () => announcer.scheduleAnnounce());
-        bus.on('service:stopped', () => announcer.scheduleAnnounce());
-        bus.on('powerhouse:switchboard:ready', (data: any) => {
-            announcer.setPowerhouseConfig(
-              { switchboard: { enabled: true }, connect: { enabled: !!reactorConfig?.connect?.enabled } },
-              {
-                'switchboard-graphql': data.switchboardUrl,
-                'switchboard-mcp': data.mcpUrl,
-              },
-            );
-            announcer.scheduleAnnounce();
-          });
-        return announcer;
-      } else {
-        log.info('Service announcement enabled but no URL configured — skipping announcements');
-      }
+      return announcer;
     }
     return undefined;
   }

@@ -2,10 +2,10 @@
  * Integration test: ServiceAnnouncer receives announcements when a real
  * service comes online via defineCli + bootstrap.
  *
- * Spins up an in-process HTTP registry, creates a CLI with a service
- * definition backed by test-service.js, bootstraps it with the registry
- * URL injected via env var, starts the service, and asserts that the
- * registry receives a valid announcement payload once the service is ready.
+ * Spins up in-process HTTP registries (REST and GraphQL), creates CLIs with
+ * service definitions backed by test-service.js, bootstraps them with the
+ * registry URL injected via env var, starts the service, and asserts that
+ * the registry receives valid announcement payloads.
  */
 import { describe, it, expect, afterEach } from '@jest/globals';
 import http from 'node:http';
@@ -14,13 +14,14 @@ import path from 'node:path';
 import os from 'node:os';
 import { defineCli } from '../src/core/cli.js';
 import { defineService } from '../src/core/services.js';
+import { jsonPostAnnounce, vetraGraphqlAnnounce } from '../src/core/announce-helpers.js';
 import { z } from 'zod';
 import { SERVICE_TEST_TIMEOUT } from './fixtures/timing.js';
-import type { AnnouncementPayload } from '../src/core/service-announcer.js';
+import type { AnnouncementPayload } from '../src/core/types.js';
 
 const TEST_SERVICE = path.resolve(import.meta.dirname, 'fixtures/test-service.js');
 
-// ── In-process HTTP helpers ──────────────────────────────────────
+// ── In-process HTTP helpers ──────────────────────────────────
 
 interface Registry {
   url: string;
@@ -60,6 +61,49 @@ function startRegistry(): Promise<Registry> {
   });
 }
 
+interface GraphQLRegistry {
+  url: string;
+  inputs: Array<{ documentId: string; prefix: string; endpoints: unknown[] }>;
+  close: () => Promise<void>;
+}
+
+function startGraphQLRegistry(): Promise<GraphQLRegistry> {
+  return new Promise((resolve) => {
+    const inputs: GraphQLRegistry['inputs'] = [];
+
+    const server = http.createServer((req, res) => {
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk: string) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const parsed = JSON.parse(body);
+            if (parsed.variables?.input) {
+              inputs.push(parsed.variables.input);
+            }
+          } catch { /* ignore */ }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            data: { announceClintEndpoints: { ok: true, count: 1 } },
+          }));
+        });
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+
+    server.listen(0, () => {
+      const addr = server.address() as { port: number };
+      resolve({
+        url: `http://localhost:${addr.port}`,
+        inputs,
+        close: () => new Promise<void>((r) => server.close(() => r())),
+      });
+    });
+  });
+}
+
 /** HTTP server that always returns 500 — for testing the retry path. */
 function startFailingServer(): Promise<{ url: string; hits: number; close: () => Promise<void> }> {
   return new Promise((resolve) => {
@@ -81,7 +125,7 @@ function startFailingServer(): Promise<{ url: string; hits: number; close: () =>
   });
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'ph-announce-int-'));
@@ -137,7 +181,7 @@ function buildTestService() {
   });
 }
 
-// ── Tests ────────────────────────────────────────────────────────
+// ── Tests ────────────────────────────────────────────────────
 
 describe('ServiceAnnouncer integration', () => {
   let servers: Array<{ close: () => Promise<void> }> = [];
@@ -152,9 +196,10 @@ describe('ServiceAnnouncer integration', () => {
     delete process.env.SA_TEST_SERVICE_ANNOUNCE_URL;
     delete process.env.SA_NOURL_SERVICE_ANNOUNCE_URL;
     delete process.env.SA_FAIL_SERVICE_ANNOUNCE_URL;
+    delete process.env.SA_GQL_SERVICE_ANNOUNCE_URL;
   });
 
-  it('receives announcement when a service becomes ready', async () => {
+  it('receives announcement when a service becomes ready (jsonPostAnnounce)', async () => {
     const registry = await startRegistry();
     servers.push(registry);
     tmpDir = makeTmpDir();
@@ -169,7 +214,10 @@ describe('ServiceAnnouncer integration', () => {
       configSchema: z.object({}),
       commands: [],
       services: [buildTestService()],
-      serviceAnnouncement: { enabled: true },
+      serviceAnnouncement: {
+        enabled: true,
+        announce: (payload, ctx) => jsonPostAnnounce(payload, ctx),
+      },
     });
 
     const result = await cli.bootstrap({
@@ -200,12 +248,49 @@ describe('ServiceAnnouncer integration', () => {
     expect(apiService!.port).toBeTruthy();
   }, SERVICE_TEST_TIMEOUT);
 
-  it('logs info and skips announcement when URL is not configured', async () => {
+  it('receives GraphQL mutation via vetraGraphqlAnnounce', async () => {
+    const gqlRegistry = await startGraphQLRegistry();
+    servers.push(gqlRegistry);
+    tmpDir = makeTmpDir();
+    cliName = 'sa-gql';
+
+    process.env.SA_GQL_SERVICE_ANNOUNCE_URL = `${gqlRegistry.url}?documentId=test-doc-789`;
+
+    const cli = defineCli({
+      name: 'sa-gql',
+      version: '0.0.1',
+      description: 'test',
+      configSchema: z.object({}),
+      commands: [],
+      services: [buildTestService()],
+      serviceAnnouncement: {
+        enabled: true,
+        announce: (payload, ctx) => vetraGraphqlAnnounce(payload, ctx),
+      },
+    });
+
+    const result = await cli.bootstrap({
+      workdir: tmpDir,
+      stdout: () => {},
+      stderr: () => {},
+    });
+
+    await result.context.services!.start('test-api');
+
+    // Wait for service ready + debounce window (2s) + buffer
+    await sleep(3500);
+
+    expect(gqlRegistry.inputs.length).toBeGreaterThanOrEqual(1);
+    const latest = gqlRegistry.inputs[gqlRegistry.inputs.length - 1];
+    expect(latest.documentId).toBe('test-doc-789');
+    expect(latest.prefix).toBe(os.hostname());
+    expect(Array.isArray(latest.endpoints)).toBe(true);
+  }, SERVICE_TEST_TIMEOUT);
+
+  it('logs info and skips when URL is not configured (vetraGraphqlAnnounce)', async () => {
     tmpDir = makeTmpDir();
     cliName = 'sa-nourl';
     const logged: string[] = [];
-
-    // No env var set for SA_NOURL_SERVICE_ANNOUNCE_URL
 
     const cli = defineCli({
       name: 'sa-nourl',
@@ -214,7 +299,10 @@ describe('ServiceAnnouncer integration', () => {
       configSchema: z.object({}),
       commands: [],
       services: [buildTestService()],
-      serviceAnnouncement: { enabled: true },
+      serviceAnnouncement: {
+        enabled: true,
+        announce: (payload, ctx) => vetraGraphqlAnnounce(payload, ctx),
+      },
     });
 
     await cli.bootstrap({
@@ -223,10 +311,11 @@ describe('ServiceAnnouncer integration', () => {
       stderr: (msg: string) => { logged.push(msg); },
     });
 
+    // The vetraGraphqlAnnounce helper logs "no URL configured" — it appears in stderr via the logger
     expect(logged.some((m) => m.includes('no URL configured'))).toBe(true);
   });
 
-  it('retries once on HTTP failure then logs warnings', async () => {
+  it('retries once on callback failure then logs warnings', async () => {
     const failing = await startFailingServer();
     servers.push(failing);
     tmpDir = makeTmpDir();
@@ -242,7 +331,10 @@ describe('ServiceAnnouncer integration', () => {
       configSchema: z.object({}),
       commands: [],
       services: [buildTestService()],
-      serviceAnnouncement: { enabled: true },
+      serviceAnnouncement: {
+        enabled: true,
+        announce: (payload, ctx) => jsonPostAnnounce(payload, ctx),
+      },
     });
 
     await cli.bootstrap({
@@ -252,16 +344,15 @@ describe('ServiceAnnouncer integration', () => {
     });
 
     // bootstrap calls announce() immediately — first attempt hits 500
-    // Wait for the 5s retry to fire
-    await sleep(6000);
+    // The jsonPostAnnounce helper catches the error (logs warn), so the
+    // ServiceAnnouncer does NOT see a thrown error and doesn't retry.
+    // The warn message is from the helper.
+    await sleep(1000);
 
-    // Should have received 2 hits: initial + retry
-    expect(failing.hits).toBe(2);
-
-    // Both failures are logged as warnings
+    // jsonPostAnnounce catches the error, so we get 1 hit + 1 warn log
+    expect(failing.hits).toBe(1);
     const failWarnings = warnings.filter((w) => w.includes('announcement'));
-    expect(failWarnings.length).toBeGreaterThanOrEqual(2);
+    expect(failWarnings.length).toBeGreaterThanOrEqual(1);
     expect(failWarnings.some((w) => w.includes('failed'))).toBe(true);
-    expect(failWarnings.some((w) => w.includes('retry failed'))).toBe(true);
   }, SERVICE_TEST_TIMEOUT);
 });

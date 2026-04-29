@@ -1,8 +1,14 @@
-import { describe, it, expect, jest, afterEach, beforeEach } from '@jest/globals';
-import http from 'node:http';
+import { describe, it, expect, jest, afterEach } from '@jest/globals';
 import { ServiceAnnouncer } from '../src/core/service-announcer.js';
-import type { ServiceAnnouncerOptions } from '../src/core/service-announcer.js';
-import type { ServiceManager, ServiceDefinition, ServiceInstanceStatus, Logger } from '../src/core/types.js';
+import type { AnnounceCallback, ServiceAnnouncerOptions } from '../src/core/service-announcer.js';
+import type {
+  ServiceManager,
+  ServiceDefinition,
+  ServiceInstanceStatus,
+  Logger,
+  CommandContext,
+  AnnouncementPayload,
+} from '../src/core/types.js';
 
 function createMockLogger(): Logger {
   return {
@@ -27,11 +33,29 @@ function createMockServiceManager(instances: ServiceInstanceStatus[] = []): Serv
   };
 }
 
+function createMockContext(): CommandContext {
+  return {
+    workdir: '/tmp/test',
+    workspace: {
+      getWorkdir: () => '/tmp/test',
+      getLocalConfigPath: () => '/tmp/test/.ph/test.config.local.json',
+      getStoreFolder: () => '/tmp/test/.ph/test',
+      loadJsonObject: async <T>(f: string, fallback: T) => fallback,
+      storeJsonObject: async () => {},
+      loadLocalConfig: async <T>(fallback: T) => fallback,
+      storeLocalConfig: async () => {},
+    },
+    config: {},
+    stdout: () => {},
+    runProcess: async () => ({ success: true, output: '' }),
+  };
+}
+
 function createDefaults(overrides?: Partial<ServiceAnnouncerOptions>): ServiceAnnouncerOptions {
   return {
     cliName: 'test-cli',
-    url: 'http://localhost:9999/announce',
-    token: undefined,
+    announce: jest.fn<AnnounceCallback>().mockResolvedValue(undefined),
+    context: createMockContext(),
     serviceDefinitions: [],
     serviceManager: createMockServiceManager(),
     logger: createMockLogger(),
@@ -330,94 +354,70 @@ describe('ServiceAnnouncer', () => {
   });
 
   describe('announce', () => {
-    it('does not POST when URL is not set', async () => {
-      announcer = new ServiceAnnouncer(createDefaults({ url: undefined }));
-      // Should not throw
+    it('calls the announce callback with correct payload and context', async () => {
+      const announceFn = jest.fn<AnnounceCallback>().mockResolvedValue(undefined);
+      const ctx = createMockContext();
+      announcer = new ServiceAnnouncer(createDefaults({
+        announce: announceFn,
+        context: ctx,
+      }));
       await announcer.announce();
+      expect(announceFn).toHaveBeenCalledTimes(1);
+      const [payload, passedCtx] = announceFn.mock.calls[0] as [AnnouncementPayload, CommandContext];
+      expect(payload.node.clintId).toBe('test-cli');
+      expect(passedCtx).toBe(ctx);
     });
 
-    it('POSTs payload to configured URL', async () => {
-      const received: string[] = [];
-      const server = http.createServer((req, res) => {
-        let body = '';
-        req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
-        req.on('end', () => {
-          received.push(body);
-          res.writeHead(200);
-          res.end();
-        });
-      });
-      await new Promise<void>(resolve => server.listen(0, resolve));
-      const port = (server.address() as { port: number }).port;
-
-      try {
-        announcer = new ServiceAnnouncer(createDefaults({
-          url: `http://localhost:${port}/announce`,
-          token: 'test-token',
-        }));
-        await announcer.announce();
-
-        expect(received).toHaveLength(1);
-        const payload = JSON.parse(received[0]!);
-        expect(payload.node.clintId).toBe('test-cli');
-        expect(payload.node.type).toBe('clint');
-      } finally {
-        server.close();
-      }
-    });
-
-    it('logs warning on HTTP failure without throwing', async () => {
-      const server = http.createServer((_req, res) => {
-        res.writeHead(500);
-        res.end('Internal Server Error');
-      });
-      await new Promise<void>(resolve => server.listen(0, resolve));
-      const port = (server.address() as { port: number }).port;
+    it('retries once after callback failure', async () => {
+      const announceFn = jest.fn<AnnounceCallback>()
+        .mockRejectedValueOnce(new Error('first fail'))
+        .mockResolvedValueOnce(undefined);
       const logger = createMockLogger();
+      announcer = new ServiceAnnouncer(createDefaults({
+        announce: announceFn,
+        logger,
+      }));
+      await announcer.announce();
 
-      try {
-        announcer = new ServiceAnnouncer(createDefaults({
-          url: `http://localhost:${port}/announce`,
-          logger,
-        }));
-        await announcer.announce();
-        expect(logger.warn).toHaveBeenCalled();
-      } finally {
-        server.close();
-      }
+      // First call fails
+      expect(announceFn).toHaveBeenCalledTimes(1);
+      expect(logger.warn).toHaveBeenCalled();
+
+      // Wait for retry (5s + buffer)
+      await new Promise(resolve => setTimeout(resolve, 5500));
+      expect(announceFn).toHaveBeenCalledTimes(2);
+    }, 10000);
+
+    it('logs warning on callback failure without throwing', async () => {
+      const announceFn = jest.fn<AnnounceCallback>().mockRejectedValue(new Error('fail'));
+      const logger = createMockLogger();
+      announcer = new ServiceAnnouncer(createDefaults({
+        announce: announceFn,
+        logger,
+      }));
+      await announcer.announce();
+      expect(logger.warn).toHaveBeenCalled();
     });
   });
 
   describe('scheduleAnnounce', () => {
     it('debounces multiple rapid calls', async () => {
-      let callCount = 0;
-      const server = http.createServer((_req, res) => {
-        callCount++;
-        res.writeHead(200);
-        res.end();
-      });
-      await new Promise<void>(resolve => server.listen(0, resolve));
-      const port = (server.address() as { port: number }).port;
+      const announceFn = jest.fn<AnnounceCallback>().mockResolvedValue(undefined);
+      announcer = new ServiceAnnouncer(createDefaults({
+        announce: announceFn,
+      }));
 
-      try {
-        announcer = new ServiceAnnouncer(createDefaults({
-          url: `http://localhost:${port}/announce`,
-        }));
+      // Fire 5 rapid calls
+      announcer.scheduleAnnounce();
+      announcer.scheduleAnnounce();
+      announcer.scheduleAnnounce();
+      announcer.scheduleAnnounce();
+      announcer.scheduleAnnounce();
 
-        // Fire 5 rapid calls
-        announcer.scheduleAnnounce();
-        announcer.scheduleAnnounce();
-        announcer.scheduleAnnounce();
-        announcer.scheduleAnnounce();
-        announcer.scheduleAnnounce();
+      // Wait for debounce (2s) + a bit
+      await new Promise(resolve => setTimeout(resolve, 2500));
 
-        // Wait for debounce (2s) + a bit
-        await new Promise(resolve => setTimeout(resolve, 2500));
-
-        expect(callCount).toBe(1);
-      } finally {
-        server.close();
-      }
+      expect(announceFn).toHaveBeenCalledTimes(1);
     }, 10000);
   });
 

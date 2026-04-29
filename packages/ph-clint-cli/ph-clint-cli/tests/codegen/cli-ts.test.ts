@@ -104,18 +104,22 @@ describe('buildCliTs', () => {
     expect(code).toContain("'tools.md'");
   });
 
-  it('emits serviceAnnouncement when deployment.serviceAnnouncement is true', () => {
+  it('emits serviceAnnouncement with vetraGraphqlAnnounce when deployment.serviceAnnouncement is true', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       deployment: { serviceAnnouncement: true },
     });
     const code = buildCliTs(spec);
-    expect(code).toContain('serviceAnnouncement: { enabled: true }');
+    expect(code).toContain('enabled: true,');
+    expect(code).toContain('vetraGraphqlAnnounce(payload, ctx)');
+    expect(code).toContain('vetraGraphqlAnnounce');
+    // Import should include vetraGraphqlAnnounce
+    expect(code).toContain("import { defineCli, vetraGraphqlAnnounce } from '@powerhousedao/ph-clint'");
   });
 
   it('omits serviceAnnouncement when deployment.serviceAnnouncement is false', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const code = buildCliTs(spec);
-    expect(code).not.toContain('serviceAnnouncement: { enabled: true }');
+    expect(code).not.toContain('vetraGraphqlAnnounce');
   });
 });

@@ -32,7 +32,8 @@ export { createRoutineServiceAdapter, createCompositeServiceManager } from './co
 export { formatStreamChunk, renderStream } from './core/stream.js';
 export type { RenderedChunk } from './core/stream.js';
 export { ServiceAnnouncer } from './core/service-announcer.js';
-export type { AnnouncementPayload, AnnouncedService, ServiceAnnouncerOptions } from './core/service-announcer.js';
+export type { AnnounceCallback, ServiceAnnouncerOptions } from './core/service-announcer.js';
+export { jsonPostAnnounce, vetraGraphqlAnnounce } from './core/announce-helpers.js';
 export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
 export { getCompletions, getGhostSuggestion, getCompletionSuffix, applyCompletion } from './interactive/completions.js';
@@ -132,6 +133,8 @@ export type {
   PromptsConfig,
   AgentProfileConfig,
   SkillConfig,
+  AnnouncedService,
+  AnnouncementPayload,
   PhClintEvents,
   EmitFn,
   OnFn,

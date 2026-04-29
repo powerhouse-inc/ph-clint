@@ -1,42 +1,28 @@
 /**
- * ServiceAnnouncer — posts service status to a central endpoint for
- * network-level service discovery. Debounces rapid status changes and
- * retries once on failure.
+ * ServiceAnnouncer — posts service status via a user-provided announce
+ * callback for network-level service discovery. Debounces rapid status
+ * changes and retries once on failure.
  */
 import os from 'node:os';
 import type {
   Logger,
+  CommandContext,
   ServiceManager,
   ServiceDefinition,
   CaptureDefinition,
   EndpointType,
+  AnnouncementPayload,
+  AnnouncedService,
 } from './types.js';
 
-// ── Public types ─────────────────────────────────────────────────
+// ── Public types ─────────────────────────────────────────────
 
-export interface AnnouncedService {
-  id: string;
-  name: string;
-  type: 'api-graphql' | 'api-mcp' | 'website';
-  url: string;
-  port: string;
-  status: string;
-}
-
-export interface AnnouncementPayload {
-  node: {
-    hostname: string;
-    type: 'clint';
-    clintId: string;
-  };
-  services: AnnouncedService[];
-  reportedAt: string;
-}
+export type AnnounceCallback = (payload: AnnouncementPayload, ctx: CommandContext) => Promise<void>;
 
 export interface ServiceAnnouncerOptions {
   cliName: string;
-  url: string | undefined;
-  token: string | undefined;
+  announce: AnnounceCallback;
+  context: CommandContext;
   serviceDefinitions: ServiceDefinition[];
   serviceManager: ServiceManager;
   excludePowerhouseServices?: string[];
@@ -46,7 +32,7 @@ export interface ServiceAnnouncerOptions {
   powerhouseEndpoints?: Record<string, string>;
 }
 
-// ── Announceable endpoint types ──────────────────────────────────
+// ── Announceable endpoint types ──────────────────────────────
 
 const ANNOUNCEABLE_TYPES: Set<EndpointType> = new Set(['api-graphql', 'api-mcp', 'website']);
 
@@ -60,12 +46,12 @@ function extractPort(urlStr: string): string {
   }
 }
 
-// ── ServiceAnnouncer ─────────────────────────────────────────────
+// ── ServiceAnnouncer ─────────────────────────────────────────
 
 export class ServiceAnnouncer {
   private readonly cliName: string;
-  private readonly url: string | undefined;
-  private readonly token: string | undefined;
+  private readonly announceCallback: AnnounceCallback;
+  private readonly context: CommandContext;
   private readonly serviceDefinitions: ServiceDefinition[];
   private readonly serviceManager: ServiceManager;
   private readonly excludePH: Set<string>;
@@ -79,8 +65,8 @@ export class ServiceAnnouncer {
 
   constructor(opts: ServiceAnnouncerOptions) {
     this.cliName = opts.cliName;
-    this.url = opts.url;
-    this.token = opts.token;
+    this.announceCallback = opts.announce;
+    this.context = opts.context;
     this.serviceDefinitions = opts.serviceDefinitions;
     this.serviceManager = opts.serviceManager;
     this.excludePH = new Set(opts.excludePowerhouseServices ?? []);
@@ -184,20 +170,18 @@ export class ServiceAnnouncer {
     };
   }
 
-  /** Send announcement immediately. */
+  /** Send announcement immediately via the user-provided callback. */
   async announce(): Promise<void> {
-    if (!this.url) return;
-
     const payload = this.buildPayload();
     try {
-      await this.post(payload);
+      await this.announceCallback(payload, this.context);
       this.logger.debug('Service announcement sent successfully');
     } catch (err) {
       this.logger.warn(`Service announcement failed: ${err instanceof Error ? err.message : String(err)}`);
       // Retry once after 5s
       this.retryTimer = setTimeout(async () => {
         try {
-          await this.post(payload);
+          await this.announceCallback(payload, this.context);
           this.logger.debug('Service announcement retry succeeded');
         } catch (retryErr) {
           this.logger.warn(`Service announcement retry failed: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`);
@@ -254,23 +238,6 @@ export class ServiceAnnouncer {
     }
 
     return result;
-  }
-
-  private async post(payload: AnnouncementPayload): Promise<void> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
-
-    const response = await fetch(this.url!, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
   }
 }
 
