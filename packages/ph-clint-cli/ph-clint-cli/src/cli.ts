@@ -6,7 +6,9 @@
  * rewritten by ph-clint-cli's generator when the project spec changes.
  * Everything outside the markers is user-editable and preserved.
  */
+import path from 'node:path';
 import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
+import { z } from 'zod';
 import { CLI_NAME, CLI_VERSION, CLI_ROOT } from './config.js';
 import { configSchema, secretsSchema } from './framework.js';
 
@@ -45,9 +47,46 @@ export const cli = defineCli({
 
   // @clint:begin prompts
   prompts: {
-    artifacts: [],
-    agents: {},
-    skills: {},
+    artifacts: [path.join(CLI_ROOT, 'gen', 'skills'), path.join(CLI_ROOT, 'dist', 'gen', 'skills')],
+    agents: {
+      'ph-clint-dev-agent': {
+        name: 'PhClintDevAgent',
+        sections: ['AgentBase.md'],
+        skills: ['cli-setup', 'command-definition', 'service-definition'],
+      },
+    },
+    skills: {
+      'cli-setup': {
+        description: 'Set up a new CLI with defineCli, config schemas, entrypoint, and interactive mode',
+        inputSchema: z.object({
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
+            .describe('Expert: align design decisions with the developer. Discovery: explain concepts step by step. One-shot: make all decisions autonomously'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
+      'command-definition': {
+        description: 'Define commands with Zod schemas, execute functions, return values, and parameter prompting',
+        inputSchema: z.object({
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
+            .describe('Expert: align design decisions with the developer. Discovery: explain concepts step by step. One-shot: make all decisions autonomously'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
+      'service-definition': {
+        description: 'Define background services with readiness detection, preflight checks, and project scanning',
+        inputSchema: z.object({
+          mode: z
+            .enum(['expert', 'discovery', 'one-shot'])
+            .default('expert')
+            .describe('Expert: align design decisions with the developer. Discovery: explain concepts step by step. One-shot: make all decisions autonomously'),
+        }),
+        instructionTemplate: 'Use your {{skillId}} skill in {{mode}} mode for: {{prompt}}',
+      },
+    },
   },
   // @clint:end prompts
 
