@@ -46,6 +46,7 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
     name: getPackageName(spec),
     version: spec.version,
     private: true,
+    type: 'module',
     ...(spec.description ? { description: spec.description } : {}),
     scripts,
   };

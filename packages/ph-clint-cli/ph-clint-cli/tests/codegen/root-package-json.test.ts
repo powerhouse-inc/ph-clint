@@ -15,6 +15,7 @@ describe('buildRootPackageJson', () => {
     };
     expect(pkg.name).toBe('foo');
     expect(pkg.private).toBe(true);
+    expect((pkg as Record<string, unknown>).type).toBe('module');
     expect(pkg.scripts.install).toBe(
       'pnpm --prefix foo-app install && pnpm --prefix foo-cli install',
     );

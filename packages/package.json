@@ -1,6 +1,7 @@
 {
   "name": "ph-clint-packages",
   "private": true,
+  "type": "module",
   "scripts": {
     "install": "pnpm --prefix ph-clint install && pnpm --prefix ph-clint-dev install && pnpm --prefix ph-clint-cli/ph-clint-app install && pnpm --prefix ph-clint-cli/ph-clint-cli install",
     "build": "pnpm --prefix ph-clint build && pnpm --prefix ph-clint-dev build && pnpm --prefix ph-clint-cli/ph-clint-app build && pnpm --prefix ph-clint-cli/ph-clint-cli build",
