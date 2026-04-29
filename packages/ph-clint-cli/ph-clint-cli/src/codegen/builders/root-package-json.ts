@@ -34,9 +34,9 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
     lint: prefix(cli, 'lint'),
     'app:dev': prefix(app, 'dev'),
     'cli:dev': prefix(cli, 'dev'),
-    'publish:dev': `${prefix(cli, 'exec ph-publish')} dev -c ./publish.config.ts`,
-    'publish:staging': `${prefix(cli, 'exec ph-publish')} staging -c ./publish.config.ts`,
-    'publish:production': `${prefix(cli, 'exec ph-publish')} production -c ./publish.config.ts`,
+    'publish:dev': `${prefix(cli, 'exec ph-publish')} dev -c ../publish.config.ts`,
+    'publish:staging': `${prefix(cli, 'exec ph-publish')} staging -c ../publish.config.ts`,
+    'publish:production': `${prefix(cli, 'exec ph-publish')} production -c ../publish.config.ts`,
   };
 
   const pkg = {

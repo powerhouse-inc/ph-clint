@@ -67,6 +67,27 @@ describe('buildCliPackageJson', () => {
     expect(pkg.bin).toEqual({ foobar: './dist/main.js' });
   });
 
+  it('single layout — includes publish scripts', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const pkg = parseBuilt(spec);
+    const scripts = pkg.scripts as Record<string, string>;
+    expect(scripts['publish:dev']).toBe('ph-publish dev -c ./publish.config.ts');
+    expect(scripts['publish:staging']).toBe('ph-publish staging -c ./publish.config.ts');
+    expect(scripts['publish:production']).toBe('ph-publish production -c ./publish.config.ts');
+  });
+
+  it('split layout — omits publish scripts (root-package-json owns them)', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+    });
+    const pkg = parseBuilt(spec);
+    const scripts = pkg.scripts as Record<string, string>;
+    expect(scripts['publish:dev']).toBeUndefined();
+    expect(scripts['publish:staging']).toBeUndefined();
+    expect(scripts['publish:production']).toBeUndefined();
+  });
+
   it('output always ends with a trailing newline', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     expect(buildCliPackageJson(spec).endsWith('\n')).toBe(true);

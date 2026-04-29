@@ -41,13 +41,13 @@ describe('buildRootPackageJson', () => {
       scripts: Record<string, string>;
     };
     expect(pkg.scripts['publish:dev']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish dev -c ./publish.config.ts',
+      'pnpm --prefix foo-cli exec ph-publish dev -c ../publish.config.ts',
     );
     expect(pkg.scripts['publish:staging']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish staging -c ./publish.config.ts',
+      'pnpm --prefix foo-cli exec ph-publish staging -c ../publish.config.ts',
     );
     expect(pkg.scripts['publish:production']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish production -c ./publish.config.ts',
+      'pnpm --prefix foo-cli exec ph-publish production -c ../publish.config.ts',
     );
   });
 

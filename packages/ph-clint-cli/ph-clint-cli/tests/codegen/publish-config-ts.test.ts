@@ -29,4 +29,15 @@ describe('buildPublishConfigTs', () => {
     expect(content).toContain("{ path: 'bar-app', category: 'app' }");
     expect(content).toContain("{ path: 'bar-cli', category: 'cli' }");
   });
+
+  it('single layout — emits a single package at "."', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'baz',
+      version: '1.0.0',
+    });
+    const content = buildPublishConfigTs(spec);
+    expect(content).toContain("{ path: '.', category: 'cli' }");
+    expect(content).not.toContain('baz-app');
+    expect(content).not.toContain('baz-cli');
+  });
 });

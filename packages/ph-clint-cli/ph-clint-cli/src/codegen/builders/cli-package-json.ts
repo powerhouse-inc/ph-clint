@@ -94,6 +94,13 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     scripts['mastra:build'] = 'mastra build';
     scripts['mastra:start'] = 'mastra start';
   }
+  // Single-layout: publish scripts live in the CLI package.json (which IS the
+  // root). Split-layout gets these from root-package-json.ts instead.
+  if (!phAtLeast(powerhouse, 'Reactor')) {
+    scripts['publish:dev'] = 'ph-publish dev -c ./publish.config.ts';
+    scripts['publish:staging'] = 'ph-publish staging -c ./publish.config.ts';
+    scripts['publish:production'] = 'ph-publish production -c ./publish.config.ts';
+  }
   const pkg: Record<string, unknown> = {
     name: pkgName,
     version: spec.version,

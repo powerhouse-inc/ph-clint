@@ -187,6 +187,14 @@ function planFiles(
     content: buildReadme(spec),
   });
 
+  // Publish config — always at the project root (both layouts).
+  const publishConfig = path.join(targetDir, 'publish.config.ts');
+  planned.push({
+    relativePath: 'publish.config.ts',
+    absolutePath: publishConfig,
+    content: buildPublishConfigTs(spec),
+  });
+
   // Split-layout only: root package.json + app placeholder files.
   if (split && appDir) {
     const rootPkg = path.join(targetDir, 'package.json');
@@ -194,12 +202,6 @@ function planFiles(
       relativePath: 'package.json',
       absolutePath: rootPkg,
       content: buildRootPackageJson(spec),
-    });
-    const publishConfig = path.join(targetDir, 'publish.config.ts');
-    planned.push({
-      relativePath: 'publish.config.ts',
-      absolutePath: publishConfig,
-      content: buildPublishConfigTs(spec),
     });
     const appGitkeep = path.join(appDir, '.gitkeep');
     planned.push({

@@ -1,15 +1,25 @@
 /**
- * Builds the root `publish.config.ts` for split-layout projects.
- * Defines a single lockstep group containing both the app and cli packages.
+ * Builds the root `publish.config.ts`.
+ *
+ * Split-layout: a lockstep group with both app and cli packages.
+ * Single-layout: a single-package group at `.`.
  */
-import { type ClintProjectSpec } from '../../spec/types.js';
+import { type ClintProjectSpec, phAtLeast } from '../../spec/types.js';
 
 export function buildPublishConfigTs(spec: ClintProjectSpec): string {
-  const app = `${spec.name}-app`;
-  const cli = `${spec.name}-cli`;
+  const split = phAtLeast(spec.features.powerhouse, 'Reactor');
   // The publish pipeline appends the prerelease suffix (e.g. -dev.0), so we
   // only store the base semver (M.m.p) here.
   const baseVersion = spec.version.replace(/-.*$/, '');
+
+  const packages = split
+    ? `[
+        { path: '${spec.name}-app', category: 'app' },
+        { path: '${spec.name}-cli', category: 'cli' },
+      ]`
+    : `[
+        { path: '.', category: 'cli' },
+      ]`;
 
   return `// Publish config — loaded by ph-clint's publish pipeline.
 // definePublishConfig is an identity function; a plain export is equivalent.
@@ -17,10 +27,7 @@ export default {
   groups: {
     '${spec.name}': {
       version: '${baseVersion}',
-      packages: [
-        { path: '${app}', category: 'app' },
-        { path: '${cli}', category: 'cli' },
-      ],
+      packages: ${packages},
     },
   },
 };
