@@ -138,12 +138,14 @@ export async function runPhInit(
 /**
  * Patch the app `package.json` name to the scoped form (`@scope/name-app`).
  * Called after `ph init` and after name/scope renames.
+ *
+ * Returns `true` if the file was actually changed.
  */
 export async function patchAppPackageName(
   appDir: string,
   spec: { name: string; scope?: string },
   log?: (msg: string) => void,
-): Promise<void> {
+): Promise<boolean> {
   const appFolder = path.basename(appDir);
   const scopedName = spec.scope
     ? `@${spec.scope}/${appFolder}`
@@ -159,11 +161,14 @@ export async function patchAppPackageName(
       }
       await fs.writeFile(appPkgJsonPath, JSON.stringify(pkg, null, 2) + '\n');
       log?.(`Patched app package name to ${scopedName}`);
+      return true;
     }
+    return false;
   } catch (err) {
     log?.(
       `Warning: could not patch app package name: ${err instanceof Error ? err.message : String(err)}`,
     );
+    return false;
   }
 }
 

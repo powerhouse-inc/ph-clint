@@ -247,6 +247,16 @@ describe('generateProject — update mode', () => {
 
     // No files should be deleted (rename, not delete+recreate)
     expect(result.deleted).toEqual([]);
+
+    // Post-gen actions: app package.json was patched →
+    // app-install + app-build + cli-install + cli-build
+    const actionKinds = result.pendingActions.map((a) => a.kind);
+    expect(actionKinds).toEqual([
+      'app-install',
+      'app-build',
+      'cli-install',
+      'cli-build',
+    ]);
   });
 
   it('patches app package.json when scope changes', async () => {
@@ -271,7 +281,7 @@ describe('generateProject — update mode', () => {
       scope: 'newscope',
       features: { powerhouse: 'Connect' },
     });
-    await generateProject({
+    const result = await generateProject({
       targetDir: tmp,
       spec: newScope,
       force: true,
@@ -281,5 +291,96 @@ describe('generateProject — update mode', () => {
       await fs.readFile(path.join(appDir, 'package.json'), 'utf8'),
     );
     expect(appPkg.name).toBe('@newscope/foo-app');
+
+    // App package.json patched → app-install through cli-build
+    const kinds = result.pendingActions.map((a) => a.kind);
+    expect(kinds).toEqual([
+      'app-install',
+      'app-build',
+      'cli-install',
+      'cli-build',
+    ]);
+
+    // Steady-state re-run → no actions
+    const steady = await generateProject({
+      targetDir: tmp,
+      spec: newScope,
+      force: true,
+    });
+    expect(steady.pendingActions).toEqual([]);
+  });
+
+  it('name change triggers app-install through cli-build, not ph-init', async () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+    });
+    await generateProject({ targetDir: tmp, spec });
+
+    // Simulate initialized app
+    const appDir = path.join(tmp, 'foo-app');
+    await fs.writeFile(
+      path.join(appDir, 'package.json'),
+      JSON.stringify({ name: 'foo-app' }),
+    );
+    await writeGeneratedState(tmp, generatedStateFromSpec(spec, true));
+
+    // Rename
+    const renamed = clintProjectSpecSchema.parse({
+      name: 'bar',
+      features: { powerhouse: 'Connect' },
+    });
+    const result = await generateProject({
+      targetDir: tmp,
+      spec: renamed,
+      force: true,
+    });
+
+    const kinds = result.pendingActions.map((a) => a.kind);
+    // Must NOT include ph-init — app was already initialized and renamed
+    expect(kinds).not.toContain('ph-init');
+    // App package.json was patched → full chain from app-install
+    expect(kinds).toEqual([
+      'app-install',
+      'app-build',
+      'cli-install',
+      'cli-build',
+    ]);
+  });
+
+  it('scope change on flat layout triggers cli-install + cli-build', async () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      scope: 'oldscope',
+    });
+    await generateProject({ targetDir: tmp, spec });
+
+    const newScope = clintProjectSpecSchema.parse({
+      name: 'foo',
+      scope: 'newscope',
+    });
+    const result = await generateProject({
+      targetDir: tmp,
+      spec: newScope,
+      force: true,
+    });
+
+    const kinds = result.pendingActions.map((a) => a.kind);
+    expect(kinds).toEqual(['cli-install', 'cli-build']);
+  });
+
+  it('name change on flat layout triggers cli-install + cli-build', async () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    await generateProject({ targetDir: tmp, spec });
+
+    const renamed = clintProjectSpecSchema.parse({ name: 'bar' });
+    const result = await generateProject({
+      targetDir: tmp,
+      spec: renamed,
+      force: true,
+    });
+
+    const kinds = result.pendingActions.map((a) => a.kind);
+    expect(kinds).toEqual(['cli-install', 'cli-build']);
   });
 });

@@ -533,6 +533,8 @@ async function runUpdate(
   await writeHashes(targetDir, next);
 
   // Re-patch app package.json if name or scope changed and app is initialized.
+  // Add to `files` so collectPostGenActions sees the change and triggers
+  // app-install → app-build → cli-install → cli-build.
   const appIsInitialized = appDir
     ? await fileExists(path.join(appDir, 'package.json'))
     : false;
@@ -540,7 +542,14 @@ async function runUpdate(
     ? prev.name !== spec.name || prev.scope !== spec.scope
     : false;
   if (appDir && appIsInitialized && nameOrScopeChanged) {
-    await patchAppPackageName(appDir, spec, warn);
+    const patched = await patchAppPackageName(appDir, spec, warn);
+    if (patched) {
+      const appFolder = path.basename(appDir);
+      files.push({
+        absolutePath: path.join(appDir, 'package.json'),
+        relativePath: path.join(appFolder, 'package.json'),
+      });
+    }
   }
 
   await writeGeneratedState(
