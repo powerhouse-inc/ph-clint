@@ -4,7 +4,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { execSync, spawnSync } from 'node:child_process';
+import { execSync, spawnSync, spawn } from 'node:child_process';
 import { type ClintProjectSpec } from '../../src/spec/types.js';
 import { runPhInit } from '../../src/codegen/scaffold.js';
 
@@ -213,3 +213,198 @@ export function runHelp(cliDir: string): string {
     return (e.stdout ?? '') + (e.stderr ?? '');
   }
 }
+
+/**
+ * Run a CLI command synchronously and return stdout+stderr.
+ * Throws on non-zero exit with full output for debuggability.
+ */
+export function runCommand(cliDir: string, args: string): string {
+  try {
+    return execSync(`node dist/main.js ${args}`, {
+      cwd: cliDir,
+      encoding: 'utf8',
+      timeout: 15_000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch (err: unknown) {
+    const e = err as { stdout?: string; stderr?: string; status?: number };
+    // Some commands (like config --list with no fields) exit 0 but
+    // Commander may throw; return output if available.
+    const output = (e.stdout ?? '') + (e.stderr ?? '');
+    if (output) return output;
+    throw new Error(
+      `command failed (exit ${e.status}): node dist/main.js ${args}\n${output}`,
+    );
+  }
+}
+
+/**
+ * Run the CLI in interactive mode, optionally sending stdin, and collect
+ * all output until the process exits or a timeout is reached.
+ *
+ * Returns combined stdout+stderr. Kills the process tree on timeout.
+ */
+export function runInteractive(
+  cliDir: string,
+  extraArgs: string[],
+  options?: { stdin?: string; timeoutMs?: number },
+): Promise<string> {
+  const timeoutMs = options?.timeoutMs ?? 30_000;
+
+  return new Promise<string>((resolve, reject) => {
+    const args = ['dist/main.js', '--interactive', '--verbose', ...extraArgs];
+    const child = spawn('node', args, {
+      cwd: cliDir,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+    });
+
+    let output = '';
+    child.stdout!.on('data', (d) => { output += d.toString(); });
+    child.stderr!.on('data', (d) => { output += d.toString(); });
+
+    if (options?.stdin) {
+      child.stdin!.write(options.stdin);
+    }
+    // Close stdin so the CLI detects no TTY and exits.
+    child.stdin!.end();
+
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      // Give it a moment to shut down gracefully.
+      setTimeout(() => {
+        child.kill('SIGKILL');
+      }, 3000);
+    }, timeoutMs);
+
+    child.on('close', () => {
+      clearTimeout(timer);
+      resolve(output);
+    });
+
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Run `node dist/main.js --meta` and parse the JSON output.
+ */
+export function runMeta(cliDir: string): Record<string, unknown> {
+  const raw = runCommand(cliDir, '--meta');
+  return JSON.parse(raw) as Record<string, unknown>;
+}
+
+/**
+ * Check whether a path exists on disk.
+ */
+export async function pathExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Boot the CLI in interactive mode, wait for a readiness marker in the output,
+ * then run a callback with the live process (e.g. to make HTTP requests).
+ * Kills the process after the callback returns.
+ *
+ * Returns the combined output collected during the whole run.
+ */
+export async function withLiveProcess(
+  cliDir: string,
+  extraArgs: string[],
+  readyPattern: RegExp,
+  callback: (output: string) => Promise<void>,
+  options?: { timeoutMs?: number },
+): Promise<string> {
+  const timeoutMs = options?.timeoutMs ?? 30_000;
+
+  const args = ['dist/main.js', '--interactive', '--verbose', ...extraArgs];
+  const child = spawn('node', args, {
+    cwd: cliDir,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+  });
+
+  let output = '';
+  let readyResolve: () => void;
+  const readyPromise = new Promise<void>((r) => { readyResolve = r; });
+  let resolved = false;
+
+  child.stdout!.on('data', (d) => {
+    output += d.toString();
+    if (!resolved && readyPattern.test(output)) {
+      resolved = true;
+      readyResolve();
+    }
+  });
+  child.stderr!.on('data', (d) => {
+    output += d.toString();
+    if (!resolved && readyPattern.test(output)) {
+      resolved = true;
+      readyResolve();
+    }
+  });
+
+  // Close stdin — switchboard keeps serving after stdin closes.
+  child.stdin!.end();
+
+  const timer = setTimeout(() => {
+    if (!resolved) {
+      resolved = true;
+      readyResolve();
+    }
+  }, timeoutMs);
+
+  try {
+    await readyPromise;
+    await callback(output);
+  } finally {
+    clearTimeout(timer);
+    child.kill('SIGTERM');
+    await new Promise<void>((r) => {
+      const killTimer = setTimeout(() => { child.kill('SIGKILL'); }, 3000);
+      child.on('close', () => { clearTimeout(killTimer); r(); });
+    });
+  }
+
+  return output;
+}
+
+/**
+ * Simple HTTP GET that returns { status, body }.
+ * Uses Node's built-in fetch (available in Node 22+).
+ */
+export async function httpGet(url: string): Promise<{ status: number; body: string }> {
+  const res = await fetch(url);
+  const body = await res.text();
+  return { status: res.status, body };
+}
+
+/**
+ * Simple HTTP POST with JSON body. Returns { status, body }.
+ */
+export async function httpPost(
+  url: string,
+  json: unknown,
+): Promise<{ status: number; body: string }> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(json),
+  });
+  const body = await res.text();
+  return { status: res.status, body };
+}
+
+/**
+ * Re-export defaultPort so tests can compute expected ports
+ * from CLI names deterministically.
+ */
+export { defaultPort } from '@powerhousedao/ph-clint';

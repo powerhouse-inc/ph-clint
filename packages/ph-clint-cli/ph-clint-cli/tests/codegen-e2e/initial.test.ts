@@ -4,12 +4,18 @@
  * For each fixture: generate → scaffold app (PH) → rewrite deps →
  * pnpm install → tsc → pnpm start --help → assert regex patterns.
  *
+ * Then: runtime verification — boot the CLI, exercise the config subsystem,
+ * start reactor/switchboard/connect, prompt the demo agent, and make live
+ * HTTP requests to the Switchboard GraphQL/MCP and Connect web endpoints.
+ *
  * These tests are slow (pnpm install + tsc per fixture) and should be
  * run separately from the fast unit/integration suite.
  */
+import path from 'node:path';
 import { describe, it, expect, afterAll } from '@jest/globals';
 import { generateProject } from '../../src/codegen/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
+import type { PostGenActionKind } from '../../src/codegen/actions.js';
 import { FIXTURES } from './fixtures.js';
 import {
   mkTmpDir,
@@ -20,6 +26,14 @@ import {
   pnpmInstall,
   tscBuild,
   runHelp,
+  runCommand,
+  runMeta,
+  runInteractive,
+  pathExists,
+  withLiveProcess,
+  httpGet,
+  httpPost,
+  defaultPort,
 } from './helpers.js';
 
 const tmpDirs: string[] = [];
@@ -148,18 +162,37 @@ const ABSENT_FILES: Record<string, string[]> = {
   ],
 };
 
+/**
+ * Expected pendingActions from generateProject() for each fixture.
+ * Flat layouts get cli-install + cli-build.
+ * Split layouts get the full chain: ph-init → app-install → app-build → cli-install → cli-build.
+ */
+const EXPECTED_ACTIONS: Record<string, PostGenActionKind[]> = {
+  minimal: ['cli-install', 'cli-build'],
+  'mastra-demo': ['cli-install', 'cli-build'],
+  'mastra-configured': ['cli-install', 'cli-build'],
+  'mastra-multi-model': ['cli-install', 'cli-build'],
+  'reactor-minimal': ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
+  switchboard: ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
+  'connect-full': ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
+};
+
 describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => {
+  let cliDir: string;
+  let tmp: string;
+  let spec: ReturnType<typeof clintProjectSpecSchema.parse>;
+
   it(
     'generates, installs, builds, and runs --help',
     async () => {
-      const tmp = await mkTmpDir(fixtureName);
+      tmp = await mkTmpDir(fixtureName);
       tmpDirs.push(tmp);
 
-      const spec = clintProjectSpecSchema.parse(FIXTURES[fixtureName]);
+      spec = clintProjectSpecSchema.parse(FIXTURES[fixtureName]);
       const result = await generateProject({ targetDir: tmp, spec });
       expect(result.mode).toBe('create');
 
-      const cliDir = result.cliDir;
+      cliDir = result.cliDir;
 
       // ── Assert file tree ──
       const tree = await fileTree(tmp);
@@ -176,6 +209,13 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
         for (const f of absent) {
           expect(tree).not.toContain(f);
         }
+      }
+
+      // ── Assert post-gen actions ──
+      const expectedActions = EXPECTED_ACTIONS[fixtureName];
+      if (expectedActions) {
+        const actionKinds = result.pendingActions.map((a) => a.kind);
+        expect(actionKinds).toEqual(expectedActions);
       }
 
       // ── Scaffold app package for PH-enabled fixtures ──
@@ -201,5 +241,136 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
       }
     },
     300_000,
+  );
+
+  it(
+    'passes runtime verification',
+    async () => {
+      // Skip if the build step didn't run (previous test failed).
+      if (!cliDir) return;
+
+      // ── --meta: verify introspection reflects the spec ──
+      const meta = runMeta(cliDir);
+      expect(meta.name).toBe(spec.name);
+      expect(meta.hasAgent).toBe(spec.features.mastra.enabled);
+      expect(meta.hasReactor).toBe(spec.features.powerhouse !== 'Disabled');
+
+      // Agent-enabled fixtures expose a model config field.
+      if (spec.features.mastra.enabled) {
+        const config = meta.config as Record<string, { id: string }>;
+        expect(config.model).toBeDefined();
+        expect(config.model.id).toBe('model');
+      }
+
+      // Multi-model fixtures expose API key env vars for each provider.
+      if (
+        spec.features.mastra.enabled &&
+        spec.features.mastra.models.length > 1
+      ) {
+        const configList = runCommand(cliDir, 'config --list');
+        // Models from different providers → each provider's API key appears.
+        const providers = new Set(
+          spec.features.mastra.models.map((m) => m.id.split('/')[0]),
+        );
+        for (const provider of providers) {
+          expect(configList).toMatch(new RegExp(`${provider}.*key`, 'i'));
+        }
+      }
+
+      // ── Agent: demo agent echoes back the prompt ──
+      if (spec.features.mastra.enabled) {
+        const output = await runInteractive(cliDir, [], {
+          stdin: 'hello from e2e test\n',
+        });
+        expect(output).toMatch(/You said:.*hello from e2e test/);
+        expect(output).toMatch(/demo.*agent/i);
+      }
+
+      // ── Reactor: boots PGlite and creates a drive ──
+      if (spec.features.powerhouse !== 'Disabled') {
+        const phFlags = [
+          '--no-api',
+          ...(spec.features.powerhouse === 'Connect' ? ['--no-studio'] : []),
+        ];
+        const output = await runInteractive(cliDir, phFlags);
+        expect(output).toMatch(/Reactor ready \(drive: [0-9a-f-]+\)/);
+
+        // Verify PGlite storage directory was created on disk.
+        const storagePath = path.join(
+          cliDir,
+          '.ph',
+          spec.name,
+          'reactor-storage',
+        );
+        expect(await pathExists(storagePath)).toBe(true);
+      }
+    },
+    120_000,
+  );
+
+  it(
+    'switchboard serves GraphQL and MCP over HTTP',
+    async () => {
+      if (!cliDir) return;
+      if (spec.features.powerhouse !== 'Switchboard') return;
+
+      const sbPort = defaultPort(spec.name, 'switchboard');
+
+      const output = await withLiveProcess(
+        cliDir,
+        [], // no --no-api — we want the full Switchboard
+        /Switchboard .* ready at/,
+        async () => {
+          // GraphQL introspection — verifies the schema is loaded.
+          const gql = await httpPost(`http://localhost:${sbPort}/graphql`, {
+            query: '{ __schema { queryType { name } } }',
+          });
+          expect(gql.status).toBe(200);
+          const gqlBody = JSON.parse(gql.body);
+          expect(gqlBody.data.__schema.queryType.name).toBe('Query');
+
+          // MCP endpoint exists (POST-only SSE, GET returns 405).
+          const mcp = await httpGet(`http://localhost:${sbPort}/mcp`);
+          expect(mcp.status).toBe(405);
+        },
+        { timeoutMs: 30_000 },
+      );
+
+      expect(output).toMatch(/Switchboard .* ready at/);
+      expect(output).toMatch(/MCP server available/);
+    },
+    60_000,
+  );
+
+  it(
+    'connect serves the web UI over HTTP',
+    async () => {
+      if (!cliDir) return;
+      if (spec.features.powerhouse !== 'Connect') return;
+
+      const connectPort = defaultPort(spec.name, 'connect');
+
+      // Boot with --no-api. Connect launches as a detached child process
+      // that survives the parent CLI exiting.
+      const output = await runInteractive(cliDir, ['--no-api'], {
+        timeoutMs: 60_000,
+      });
+      expect(output).toMatch(/Connect .* (?:ready|running) at/);
+
+      try {
+        // Connect web UI serves an HTML page.
+        const res = await httpGet(`http://localhost:${connectPort}/`);
+        expect(res.status).toBe(200);
+        expect(res.body).toMatch(/<html/i);
+      } finally {
+        // Clean up the detached Connect child process.
+        try {
+          runCommand(cliDir, `${spec.name}-studio-stop`);
+        } catch {
+          // Best-effort cleanup.
+        }
+      }
+    },
+    90_000,
   );
 });
