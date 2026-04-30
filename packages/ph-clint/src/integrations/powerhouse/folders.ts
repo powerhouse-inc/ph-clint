@@ -11,17 +11,36 @@
  */
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import {
-  addFolder as addFolderAction,
-  addFile as addFileAction,
-  deleteNode as deleteNodeAction,
-} from '@powerhousedao/shared/document-drive';
 import type { TypedReactorClient } from './types.js';
 import type { FolderEntry, FolderOperations } from './types.js';
 import type { Command } from '../../core/types.js';
 import type { Logger } from '../../core/types.js';
 
 const TAG = '[folders]';
+
+/**
+ * Lazy-load drive action creators from @powerhousedao/shared.
+ * Kept lazy so that importing folders.ts doesn't pull in the entire
+ * @powerhousedao/shared tree — which is an optional peer dependency
+ * and won't be installed in non-Powerhouse projects.
+ */
+let _driveActions: {
+  addFolder: (input: { id: string; name: string; parentFolder: string | null }) => unknown;
+  addFile: (input: { id: string; name: string; documentType: string; parentFolder: string | null }) => unknown;
+  deleteNode: (input: { id: string }) => unknown;
+} | null = null;
+
+async function getDriveActions() {
+  if (!_driveActions) {
+    const mod = await import('@powerhousedao/shared/document-drive') as any;
+    _driveActions = {
+      addFolder: mod.addFolder,
+      addFile: mod.addFile,
+      deleteNode: mod.deleteNode,
+    };
+  }
+  return _driveActions;
+}
 
 /** Node shape from drive state.global.nodes */
 interface DriveNode {
@@ -102,8 +121,9 @@ export function createFolderOperations(
         `${TAG} ensureFolder creating folder "${segment}" (${folderId.slice(0, 8)}…) ` +
         `under ${parentFolderId?.slice(0, 8) ?? 'root'}`,
       );
+      const actions = await getDriveActions();
       await client.execute(personalDriveId, 'main', [
-        addFolderAction({
+        actions.addFolder({
           id: folderId,
           name: segment,
           parentFolder: parentFolderId,
@@ -144,8 +164,9 @@ export function createFolderOperations(
     const displayName = name ?? doc?.header?.name ?? doc?.name ?? documentId;
 
     // Add file node to drive via ADD_FILE operation
+    const actions = await getDriveActions();
     await client.execute(personalDriveId, 'main', [
-      addFileAction({
+      actions.addFile({
         id: documentId,
         name: displayName,
         documentType,
@@ -170,8 +191,9 @@ export function createFolderOperations(
     _folderPath?: string,
   ): Promise<void> {
     // Remove the file node from the drive via DELETE_NODE
+    const actions = await getDriveActions();
     await client.execute(personalDriveId, 'main', [
-      deleteNodeAction({ id: documentId }),
+      actions.deleteNode({ id: documentId }),
     ]);
 
     // Also remove the parent-child relationship
