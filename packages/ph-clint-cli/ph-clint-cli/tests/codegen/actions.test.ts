@@ -78,6 +78,14 @@ describe('collectPostGenActions', () => {
     expect(kinds(actions)).toEqual(['cli-build']);
   });
 
+  it('flat layout, only agent profile .md changed → cli-build', async () => {
+    const result = makeResult({
+      files: [makeFile('prompts/agent-profiles/pirate.md')],
+    });
+    const actions = await collectPostGenActions(result, flatSpec());
+    expect(kinds(actions)).toEqual(['cli-build']);
+  });
+
   it('split layout, app package.json changed → app-install + app-build + cli-install + cli-build', async () => {
     const spec = splitSpec();
     const result = makeResult({

@@ -182,7 +182,7 @@ export async function collectPostGenActions(
       earliest = 'cli-install';
     } else {
       for (const rel of relPaths) {
-        if (rel.endsWith('.ts')) {
+        if (rel.endsWith('.ts') || rel.endsWith('.md')) {
           earliest = 'cli-build';
           break;
         }
