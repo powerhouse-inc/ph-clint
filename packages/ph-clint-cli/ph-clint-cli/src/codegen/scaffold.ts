@@ -135,24 +135,40 @@ export async function runPhInit(
   return { ran: true, exitCode: result.exitCode };
 }
 
-async function patchScopedName(options: PhInitOptions, appFolder: string, log: (msg: string) => void): Promise<void> {
-  if (!options.spec.scope) return;
-  const appPkgJsonPath = path.join(options.appDir, 'package.json');
+/**
+ * Patch the app `package.json` name to the scoped form (`@scope/name-app`).
+ * Called after `ph init` and after name/scope renames.
+ */
+export async function patchAppPackageName(
+  appDir: string,
+  spec: { name: string; scope?: string },
+  log?: (msg: string) => void,
+): Promise<void> {
+  const appFolder = path.basename(appDir);
+  const scopedName = spec.scope
+    ? `@${spec.scope}/${appFolder}`
+    : appFolder;
+  const appPkgJsonPath = path.join(appDir, 'package.json');
   try {
     const raw = await fs.readFile(appPkgJsonPath, 'utf8');
     const pkg = JSON.parse(raw);
-    const scopedName = `@${options.spec.scope}/${appFolder}`;
     if (pkg.name !== scopedName) {
       pkg.name = scopedName;
-      pkg.publishConfig = { access: 'public' };
+      if (spec.scope) {
+        pkg.publishConfig = { access: 'public' };
+      }
       await fs.writeFile(appPkgJsonPath, JSON.stringify(pkg, null, 2) + '\n');
-      log(`Patched app package name to ${scopedName}`);
+      log?.(`Patched app package name to ${scopedName}`);
     }
   } catch (err) {
-    log(
+    log?.(
       `Warning: could not patch app package name: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+}
+
+async function patchScopedName(options: PhInitOptions, _appFolder: string, log: (msg: string) => void): Promise<void> {
+  await patchAppPackageName(options.appDir, options.spec, log);
 }
 
 export interface PnpmInstallOptions {

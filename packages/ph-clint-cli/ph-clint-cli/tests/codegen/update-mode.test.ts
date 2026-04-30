@@ -9,6 +9,11 @@ import path from 'node:path';
 import { generateProject } from '../../src/codegen/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 import { readHashes } from '../../src/codegen/hashes.js';
+import {
+  readGeneratedState,
+  writeGeneratedState,
+  generatedStateFromSpec,
+} from '../../src/codegen/generated.js';
 
 async function mkTmpDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ph-clint-upd-'));
@@ -176,5 +181,105 @@ describe('generateProject — update mode', () => {
     for (const h of Object.values(hashes)) {
       expect(h).toMatch(/^[0-9a-f]{64}$/);
     }
+  });
+
+  it('writes generated.json on create', async () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+    });
+    await generateProject({ targetDir: tmp, spec });
+    const gen = await readGeneratedState(tmp);
+    expect(gen).not.toBeNull();
+    expect(gen!.name).toBe('foo');
+    expect(gen!.cliFolderName).toBe('foo-cli');
+    expect(gen!.appFolderName).toBe('foo-app');
+    expect(gen!.appInitialized).toBe(false);
+  });
+
+  it('renames folders when project name changes (split layout)', async () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      features: { powerhouse: 'Connect' },
+    });
+    await generateProject({ targetDir: tmp, spec });
+
+    // Simulate app initialization (create a package.json in the app dir)
+    const appDir = path.join(tmp, 'foo-app');
+    await fs.writeFile(
+      path.join(appDir, 'package.json'),
+      JSON.stringify({ name: 'foo-app' }),
+    );
+    // Mark as initialized
+    await writeGeneratedState(
+      tmp,
+      generatedStateFromSpec(spec, true),
+    );
+
+    // Rename: foo → bar
+    const renamed = clintProjectSpecSchema.parse({
+      name: 'bar',
+      features: { powerhouse: 'Connect' },
+    });
+    const result = await generateProject({
+      targetDir: tmp,
+      spec: renamed,
+      force: true,
+    });
+
+    // Old dirs should be gone, new dirs should exist
+    expect(await exists(path.join(tmp, 'foo-cli'))).toBe(false);
+    expect(await exists(path.join(tmp, 'foo-app'))).toBe(false);
+    expect(await exists(path.join(tmp, 'bar-cli'))).toBe(true);
+    expect(await exists(path.join(tmp, 'bar-app'))).toBe(true);
+
+    // Hashes should use new prefix
+    const hashes = await readHashes(tmp);
+    const keys = Object.keys(hashes);
+    expect(keys.some((k) => k.startsWith('bar-cli/'))).toBe(true);
+    expect(keys.some((k) => k.startsWith('foo-cli/'))).toBe(false);
+
+    // generated.json should reflect new name
+    const gen = await readGeneratedState(tmp);
+    expect(gen!.name).toBe('bar');
+    expect(gen!.cliFolderName).toBe('bar-cli');
+    expect(gen!.appFolderName).toBe('bar-app');
+
+    // No files should be deleted (rename, not delete+recreate)
+    expect(result.deleted).toEqual([]);
+  });
+
+  it('patches app package.json when scope changes', async () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo',
+      scope: 'oldscope',
+      features: { powerhouse: 'Connect' },
+    });
+    await generateProject({ targetDir: tmp, spec });
+
+    // Simulate app initialization
+    const appDir = path.join(tmp, 'foo-app');
+    await fs.writeFile(
+      path.join(appDir, 'package.json'),
+      JSON.stringify({ name: '@oldscope/foo-app' }),
+    );
+    await writeGeneratedState(tmp, generatedStateFromSpec(spec, true));
+
+    // Change scope
+    const newScope = clintProjectSpecSchema.parse({
+      name: 'foo',
+      scope: 'newscope',
+      features: { powerhouse: 'Connect' },
+    });
+    await generateProject({
+      targetDir: tmp,
+      spec: newScope,
+      force: true,
+    });
+
+    const appPkg = JSON.parse(
+      await fs.readFile(path.join(appDir, 'package.json'), 'utf8'),
+    );
+    expect(appPkg.name).toBe('@newscope/foo-app');
   });
 });

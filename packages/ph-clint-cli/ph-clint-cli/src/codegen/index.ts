@@ -61,6 +61,12 @@ import {
   collectPostGenActions,
   type PostGenAction,
 } from './actions.js';
+import {
+  readGeneratedState,
+  writeGeneratedState,
+  generatedStateFromSpec,
+} from './generated.js';
+import { patchAppPackageName } from './scaffold.js';
 
 export type GenerateMode = 'create' | 'update' | 'auto';
 
@@ -253,6 +259,107 @@ function buildAppReadmeContent(spec: ClintProjectSpec): string {
   ].join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Folder rename handling
+// ---------------------------------------------------------------------------
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+interface RenameResult {
+  /** True if folders were renamed (name or scope changed). */
+  renamed: boolean;
+  /** Whether the app dir was initialized before the rename. */
+  appInitialized: boolean;
+}
+
+/**
+ * Detect and execute folder renames when the project name changes.
+ *
+ * Reads the previous `GeneratedState` to find the old folder names, compares
+ * with the new spec's folder names. If they differ:
+ *   1. Renames the directories on disk.
+ *   2. Rewrites hash-record keys from old → new prefixes.
+ *
+ * Must run BEFORE `planFiles()` so the reconciliation loop sees the files
+ * in their new locations.
+ */
+async function handleFolderRename(
+  targetDir: string,
+  spec: ClintProjectSpec,
+  prev: import('./generated.js').GeneratedState | null,
+  warn: (msg: string) => void,
+): Promise<RenameResult> {
+  const split = spec.features.powerhouse !== 'Disabled';
+  if (!split || !prev || !prev.cliFolderName) {
+    return { renamed: false, appInitialized: prev?.appInitialized ?? false };
+  }
+
+  const newCliFolder = getCliFolderName(spec);
+  const newAppFolder = getAppFolderName(spec);
+  const oldCliFolder = prev.cliFolderName;
+  const oldAppFolder = prev.appFolderName;
+
+  if (oldCliFolder === newCliFolder && oldAppFolder === newAppFolder) {
+    return { renamed: false, appInitialized: prev.appInitialized };
+  }
+
+  // Rename CLI folder
+  if (oldCliFolder !== newCliFolder) {
+    const oldPath = path.join(targetDir, oldCliFolder);
+    const newPath = path.join(targetDir, newCliFolder);
+    if (await fileExists(oldPath)) {
+      if (await fileExists(newPath)) {
+        warn(
+          `cannot rename ${oldCliFolder} → ${newCliFolder}: target already exists`,
+        );
+        return { renamed: false, appInitialized: prev.appInitialized };
+      }
+      await fs.rename(oldPath, newPath);
+    }
+  }
+
+  // Rename app folder
+  if (oldAppFolder !== newAppFolder) {
+    const oldPath = path.join(targetDir, oldAppFolder);
+    const newPath = path.join(targetDir, newAppFolder);
+    if (await fileExists(oldPath)) {
+      if (await fileExists(newPath)) {
+        warn(
+          `cannot rename ${oldAppFolder} → ${newAppFolder}: target already exists`,
+        );
+        return { renamed: false, appInitialized: prev.appInitialized };
+      }
+      await fs.rename(oldPath, newPath);
+    }
+  }
+
+  // Rewrite hash keys from old folder prefixes to new ones
+  const hashes = await readHashes(targetDir);
+  const remapped: HashRecord = {};
+  for (const [key, value] of Object.entries(hashes)) {
+    let newKey = key;
+    if (oldCliFolder !== newCliFolder && key.startsWith(oldCliFolder + '/')) {
+      newKey = newCliFolder + key.slice(oldCliFolder.length);
+    } else if (
+      oldAppFolder !== newAppFolder &&
+      key.startsWith(oldAppFolder + '/')
+    ) {
+      newKey = newAppFolder + key.slice(oldAppFolder.length);
+    }
+    remapped[newKey] = value;
+  }
+  await writeHashes(targetDir, remapped);
+
+  return { renamed: true, appInitialized: prev.appInitialized };
+}
+
 /** Create mode — empty target dir, write everything fresh. */
 async function runCreate(
   options: GenerateProjectOptions,
@@ -284,6 +391,8 @@ async function runCreate(
     relativePath: path.relative(targetDir, getSpecPath(targetDir)),
   });
   await writeHashes(targetDir, hashes);
+  // App is not yet initialized on create — ph-init runs as a post-gen action.
+  await writeGeneratedState(targetDir, generatedStateFromSpec(spec, false));
 
   const result: GenerateProjectResult = {
     mode: 'create',
@@ -307,6 +416,15 @@ async function runUpdate(
 ): Promise<GenerateProjectResult> {
   const { targetDir, spec } = options;
   const force = !!options.force;
+
+  // --- Folder rename detection ---
+  const prev = await readGeneratedState(targetDir);
+  const { renamed, appInitialized: appWasInitialized } = await handleFolderRename(
+    targetDir,
+    spec,
+    prev,
+    warn,
+  );
 
   const { planned, cliDir, appDir } = planFiles(spec, targetDir);
   const plannedByKey = new Map(planned.map((p) => [p.relativePath, p]));
@@ -413,6 +531,22 @@ async function runUpdate(
 
   await writeProjectSpec(targetDir, spec);
   await writeHashes(targetDir, next);
+
+  // Re-patch app package.json if name or scope changed and app is initialized.
+  const appIsInitialized = appDir
+    ? await fileExists(path.join(appDir, 'package.json'))
+    : false;
+  const nameOrScopeChanged = prev
+    ? prev.name !== spec.name || prev.scope !== spec.scope
+    : false;
+  if (appDir && appIsInitialized && nameOrScopeChanged) {
+    await patchAppPackageName(appDir, spec, warn);
+  }
+
+  await writeGeneratedState(
+    targetDir,
+    generatedStateFromSpec(spec, appIsInitialized),
+  );
 
   const result: GenerateProjectResult = {
     mode: 'update',

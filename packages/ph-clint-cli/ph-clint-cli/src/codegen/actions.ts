@@ -389,6 +389,15 @@ async function executeAction(
         ctx.log(`      ${result.reason ?? 'ph init did not run'}`);
         return false;
       }
+      if (result.exitCode === 0) {
+        // Mark app as initialized in generated state
+        const { readGeneratedState, writeGeneratedState } = await import('./generated.js');
+        const gen = await readGeneratedState(action.targetDir);
+        if (gen) {
+          gen.appInitialized = true;
+          await writeGeneratedState(action.targetDir, gen);
+        }
+      }
       return result.exitCode === 0;
     }
 
