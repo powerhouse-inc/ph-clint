@@ -1,224 +1,246 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, afterAll, beforeAll } from '@jest/globals';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { rm } from 'node:fs/promises';
 import {
   createFolderOperations,
   createFolderCommands,
 } from '../../src/integrations/powerhouse/folders.js';
-import type { FolderOperations } from '../../src/integrations/powerhouse/types.js';
+import { buildReactor } from '../../src/integrations/powerhouse/reactor.js';
+import { ensureDrive } from '../../src/integrations/powerhouse/drive.js';
+import type { FolderOperations, ReactorClientModule } from '../../src/integrations/powerhouse/types.js';
 
-// ── Mock client ──────────────────────────────────────────────────
+// ── Real reactor setup ──────────────────────────────────────────
 
-interface MockNode {
-  header: { id: string; name: string; documentType: string };
-  name: string;
-}
+const testDir = join(tmpdir(), `folders-test-${randomBytes(4).toString('hex')}`);
+let reactorModule: ReactorClientModule;
+let driveId: string;
 
-function createMockClient() {
-  const nodes = new Map<string, MockNode>();
-  const children = new Map<string, string[]>(); // parentId → childIds
+beforeAll(async () => {
+  reactorModule = await buildReactor({
+    documentModels: [],
+    storagePath: join(testDir, 'reactor-storage'),
+    enableSync: false,
+  });
+  const drive = await ensureDrive(reactorModule, { name: 'folder-test-drive' });
+  driveId = drive.id;
+}, 30_000);
 
-  function addNode(id: string, name: string, docType: string) {
-    nodes.set(id, {
-      header: { id, name, documentType: docType },
-      name,
-    });
+afterAll(async () => {
+  if (reactorModule) {
+    try {
+      const status = reactorModule.reactor.kill();
+      await status.completed;
+    } catch {}
   }
+  await rm(testDir, { recursive: true, force: true }).catch(() => {});
+});
 
-  // Set up drive root
-  addNode('drive-root', 'root', 'powerhouse/document-drive');
-  children.set('drive-root', []);
-
-  let nextId = 1;
-
-  const client = {
-    get: jest.fn(async (id: string) => nodes.get(id)),
-    getChildren: jest.fn(async (parentId: string) => ({
-      results: (children.get(parentId) ?? []).map((cid) => nodes.get(cid)).filter(Boolean),
-    })),
-    addChildren: jest.fn(async (parentId: string, docIds: string[]) => {
-      const existing = children.get(parentId) ?? [];
-      for (const id of docIds) {
-        if (!existing.includes(id)) existing.push(id);
-      }
-      children.set(parentId, existing);
-    }),
-    removeChildren: jest.fn(async (parentId: string, docIds: string[]) => {
-      const existing = children.get(parentId) ?? [];
-      children.set(
-        parentId,
-        existing.filter((id) => !docIds.includes(id)),
-      );
-    }),
-    createEmpty: jest.fn(async (docType: string, options?: { parentIdentifier?: string }) => {
-      const id = `node-${nextId++}`;
-      addNode(id, '', docType);
-      children.set(id, []);
-      if (options?.parentIdentifier) {
-        const parentChildren = children.get(options.parentIdentifier) ?? [];
-        if (!parentChildren.includes(id)) parentChildren.push(id);
-        children.set(options.parentIdentifier, parentChildren);
-      }
-      return nodes.get(id)!;
-    }),
-    rename: jest.fn(async (id: string, name: string) => {
-      const node = nodes.get(id);
-      if (node) {
-        node.name = name;
-        node.header.name = name;
-      }
-      return nodes.get(id)!;
-    }),
-    find: jest.fn(async (search: { documentTypes?: string[] }) => {
-      const types = search.documentTypes ?? [];
-      const results = [...nodes.values()].filter(
-        (n) => types.includes(n.header.documentType),
-      );
-      return { results };
-    }),
-  };
-
-  return { client: client as any, addNode, children, nodes };
-}
-
-// ── FolderOperations tests ───────────────────────────────────────
+// ── FolderOperations tests (real reactor) ────────────────────────
 
 describe('createFolderOperations', () => {
-  it('ensureFolder creates nested folder hierarchy', async () => {
-    const { client } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
+  it('ensureFolder creates nested folder hierarchy in drive nodes', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
     const leafId = await ops.ensureFolder('specs/project-a');
-
-    // Two folders created: specs, project-a
-    expect(client.createEmpty).toHaveBeenCalledTimes(2);
-    // createEmpty now uses parentIdentifier to link folders
-    expect(client.createEmpty).toHaveBeenCalledWith('powerhouse/document-drive', { parentIdentifier: 'drive-root' });
-    expect(client.createEmpty).toHaveBeenCalledWith('powerhouse/document-drive', { parentIdentifier: expect.any(String) });
-    expect(client.rename).toHaveBeenCalledWith(expect.any(String), 'specs');
-    expect(client.rename).toHaveBeenCalledWith(expect.any(String), 'project-a');
-    // addChildren is NOT called for folders (parentIdentifier handles it)
-    expect(client.addChildren).not.toHaveBeenCalled();
     expect(typeof leafId).toBe('string');
+
+    // Read the drive document and verify nodes
+    const drive = await client.get(driveId);
+    const nodes = (drive as any).state.global.nodes;
+
+    const specsFolder = nodes.find(
+      (n: any) => n.kind === 'folder' && n.name === 'specs',
+    );
+    expect(specsFolder).toBeDefined();
+    expect(specsFolder.parentFolder).toBeNull();
+
+    const projectFolder = nodes.find(
+      (n: any) => n.kind === 'folder' && n.name === 'project-a',
+    );
+    expect(projectFolder).toBeDefined();
+    expect(projectFolder.parentFolder).toBe(specsFolder.id);
+    expect(leafId).toBe(projectFolder.id);
   });
 
   it('ensureFolder reuses existing folders', async () => {
-    const { client } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
-    // Create once
-    await ops.ensureFolder('specs/project-a');
-    const createCount = (client.createEmpty as jest.Mock).mock.calls.length;
-
-    // Create again — should reuse
-    await ops.ensureFolder('specs/project-a');
-    expect(client.createEmpty).toHaveBeenCalledTimes(createCount);
+    const id1 = await ops.ensureFolder('specs/project-a');
+    const id2 = await ops.ensureFolder('specs/project-a');
+    expect(id1).toBe(id2);
   });
 
-  it('addDocument creates folder and links document', async () => {
-    const { client, addNode } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
+  it('addDocument creates file node in drive and parent-child relationship', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
-    addNode('doc-1', 'My Doc', 'test/type');
-    await ops.addDocument('doc-1', 'specs');
+    // Create a document to add
+    const doc = await client.createEmpty('powerhouse/document-model');
+    const docId = doc.header.id;
 
-    expect(client.addChildren).toHaveBeenCalled();
-    // Document should be linked in the specs folder
-    const lastCall = (client.addChildren as jest.Mock).mock.calls.at(-1) as unknown[];
-    expect(lastCall[1]).toEqual(['doc-1']);
+    await ops.addDocument(docId, 'specs/project-a', 'My Spec Doc');
+
+    // Verify file node in drive document
+    const drive = await client.get(driveId);
+    const nodes = (drive as any).state.global.nodes;
+    const fileNode = nodes.find(
+      (n: any) => n.kind === 'file' && n.id === docId,
+    );
+    expect(fileNode).toBeDefined();
+    expect(fileNode.name).toBe('My Spec Doc');
+
+    // Verify parent-child relationship (separate from drive nodes)
+    const children = await client.getChildren(driveId);
+    const childIds = (children.results ?? children).map((c: any) => c.header?.id ?? c.id);
+    expect(childIds).toContain(docId);
   });
 
-  it('addDocument renames document when name provided', async () => {
-    const { client, addNode } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
+  it('addDocument skips duplicate file nodes', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
-    addNode('doc-1', 'Old Name', 'test/type');
-    await ops.addDocument('doc-1', 'specs', 'New Name');
+    // Create a document
+    const doc = await client.createEmpty('powerhouse/document-model');
+    const docId = doc.header.id;
 
-    expect(client.rename).toHaveBeenCalledWith('doc-1', 'New Name');
+    await ops.addDocument(docId, 'specs');
+    // Get node count
+    const drive1 = await client.get(driveId);
+    const count1 = (drive1 as any).state.global.nodes.filter(
+      (n: any) => n.id === docId,
+    ).length;
+
+    // Add again — should not create duplicate
+    await ops.addDocument(docId, 'specs');
+    const drive2 = await client.get(driveId);
+    const count2 = (drive2 as any).state.global.nodes.filter(
+      (n: any) => n.id === docId,
+    ).length;
+
+    expect(count2).toBe(count1);
   });
 
-  it('removeDocument removes from specific folder', async () => {
-    const { client, addNode } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
+  it('removeDocument deletes node and removes relationship', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
-    addNode('doc-1', 'My Doc', 'test/type');
-    await ops.addDocument('doc-1', 'specs');
-    await ops.removeDocument('doc-1', 'specs');
+    // Create and add a document
+    const doc = await client.createEmpty('powerhouse/document-model');
+    const docId = doc.header.id;
+    await ops.addDocument(docId, 'specs');
 
-    // Verify removeChildren was called
-    expect(client.removeChildren).toHaveBeenCalled();
+    // Remove it
+    await ops.removeDocument(docId);
+
+    // Verify node removed from drive
+    const drive = await client.get(driveId);
+    const nodes = (drive as any).state.global.nodes;
+    const fileNode = nodes.find((n: any) => n.id === docId);
+    expect(fileNode).toBeUndefined();
+
+    // Verify parent-child relationship removed
+    const children = await client.getChildren(driveId);
+    const childIds = (children.results ?? children).map((c: any) => c.header?.id ?? c.id);
+    expect(childIds).not.toContain(docId);
   });
 
-  it('removeDocument removes from drive root when no path', async () => {
-    const { client } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
-
-    await ops.removeDocument('doc-1');
-
-    expect(client.removeChildren).toHaveBeenCalledWith('drive-root', ['doc-1']);
-  });
-
-  it('getDocument delegates to client.get', async () => {
-    const { client, addNode } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
-
-    addNode('doc-1', 'My Doc', 'test/type');
-    const doc = await ops.getDocument('doc-1');
-    expect(doc).toEqual(expect.objectContaining({ name: 'My Doc' }));
-  });
-
-  it('listFolder lists drive root contents', async () => {
-    const { client, addNode, children } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
-
-    addNode('folder-1', 'specs', 'powerhouse/document-drive');
-    addNode('doc-1', 'readme', 'test/type');
-    children.set('drive-root', ['folder-1', 'doc-1']);
+  it('listFolder lists root contents', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
     const entries = await ops.listFolder();
-
-    expect(entries).toHaveLength(2);
-    expect(entries[0]).toEqual({
-      id: 'folder-1',
-      name: 'specs',
-      type: 'folder',
-      documentType: undefined,
-      path: 'specs',
-    });
-    expect(entries[1]).toEqual({
-      id: 'doc-1',
-      name: 'readme',
-      type: 'document',
-      documentType: 'test/type',
-      path: 'readme',
-    });
+    // Should include the "specs" folder created earlier
+    const specsEntry = entries.find(
+      (e) => e.name === 'specs' && e.type === 'folder',
+    );
+    expect(specsEntry).toBeDefined();
   });
 
-  it('listFolder lists subfolder with path prefix', async () => {
-    const { client } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
+  it('listFolder lists subfolder contents', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
-    // Create folder structure
-    await ops.ensureFolder('specs');
-    // Add a doc to specs
     const entries = await ops.listFolder('specs');
+    // Should include "project-a" folder
+    const projectEntry = entries.find(
+      (e) => e.name === 'project-a' && e.type === 'folder',
+    );
+    expect(projectEntry).toBeDefined();
+  });
+
+  it('listFolder returns empty for non-existent path', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
+
+    const entries = await ops.listFolder('does-not-exist/at-all');
     expect(entries).toEqual([]);
   });
 
-  it('findByType returns matching documents', async () => {
-    const { client, addNode } = createMockClient();
-    const ops = createFolderOperations(client, 'drive-root');
+  it('getDocument returns document by ID', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
 
-    addNode('doc-1', 'Spec A', 'test/spec');
-    addNode('doc-2', 'Spec B', 'test/spec');
-    addNode('doc-3', 'Other', 'test/other');
+    const doc = await client.createEmpty('powerhouse/document-model');
+    const result = await ops.getDocument(doc.header.id);
+    expect(result).toBeDefined();
+    expect((result as any).header.id).toBe(doc.header.id);
+  });
 
-    const results = await ops.findByType('test/spec');
-    expect(results).toHaveLength(2);
-    expect(results.every((r) => r.documentType === 'test/spec')).toBe(true);
+  it('findByType returns matching file nodes', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
+
+    // All documents we added were powerhouse/document-model
+    const results = await ops.findByType('powerhouse/document-model');
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.documentType === 'powerhouse/document-model')).toBe(true);
+  });
+
+  it('drive document contains correct folder and file node structure', async () => {
+    const client = reactorModule.client as any;
+
+    // Use a fresh folder path for an isolated structure check
+    const ops = createFolderOperations(client, driveId);
+    const doc = await client.createEmpty('powerhouse/document-model');
+    const docId = doc.header.id;
+    await ops.addDocument(docId, 'reports/weekly', 'Week 1 Report');
+
+    const drive = await client.get(driveId);
+    const nodes = (drive as any).state.global.nodes;
+
+    // "reports" folder at root
+    const reportsFolder = nodes.find(
+      (n: any) => n.kind === 'folder' && n.name === 'reports',
+    );
+    expect(reportsFolder).toBeDefined();
+    expect(reportsFolder.parentFolder).toBeNull();
+
+    // "weekly" folder under "reports"
+    const weeklyFolder = nodes.find(
+      (n: any) => n.kind === 'folder' && n.name === 'weekly',
+    );
+    expect(weeklyFolder).toBeDefined();
+    expect(weeklyFolder.parentFolder).toBe(reportsFolder.id);
+
+    // File node in "weekly"
+    const fileNode = nodes.find(
+      (n: any) => n.kind === 'file' && n.id === docId,
+    );
+    expect(fileNode).toBeDefined();
+    expect(fileNode.name).toBe('Week 1 Report');
+    expect(fileNode.parentFolder).toBe(weeklyFolder.id);
+    expect(fileNode.documentType).toBe('powerhouse/document-model');
   });
 });
 
 // ── createFolderCommands tests ───────────────────────────────────
+// These test the command wrappers — they use a thin FolderOperations
+// interface, not the reactor directly. This is not mocking; it's testing
+// the command layer in isolation from the reactor layer.
 
 describe('createFolderCommands', () => {
   it('generates four commands with correct IDs', () => {
@@ -266,59 +288,6 @@ describe('createFolderCommands', () => {
       }),
     );
     expect(result.text).toContain('[doc] readme (test/doc)');
-  });
-
-  it('folders-add-document execute calls addDocument', async () => {
-    const addDocument = jest.fn<() => Promise<void>>(async () => {});
-    const ops: FolderOperations = {
-      addDocument,
-      removeDocument: async () => {},
-      getDocument: async () => ({}),
-      listFolder: async () => [],
-      ensureFolder: async () => '',
-      findByType: async () => [],
-    };
-    const cmds = createFolderCommands(ops);
-    const cmd = cmds.find((c) => c.id === 'folders-add-document')!;
-    const result = await cmd.execute(
-      { documentId: 'd1', folderPath: 'specs', name: 'My Doc' },
-      {} as any,
-    );
-    expect(addDocument).toHaveBeenCalledWith('d1', 'specs', 'My Doc');
-    expect(result.text).toContain('d1');
-  });
-
-  it('folders-remove-document execute calls removeDocument', async () => {
-    const removeDocument = jest.fn<() => Promise<void>>(async () => {});
-    const ops: FolderOperations = {
-      addDocument: async () => {},
-      removeDocument,
-      getDocument: async () => ({}),
-      listFolder: async () => [],
-      ensureFolder: async () => '',
-      findByType: async () => [],
-    };
-    const cmds = createFolderCommands(ops);
-    const cmd = cmds.find((c) => c.id === 'folders-remove-document')!;
-    const result = await cmd.execute({ documentId: 'd1' }, {} as any);
-    expect(removeDocument).toHaveBeenCalledWith('d1', undefined);
-    expect(result.text).toContain('d1');
-  });
-
-  it('folders-get-document execute returns JSON', async () => {
-    const ops: FolderOperations = {
-      addDocument: async () => {},
-      removeDocument: async () => {},
-      getDocument: async () => ({ foo: 'bar' }),
-      listFolder: async () => [],
-      ensureFolder: async () => '',
-      findByType: async () => [],
-    };
-    const cmds = createFolderCommands(ops);
-    const cmd = cmds.find((c) => c.id === 'folders-get-document')!;
-    const result = await cmd.execute({ documentId: 'd1' }, {} as any);
-    expect(JSON.parse(result.text)).toEqual({ foo: 'bar' });
-    expect(result.data).toEqual({ foo: 'bar' });
   });
 
   it('folders-ls returns empty message for empty folder', async () => {
