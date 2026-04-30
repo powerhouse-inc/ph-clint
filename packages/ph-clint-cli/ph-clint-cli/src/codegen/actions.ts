@@ -7,6 +7,7 @@
  * `runPostGenActions()` executes them sequentially with proper ordering,
  * failure cascading, and log output.
  */
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { GenerateProjectResult } from './index.js';
 import type { ClintProjectSpec, ExternalSkill } from '../spec/types.js';
@@ -85,13 +86,26 @@ function dependsOn(
 }
 
 // ---------------------------------------------------------------------------
-// collectPostGenActions — pure function
+// Helpers
 // ---------------------------------------------------------------------------
 
-export function collectPostGenActions(
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// collectPostGenActions
+// ---------------------------------------------------------------------------
+
+export async function collectPostGenActions(
   result: GenerateProjectResult,
   spec: ClintProjectSpec,
-): PostGenAction[] {
+): Promise<PostGenAction[]> {
   const split = result.appDir !== null;
   const relPaths = new Set(result.files.map((f) => f.relativePath));
 
@@ -102,14 +116,22 @@ export function collectPostGenActions(
     const appFolder = result.appDir ? path.basename(result.appDir) : '';
     const cliFolder = path.basename(result.cliDir);
 
-    // ph-init needed: app dir exists but no package.json (new scaffold)
+    // ph-init needed: app dir placeholder written but app not yet initialized.
+    // Check the actual filesystem — if package.json already exists on disk,
+    // ph init has already run and must not run again.
     const appPkgJsonChanged = relPaths.has(path.join(appFolder, 'package.json'));
-    // Check for the .gitkeep — signals a new app dir that needs ph-init
     const appGitkeepWritten = relPaths.has(path.join(appFolder, '.gitkeep'));
 
+    // ph-init needed: app dir placeholder written but app not yet initialized.
+    // Check the actual filesystem — if package.json already exists on disk,
+    // ph init has already run and must not run again.
     if (appGitkeepWritten && !appPkgJsonChanged) {
-      // .gitkeep written but no package.json — app needs ph init
-      earliest = 'ph-init';
+      const appAlreadyInitialized = result.appDir
+        ? await fileExists(path.join(result.appDir, 'package.json'))
+        : false;
+      if (!appAlreadyInitialized) {
+        earliest = 'ph-init';
+      }
     }
 
     // Migration always triggers full rebuild
@@ -142,12 +164,12 @@ export function collectPostGenActions(
       }
     }
 
-    // CLI source regenerated (.ts files)
+    // CLI source or prompts regenerated (.ts files, agent profile .md files)
     if (!earliest) {
       for (const rel of relPaths) {
         if (
           rel.startsWith(cliFolder + '/') &&
-          rel.endsWith('.ts')
+          (rel.endsWith('.ts') || rel.endsWith('.md'))
         ) {
           earliest = 'cli-build';
           break;

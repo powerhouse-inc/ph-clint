@@ -56,36 +56,36 @@ function kinds(actions: PostGenAction[]): PostGenActionKind[] {
 // ---------------------------------------------------------------------------
 
 describe('collectPostGenActions', () => {
-  it('returns empty array when no files changed', () => {
+  it('returns empty array when no files changed', async () => {
     const result = makeResult({ files: [] });
-    const actions = collectPostGenActions(result, flatSpec());
+    const actions = await collectPostGenActions(result, flatSpec());
     expect(actions).toEqual([]);
   });
 
-  it('flat layout, package.json changed → cli-install + cli-build', () => {
+  it('flat layout, package.json changed → cli-install + cli-build', async () => {
     const result = makeResult({
       files: [makeFile('package.json')],
     });
-    const actions = collectPostGenActions(result, flatSpec());
+    const actions = await collectPostGenActions(result, flatSpec());
     expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
   });
 
-  it('flat layout, only .ts source changed → cli-build', () => {
+  it('flat layout, only .ts source changed → cli-build', async () => {
     const result = makeResult({
       files: [makeFile('src/cli.ts')],
     });
-    const actions = collectPostGenActions(result, flatSpec());
+    const actions = await collectPostGenActions(result, flatSpec());
     expect(kinds(actions)).toEqual(['cli-build']);
   });
 
-  it('split layout, app package.json changed → app-install + app-build + cli-install + cli-build', () => {
+  it('split layout, app package.json changed → app-install + app-build + cli-install + cli-build', async () => {
     const spec = splitSpec();
     const result = makeResult({
       cliDir: '/project/foo-cli',
       appDir: '/project/foo-app',
       files: [makeFile('foo-app/package.json')],
     });
-    const actions = collectPostGenActions(result, spec);
+    const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual([
       'app-install',
       'app-build',
@@ -94,18 +94,19 @@ describe('collectPostGenActions', () => {
     ]);
   });
 
-  it('split layout, ph-init needed (gitkeep written, no pkg.json) → full chain', () => {
+  it('split layout, ph-init needed (gitkeep written, no pkg.json on disk) → full chain', async () => {
+    // appDir points to a non-existent path → no package.json on disk → ph-init fires
     const spec = splitSpec();
     const result = makeResult({
       cliDir: '/project/foo-cli',
-      appDir: '/project/foo-app',
+      appDir: '/nonexistent/foo-app',
       files: [
         makeFile('foo-app/.gitkeep'),
         makeFile('foo-cli/package.json'),
         makeFile('foo-cli/src/cli.ts'),
       ],
     });
-    const actions = collectPostGenActions(result, spec);
+    const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual([
       'ph-init',
       'app-install',
@@ -115,14 +116,42 @@ describe('collectPostGenActions', () => {
     ]);
   });
 
-  it('split layout, only framework.gen.ts changed → app-build + cli-build', () => {
+  it('split layout, gitkeep written but app already initialized → skips ph-init', async () => {
+    // appDir points to a real temp directory with a package.json
+    const os = await import('node:os');
+    const fs = await import('node:fs/promises');
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actions-test-'));
+    const appDir = path.join(tmpDir, 'foo-app');
+    await fs.mkdir(appDir, { recursive: true });
+    await fs.writeFile(path.join(appDir, 'package.json'), '{}');
+
+    try {
+      const spec = splitSpec();
+      const result = makeResult({
+        cliDir: path.join(tmpDir, 'foo-cli'),
+        appDir,
+        files: [
+          makeFile('foo-app/.gitkeep'),
+          makeFile('foo-cli/package.json'),
+          makeFile('foo-cli/src/cli.ts'),
+        ],
+      });
+      const actions = await collectPostGenActions(result, spec);
+      // ph-init must NOT appear — app is already initialized
+      expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('split layout, only framework.gen.ts changed → app-build + cli-install + cli-build', async () => {
     const spec = splitSpec();
     const result = makeResult({
       cliDir: '/project/foo-cli',
       appDir: '/project/foo-app',
       files: [makeFile('foo-app/index.ts')],
     });
-    const actions = collectPostGenActions(result, spec);
+    const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual([
       'app-build',
       'cli-install',
@@ -130,7 +159,7 @@ describe('collectPostGenActions', () => {
     ]);
   });
 
-  it('migration occurred → app-install through cli-build', () => {
+  it('migration occurred → app-install through cli-build', async () => {
     const spec = splitSpec();
     const result = makeResult({
       cliDir: '/project/foo-cli',
@@ -138,7 +167,7 @@ describe('collectPostGenActions', () => {
       migrated: true,
       files: [makeFile('foo-cli/src/cli.ts')],
     });
-    const actions = collectPostGenActions(result, spec);
+    const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual([
       'app-install',
       'app-build',
@@ -147,7 +176,7 @@ describe('collectPostGenActions', () => {
     ]);
   });
 
-  it('externalSkills present → skills-sync appended', () => {
+  it('externalSkills present → skills-sync appended', async () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
       externalSkills: [
@@ -157,29 +186,40 @@ describe('collectPostGenActions', () => {
     const result = makeResult({
       files: [makeFile('src/cli.ts')],
     });
-    const actions = collectPostGenActions(result, spec);
+    const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual(['cli-build', 'skills-sync']);
   });
 
-  it('split layout, CLI package.json changed → cli-install + cli-build', () => {
+  it('split layout, CLI package.json changed → cli-install + cli-build', async () => {
     const spec = splitSpec();
     const result = makeResult({
       cliDir: '/project/foo-cli',
       appDir: '/project/foo-app',
       files: [makeFile('foo-cli/package.json')],
     });
-    const actions = collectPostGenActions(result, spec);
+    const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
   });
 
-  it('split layout, only CLI .ts files changed → cli-build', () => {
+  it('split layout, only CLI .ts files changed → cli-build', async () => {
     const spec = splitSpec();
     const result = makeResult({
       cliDir: '/project/foo-cli',
       appDir: '/project/foo-app',
       files: [makeFile('foo-cli/src/framework.gen.ts')],
     });
-    const actions = collectPostGenActions(result, spec);
+    const actions = await collectPostGenActions(result, spec);
+    expect(kinds(actions)).toEqual(['cli-build']);
+  });
+
+  it('split layout, only agent profile .md changed → cli-build', async () => {
+    const spec = splitSpec();
+    const result = makeResult({
+      cliDir: '/project/foo-cli',
+      appDir: '/project/foo-app',
+      files: [makeFile('foo-cli/prompts/agent-profiles/base.md')],
+    });
+    const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual(['cli-build']);
   });
 });

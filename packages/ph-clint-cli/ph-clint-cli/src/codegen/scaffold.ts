@@ -67,6 +67,15 @@ export async function runPhInit(
   const binName = options.binName ?? 'ph';
   const appFolder = path.basename(options.appDir);
 
+  // Guard: never re-init an already-initialized app directory.
+  try {
+    await fs.access(path.join(options.appDir, 'package.json'));
+    log(`App directory ${appFolder} already initialized — skipping ph init.`);
+    return { ran: false, reason: 'already-initialized' };
+  } catch {
+    // No package.json — proceed with init.
+  }
+
   if (!(await hasCommandOnPath(binName))) {
     log(
       `Skipping \`${binName} init\` — \`${binName}\` is not on PATH. ` +

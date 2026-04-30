@@ -295,7 +295,7 @@ async function runCreate(
     appDir,
     pendingActions: [],
   };
-  result.pendingActions = collectPostGenActions(result, spec);
+  result.pendingActions = await collectPostGenActions(result, spec);
   return result;
 }
 
@@ -424,6 +424,6 @@ async function runUpdate(
     appDir,
     pendingActions: [],
   };
-  result.pendingActions = collectPostGenActions(result, spec);
+  result.pendingActions = await collectPostGenActions(result, spec);
   return result;
 }
