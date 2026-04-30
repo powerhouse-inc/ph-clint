@@ -62,7 +62,12 @@ export async function buildManifest(
 }
 
 // CLI entrypoint
-if (process.argv[1] && import.meta.filename === process.argv[1]) {
+// Resolve process.argv[1] via realpathSync so symlinked paths (pnpm .bin stubs)
+// match import.meta.filename which always resolves symlinks.
+if (
+  process.argv[1] &&
+  import.meta.filename === fs.realpathSync(path.resolve(process.argv[1]))
+) {
   buildManifest().catch((err) => {
     console.error(err instanceof Error ? err.message : err);
     process.exit(1);
