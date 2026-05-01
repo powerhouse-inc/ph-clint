@@ -17,13 +17,13 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { scanProjects, getProjectMapping } from '@powerhousedao/ph-clint';
-import { importSpec } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import type { ImportSpecInput } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import { createDocumentChangeTrigger } from '../framework.js';
 import { generateProject } from '../codegen/index.js';
 import { runPostGenActions } from '../codegen/actions.js';
 import { specFromDocumentState } from '../spec/from-document.js';
 import { readProjectSpec, writeProjectSpec } from '../spec/file.js';
+import { ensureSpecDocument } from '../spec/ensure-document.js';
 import { clintProject } from '../services/clint-project.js';
 import type { ClintProjectSpec } from '../spec/types.js';
 
@@ -139,29 +139,28 @@ export const specChangeTrigger = createDocumentChangeTrigger({
       : [];
     const mapping = await getProjectMapping(scanResults, folders);
 
-    // Auto-create spec documents for unlinked projects
+    // Auto-create spec documents for unlinked or orphaned projects
     const reactor = await ctx.reactor();
     if (reactor && folders) {
       for (const entry of mapping) {
-        if (entry.path && !entry.documentId) {
-          const existingSpec = await readProjectSpec(entry.path);
-          if (!existingSpec) continue;
+        if (!entry.path) continue;
+        const existingSpec = await readProjectSpec(entry.path);
+        if (!existingSpec) continue;
 
-          log?.info(`${TAG} creating spec document for unlinked project ${entry.name}`);
-
-          const newDoc = await reactor.client.createEmpty('powerhouse/ph-clint-project');
-          const docId = newDoc.header.id;
-
-          await folders.addDocument(docId, `specs/${entry.name}`, entry.name);
-
-          const importInput = specToImportInput(existingSpec);
-          await reactor.client.execute(docId, 'main', [importSpec(importInput)]);
-
-          existingSpec.documentId = docId;
-          existingSpec.documentType = 'powerhouse/ph-clint-project';
-          await writeProjectSpec(entry.path, existingSpec);
-
-          log?.info(`${TAG} linked project ${entry.name} to document ${docId}`);
+        try {
+          const { docId, created } = await ensureSpecDocument({
+            spec: existingSpec,
+            targetDir: entry.path,
+            reactor,
+            folders,
+          });
+          if (created) {
+            log?.info(`${TAG} linked project ${entry.name} to document ${docId}`);
+          }
+        } catch (err) {
+          log?.warn(
+            `${TAG} could not ensure spec document for ${entry.name}: ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
       }
     }

@@ -7,13 +7,12 @@
  *   3. Collect project identity + feature toggles (prompt for missing).
  *   4. Assemble a ClintProjectSpec and validate with Zod.
  *   5. Write the spec + emit the generated tree via `generateProject`.
- *   6. (Split layout) run `ph init` in `{name}-app/` unless `--skip-ph-init`.
+ *   6. (Split layout) run `ph init` in `{name}-app/`.
  *   7. Run `pnpm install` in generated sub-projects unless `--skip-install`.
  *   8. Print next-steps guidance.
  */
 import path from 'node:path';
 import { defineCommand } from '@powerhousedao/ph-clint';
-import { importSpec } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import { z } from 'zod';
 import {
   clintProjectSpecSchema,
@@ -22,8 +21,7 @@ import {
 import { generateProject } from '../codegen/index.js';
 import { isDirEmptyEnough } from '../codegen/write.js';
 import { runPostGenActions, type PostGenActionKind } from '../codegen/actions.js';
-import { writeProjectSpec } from '../spec/file.js';
-import { specToImportInput } from '../triggers/spec-change.js';
+import { ensureSpecDocument } from '../spec/ensure-document.js';
 
 const inputSchema = z.object({
   dir: z
@@ -52,10 +50,6 @@ const inputSchema = z.object({
     .boolean()
     .default(false)
     .describe('Overwrite files if the target directory is not empty'),
-  skipPhInit: z
-    .boolean()
-    .default(false)
-    .describe('Do not run `ph init` in the app folder after scaffolding'),
   skipInstall: z
     .boolean()
     .default(false)
@@ -150,18 +144,9 @@ export const init = defineCommand({
       try {
         const reactor = await getReactor();
         if (reactor) {
-          const newDoc = await reactor.client.createEmpty('powerhouse/ph-clint-project');
-          const docId = newDoc.header.id;
-
-          await folders.addDocument(docId, `specs/${spec.name}`, spec.name);
-
-          const importInput = specToImportInput(spec);
-          await reactor.client.execute(docId, 'main', [importSpec(importInput)]);
-
-          spec.documentId = docId;
-          spec.documentType = 'powerhouse/ph-clint-project';
-          await writeProjectSpec(targetDir, spec);
-
+          const { docId } = await ensureSpecDocument({
+            spec, targetDir, reactor, folders,
+          });
           stdout(`Created spec document ${docId} in Clint Folders/specs/${spec.name}\n`);
         }
       } catch (err) {
@@ -172,7 +157,6 @@ export const init = defineCommand({
 
     // Run post-generation actions (ph-init, install, build, skills-sync).
     const skip = new Set<PostGenActionKind>();
-    if (input.skipPhInit) skip.add('ph-init');
     if (input.skipInstall) {
       skip.add('app-install');
       skip.add('cli-install');
@@ -191,9 +175,6 @@ export const init = defineCommand({
     const relDir = path.relative(workdir, targetDir) || '.';
     if (split) {
       next.push(`  cd ${relDir}`);
-      if (input.skipPhInit) {
-        next.push(`  cd ${spec.name}-app && ph init . && cd ..`);
-      }
       if (input.skipInstall) {
         next.push('  pnpm install');
       }

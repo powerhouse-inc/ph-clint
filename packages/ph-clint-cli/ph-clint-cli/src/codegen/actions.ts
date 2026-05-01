@@ -208,12 +208,22 @@ export async function collectPostGenActions(
       actions.push({ kind: 'app-install', dir: result.appDir });
     }
     if (ei <= actionIndex('app-build')) {
+      // Add install if not already in the list and node_modules is missing
+      if (!actions.some(a => a.kind === 'app-install') &&
+          !(await fileExists(path.join(result.appDir, 'node_modules')))) {
+        actions.push({ kind: 'app-install', dir: result.appDir });
+      }
       actions.push({ kind: 'app-build', dir: result.appDir });
     }
     if (ei <= actionIndex('cli-install')) {
       actions.push({ kind: 'cli-install', dir: result.cliDir });
     }
     if (ei <= actionIndex('cli-build')) {
+      // Add install if not already in the list and node_modules is missing
+      if (!actions.some(a => a.kind === 'cli-install') &&
+          !(await fileExists(path.join(result.cliDir, 'node_modules')))) {
+        actions.push({ kind: 'cli-install', dir: result.cliDir });
+      }
       actions.push({ kind: 'cli-build', dir: result.cliDir });
     }
   } else if (earliest && !split) {
@@ -222,6 +232,11 @@ export async function collectPostGenActions(
       actions.push({ kind: 'cli-install', dir: result.cliDir });
     }
     if (ei <= actionIndex('cli-build')) {
+      // Add install if not already in the list and node_modules is missing
+      if (!actions.some(a => a.kind === 'cli-install') &&
+          !(await fileExists(path.join(result.cliDir, 'node_modules')))) {
+        actions.push({ kind: 'cli-install', dir: result.cliDir });
+      }
       actions.push({ kind: 'cli-build', dir: result.cliDir });
     }
   }

@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { readProjectSpec } from '../spec/file.js';
 import { generateProject } from '../codegen/index.js';
 import { runPostGenActions } from '../codegen/actions.js';
+import { ensureSpecDocument } from '../spec/ensure-document.js';
 
 const inputSchema = z.object({
   dir: z
@@ -30,7 +31,7 @@ export const regen = defineCommand({
   id: 'clint-project-regen',
   description: 'Regenerate project files from the persisted spec',
   inputSchema,
-  execute: async (input, { workdir, stdout, log, runProcess }) => {
+  execute: async (input, { workdir, stdout, log, runProcess, reactor: getReactor, folders }) => {
     const targetDir = path.resolve(workdir, input.dir ?? '.');
     const spec = await readProjectSpec(targetDir);
     if (!spec) {
@@ -58,6 +59,23 @@ export const regen = defineCommand({
     for (const w of warnings) {
       if (log) log.warn(w);
       else stdout('warning: ' + w + '\n');
+    }
+
+    // Ensure spec document exists in drive (recover if deleted)
+    if (getReactor && folders) {
+      try {
+        const reactor = await getReactor();
+        if (reactor) {
+          const { docId, created } = await ensureSpecDocument({
+            spec, targetDir, reactor, folders,
+          });
+          if (created) {
+            lines.push(`Created spec document ${docId} in Clint Folders/specs/${spec.name}`);
+          }
+        }
+      } catch (err) {
+        log?.warn(`Could not ensure spec document: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     stdout(lines.join('\n') + '\n');

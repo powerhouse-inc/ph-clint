@@ -139,6 +139,7 @@ describe('init.execute', () => {
     workspace: Record<string, unknown>;
     config: Record<string, unknown>;
     stdout: (t: string) => void;
+    runProcess: (cmd: string) => Promise<{ success: boolean; output: string }>;
   } {
     return {
       workdir,
@@ -147,6 +148,7 @@ describe('init.execute', () => {
       stdout: (t: string) => {
         stdout.push(t);
       },
+      runProcess: async () => ({ success: true, output: '' }),
     };
   }
 
@@ -170,7 +172,7 @@ describe('init.execute', () => {
         enableMastra: false,
         enableRoutine: false,
         force: false,
-        skipPhInit: true,
+
         skipInstall: true,
       },
       // @ts-expect-error — minimal context is all init consumes.
@@ -195,7 +197,7 @@ describe('init.execute', () => {
         enableMastra: false,
         enableRoutine: false,
         force: false,
-        skipPhInit: true,
+
         skipInstall: true,
       },
       // @ts-expect-error — minimal context.
