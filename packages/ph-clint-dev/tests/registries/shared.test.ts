@@ -1,5 +1,8 @@
-import { describe, it, expect, afterEach } from '@jest/globals';
+import { describe, it, expect, afterEach, afterAll, beforeAll } from '@jest/globals';
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import {
   detectCliName,
   formatStartupOutput,
@@ -69,8 +72,45 @@ function listenOnRandom(server: http.Server): Promise<string> {
 }
 
 describe('detectCliName', () => {
+  let tmpDir: string;
+
+  beforeAll(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-cli-'));
+  });
+
+  afterAll(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
   it('returns placeholder when no project context found', () => {
     expect(detectCliName('/tmp')).toBe('<CLI_NAME>');
+  });
+
+  it('strips -cli suffix in split layout (e.g. ph-nimby-cli → PH_NIMBY)', () => {
+    // Create split layout: root/ph-nimby-cli/ + root/ph-nimby-app/
+    const root = path.join(tmpDir, 'split');
+    const cliDir = path.join(root, 'ph-nimby-cli');
+    const appDir = path.join(root, 'ph-nimby-app');
+    fs.mkdirSync(cliDir, { recursive: true });
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.writeFileSync(path.join(cliDir, 'package.json'), JSON.stringify({
+      name: '@powerhousedao/ph-nimby-cli',
+      dependencies: { '@powerhousedao/ph-clint': '0.0.1' },
+    }));
+    fs.writeFileSync(path.join(appDir, 'package.json'), '{}');
+
+    expect(detectCliName(cliDir)).toBe('PH_NIMBY');
+  });
+
+  it('flat layout name without -cli suffix is unchanged', () => {
+    const flat = path.join(tmpDir, 'ph-test-fresh');
+    fs.mkdirSync(flat, { recursive: true });
+    fs.writeFileSync(path.join(flat, 'package.json'), JSON.stringify({
+      name: 'ph-test-fresh',
+      dependencies: { '@powerhousedao/ph-clint': '0.0.1' },
+    }));
+
+    expect(detectCliName(flat)).toBe('PH_TEST_FRESH');
   });
 });
 

@@ -29,8 +29,8 @@ export function detectCliName(startDir: string): string {
     const raw = fs.readFileSync(pkgJsonPath, 'utf-8');
     const pkg = JSON.parse(raw);
     const name: string = pkg.name ?? '';
-    // Strip scope (e.g. @acme/foo-cli → foo-cli), then convert to UPPER_SNAKE
-    const bare = name.replace(/^@[^/]+\//, '');
+    // Strip scope and -cli suffix (e.g. @acme/foo-cli → foo), then convert to UPPER_SNAKE
+    const bare = name.replace(/^@[^/]+\//, '').replace(/-cli$/, '');
     return bare
       .replace(/-/g, '_')
       .toUpperCase();
