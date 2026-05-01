@@ -28,9 +28,11 @@ describe('buildRootPackageJson', () => {
     );
     expect(pkg.scripts.dev).toBe('pnpm --prefix foo-cli dev');
     expect(pkg.scripts.start).toBe('pnpm --prefix foo-cli start');
-    expect(pkg.scripts.lint).toBe('pnpm --prefix foo-cli lint');
-    expect(pkg.scripts['app:dev']).toBe('pnpm --prefix foo-app dev');
-    expect(pkg.scripts['cli:dev']).toBe('pnpm --prefix foo-cli dev');
+    expect(pkg.scripts.lint).toBe(
+      'pnpm --prefix foo-app lint && pnpm --prefix foo-cli lint',
+    );
+    expect(pkg.scripts['app:dev']).toBeUndefined();
+    expect(pkg.scripts['cli:dev']).toBeUndefined();
   });
 
   it('includes publish scripts using pnpm --prefix exec', () => {

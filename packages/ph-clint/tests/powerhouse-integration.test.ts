@@ -23,13 +23,13 @@ describe('connectServiceDefinition', () => {
     expect(svc.description).toBe('Powerhouse Connect web interface');
   });
 
-  it('generates command string with port and driveUrl', () => {
+  it('generates command string with port (no --default-drives-url flag)', () => {
     const svc = connectServiceDefinition({ enabled: true, port: 3001, name: 'test-connect' });
     const cmd = typeof svc.command === 'function'
       ? svc.command({ port: 3001, driveUrl: 'http://localhost:4001/d/abc' })
       : svc.command;
     expect(cmd).toContain('--port 3001');
-    expect(cmd).toContain('--default-drives-url http://localhost:4001/d/abc');
+    expect(cmd).not.toContain('--default-drives-url');
   });
 
   it('uses stamped port when no params override', () => {

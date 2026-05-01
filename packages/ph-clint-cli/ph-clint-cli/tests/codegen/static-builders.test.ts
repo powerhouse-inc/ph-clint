@@ -14,6 +14,7 @@ import { buildMastraIndexTs } from '../../src/codegen/builders/mastra-index-ts.j
 import { buildAgentBaseMd } from '../../src/codegen/builders/agent-base-md.js';
 import { buildAgentTs } from '../../src/codegen/builders/agent-ts.js';
 import { buildReadme } from '../../src/codegen/builders/readme-md.js';
+import { buildSmokeTestTs } from '../../src/codegen/builders/smoke-test-ts.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 describe('buildMainTs', () => {
@@ -45,11 +46,13 @@ describe('buildJestConfigJs', () => {
 });
 
 describe('buildEslintConfigJs', () => {
-  it('exports an empty flat config wrapped in @clint markers', () => {
+  it('exports a typescript-eslint config wrapped in @clint markers', () => {
     const out = buildEslintConfigJs();
     expect(out).toContain('// @clint:begin eslint');
     expect(out).toContain('// @clint:end eslint');
-    expect(out).toContain('export default []');
+    expect(out).toContain("import tseslint from 'typescript-eslint'");
+    expect(out).toContain('tseslint.configs.recommended');
+    expect(out).toContain("ignores: ['dist/', 'gen/', 'coverage/']");
   });
 });
 
@@ -146,6 +149,23 @@ describe('buildAgentTs', () => {
     expect(out).toContain("name: 'Foo Agent'");
     expect(out).toContain("import { createMastraHelpers }");
     expect(out).toContain("m.getAgentInstructions('foo-agent')");
+  });
+});
+
+describe('buildSmokeTestTs', () => {
+  it('emits a Jest test that imports cli.ts', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const out = buildSmokeTestTs(spec);
+    expect(out).toContain("import { describe, it, expect } from '@jest/globals'");
+    expect(out).toContain("describe('foo'");
+    expect(out).toContain("import('../src/cli.js')");
+    expect(out).toContain('expect(cli).toBeDefined()');
+  });
+
+  it('uses custom bin name when set', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo', bin: 'bar' });
+    const out = buildSmokeTestTs(spec);
+    expect(out).toContain("describe('bar'");
   });
 });
 

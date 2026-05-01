@@ -95,7 +95,7 @@ describe('buildCliPackageJson', () => {
     });
     const pkg = parseBuilt(spec);
     const scripts = pkg.scripts as Record<string, string>;
-    expect(scripts['test-service-registry']).toBe('vetra-graphql-registry --withAuth');
+    expect(scripts['test-service-registry']).toBe('json-post-registry --withAuth');
   });
 
   it('includes build:manifest script and updated build script', () => {
@@ -116,5 +116,45 @@ describe('buildCliPackageJson', () => {
   it('output always ends with a trailing newline', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     expect(buildCliPackageJson(spec).endsWith('\n')).toBe(true);
+  });
+
+  it('scoped spec does not duplicate app package as bare name', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'pirate',
+      scope: 'powerhousedao',
+      features: { powerhouse: 'Switchboard' },
+      packages: [
+        { id: 'app-pirate', packageName: 'pirate-app', documentTypes: [] },
+      ],
+    });
+    const pkg = parseBuilt(spec);
+    const deps = pkg.dependencies as Record<string, string>;
+    // Should have the scoped file: dependency
+    expect(deps['@powerhousedao/pirate-app']).toBe('file:../pirate-app');
+    // Must NOT have the bare name as a separate entry
+    expect(deps['pirate-app']).toBeUndefined();
+  });
+
+  it('external packages (not app) are included in deps', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'pirate',
+      scope: 'powerhousedao',
+      features: { powerhouse: 'Switchboard' },
+      packages: [
+        { id: 'app-pirate', packageName: 'pirate-app', documentTypes: [] },
+        { id: 'ext-models', packageName: '@other/models', documentTypes: ['other/model'] },
+      ],
+    });
+    const pkg = parseBuilt(spec);
+    const deps = pkg.dependencies as Record<string, string>;
+    expect(deps['@other/models']).toBe('latest');
+    expect(deps['pirate-app']).toBeUndefined();
+  });
+
+  it('includes typescript-eslint in devDependencies', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const pkg = parseBuilt(spec);
+    const devDeps = pkg.devDependencies as Record<string, string>;
+    expect(devDeps['typescript-eslint']).toBeDefined();
   });
 });

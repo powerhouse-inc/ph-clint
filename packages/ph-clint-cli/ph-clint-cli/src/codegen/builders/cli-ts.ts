@@ -23,7 +23,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('// @clint:begin imports');
   const phClintImports = ['defineCli'];
   if (phAtLeast(ph, 'Reactor')) phClintImports.push('buildDefaultReactor');
-  if (spec.deployment.serviceAnnouncement) phClintImports.push('vetraGraphqlAnnounce');
+  if (spec.deployment.serviceAnnouncement) phClintImports.push('jsonPostAnnounce');
   lines.push(`import { ${phClintImports.join(', ')} } from '@powerhousedao/ph-clint';`);
   if (needsRoot) {
     lines.push("import path from 'node:path';");
@@ -104,7 +104,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   if (spec.deployment.serviceAnnouncement) {
     lines.push('  serviceAnnouncement: {');
     lines.push('    enabled: true,');
-    lines.push('    announce: (payload, ctx) => vetraGraphqlAnnounce(payload, ctx),');
+    lines.push('    announce: (payload, ctx) => jsonPostAnnounce(payload, ctx),');
     lines.push('  },');
   }
   lines.push('  // @clint:end serviceAnnouncement');

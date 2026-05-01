@@ -4,6 +4,9 @@ import type { PublishTag, ResolvedPackage } from './types.js';
 
 const execFileAsync = promisify(execFile);
 
+/** Stability rank: higher = more stable. */
+const STABILITY: Record<PublishTag, number> = { dev: 0, staging: 1, production: 2 };
+
 /**
  * Check npm authentication with the given registry.
  * Throws with a helpful message if not authenticated.
@@ -24,7 +27,7 @@ export async function checkNpmAuth(registry: string): Promise<void> {
  * Bypasses `npm view` which aggressively caches 404 responses for new
  * packages, causing verification failures during first-time publishes.
  */
-async function fetchPackageMetadata(
+export async function fetchPackageMetadata(
   packageName: string,
   registry: string,
 ): Promise<Record<string, unknown> | null> {
@@ -133,6 +136,62 @@ export function publishPackage(
 }
 
 /**
+ * Determine whether this publish should also set the `latest` dist-tag.
+ *
+ * Rules (highest-stability-wins):
+ *   - production always gets `latest`
+ *   - staging gets `latest` if no production release exists
+ *   - dev gets `latest` if no production or staging release exists
+ *
+ * For brand-new packages (404 from registry), always returns true so that
+ * `npm install <pkg>` works immediately after the first publish.
+ */
+export async function shouldSetLatest(
+  packageName: string,
+  tag: PublishTag,
+  registry: string,
+): Promise<boolean> {
+  if (tag === 'production') return true;
+
+  const data = await fetchPackageMetadata(packageName, registry);
+  if (!data) return true; // New package — first version ever
+
+  const distTags = data['dist-tags'] as Record<string, string> | undefined;
+  if (!distTags) return true;
+
+  // Check whether a more-stable channel already owns `latest`
+  const latestVer = distTags.latest;
+  if (!latestVer) return true; // No latest tag at all
+
+  // A production version has no prerelease segment (e.g. "1.2.3")
+  const hasProductionLatest = !/-.+$/.test(latestVer);
+  if (hasProductionLatest) return false; // production owns latest, never override
+
+  if (tag === 'staging') {
+    // Override latest only if current latest is dev (not staging/production)
+    return latestVer.includes('-dev.');
+  }
+
+  // tag === 'dev'
+  // Override latest only if no staging tag exists and current latest is also dev
+  return !distTags.staging && latestVer.includes('-dev.');
+}
+
+/**
+ * Set the `latest` dist-tag for a package on the registry.
+ */
+export async function setLatestTag(
+  packageName: string,
+  version: string,
+  registry: string,
+): Promise<void> {
+  await execFileAsync('npm', [
+    'dist-tag', 'add', `${packageName}@${version}`, 'latest',
+    '--registry', registry,
+  ]);
+}
+
+/**
  * Verify a version exists on the registry with exponential backoff.
  * The registry is eventually consistent — a version may not be queryable
  * immediately after `npm publish` returns, especially for new packages
@@ -164,6 +223,10 @@ export async function verifyWithRetry(
 
 /**
  * Publish all packages in order.
+ * After publishing, if no higher-stability release exists on the registry,
+ * also sets the `latest` dist-tag so that `npm install <pkg>` works for
+ * packages that have only ever had prerelease publishes.
+ *
  * Returns which packages succeeded and which failed.
  */
 export async function publishAll(
@@ -176,6 +239,14 @@ export async function publishAll(
 ): Promise<{ published: string[]; failed: string[] }> {
   const published: string[] = [];
   const failed: string[] = [];
+
+  // Determine if we should also set the `latest` dist-tag after publishing
+  const needsLatest = tag !== 'production'
+    ? await shouldSetLatest(packages[0].name, tag, registry)
+    : false; // production already publishes with --tag latest
+  if (needsLatest) {
+    log(`  (will also set "latest" dist-tag — no higher-stability release exists)`);
+  }
 
   for (const pkg of packages) {
     // Skip packages already published at this version (recovery from partial failure)
@@ -212,6 +283,19 @@ export async function publishAll(
           `\n  Already-published packages will be skipped automatically.`,
       );
       break; // Stop on first failure
+    }
+  }
+
+  // Set `latest` dist-tag on all successfully published packages
+  if (needsLatest && failed.length === 0 && published.length > 0) {
+    log('  Setting latest dist-tag...');
+    for (const name of published) {
+      try {
+        await setLatestTag(name, version, registry);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log(`  ⚠ Failed to set latest tag for ${name}: ${msg}`);
+      }
     }
   }
 

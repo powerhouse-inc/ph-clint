@@ -141,11 +141,12 @@ export function defineCli<
   let activeConfigFile: string | undefined;
   let activeWorkdir: string = process.cwd();
 
-  // Auto-inject built-in config command when configSchema is present
-  if (options.configSchema && !commandMap.has('config')) {
+  // Auto-inject built-in config command when configSchema has at least one field
+  const configFieldCount = options.configSchema ? getSchemaFields(options.configSchema).length : 0;
+  if (configFieldCount > 0 && !commandMap.has('config')) {
     const configCmd = createConfigCommand({
       cliName: options.name,
-      configSchema: options.configSchema,
+      configSchema: options.configSchema!,
       sensitiveKeys,
       implementationDefaults: options.configDefaults,
       // configFile is set lazily during run() via activeConfigFile

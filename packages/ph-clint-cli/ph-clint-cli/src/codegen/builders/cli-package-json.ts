@@ -74,10 +74,13 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     dependencies['@powerhousedao/shared'] = POWERHOUSE_VERSION;
     dependencies['document-model'] = POWERHOUSE_VERSION;
     // External reactor packages (non-app) as versioned dependencies.
+    // Compare bare names (without scope) so that a spec entry with
+    // packageName "foo-app" still matches the scoped "@scope/foo-app".
+    const appBare = appPkg.replace(/^@[^/]+\//, '');
     for (const pkg of spec.packages) {
-      if (pkg.packageName !== appPkg) {
-        dependencies[pkg.packageName] = 'latest';
-      }
+      const pkgBare = pkg.packageName.replace(/^@[^/]+\//, '');
+      if (pkgBare === appBare) continue;
+      dependencies[pkg.packageName] = 'latest';
     }
   }
 
@@ -103,7 +106,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     scripts['publish:production'] = 'ph-publish production -c ./publish.config.js';
   }
   if (spec.deployment.serviceAnnouncement) {
-    scripts['test-service-registry'] = 'vetra-graphql-registry --withAuth';
+    scripts['test-service-registry'] = 'json-post-registry --withAuth';
   }
   const pkg: Record<string, unknown> = {
     name: pkgName,
@@ -124,6 +127,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     'ts-jest': '^29.4.6',
     tsx: '^4.19.0',
     typescript: '^6.0.2',
+    'typescript-eslint': '^8.33.0',
   };
   pkg.engines = { node: '>=22.13.0' };
 

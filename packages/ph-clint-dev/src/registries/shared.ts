@@ -13,6 +13,7 @@ export interface RegistryServer {
   server: http.Server;
   announcements: unknown[];
   token?: string;
+  documentId?: string;
 }
 
 /**
@@ -46,12 +47,14 @@ export function formatStartupOutput(
   url: string,
   envPrefix: string,
   token?: string,
+  documentId?: string,
 ): string {
+  const announceUrl = documentId ? `${url}?documentId=${documentId}` : url;
   const lines: string[] = [
     `${type} registry listening on ${url}`,
     '',
     'Add to your environment:',
-    `  ${envPrefix}_SERVICE_ANNOUNCE_URL=${url}`,
+    `  ${envPrefix}_SERVICE_ANNOUNCE_URL=${announceUrl}`,
   ];
   if (token) {
     lines.push(`  ${envPrefix}_SERVICE_ANNOUNCE_TOKEN=${token}`);
@@ -74,10 +77,13 @@ export function createRegistryServer(options: RegistryServerOptions): RegistrySe
   const token = options.withAuth ? generateToken() : undefined;
 
   const server = http.createServer((req, res) => {
+    console.log(`${req.method} ${req.url}`);
+
     // Auth middleware
     if (options.withAuth && req.method === 'POST') {
       const auth = req.headers.authorization;
       if (!auth || auth !== `Bearer ${token}`) {
+        console.log('  AUTH REJECTED (invalid or missing Bearer token)');
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end('{"error":"unauthorized"}');
         return;
@@ -90,10 +96,12 @@ export function createRegistryServer(options: RegistryServerOptions): RegistrySe
       req.on('end', () => {
         try {
           const payload = JSON.parse(body);
+          console.log('  Announcement received:', JSON.stringify(payload, null, 2));
           announcements.push(payload);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end('{"ok":true}');
         } catch {
+          console.log('  ERROR: invalid JSON body');
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end('{"error":"invalid json"}');
         }
@@ -102,6 +110,7 @@ export function createRegistryServer(options: RegistryServerOptions): RegistrySe
     }
 
     if (req.method === 'GET' && req.url === '/announcements') {
+      console.log(`  Returning ${announcements.length} announcement(s)`);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(announcements));
       return;
@@ -122,12 +131,16 @@ export function createRegistryServer(options: RegistryServerOptions): RegistrySe
 export function createGraphqlRegistryServer(options: RegistryServerOptions): RegistryServer {
   const announcements: unknown[] = [];
   const token = options.withAuth ? generateToken() : undefined;
+  const documentId = crypto.randomUUID();
 
   const server = http.createServer((req, res) => {
+    console.log(`${req.method} ${req.url}`);
+
     // Auth middleware
     if (options.withAuth && req.method === 'POST') {
       const auth = req.headers.authorization;
       if (!auth || auth !== `Bearer ${token}`) {
+        console.log('  AUTH REJECTED (invalid or missing Bearer token)');
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end('{"error":"unauthorized"}');
         return;
@@ -141,11 +154,13 @@ export function createGraphqlRegistryServer(options: RegistryServerOptions): Reg
         try {
           const parsed = JSON.parse(body);
           if (!parsed.query || !parsed.variables?.input) {
+            console.log('  ERROR: missing query or variables.input');
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end('{"errors":[{"message":"missing query or variables.input"}]}');
             return;
           }
           const input = parsed.variables.input;
+          console.log('  Announcement received:', JSON.stringify(input, null, 2));
           announcements.push(input);
           const count = (input.endpoints as unknown[])?.length ?? 0;
           res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -155,6 +170,7 @@ export function createGraphqlRegistryServer(options: RegistryServerOptions): Reg
             },
           }));
         } catch {
+          console.log('  ERROR: invalid JSON body');
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end('{"error":"invalid json"}');
         }
@@ -163,6 +179,7 @@ export function createGraphqlRegistryServer(options: RegistryServerOptions): Reg
     }
 
     if (req.method === 'GET' && req.url === '/announcements') {
+      console.log(`  Returning ${announcements.length} announcement(s)`);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(announcements));
       return;
@@ -172,5 +189,5 @@ export function createGraphqlRegistryServer(options: RegistryServerOptions): Reg
     res.end();
   });
 
-  return { server, announcements, token };
+  return { server, announcements, token, documentId };
 }

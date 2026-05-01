@@ -546,9 +546,11 @@ describe('createConfigCommand', () => {
       expect(parsed.name).toBeUndefined();
     });
 
-    it('rejects invalid setting names', () => {
+    it('accepts any string for name at parse time (validated in execute)', () => {
       const cmd = makeCommand();
-      expect(() => cmd.inputSchema.parse({ name: 'nonexistent' })).toThrow();
+      // z.string() accepts any name — validation happens in execute()
+      const parsed = cmd.inputSchema.parse({ name: 'nonexistent' }) as Record<string, unknown>;
+      expect(parsed.name).toBe('nonexistent');
     });
 
     it('accepts all scope values', () => {
@@ -657,6 +659,124 @@ describe('generateConfigCommandHelp', () => {
     const help = generateConfigCommandHelp('tasks', configSchema, '/tmp/test');
     expect(help).toContain('NOT a config');
     expect(help).toContain('prerequisite for config resolution');
+  });
+});
+
+describe('env var name resolution', () => {
+  let workDir: string;
+  const originalEnv = { ...process.env };
+
+  beforeEach(async () => {
+    workDir = await mkdtemp(join(tmpdir(), 'ph-clint-envvar-'));
+  });
+
+  afterEach(async () => {
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) delete process.env[key];
+    }
+    Object.assign(process.env, originalEnv);
+    await rm(workDir, { recursive: true, force: true });
+  });
+
+  function makeContext(): CommandContext {
+    return {
+      workdir: workDir,
+      workspace: createMemoryWorkdirStore(),
+      config: {},
+      stdout: () => {},
+    };
+  }
+
+  it('resolves UPPER_SNAKE env var name to camelCase field', async () => {
+    const cmd = createConfigCommand({ cliName: 'my-cli', configSchema });
+    const result = await cmd.execute(
+      { name: 'MY_CLI_DEFAULT_PRIORITY' },
+      makeContext(),
+    ) as { text: string };
+    expect(result.text).toContain('defaultPriority');
+    expect(result.text).toContain('"medium"');
+  });
+
+  it('resolves lowercase env var name (case-insensitive)', async () => {
+    const cmd = createConfigCommand({ cliName: 'my-cli', configSchema });
+    const result = await cmd.execute(
+      { name: 'my_cli_max_items' },
+      makeContext(),
+    ) as { text: string };
+    expect(result.text).toContain('maxItems');
+  });
+
+  it('still resolves camelCase field names directly', async () => {
+    const cmd = createConfigCommand({ cliName: 'my-cli', configSchema });
+    const result = await cmd.execute(
+      { name: 'apiKey' },
+      makeContext(),
+    ) as { text: string };
+    expect(result.text).toContain('apiKey');
+  });
+
+  it('throws helpful error for unknown names', async () => {
+    const cmd = createConfigCommand({ cliName: 'my-cli', configSchema });
+    await expect(
+      cmd.execute({ name: 'NONEXISTENT_VAR' }, makeContext()),
+    ).rejects.toThrow('Unknown setting "NONEXISTENT_VAR"');
+  });
+
+  it('error message lists both field names and env var names', async () => {
+    const cmd = createConfigCommand({ cliName: 'my-cli', configSchema });
+    try {
+      await cmd.execute({ name: 'NOPE' }, makeContext());
+    } catch (err) {
+      const msg = (err as Error).message;
+      expect(msg).toContain('defaultPriority');
+      expect(msg).toContain('MY_CLI_DEFAULT_PRIORITY');
+    }
+  });
+
+  it('write mode works with env var name', async () => {
+    const cmd = createConfigCommand({ cliName: 'my-cli', configSchema });
+    const result = await cmd.execute(
+      { name: 'MY_CLI_MAX_ITEMS', write: '42' },
+      makeContext(),
+    ) as { text: string };
+    expect(result.text).toContain('Set maxItems = 42');
+  });
+});
+
+describe('config command conditional injection', () => {
+  it('injects config command when schema has fields', () => {
+    const cli = defineCli({
+      name: 'test-with-config',
+      version: '1.0.0',
+      description: 'test',
+      configSchema: z.object({ foo: z.string().default('bar') }),
+      commands: [],
+    });
+    const meta = cli.getMetadata();
+    expect('config' in meta.commands).toBe(true);
+  });
+
+  it('does not inject config command when schema has no fields', () => {
+    const cli = defineCli({
+      name: 'test-empty-config',
+      version: '1.0.0',
+      description: 'test',
+      configSchema: z.object({}),
+      commands: [],
+    });
+    const meta = cli.getMetadata();
+    expect('config' in meta.commands).toBe(false);
+  });
+
+  it('does not inject config command when no schema provided', () => {
+    const cli = defineCli({
+      name: 'test-no-config',
+      version: '1.0.0',
+      description: 'test',
+      commands: [],
+    });
+    const meta = cli.getMetadata();
+    expect('config' in meta.commands).toBe(false);
   });
 });
 

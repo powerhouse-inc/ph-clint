@@ -1,12 +1,15 @@
 /**
- * Builds `eslint.config.js` for the CLI — placeholder flat config.
+ * Builds `eslint.config.js` for the CLI — minimal TypeScript-ESLint config.
  */
 export function buildEslintConfigJs(): string {
   return [
     '// @clint:begin eslint',
-    '// Placeholder ESLint flat config — replaced by codegen when the',
-    "// project's lint stack is configured.",
-    'export default [];',
+    "import tseslint from 'typescript-eslint';",
+    '',
+    'export default tseslint.config(',
+    '  tseslint.configs.recommended,',
+    "  { ignores: ['dist/', 'gen/', 'coverage/'] },",
+    ');',
     '// @clint:end eslint',
     '',
   ].join('\n');

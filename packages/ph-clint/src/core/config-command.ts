@@ -102,8 +102,14 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
   // Build a map for O(1) lookup — Zod enum validation guarantees the key exists
   const fieldMap = new Map(fields.map((f) => [f.key, f]));
 
+  // Build env-var → field-key reverse lookup for accepting UPPER_SNAKE names
+  const envToField = new Map<string, string>();
+  for (const f of fields) {
+    envToField.set(configKeyToEnvVar(cliName, f.key), f.key);
+  }
+
   const inputSchema = z.object({
-    name: z.enum(fieldKeys as [string, ...string[]]).optional().describe('Setting name'),
+    name: z.string().optional().describe('Setting name (camelCase) or env variable (UPPER_SNAKE)'),
     write: z.string().optional().describe('Value to write'),
     remove: z.boolean().optional().describe('Remove the setting from the scope'),
     list: z.boolean().optional().describe('List all settings'),
@@ -116,7 +122,7 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
     description: 'View or modify configuration settings',
     inputSchema,
     execute: async (input, context: CommandContext) => {
-      const { name: settingName, write: newValue, remove, list, scope, revealSecrets } = input as {
+      const { name: rawName, write: newValue, remove, list, scope, revealSecrets } = input as {
         name?: string;
         write?: string;
         remove?: boolean;
@@ -136,18 +142,35 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
 
       // ── List mode ──
       if (list) {
-        if (settingName) {
+        if (rawName) {
           throw new Error('--list does not accept --name.');
         }
         return listSettings(fields, cliName, workdir, scope, configSchema, opts.configFile, implementationDefaults, reveal);
       }
 
       // --name is required for read, write, and remove
-      if (!settingName) {
+      if (!rawName) {
         throw new Error('--name is required (use --list to show all settings).');
       }
 
-      // Zod enum on `name` guarantees settingName is a valid field key
+      // Resolve name: accept camelCase field names or UPPER_SNAKE env var names
+      let settingName = rawName;
+      if (!fieldMap.has(settingName)) {
+        const upper = settingName.toUpperCase();
+        const fromEnv = envToField.get(settingName) ?? envToField.get(upper);
+        if (fromEnv) {
+          settingName = fromEnv;
+        } else {
+          const validNames = [
+            ...fieldMap.keys(),
+            ...envToField.keys(),
+          ];
+          throw new Error(
+            `Unknown setting "${rawName}". Valid names:\n${validNames.map(n => `  ${n}`).join('\n')}`,
+          );
+        }
+      }
+
       const field = fieldMap.get(settingName)!;
 
       // ── Remove mode ──
