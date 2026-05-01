@@ -637,7 +637,7 @@ export function defineCli<
       program.option('-w, --workdir <path>', 'Set the workspace directory');
     }
 
-    if (options.configSchema) {
+    if (configFieldCount > 0) {
       program.option('-c, --config <path>', 'Load config from a JSON file (relative to cwd)');
     }
 
