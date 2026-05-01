@@ -156,9 +156,10 @@ export const init = defineCommand({
     }
 
     // Run post-generation actions (ph-init, install, build, skills-sync).
+    // Only skip cli-install — in split layout, ph-init handles app install
+    // internally, and app-build must still run so the CLI can link to it.
     const skip = new Set<PostGenActionKind>();
     if (input.skipInstall) {
-      skip.add('app-install');
       skip.add('cli-install');
     }
     await runPostGenActions(result.pendingActions, {
