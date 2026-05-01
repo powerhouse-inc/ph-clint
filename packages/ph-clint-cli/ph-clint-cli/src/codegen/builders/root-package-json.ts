@@ -22,7 +22,7 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
   const connectEnabled = phAtLeast(spec.features.powerhouse, 'Connect');
 
   const buildScript = connectEnabled
-    ? `${prefix(app, 'build')} && ${prefix(app, 'connect:build')} && ${prefix(cli, 'build')}`
+    ? `${prefix(app, 'build')} && ${prefix(app, 'connect build --outDir dist/connect')} && ${prefix(cli, 'build')}`
     : both('build');
 
   const scripts: Record<string, string> = {
@@ -32,9 +32,9 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
     dev: prefix(cli, 'dev'),
     start: prefix(cli, 'start'),
     lint: both('lint'),
-    'publish:dev': `${prefix(cli, 'exec ph-publish')} dev -c ../publish.config.js`,
-    'publish:staging': `${prefix(cli, 'exec ph-publish')} staging -c ../publish.config.js`,
-    'publish:production': `${prefix(cli, 'exec ph-publish')} production -c ../publish.config.js`,
+    'publish:dev': `${prefix(cli, 'exec ph-publish')} dev -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
+    'publish:staging': `${prefix(cli, 'exec ph-publish')} staging -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
+    'publish:production': `${prefix(cli, 'exec ph-publish')} production -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
   };
 
   const pkg = {

@@ -42,9 +42,11 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('export const cli = defineCli({');
   lines.push('  name: CLI_NAME,');
   lines.push('  version: CLI_VERSION,');
+  lines.push('  // @clint:begin root');
   if (phAtLeast(ph, 'Reactor')) {
     lines.push('  root: CLI_ROOT,');
   }
+  lines.push('  // @clint:end root');
   lines.push('  description: `${CLI_NAME} v${CLI_VERSION}`,');
   lines.push('  configSchema,');
   lines.push('  secretsSchema,');

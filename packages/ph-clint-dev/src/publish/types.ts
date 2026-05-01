@@ -48,6 +48,8 @@ export interface PublishOptions {
   allowPrivate?: boolean;
   /** Verify packages are visible on the registry after publish (default: false). */
   verify?: boolean;
+  /** Error if app packages with Connect are missing dist/connect/index.html after build. */
+  verifyConnect?: boolean;
   log?: (msg: string) => void;
 }
 

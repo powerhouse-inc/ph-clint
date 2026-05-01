@@ -19,9 +19,9 @@ describe('buildRootPackageJson', () => {
     expect(pkg.scripts.install).toBe(
       'pnpm --prefix foo-app install && pnpm --prefix foo-cli install',
     );
-    // Connect enabled by default → build includes connect:build step
+    // Connect enabled → build includes connect build step with --outDir
     expect(pkg.scripts.build).toBe(
-      'pnpm --prefix foo-app build && pnpm --prefix foo-app connect:build && pnpm --prefix foo-cli build',
+      'pnpm --prefix foo-app build && pnpm --prefix foo-app connect build --outDir dist/connect && pnpm --prefix foo-cli build',
     );
     expect(pkg.scripts.test).toBe(
       'pnpm --prefix foo-app test && pnpm --prefix foo-cli test',
@@ -44,13 +44,13 @@ describe('buildRootPackageJson', () => {
       scripts: Record<string, string>;
     };
     expect(pkg.scripts['publish:dev']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish dev -c ../publish.config.js',
+      'pnpm --prefix foo-cli exec ph-publish dev -c ../publish.config.js --verify-connect',
     );
     expect(pkg.scripts['publish:staging']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish staging -c ../publish.config.js',
+      'pnpm --prefix foo-cli exec ph-publish staging -c ../publish.config.js --verify-connect',
     );
     expect(pkg.scripts['publish:production']).toBe(
-      'pnpm --prefix foo-cli exec ph-publish production -c ../publish.config.js',
+      'pnpm --prefix foo-cli exec ph-publish production -c ../publish.config.js --verify-connect',
     );
   });
 

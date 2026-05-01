@@ -22,6 +22,7 @@ Options:
   --force                  Downgrade validation errors to warnings
   --allow-private          Allow publishing packages marked private
   --verify                 Verify packages on registry after publish
+  --verify-connect         Error if app packages are missing dist/connect/index.html
   -v, --verbose            Show build and publish output
   -h, --help               Show this help`);
 }
@@ -39,6 +40,7 @@ async function main(): Promise<void> {
       'skip-git-check': { type: 'boolean' },
       'allow-private': { type: 'boolean' },
       verify: { type: 'boolean' },
+      'verify-connect': { type: 'boolean' },
       force: { type: 'boolean' },
       verbose: { type: 'boolean', short: 'v' },
       help: { type: 'boolean', short: 'h' },
@@ -90,6 +92,7 @@ async function main(): Promise<void> {
     skipGitCheck: values['skip-git-check'],
     allowPrivate: values['allow-private'],
     verify: values.verify,
+    verifyConnect: values['verify-connect'],
     force: values.force,
     verbose: values.verbose,
   });

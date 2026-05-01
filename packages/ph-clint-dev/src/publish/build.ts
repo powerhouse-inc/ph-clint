@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ResolvedPackage } from './types.js';
 
 /**
@@ -54,6 +56,16 @@ export function buildPackage(
 }
 
 /**
+ * Check if a package has ph-cli and a connect script — if so, it's a
+ * Powerhouse app that can produce Connect static assets.
+ */
+function hasConnectBuild(pkg: ResolvedPackage): boolean {
+  const scripts = (pkg.packageJson.scripts ?? {}) as Record<string, string>;
+  const hasBin = existsSync(join(pkg.absPath, 'node_modules', '.bin', 'ph-cli'));
+  return hasBin && 'connect' in scripts;
+}
+
+/**
  * Build all packages in order. Aborts on first failure.
  *
  * When a package has intra-group `file:` dependencies on a package that was
@@ -64,6 +76,7 @@ export async function buildAll(
   packages: ResolvedPackage[],
   verbose: boolean,
   log: (msg: string) => void,
+  options?: { verifyConnect?: boolean },
 ): Promise<void> {
   const builtPaths = new Set<string>();
 
@@ -80,6 +93,26 @@ export async function buildAll(
 
     log(`  Building ${pkg.name}...`);
     await buildPackage(pkg, verbose);
+
+    // App packages with ph-cli: also build Connect static assets into dist/connect/
+    if (pkg.entry.category === 'app' && hasConnectBuild(pkg)) {
+      log(`  Building Connect assets for ${pkg.name}...`);
+      await runInPackage(pkg, 'pnpm', ['connect', 'build', '--outDir', 'dist/connect'], verbose);
+
+      if (options?.verifyConnect) {
+        const indexHtml = join(pkg.absPath, 'dist', 'connect', 'index.html');
+        if (!existsSync(indexHtml)) {
+          throw new Error(
+            `Connect build for ${pkg.name} did not produce dist/connect/index.html.\n` +
+              `  Expected: ${indexHtml}\n` +
+              `  The published package will not work in production without Connect static assets.\n` +
+              `  Verify that "pnpm connect build --outDir dist/connect" works in ${pkg.absPath}`,
+          );
+        }
+      }
+      log(`  ✓ ${pkg.name} (connect)`);
+    }
+
     log(`  ✓ ${pkg.name}`);
     builtPaths.add(pkg.absPath);
   }

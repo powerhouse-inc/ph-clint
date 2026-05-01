@@ -197,7 +197,7 @@ export async function resolvePublishPlan(options: PublishOptions): Promise<Publi
  */
 export async function buildPackages(
   plan: PublishPlan,
-  options?: { skipBuild?: boolean; verbose?: boolean; log?: (msg: string) => void },
+  options?: { skipBuild?: boolean; verbose?: boolean; verifyConnect?: boolean; log?: (msg: string) => void },
 ): Promise<void> {
   const log = options?.log ?? ((msg: string) => console.log(msg));
 
@@ -207,7 +207,9 @@ export async function buildPackages(
   }
 
   log('Building...');
-  await buildAll(plan.packages, options?.verbose ?? false, log);
+  await buildAll(plan.packages, options?.verbose ?? false, log, {
+    verifyConnect: options?.verifyConnect,
+  });
 }
 
 /**
@@ -329,6 +331,7 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
   await buildPackages(plan, {
     skipBuild: options.skipBuild,
     verbose: options.verbose,
+    verifyConnect: options.verifyConnect,
     log,
   });
 

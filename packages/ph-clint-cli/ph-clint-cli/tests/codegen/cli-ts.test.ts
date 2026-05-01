@@ -47,6 +47,8 @@ describe('buildCliTs', () => {
     expect(code).toContain('switchboard: { enabled: true }');
     expect(code).toContain('connect: { enabled: true }');
     expect(code).toContain('root: CLI_ROOT');
+    expect(code).toContain('// @clint:begin root');
+    expect(code).toContain('// @clint:end root');
     expect(code).not.toContain('resolveConnectAssets');
     expect(code).not.toContain('appDir');
     expect(code).not.toContain('Switchboard:');
