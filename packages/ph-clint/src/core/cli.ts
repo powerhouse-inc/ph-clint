@@ -816,10 +816,10 @@ export function defineCli<
     if (proxyInstance) {
       const bus = getEventBus();
       bus.on('service:ready', (data: any) => {
-        if (!data?.serviceId || !context.services) return;
-        const def = context.services.getDefinition(data.serviceId);
+        if (!data?.id || !context.services) return;
+        const def = context.services.getDefinition(data.id);
         if (!def) return;
-        const instances = context.services.list(data.serviceId);
+        const instances = context.services.list(data.id);
         const inst = instances.find(i => i.instanceId === data.instanceId);
         if (!inst) return;
         const routes = buildServiceRoutes(def, inst);
@@ -828,11 +828,24 @@ export function defineCli<
         }
       });
       bus.on('service:stopped', (data: any) => {
-        if (data?.serviceId) proxyInstance.removeRoutesBySource(`service:${data.serviceId}`);
+        if (data?.id) proxyInstance.removeRoutesBySource(`service:${data.id}`);
       });
       bus.on('service:failed', (data: any) => {
-        if (data?.serviceId) proxyInstance.removeRoutesBySource(`service:${data.serviceId}`);
+        if (data?.id) proxyInstance.removeRoutesBySource(`service:${data.id}`);
       });
+
+      // Wire proxy routes for services that are already running from a previous session
+      if (context.services) {
+        for (const inst of context.services.list()) {
+          if (inst.status !== 'ready' || !inst.endpoints) continue;
+          const def = context.services.getDefinition(inst.serviceId);
+          if (!def) continue;
+          const routes = buildServiceRoutes(def, inst);
+          for (const route of routes) {
+            proxyInstance.addRoute(route);
+          }
+        }
+      }
     }
   }
 

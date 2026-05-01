@@ -80,8 +80,13 @@ export function buildServiceRoutes(
 
     try {
       const upstream = new URL(url);
+      // Website endpoints act as catch-all fallback at '/' — they serve
+      // SPAs with root-relative asset paths (/assets/*, /icon.ico, etc.)
+      const prefix = captureType === 'website'
+        ? '/'
+        : `/${def.id}/${captureName}`;
       routes.push({
-        prefix: `/${def.id}/${captureName}`,
+        prefix,
         upstream,
         ws: isWsEndpointType(captureType),
         source: `service:${def.id}`,
