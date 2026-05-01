@@ -41,36 +41,42 @@ describe('FeaturesPowerhouseOperations', () => {
     expect(lowered.state.global.features.powerhouse).toBe('Reactor');
   });
 
-  it('should auto-enable serviceAnnouncement at Switchboard level', () => {
+  it('should auto-enable proxyEnabled at Switchboard level', () => {
     const document = utils.createDocument();
 
     const updated = reducer(document, setPowerhouseLevel({ level: 'Switchboard' as const }));
 
-    expect(updated.state.global.deployment.serviceAnnouncement).toBe(true);
+    expect(updated.state.global.deployment.proxyEnabled).toBe(true);
   });
 
-  it('should auto-enable serviceAnnouncement at Connect level', () => {
+  it('should auto-enable proxyEnabled at Connect level', () => {
     const document = utils.createDocument();
 
     const updated = reducer(document, setPowerhouseLevel({ level: 'Connect' as const }));
 
-    expect(updated.state.global.deployment.serviceAnnouncement).toBe(true);
+    expect(updated.state.global.deployment.proxyEnabled).toBe(true);
   });
 
-  it('should not auto-enable serviceAnnouncement at Reactor level', () => {
+  it('should not auto-enable proxyEnabled at Reactor level', () => {
     const document = utils.createDocument();
 
     const updated = reducer(document, setPowerhouseLevel({ level: 'Reactor' as const }));
 
-    expect(updated.state.global.deployment.serviceAnnouncement).toBe(false);
+    expect(updated.state.global.deployment.proxyEnabled).toBe(false);
   });
 
-  it('should skip auto-announce when skipAutoAnnounce is true', () => {
+  it('should skip auto-proxy when skipAutoProxy is true', () => {
     const document = utils.createDocument();
 
-    const updated = reducer(document, setPowerhouseLevel({ level: 'Switchboard' as const, skipAutoAnnounce: true }));
+    const updated = reducer(
+      document,
+      setPowerhouseLevel({
+        level: 'Switchboard' as const,
+        skipAutoProxy: true,
+      }),
+    );
 
-    expect(updated.state.global.deployment.serviceAnnouncement).toBe(false);
+    expect(updated.state.global.deployment.proxyEnabled).toBe(false);
   });
 
   it('should allow lowering from Connect to Reactor', () => {

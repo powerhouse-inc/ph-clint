@@ -52,9 +52,9 @@ import {
   PublishProductionInputSchema,
   SetPublishStatusInputSchema,
   ImportSpecInputSchema,
-  SetServiceAnnouncementInputSchema,
   AddSupportedResourceInputSchema,
   RemoveSupportedResourceInputSchema,
+  SetProxyEnabledInputSchema,
 } from './schema/zod.js';
 
 const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispatch) => {
@@ -358,14 +358,6 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispat
       break;
     }
 
-    case 'SET_SERVICE_ANNOUNCEMENT': {
-      SetServiceAnnouncementInputSchema().parse(action.input);
-
-      phClintProjectDeploymentOperations.setServiceAnnouncementOperation((state as any)[action.scope], action as any, dispatch);
-
-      break;
-    }
-
     case 'ADD_SUPPORTED_RESOURCE': {
       AddSupportedResourceInputSchema().parse(action.input);
 
@@ -378,6 +370,14 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispat
       RemoveSupportedResourceInputSchema().parse(action.input);
 
       phClintProjectDeploymentOperations.removeSupportedResourceOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_PROXY_ENABLED': {
+      SetProxyEnabledInputSchema().parse(action.input);
+
+      phClintProjectDeploymentOperations.setProxyEnabledOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }

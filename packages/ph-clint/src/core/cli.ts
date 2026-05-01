@@ -53,7 +53,8 @@ import { createRoutineServiceAdapter, createCompositeServiceManager } from './ro
 import { createReplSession } from '../interactive/session.js';
 import { formatZodError } from './errors.js';
 import { createLogger } from './logger.js';
-import { ServiceAnnouncer } from './service-announcer.js';
+import { createProxyServer, type ProxyServerInstance } from './proxy.js';
+import { buildSwitchboardRoutes, buildServiceRoutes } from './proxy-routes.js';
 
 /* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
 const defaultStdout = (text: string) => { process.stdout.write(text); };
@@ -121,15 +122,14 @@ export function defineCli<
     options = { ...options, configSchema: configObj.merge(secretsObj) as unknown as TSchema };
   }
 
-  // Auto-inject service announcement config fields when enabled
-  if (options.serviceAnnouncement?.enabled && options.configSchema) {
-    const announceSchema = z.object({
-      serviceAnnounceUrl: z.string().url().optional(),
-      serviceAnnounceToken: z.string().optional(),
+  // Auto-inject proxy config fields when enabled
+  if (options.proxyEnabled && options.configSchema) {
+    const proxySchema = z.object({
+      proxyPort: z.coerce.number().default(0),
+      proxyHost: z.string().default('0.0.0.0'),
     });
-    sensitiveKeys.add('serviceAnnounceToken');
     const configObj = options.configSchema as any;
-    options = { ...options, configSchema: configObj.merge(announceSchema) as unknown as TSchema };
+    options = { ...options, configSchema: configObj.merge(proxySchema) as unknown as TSchema };
   }
 
   const commandMap = new Map<string, Command>();
@@ -769,15 +769,16 @@ export function defineCli<
   }
 
   /**
-   * Wire up ServiceManager (process + routine), event handlers, and service
-   * announcement onto a freshly-built context.  Shared by bootstrap() and
+   * Wire up ServiceManager (process + routine), event handlers, and proxy
+   * event wiring onto a freshly-built context.  Shared by bootstrap() and
    * the interactive-mode startup in runImpl().
    */
   function wireServices(
     context: CommandContext,
     config: Record<string, unknown>,
     log: import('./types.js').Logger,
-  ): ServiceAnnouncer | undefined {
+    proxyInstance?: ProxyServerInstance,
+  ): void {
     const servicesNow = options.services && options.services.length > 0;
     let processServiceManager: import('./types.js').ServiceManager | undefined;
     if (servicesNow && options.services) {
@@ -811,36 +812,28 @@ export function defineCli<
       }
     }
 
-    // Service announcement
-    if (options.serviceAnnouncement?.enabled && options.serviceAnnouncement.announce) {
-      const announcer = new ServiceAnnouncer({
-        cliName: options.name,
-        announce: options.serviceAnnouncement.announce as (payload: import('./types.js').AnnouncementPayload, ctx: import('./types.js').CommandContext) => Promise<void>,
-        context,
-        serviceDefinitions: (options.services ?? []) as ServiceDefinition[],
-        serviceManager: context.services!,
-        excludePowerhouseServices: options.serviceAnnouncement.excludePowerhouseServices,
-        excludeCliServices: options.serviceAnnouncement.excludeCliServices,
-        logger: log,
-      });
-      announcer.announce().catch(() => {});
+    // Proxy route wiring via event bus
+    if (proxyInstance) {
       const bus = getEventBus();
-      bus.on('service:ready', () => announcer.scheduleAnnounce());
-      bus.on('service:failed', () => announcer.scheduleAnnounce());
-      bus.on('service:stopped', () => announcer.scheduleAnnounce());
-      bus.on('powerhouse:switchboard:ready', (data: any) => {
-          announcer.setPowerhouseConfig(
-            { switchboard: { enabled: true }, connect: { enabled: !!reactorConfig?.connect?.enabled } },
-            {
-              'switchboard-graphql': data.switchboardUrl,
-              'switchboard-mcp': data.mcpUrl,
-            },
-          );
-          announcer.scheduleAnnounce();
-        });
-      return announcer;
+      bus.on('service:ready', (data: any) => {
+        if (!data?.serviceId || !context.services) return;
+        const def = context.services.getDefinition(data.serviceId);
+        if (!def) return;
+        const instances = context.services.list(data.serviceId);
+        const inst = instances.find(i => i.instanceId === data.instanceId);
+        if (!inst) return;
+        const routes = buildServiceRoutes(def, inst);
+        for (const route of routes) {
+          proxyInstance.addRoute(route);
+        }
+      });
+      bus.on('service:stopped', (data: any) => {
+        if (data?.serviceId) proxyInstance.removeRoutesBySource(`service:${data.serviceId}`);
+      });
+      bus.on('service:failed', (data: any) => {
+        if (data?.serviceId) proxyInstance.removeRoutesBySource(`service:${data.serviceId}`);
+      });
     }
-    return undefined;
   }
 
   /**
@@ -892,7 +885,7 @@ export function defineCli<
     const log = createLogger(logLevel, stderrFn);
     const context = buildContext({ workdir, workspace, config, stdout: stdoutFn, log });
 
-    void wireServices(context, config, log);
+    wireServices(context, config, log);
 
     // Lazy agent provider
     let cachedProvider: AgentProvider | undefined;
@@ -1045,7 +1038,15 @@ export function defineCli<
     const log = createLogger(logLevel, stderr);
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
 
-    const serviceAnnouncer = wireServices(context, config, log);
+    // Create embedded proxy when enabled
+    let proxyInstance: ProxyServerInstance | undefined;
+    if (options.proxyEnabled) {
+      const proxyPort = (config as any).proxyPort ?? 0;
+      const proxyHost = (config as any).proxyHost ?? '0.0.0.0';
+      proxyInstance = await createProxyServer({ port: proxyPort, host: proxyHost, logger: log });
+    }
+
+    wireServices(context, config, log, proxyInstance);
 
     // Resolve Resolvable values now that workdir/config are known.
     // Cast config to the inferred type — at runtime it IS that type (Zod parsed it).
@@ -1122,11 +1123,9 @@ export function defineCli<
         log.debug('Stopping Switchboard...');
         await switchboardInstance.shutdown();
       }
-      // Final announcement with Powerhouse services removed (they're now stopped)
-      if (serviceAnnouncer) {
-        serviceAnnouncer.setPowerhouseConfig({ switchboard: { enabled: false } }, {});
-        await serviceAnnouncer.announce().catch(() => {});
-        serviceAnnouncer.dispose();
+      if (proxyInstance) {
+        log.debug('Stopping proxy...');
+        await proxyInstance.stop();
       }
       if (cachedReactor) {
         log.debug('Stopping Reactor...');
@@ -1159,6 +1158,11 @@ export function defineCli<
      */
     async function startupSequence(output: (msg: string) => void): Promise<void> {
       try {
+        // 0. Proxy (if enabled, already listening)
+        if (proxyInstance) {
+          output(`Proxy listening on ${proxyInstance.url}`);
+        }
+
         // 1. Reactor (in-process document store + drive + subscriptions)
         if (reactorConfig) {
           log.debug('Starting Reactor...');
@@ -1192,6 +1196,15 @@ export function defineCli<
           output(`Switchboard '${reactorConfig.switchboard.name!}' ready at ${sb.switchboardUrl}`);
           log.debug(`  drive: ${sb.driveUrl}`);
           log.debug(`  mcp:   ${sb.mcpUrl}`);
+
+          // Add switchboard routes to proxy
+          if (proxyInstance) {
+            const sbRoutes = buildSwitchboardRoutes(sb.switchboardUrl, sb.mcpUrl);
+            for (const route of sbRoutes) {
+              proxyInstance.addRoute(route);
+              log.debug(`  proxy: ${route.prefix} → ${route.upstream.toString()}`);
+            }
+          }
         }
 
         // 3. Connect (web UI child process) — skipped when --no-studio
@@ -1360,7 +1373,7 @@ export function defineCli<
 
     // Keep-alive: why the process stays running after primary work completes
     // Orthogonal to interaction mode — a headless CLI with switchboard blocks on signals
-    const hasKeepAlive = !!effectiveRoutine || !!effectiveApi;
+    const hasKeepAlive = !!effectiveRoutine || !!effectiveApi || !!proxyInstance;
 
     if (isBuiltinFlag || (!interactiveFlag && (isSubcommand || hasPrompt))) {
       // ── Command execution (any mode): subcommand or prompt without -i → execute, exit ──

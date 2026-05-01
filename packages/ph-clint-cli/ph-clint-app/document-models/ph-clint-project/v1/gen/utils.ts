@@ -28,7 +28,7 @@ export const initialGlobalState: PhClintProjectGlobalState = {
   externalSkills: [],
   publishHistory: [],
   deployment: {
-    serviceAnnouncement: false,
+    proxyEnabled: false,
     supportedResources: ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'],
   },
 };

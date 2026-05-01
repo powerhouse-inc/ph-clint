@@ -175,7 +175,7 @@ export type PhClintAgentProfile = {
 };
 
 export type PhClintDeployment = {
-  proxyEnabled: Scalars['Boolean']['output'];
+  serviceAnnouncement: Scalars['Boolean']['output'];
   supportedResources: Array<Scalars['String']['output']>;
 };
 
@@ -321,11 +321,7 @@ export type SetPackageNameInput = {
 
 export type SetPowerhouseLevelInput = {
   level: PowerhouseLevel;
-  skipAutoProxy?: InputMaybe<Scalars['Boolean']['input']>;
-};
-
-export type SetProxyEnabledInput = {
-  enabled: Scalars['Boolean']['input'];
+  skipAutoAnnounce?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type SetPublishStatusInput = {
@@ -335,6 +331,10 @@ export type SetPublishStatusInput = {
 
 export type SetScopeInput = {
   scope: Scalars['String']['input'];
+};
+
+export type SetServiceAnnouncementInput = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type SetVersionInput = {

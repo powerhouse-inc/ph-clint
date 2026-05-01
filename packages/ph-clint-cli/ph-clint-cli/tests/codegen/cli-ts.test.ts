@@ -31,7 +31,7 @@ describe('buildCliTs', () => {
     expect(code).toContain("import { createAgent } from './agents/agent.js'");
     expect(code).toContain('cli.configureAgent(createAgent)');
     expect(code).toContain(
-      "'Type a message to talk to the agent, or /help for commands.'",
+      "'Type a message to talk to the agent, or / for commands.'",
     );
   });
 
@@ -104,23 +104,23 @@ describe('buildCliTs', () => {
     expect(code).toContain("'tools.md'");
   });
 
-  it('emits serviceAnnouncement with jsonPostAnnounce when deployment.serviceAnnouncement is true', () => {
+  it('emits proxyEnabled: true when deployment.proxyEnabled is true', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',
-      deployment: { serviceAnnouncement: true },
+      deployment: { proxyEnabled: true },
     });
     const code = buildCliTs(spec);
-    expect(code).toContain('enabled: true,');
-    expect(code).toContain('jsonPostAnnounce(payload, ctx)');
-    expect(code).toContain('jsonPostAnnounce');
-    // Import should include jsonPostAnnounce
-    expect(code).toContain("import { defineCli, jsonPostAnnounce } from '@powerhousedao/ph-clint'");
+    expect(code).toContain('proxyEnabled: true,');
+    expect(code).toContain('// @clint:begin proxy');
+    expect(code).toContain('// @clint:end proxy');
+    // No jsonPostAnnounce import
+    expect(code).not.toContain('jsonPostAnnounce');
   });
 
-  it('omits serviceAnnouncement when deployment.serviceAnnouncement is false', () => {
+  it('omits proxyEnabled when deployment.proxyEnabled is false', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const code = buildCliTs(spec);
+    expect(code).not.toContain('proxyEnabled');
     expect(code).not.toContain('jsonPostAnnounce');
-    expect(code).not.toContain('vetraGraphqlAnnounce');
   });
 });

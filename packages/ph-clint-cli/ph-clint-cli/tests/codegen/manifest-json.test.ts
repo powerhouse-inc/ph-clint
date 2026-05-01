@@ -88,17 +88,17 @@ describe('buildManifestJson', () => {
     expect(m.supportedResources).toEqual(['vetra-agent-s', 'vetra-agent-m']);
   });
 
-  it('passes through serviceAnnouncement boolean', () => {
+  it('passes through proxyEnabled boolean', () => {
     const m = parseManifest({
       name: 'foo',
-      deployment: { serviceAnnouncement: true },
+      deployment: { proxyEnabled: true },
     });
-    expect(m.serviceAnnouncement).toBe(true);
+    expect(m.proxyEnabled).toBe(true);
   });
 
   it('defaults deployment fields', () => {
     const m = parseManifest({ name: 'foo' });
-    expect(m.serviceAnnouncement).toBe(false);
+    expect(m.proxyEnabled).toBe(false);
     expect(m.supportedResources).toEqual([]);
   });
 

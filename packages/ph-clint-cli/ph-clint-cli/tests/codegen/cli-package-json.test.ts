@@ -88,29 +88,12 @@ describe('buildCliPackageJson', () => {
     expect(scripts['publish:production']).toBeUndefined();
   });
 
-  it('includes test-service-registry when serviceAnnouncement enabled', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      deployment: { serviceAnnouncement: true },
-    });
-    const pkg = parseBuilt(spec);
-    const scripts = pkg.scripts as Record<string, string>;
-    expect(scripts['test-service-registry']).toBe('json-post-registry --withAuth');
-  });
-
   it('includes build:manifest script and updated build script', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo' });
     const pkg = parseBuilt(spec);
     const scripts = pkg.scripts as Record<string, string>;
     expect(scripts['build:manifest']).toBe('build-manifest');
     expect(scripts.build).toBe('pnpm build:skills && tsc && pnpm build:manifest');
-  });
-
-  it('omits test-service-registry when serviceAnnouncement disabled', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
-    const pkg = parseBuilt(spec);
-    const scripts = pkg.scripts as Record<string, string>;
-    expect(scripts['test-service-registry']).toBeUndefined();
   });
 
   it('output always ends with a trailing newline', () => {

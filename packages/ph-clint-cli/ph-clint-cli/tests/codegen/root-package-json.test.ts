@@ -54,31 +54,6 @@ describe('buildRootPackageJson', () => {
     );
   });
 
-  it('includes test-service-registry when serviceAnnouncement enabled', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      features: { powerhouse: 'Connect' },
-      deployment: { serviceAnnouncement: true },
-    });
-    const pkg = JSON.parse(buildRootPackageJson(spec)) as {
-      scripts: Record<string, string>;
-    };
-    expect(pkg.scripts['test-service-registry']).toBe(
-      'pnpm --prefix foo-cli test-service-registry',
-    );
-  });
-
-  it('omits test-service-registry when serviceAnnouncement disabled', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      features: { powerhouse: 'Connect' },
-    });
-    const pkg = JSON.parse(buildRootPackageJson(spec)) as {
-      scripts: Record<string, string>;
-    };
-    expect(pkg.scripts['test-service-registry']).toBeUndefined();
-  });
-
   it('preserves a scoped package name at the root', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo',

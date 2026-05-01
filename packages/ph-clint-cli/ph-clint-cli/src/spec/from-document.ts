@@ -47,7 +47,7 @@ export function specFromDocumentState(
       githubUrl: s.githubUrl,
     })),
     deployment: {
-      serviceAnnouncement: state.deployment.serviceAnnouncement,
+      proxyEnabled: state.deployment.proxyEnabled,
       supportedResources: [...state.deployment.supportedResources],
     },
     documentId: meta?.documentId,

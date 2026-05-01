@@ -105,9 +105,6 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     scripts['publish:staging'] = 'ph-publish staging -c ./publish.config.js';
     scripts['publish:production'] = 'ph-publish production -c ./publish.config.js';
   }
-  if (spec.deployment.serviceAnnouncement) {
-    scripts['test-service-registry'] = 'json-post-registry --withAuth';
-  }
   const pkg: Record<string, unknown> = {
     name: pkgName,
     version: spec.version,

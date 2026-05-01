@@ -29,7 +29,7 @@ interface Manifest {
     powerhouse: ManifestPowerhouse | false;
   };
   serviceCommand: string;
-  serviceAnnouncement: boolean;
+  proxyEnabled: boolean;
   supportedResources: string[];
 }
 
@@ -57,7 +57,7 @@ export function buildManifestJson(spec: ClintProjectSpec): string {
     type: 'clint-project',
     features: { agent, powerhouse: ph },
     serviceCommand: getBinName(spec),
-    serviceAnnouncement: spec.deployment.serviceAnnouncement,
+    proxyEnabled: spec.deployment.proxyEnabled,
     supportedResources: spec.deployment.supportedResources,
   };
 

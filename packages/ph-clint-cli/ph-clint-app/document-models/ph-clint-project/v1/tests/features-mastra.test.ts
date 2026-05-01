@@ -13,22 +13,8 @@ import {
   updateProfile,
   removeProfile,
   reorderProfiles,
-  isPhClintProjectDocument,
-  EnableMastraInputSchema,
-  DisableMastraInputSchema,
-  SetAgentIdInputSchema,
-  SetAgentNameInputSchema,
-  AddModelInputSchema,
-  RemoveModelInputSchema,
-  SetDefaultModelInputSchema,
-  AddProfileInputSchema,
-  UpdateProfileInputSchema,
-  RemoveProfileInputSchema,
-  ReorderProfilesInputSchema,
   setAgentDescription,
   setAgentImage,
-  SetAgentDescriptionInputSchema,
-  SetAgentImageInputSchema,
 } from 'document-models/ph-clint-project/v1';
 
 /** Helper: creates a document with mastra enabled */
@@ -294,7 +280,15 @@ describe('ADD_PROFILE', () => {
     let doc = createEnabledDoc();
     doc = reducer(doc, addProfile({ id: 'first', title: 'First', content: 'a' }));
     doc = reducer(doc, addProfile({ id: 'third', title: 'Third', content: 'c' }));
-    const updated = reducer(doc, addProfile({ id: 'second', title: 'Second', content: 'b', insertBefore: 'third' }));
+    const updated = reducer(
+      doc,
+      addProfile({
+        id: 'second',
+        title: 'Second',
+        content: 'b',
+        insertBefore: 'third',
+      }),
+    );
 
     const ids = updated.state.global.features.mastra.profiles.map((p) => p.id);
     expect(ids).toEqual(['first', 'second', 'third']);
@@ -317,7 +311,15 @@ describe('ADD_PROFILE', () => {
 
   it('should error when insertBefore target does not exist', () => {
     const doc = createEnabledDoc();
-    const updated = reducer(doc, addProfile({ id: 'new', title: 'T', content: 'c', insertBefore: 'nonexistent' }));
+    const updated = reducer(
+      doc,
+      addProfile({
+        id: 'new',
+        title: 'T',
+        content: 'c',
+        insertBefore: 'nonexistent',
+      }),
+    );
 
     expect(updated.operations.global[1].error).toContain('insertBefore profile not found');
   });
@@ -351,7 +353,14 @@ describe('UPDATE_PROFILE', () => {
 
   it('should update both title and content', () => {
     const doc = createDocWithProfiles();
-    const updated = reducer(doc, updateProfile({ id: 'base', title: 'Updated', content: 'Updated content.' }));
+    const updated = reducer(
+      doc,
+      updateProfile({
+        id: 'base',
+        title: 'Updated',
+        content: 'Updated content.',
+      }),
+    );
 
     const profile = updated.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
     expect(profile.title).toBe('Updated');

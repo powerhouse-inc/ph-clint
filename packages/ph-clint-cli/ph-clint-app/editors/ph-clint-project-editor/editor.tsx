@@ -111,7 +111,7 @@ export default function Editor() {
   const setAgentImage = (image: string) => dispatch(actions.setAgentImage({ image }));
 
   // deployment dispatchers
-  const setServiceAnnouncement = (enabled: boolean) => dispatch(actions.setServiceAnnouncement({ enabled }));
+  const setProxyEnabled = (enabled: boolean) => dispatch(actions.setProxyEnabled({ enabled }));
   const addSupportedResource = (resource: string) => dispatch(actions.addSupportedResource({ resource }));
   const removeSupportedResource = (resource: string) => dispatch(actions.removeSupportedResource({ resource }));
 
@@ -203,7 +203,7 @@ export default function Editor() {
             publishDev={publishDev}
             publishStaging={publishStaging}
             publishProduction={publishProduction}
-            setServiceAnnouncement={setServiceAnnouncement}
+            setProxyEnabled={setProxyEnabled}
             addSupportedResource={addSupportedResource}
             removeSupportedResource={removeSupportedResource}
           />
@@ -626,7 +626,7 @@ function PublishTab(props: {
   publishDev: () => void;
   publishStaging: () => void;
   publishProduction: () => void;
-  setServiceAnnouncement: (enabled: boolean) => void;
+  setProxyEnabled: (enabled: boolean) => void;
   addSupportedResource: (resource: string) => void;
   removeSupportedResource: (resource: string) => void;
 }) {
@@ -676,7 +676,7 @@ function PublishTab(props: {
       <hr />
 
       {/* Deployment */}
-      <DeploymentSection deployment={props.deployment} setServiceAnnouncement={props.setServiceAnnouncement} addSupportedResource={props.addSupportedResource} removeSupportedResource={props.removeSupportedResource} />
+      <DeploymentSection deployment={props.deployment} setProxyEnabled={props.setProxyEnabled} addSupportedResource={props.addSupportedResource} removeSupportedResource={props.removeSupportedResource} />
 
       <hr />
 
@@ -699,7 +699,7 @@ function PublishTab(props: {
 
 const KNOWN_RESOURCES = ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'];
 
-function DeploymentSection(props: { deployment: PhClintDeployment; setServiceAnnouncement: (enabled: boolean) => void; addSupportedResource: (resource: string) => void; removeSupportedResource: (resource: string) => void }) {
+function DeploymentSection(props: { deployment: PhClintDeployment; setProxyEnabled: (enabled: boolean) => void; addSupportedResource: (resource: string) => void; removeSupportedResource: (resource: string) => void }) {
   const [newResource, setNewResource] = useState('');
   const { deployment } = props;
   const customResources = deployment.supportedResources.filter((r) => !KNOWN_RESOURCES.includes(r));
@@ -717,7 +717,7 @@ function DeploymentSection(props: { deployment: PhClintDeployment; setServiceAnn
       <h3 className="text-lg font-semibold">Deployment</h3>
 
       <div className="my-3 rounded border border-gray-200 bg-white p-4">
-        <Toggle label="Service Announcement" checked={deployment.serviceAnnouncement} hint="Announce this service to the network on startup" onChange={props.setServiceAnnouncement} />
+        <Toggle label="Proxy" checked={deployment.proxyEnabled} hint="Run a reverse proxy that exposes all service endpoints through a single port" onChange={props.setProxyEnabled} />
       </div>
 
       <div className="my-3 rounded border border-gray-200 bg-white p-4">

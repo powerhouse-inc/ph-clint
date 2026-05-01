@@ -20,10 +20,10 @@ export const documentModel: DocumentModelGlobalState = {
         },
         global: {
           schema:
-            'type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  serviceAnnouncement: Boolean!\n  supportedResources: [String!]!\n}',
+            'type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}',
           examples: [],
           initialValue:
-            '{\n  "name": null,\n  "scope": null,\n  "version": "0.1.0",\n  "description": "",\n  "bin": null,\n  "features": {\n    "powerhouse": "Disabled",\n    "mastra": {\n      "enabled": false,\n      "agentId": null,\n      "agentName": null,\n      "agentDescription": null,\n      "agentImage": null,\n      "models": [],\n      "profiles": []\n    },\n    "routine": { "enabled": false }\n  },\n  "packages": [],\n  "externalSkills": [],\n  "publishHistory": [],\n  "deployment": {\n    "serviceAnnouncement": false,\n    "supportedResources": [\n      "vetra-agent-s",\n      "vetra-agent-m",\n      "vetra-agent-l",\n      "vetra-agent-xl",\n      "vetra-agent-xxl"\n    ]\n  }\n}',
+            '{\n  "name": null,\n  "scope": null,\n  "version": "0.1.0",\n  "description": "",\n  "bin": null,\n  "features": {\n    "powerhouse": "Disabled",\n    "mastra": {\n      "enabled": false,\n      "agentId": null,\n      "agentName": null,\n      "agentDescription": null,\n      "agentImage": null,\n      "models": [],\n      "profiles": []\n    },\n    "routine": { "enabled": false }\n  },\n  "packages": [],\n  "externalSkills": [],\n  "publishHistory": [],\n  "deployment": {\n    "proxyEnabled": false,\n    "supportedResources": [\n      "vetra-agent-s",\n      "vetra-agent-m",\n      "vetra-agent-l",\n      "vetra-agent-xl",\n      "vetra-agent-xxl"\n    ]\n  }\n}',
         },
       },
       modules: [
@@ -152,10 +152,10 @@ export const documentModel: DocumentModelGlobalState = {
               id: 'o-set-powerhouse-level',
               name: 'SET_POWERHOUSE_LEVEL',
               description: 'Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).',
-              schema: 'input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n  skipAutoAnnounce: Boolean\n}',
+              schema: 'input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n  skipAutoProxy: Boolean\n}',
               template: 'Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).',
               reducer:
-                "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const appName = `${state.name}-app`;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}\n// Auto-enable service announcement when reaching Switchboard or above\nif (next >= 2 && !action.input.skipAutoAnnounce) {\n  state.deployment.serviceAnnouncement = true;\n}",
+                "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const appName = `${state.name}-app`;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}\n// Auto-enable proxy when reaching Switchboard or above\nif (next >= 2 && !action.input.skipAutoProxy) {\n  state.deployment.proxyEnabled = true;\n}",
               errors: [
                 {
                   id: 'e-cannot-lower-powerhouse',
@@ -872,17 +872,6 @@ export const documentModel: DocumentModelGlobalState = {
           description: 'Deployment settings: service announcement toggle and supported resource tiers.',
           operations: [
             {
-              id: 'o-set-service-announcement',
-              name: 'SET_SERVICE_ANNOUNCEMENT',
-              description: 'Toggle the service announcement feature.',
-              schema: 'input SetServiceAnnouncementInput {\n  enabled: Boolean!\n}',
-              template: 'Toggle the service announcement feature.',
-              reducer: 'state.deployment.serviceAnnouncement = action.input.enabled;',
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-            {
               id: 'o-add-supported-resource',
               name: 'ADD_SUPPORTED_RESOURCE',
               description: 'Add a supported resource tier. Guards against duplicates.',
@@ -919,6 +908,17 @@ export const documentModel: DocumentModelGlobalState = {
                   template: '',
                 },
               ],
+              examples: [],
+              scope: 'global',
+            },
+            {
+              id: 'o-set-proxy-enabled',
+              name: 'SET_PROXY_ENABLED',
+              description: 'Toggle the embedded reverse proxy.',
+              schema: 'input SetProxyEnabledInput {\n  enabled: Boolean!\n}',
+              template: 'Toggle the embedded reverse proxy.',
+              reducer: 'state.deployment.proxyEnabled = action.input.enabled;',
+              errors: [],
               examples: [],
               scope: 'global',
             },

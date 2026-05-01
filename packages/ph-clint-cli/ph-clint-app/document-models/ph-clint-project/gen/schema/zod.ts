@@ -53,9 +53,9 @@ import type {
   SetExternalSkillNameInput,
   SetPackageNameInput,
   SetPowerhouseLevelInput,
-  SetProxyEnabledInput,
   SetPublishStatusInput,
   SetScopeInput,
+  SetServiceAnnouncementInput,
   SetVersionInput,
   UpdateProfileInput,
 } from './types.js';
@@ -242,7 +242,7 @@ export function PhClintAgentProfileSchema(): z.ZodObject<Properties<PhClintAgent
 export function PhClintDeploymentSchema(): z.ZodObject<Properties<PhClintDeployment>> {
   return z.object({
     __typename: z.literal('PhClintDeployment').optional(),
-    proxyEnabled: z.boolean(),
+    serviceAnnouncement: z.boolean(),
     supportedResources: z.array(z.string()),
   });
 }
@@ -442,13 +442,7 @@ export function SetPackageNameInputSchema(): z.ZodObject<Properties<SetPackageNa
 export function SetPowerhouseLevelInputSchema(): z.ZodObject<Properties<SetPowerhouseLevelInput>> {
   return z.object({
     level: PowerhouseLevelSchema,
-    skipAutoProxy: z.boolean().nullish(),
-  });
-}
-
-export function SetProxyEnabledInputSchema(): z.ZodObject<Properties<SetProxyEnabledInput>> {
-  return z.object({
-    enabled: z.boolean(),
+    skipAutoAnnounce: z.boolean().nullish(),
   });
 }
 
@@ -462,6 +456,12 @@ export function SetPublishStatusInputSchema(): z.ZodObject<Properties<SetPublish
 export function SetScopeInputSchema(): z.ZodObject<Properties<SetScopeInput>> {
   return z.object({
     scope: z.string(),
+  });
+}
+
+export function SetServiceAnnouncementInputSchema(): z.ZodObject<Properties<SetServiceAnnouncementInput>> {
+  return z.object({
+    enabled: z.boolean(),
   });
 }
 

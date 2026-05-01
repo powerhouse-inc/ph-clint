@@ -23,9 +23,9 @@ export const phClintProjectFeaturesPowerhouseOperations: PhClintProjectFeaturesP
         });
       }
     }
-    // Auto-enable service announcement when reaching Switchboard or above
-    if (next >= 2 && !action.input.skipAutoAnnounce) {
-      state.deployment.serviceAnnouncement = true;
+    // Auto-enable proxy when reaching Switchboard or above
+    if (next >= 2 && !action.input.skipAutoProxy) {
+      state.deployment.proxyEnabled = true;
     }
   },
 };

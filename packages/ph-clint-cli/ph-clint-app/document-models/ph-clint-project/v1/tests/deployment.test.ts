@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { reducer, utils, setServiceAnnouncement, addSupportedResource, removeSupportedResource } from 'document-models/ph-clint-project/v1';
+import { reducer, utils, addSupportedResource, removeSupportedResource, setProxyEnabled } from 'document-models/ph-clint-project/v1';
 
 describe('DeploymentOperations', () => {
-  describe('SET_SERVICE_ANNOUNCEMENT', () => {
-    it('should enable service announcement', () => {
+  describe('SET_PROXY_ENABLED', () => {
+    it('should enable proxy', () => {
       const doc = utils.createDocument();
-      const updated = reducer(doc, setServiceAnnouncement({ enabled: true }));
+      const updated = reducer(doc, setProxyEnabled({ enabled: true }));
 
-      expect(updated.state.global.deployment.serviceAnnouncement).toBe(true);
+      expect(updated.state.global.deployment.proxyEnabled).toBe(true);
       expect(updated.operations.global[0].error).toBeUndefined();
     });
 
-    it('should disable service announcement', () => {
+    it('should disable proxy', () => {
       let doc = utils.createDocument();
-      doc = reducer(doc, setServiceAnnouncement({ enabled: true }));
-      const updated = reducer(doc, setServiceAnnouncement({ enabled: false }));
+      doc = reducer(doc, setProxyEnabled({ enabled: true }));
+      const updated = reducer(doc, setProxyEnabled({ enabled: false }));
 
-      expect(updated.state.global.deployment.serviceAnnouncement).toBe(false);
+      expect(updated.state.global.deployment.proxyEnabled).toBe(false);
     });
   });
 

@@ -697,33 +697,6 @@ export interface PromptsConfig {
   skills?: Record<string, string | SkillConfig>;
 }
 
-// ── Service Announcement ──────────────────────────────────────
-
-/**
- * A service entry in an announcement payload.
- */
-export interface AnnouncedService {
-  id: string;
-  name: string;
-  type: 'api-graphql' | 'api-mcp' | 'website';
-  url: string;
-  port: string;
-  status: string;
-}
-
-/**
- * Payload sent by the ServiceAnnouncer to a registry endpoint.
- */
-export interface AnnouncementPayload {
-  node: {
-    hostname: string;
-    type: 'clint';
-    clintId: string;
-  };
-  services: AnnouncedService[];
-  reportedAt: string;
-}
-
 // ── CLI Metadata ──────────────────────────────────────────────
 
 /**
@@ -828,15 +801,11 @@ export interface CliOptions<
    */
   prompts?: PromptsConfig;
   /**
-   * Service announcement configuration. When enabled, the CLI periodically
-   * announces its service status for network discovery via the `announce` callback.
+   * When true, an embedded reverse proxy is started that exposes all service
+   * endpoints through a single port. Config fields `proxyPort` and `proxyHost`
+   * are auto-injected into the config schema.
    */
-  serviceAnnouncement?: {
-    enabled: boolean;
-    announce: (payload: AnnouncementPayload, ctx: CommandContext<z.infer<TSchema> & z.infer<TSecrets>>) => Promise<void>;
-    excludePowerhouseServices?: string[];
-    excludeCliServices?: string[];
-  };
+  proxyEnabled?: boolean;
 }
 
 /**

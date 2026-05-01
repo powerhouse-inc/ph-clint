@@ -104,7 +104,7 @@ type PublishRecord {
 }
 
 type PhClintDeployment {
-  serviceAnnouncement: Boolean!
+  proxyEnabled: Boolean!
   supportedResources: [String!]!
 }
 
@@ -142,7 +142,7 @@ input SetScopeInput {
 
 input SetPowerhouseLevelInput {
   level: PowerhouseLevel!
-  skipAutoAnnounce: Boolean
+  skipAutoProxy: Boolean
 }
 
 # features_mastra
@@ -330,14 +330,14 @@ input ImportProfileInput {
 
 # deployment
 
-input SetServiceAnnouncementInput {
-  enabled: Boolean!
-}
-
 input AddSupportedResourceInput {
   resource: String!
 }
 
 input RemoveSupportedResourceInput {
   resource: String!
+}
+
+input SetProxyEnabledInput {
+  enabled: Boolean!
 }

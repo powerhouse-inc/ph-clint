@@ -36,9 +36,6 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
     'publish:staging': `${prefix(cli, 'exec ph-publish')} staging -c ../publish.config.js`,
     'publish:production': `${prefix(cli, 'exec ph-publish')} production -c ../publish.config.js`,
   };
-  if (spec.deployment.serviceAnnouncement) {
-    scripts['test-service-registry'] = prefix(cli, 'test-service-registry');
-  }
 
   const pkg = {
     name: getPackageName(spec),

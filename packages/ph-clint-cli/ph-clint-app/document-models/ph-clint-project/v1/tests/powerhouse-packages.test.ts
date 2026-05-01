@@ -1,5 +1,5 @@
-import { generateMock } from 'document-model';
-import { describe, expect, it } from 'vitest';
+import { generateMock } from "document-model";
+import { describe, expect, it } from "vitest";
 import {
   reducer,
   utils,
@@ -12,10 +12,10 @@ import {
   RemovePowerhousePackageInputSchema,
   AddPackageDocumentTypeInputSchema,
   RemovePackageDocumentTypeInputSchema,
-} from 'document-models/ph-clint-project/v1';
+} from "document-models/ph-clint-project/v1";
 
-describe('PowerhousePackagesOperations', () => {
-  it('should handle addPowerhousePackage operation', () => {
+describe("PowerhousePackagesOperations", () => {
+  it("should handle addPowerhousePackage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AddPowerhousePackageInputSchema());
 
@@ -23,12 +23,16 @@ describe('PowerhousePackagesOperations', () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_POWERHOUSE_PACKAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_POWERHOUSE_PACKAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle removePowerhousePackage operation', () => {
+  it("should handle removePowerhousePackage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(RemovePowerhousePackageInputSchema());
 
@@ -36,12 +40,16 @@ describe('PowerhousePackagesOperations', () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('REMOVE_POWERHOUSE_PACKAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "REMOVE_POWERHOUSE_PACKAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle addPackageDocumentType operation', () => {
+  it("should handle addPackageDocumentType operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AddPackageDocumentTypeInputSchema());
 
@@ -49,12 +57,16 @@ describe('PowerhousePackagesOperations', () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_PACKAGE_DOCUMENT_TYPE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_PACKAGE_DOCUMENT_TYPE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle removePackageDocumentType operation', () => {
+  it("should handle removePackageDocumentType operation", () => {
     const document = utils.createDocument();
     const input = generateMock(RemovePackageDocumentTypeInputSchema());
 
@@ -62,8 +74,12 @@ describe('PowerhousePackagesOperations', () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('REMOVE_PACKAGE_DOCUMENT_TYPE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "REMOVE_PACKAGE_DOCUMENT_TYPE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });

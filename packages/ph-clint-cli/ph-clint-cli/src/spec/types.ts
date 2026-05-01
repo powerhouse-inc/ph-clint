@@ -129,9 +129,9 @@ export const clintProjectSpecSchema = z.object({
    */
   externalSkills: z.array(externalSkillSchema).default([]),
   deployment: z.object({
-    serviceAnnouncement: z.boolean().default(false),
+    proxyEnabled: z.boolean().default(false),
     supportedResources: z.array(z.string()).default([]),
-  }).default({ serviceAnnouncement: false, supportedResources: [] }),
+  }).default({ proxyEnabled: false, supportedResources: [] }),
   /** ID of the source specification document (if backed by a Powerhouse document). */
   documentId: z.string().optional(),
   /** Document type of the source specification document. */
