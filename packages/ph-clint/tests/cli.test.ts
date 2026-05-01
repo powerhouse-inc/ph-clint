@@ -2160,6 +2160,52 @@ describe('defineCli', () => {
       );
     });
 
+    it('zero-command CLI with no args shows help', async () => {
+      const cli = defineCli({
+        name: 'zero-cmd',
+        version: '0.0.1',
+        description: 'Zero commands test',
+        commands: [],
+      });
+      const cap = capture();
+      await cli.run(['node', 'test'], cap.options);
+      const out = cap.output.join('\n');
+      expect(out).toContain('zero-cmd');
+      expect(out).toContain('Zero commands test');
+    });
+
+    it('zero-command CLI with empty configSchema shows help (no config command)', async () => {
+      const cli = defineCli({
+        name: 'zero-cfg',
+        version: '0.0.1',
+        description: 'Empty config test',
+        configSchema: z.object({}),
+        commands: [],
+      });
+      const cap = capture();
+      await cli.run(['node', 'test'], cap.options);
+      const out = cap.output.join('\n');
+      expect(out).toContain('zero-cfg');
+      // No config subcommand or --config flag should appear
+      expect(out).not.toContain('config [options]');
+      expect(out).not.toContain('--config');
+    });
+
+    it('cli-docs returns help text for zero-command CLI', async () => {
+      const cli = defineCli({
+        name: 'docs-test',
+        version: '0.0.1',
+        description: 'Docs test',
+        commands: [],
+      });
+      // cli-docs is auto-injected — invoke it via --help which is how it works internally
+      const cap = capture();
+      await cli.run(['node', 'test', '--help'], cap.options);
+      const out = cap.output.join('\n');
+      expect(out).toContain('docs-test');
+      expect(out).toContain('Docs test');
+    });
+
     it('routine-only service manager is wired when routine has id but no services', async () => {
       const cli = defineCli({
         name: 'rt-only',

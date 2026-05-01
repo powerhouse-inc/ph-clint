@@ -118,10 +118,10 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push("        '',");
   if (mastra.enabled) {
     lines.push(
-      "        'Type a message to talk to the agent, or /help for commands.',",
+      "        'Type a message to talk to the agent, or / for commands.',",
     );
   } else {
-    lines.push("        'Type /help for commands.',");
+    lines.push("        'Type / for commands or /cli-docs for help.',");
   }
   lines.push("      ].join('\\n'),");
   lines.push('  },');

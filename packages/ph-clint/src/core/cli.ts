@@ -1555,15 +1555,7 @@ export function defineCli<
     } else {
       // ── Nothing to do: no -i, no keep-alive, no subcommand/prompt → show help ──
       const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
-      try {
-        await program.parseAsync(argv);
-      } catch (err: any) {
-        if (err.exitCode === 0) { exit(0); return; }
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg !== '(outputHelp)' && msg !== '(version)') stderr(msg);
-        exit(err.exitCode ?? 1);
-        return;
-      }
+      program.outputHelp();
       await teardown();
     }
   }

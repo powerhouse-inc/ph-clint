@@ -31,12 +31,14 @@ export function createHelpCommand(opts: HelpCommandOptions): Command {
       const { command: commandId } = input as { command?: string };
       const cli = opts.getCli();
 
-      // Build argv to invoke Commander's help
+      // Build argv to invoke Commander's help.
+      // Use --help (flag) rather than help (subcommand) because Commander
+      // only registers the help subcommand when there are other subcommands.
       const argv = ['node', cli.name];
       if (commandId) {
-        argv.push('help', commandId);
+        argv.push(commandId, '--help');
       } else {
-        argv.push('help');
+        argv.push('--help');
       }
 
       // Capture Commander's output
