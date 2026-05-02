@@ -154,6 +154,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
       lines.push(`      documentModels: [...documentModels, ${aliases.map(a => `...${a}`).join(', ')}],`);
     }
     lines.push(`      drive: { name: '${spec.name}' },`);
+    lines.push('      subscriptions: {},');
     lines.push('    }),');
     lines.push(
       `  switchboard: { enabled: ${String(phAtLeast(ph, 'Switchboard'))} },`,
