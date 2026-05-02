@@ -136,20 +136,24 @@ export async function generateProject(
   // Flat → split migration, if needed. Runs BEFORE we compute planned files
   // so the hash record and on-disk state are already in split-layout shape
   // by the time the normal reconciliation runs.
+  //
+  // Use GeneratedState (what was *actually generated* last time) rather than
+  // the on-disk spec to detect the layout flip — when the user edits the spec
+  // file before running regen, both existingSpec and spec already say "Reactor"
+  // and the old comparison would never trigger.
   let migrated = false;
-  if (
-    resolvedMode === 'update' &&
-    existingSpec &&
-    existingSpec.features.powerhouse === 'Disabled' &&
-    spec.features.powerhouse !== 'Disabled'
-  ) {
-    await migrateFlatToSplit({
-      targetDir,
-      spec,
-      force: options.force,
-      onWarn: warn,
-    });
-    migrated = true;
+  if (resolvedMode === 'update' && spec.features.powerhouse !== 'Disabled') {
+    const prev = await readGeneratedState(targetDir);
+    const wasFlatLayout = prev ? prev.cliFolderName === '' : existingSpec?.features.powerhouse === 'Disabled';
+    if (wasFlatLayout) {
+      await migrateFlatToSplit({
+        targetDir,
+        spec,
+        force: options.force,
+        onWarn: warn,
+      });
+      migrated = true;
+    }
   }
 
   // Dispatch to the mode-specific flow.

@@ -13,6 +13,7 @@ import {
   phAtLeast,
 } from '../../spec/types.js';
 import { CLI_VERSION } from '../../config.js';
+import { getPhVersion } from '../scaffold.js';
 
 /**
  * Derive a semver range from the running ph-clint-cli version that respects
@@ -46,7 +47,15 @@ function phClintRange(version: string): string {
 
 /** Version range for @powerhousedao/ph-clint{,-dev} deps in scaffolded projects. */
 const PH_CLINT_VERSION = phClintRange(CLI_VERSION);
-const POWERHOUSE_VERSION = '6.0.0-dev.170';
+
+const POWERHOUSE_VERSION_FALLBACK = '6.0.0-dev.170';
+let _powerhouseVersion: string | undefined;
+function getPowerhouseVersion(): string {
+  if (_powerhouseVersion === undefined) {
+    _powerhouseVersion = getPhVersion('ph') ?? POWERHOUSE_VERSION_FALLBACK;
+  }
+  return _powerhouseVersion;
+}
 
 export function buildCliPackageJson(spec: ClintProjectSpec): string {
   const { mastra, powerhouse } = spec.features;
@@ -69,10 +78,10 @@ export function buildCliPackageJson(spec: ClintProjectSpec): string {
     const appPkg = getAppPackageName(spec);
     const appDir = getAppDirName(spec);
     dependencies[appPkg] = `file:../${appDir}`;
-    dependencies['@powerhousedao/reactor'] = POWERHOUSE_VERSION;
-    dependencies['@powerhousedao/reactor-api'] = POWERHOUSE_VERSION;
-    dependencies['@powerhousedao/shared'] = POWERHOUSE_VERSION;
-    dependencies['document-model'] = POWERHOUSE_VERSION;
+    dependencies['@powerhousedao/reactor'] = getPowerhouseVersion();
+    dependencies['@powerhousedao/reactor-api'] = getPowerhouseVersion();
+    dependencies['@powerhousedao/shared'] = getPowerhouseVersion();
+    dependencies['document-model'] = getPowerhouseVersion();
     // External reactor packages (non-app) as versioned dependencies.
     // Compare bare names (without scope) so that a spec entry with
     // packageName "foo-app" still matches the scoped "@scope/foo-app".
