@@ -100,6 +100,15 @@ describe("AgentOperations", () => {
       }),
     );
 
+    // append a text part to the assistant message
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "msg-a1",
+        part: { id: "p-a1-text2", type: "TEXT", text: "Additional note." },
+      }),
+    );
+
     // tool result
     doc = reducer(
       doc,
@@ -163,6 +172,14 @@ describe("AgentOperations", () => {
       }),
     );
 
+    // set usage on tool message without providing token fields
+    doc = reducer(
+      doc,
+      setMessageUsage({
+        messageId: "msg-t1",
+      }),
+    );
+
     // usage summary update with all fields
     doc = reducer(
       doc,
@@ -209,15 +226,17 @@ describe("AgentOperations", () => {
     expect(u2.content[1].mediaType).toBe("image/png");
     expect(u2.content[1].toolCallId).toBeNull();
 
-    // assistant message has 3 parts (text + 2 tool calls) after append
+    // assistant message has 4 parts (text + 2 tool calls + appended text)
     const a1 = s.messages[2];
-    expect(a1.content).toHaveLength(3);
+    expect(a1.content).toHaveLength(4);
     expect(a1.stepIndex).toBe(1);
-    expect(a1.content[0].text).toBe("Here are the results."); // updated via updateAssistantContent
-    expect(a1.content[1].args).toBe('{"q":"updated"}'); // updated
-    expect(a1.content[1].error).toBe("timeout"); // updated
+    expect(a1.content[0].text).toBe("Here are the results.");
+    expect(a1.content[1].args).toBe('{"q":"updated"}');
+    expect(a1.content[1].error).toBe("timeout");
     expect(a1.content[1].type).toBe("TOOL_CALL");
-    expect(a1.content[2].toolCallId).toBe("tc-2"); // appended
+    expect(a1.content[2].toolCallId).toBe("tc-2");
+    expect(a1.content[3].text).toBe("Additional note.");
+    expect(a1.content[3].toolCallId).toBeNull();
 
     // per-message usage
     expect(a1.usage).toStrictEqual({
@@ -232,6 +251,13 @@ describe("AgentOperations", () => {
     expect(t1.content[0].type).toBe("TOOL_RESULT");
     expect(t1.content[1].text).toBe("Streaming output chunk");
 
+    // tool message usage set without providing token fields → all null
+    expect(t1.usage).toStrictEqual({
+      promptTokens: null,
+      completionTokens: null,
+      totalTokens: null,
+    });
+
     // usage: all fields overwritten by updateUsageSummary
     expect(s.usage).toStrictEqual({
       totalPromptTokens: 500,
@@ -241,6 +267,76 @@ describe("AgentOperations", () => {
       totalMessages: 4,
       totalToolCalls: 2,
     });
+  });
+
+  it("operations work without startSession (no usage tracking)", () => {
+    let doc = reducer(
+      utils.createDocument(),
+      addSystemMessage({
+        id: "msg-sys",
+        text: "system",
+        createdAt: "2025-01-01T00:00:00Z",
+      }),
+    );
+    doc = reducer(
+      doc,
+      addUserMessage({
+        id: "msg-u",
+        content: [{ id: "p1", type: "TEXT", text: "hi" }],
+        createdAt: "2025-01-01T00:00:01Z",
+      }),
+    );
+    doc = reducer(
+      doc,
+      addAssistantMessage({
+        id: "msg-a",
+        content: [
+          { id: "p1", type: "TEXT", text: "hello" },
+          {
+            id: "p2",
+            type: "TOOL_CALL",
+            toolCallId: "tc-1",
+            toolName: "search",
+            args: '{"q":"test"}',
+          },
+        ],
+        createdAt: "2025-01-01T00:00:02Z",
+      }),
+    );
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "msg-a",
+        part: {
+          id: "p3",
+          type: "TOOL_CALL",
+          toolCallId: "tc-2",
+          toolName: "fetch",
+          args: '{"url":"https://example.com"}',
+        },
+      }),
+    );
+    doc = reducer(
+      doc,
+      addToolResult({
+        id: "msg-t",
+        content: [
+          {
+            id: "p1",
+            type: "TOOL_RESULT",
+            toolCallId: "tc-1",
+            toolName: "search",
+            result: "ok",
+          },
+        ],
+        createdAt: "2025-01-01T00:00:03Z",
+      }),
+    );
+    doc = reducer(doc, deleteUserMessage({ messageId: "msg-u" }));
+
+    expect(doc.state.global.messages).toHaveLength(3);
+    expect(doc.state.global.messages[1].content).toHaveLength(3);
+    expect(doc.state.global.usage).toBeNull();
   });
 
   it("preserves falsy values (0, false) via nullish coalescing", () => {

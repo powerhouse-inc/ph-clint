@@ -57,12 +57,12 @@ type MessageUsage {
 }
 
 type UsageSummary {
-  totalPromptTokens: Int
-  totalCompletionTokens: Int
-  totalTokens: Int
-  totalSteps: Int
-  totalMessages: Int
-  totalToolCalls: Int
+  totalPromptTokens: Int!
+  totalCompletionTokens: Int!
+  totalTokens: Int!
+  totalSteps: Int!
+  totalMessages: Int!
+  totalToolCalls: Int!
 }
 
 type ContentPart {
@@ -117,11 +117,6 @@ input StartSessionInput {
   startedAt: DateTime!
 }
 
-input EndSessionInput {
-  status: SessionStatus!
-  endedAt: DateTime!
-}
-
 input SetAgentInfoInput {
   id: String
   name: String
@@ -129,10 +124,9 @@ input SetAgentInfoInput {
   instructions: String
 }
 
-input AddSystemMessageInput {
-  id: OID!
-  text: String!
-  createdAt: DateTime!
+input EndSessionInput {
+  status: SessionStatus!
+  endedAt: DateTime!
 }
 
 input UpdateUsageSummaryInput {
@@ -142,6 +136,12 @@ input UpdateUsageSummaryInput {
   totalSteps: Int
   totalMessages: Int
   totalToolCalls: Int
+}
+
+input AddSystemMessageInput {
+  id: OID!
+  text: String!
+  createdAt: DateTime!
 }
 
 # user

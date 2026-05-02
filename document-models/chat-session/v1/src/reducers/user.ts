@@ -1,11 +1,17 @@
 import type { ChatSessionUserOperations } from "document-models/chat-session/v1";
 import {
+  InvalidContentPartError,
   MessageNotFoundError,
   NotUserMessageError,
 } from "../../gen/user/error.js";
 
 export const chatSessionUserOperations: ChatSessionUserOperations = {
   addUserMessageOperation(state, action) {
+    for (const p of action.input.content) {
+      if (p.type === "TEXT" && !p.text) {
+        throw new InvalidContentPartError("TEXT part requires text");
+      }
+    }
     const parts = action.input.content.map((p) => ({
       id: p.id,
       type: p.type,

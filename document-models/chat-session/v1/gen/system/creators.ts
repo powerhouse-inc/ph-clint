@@ -34,15 +34,6 @@ export const startSession = (input: StartSessionInput) =>
     "global",
   );
 
-export const endSession = (input: EndSessionInput) =>
-  createAction<EndSessionAction>(
-    "END_SESSION",
-    { ...input },
-    undefined,
-    EndSessionInputSchema,
-    "global",
-  );
-
 export const setAgentInfo = (input: SetAgentInfoInput) =>
   createAction<SetAgentInfoAction>(
     "SET_AGENT_INFO",
@@ -52,12 +43,12 @@ export const setAgentInfo = (input: SetAgentInfoInput) =>
     "global",
   );
 
-export const addSystemMessage = (input: AddSystemMessageInput) =>
-  createAction<AddSystemMessageAction>(
-    "ADD_SYSTEM_MESSAGE",
+export const endSession = (input: EndSessionInput) =>
+  createAction<EndSessionAction>(
+    "END_SESSION",
     { ...input },
     undefined,
-    AddSystemMessageInputSchema,
+    EndSessionInputSchema,
     "global",
   );
 
@@ -67,5 +58,14 @@ export const updateUsageSummary = (input: UpdateUsageSummaryInput) =>
     { ...input },
     undefined,
     UpdateUsageSummaryInputSchema,
+    "global",
+  );
+
+export const addSystemMessage = (input: AddSystemMessageInput) =>
+  createAction<AddSystemMessageAction>(
+    "ADD_SYSTEM_MESSAGE",
+    { ...input },
+    undefined,
+    AddSystemMessageInputSchema,
     "global",
   );

@@ -46,6 +46,23 @@ describe("SystemOperations", () => {
       instructions: null,
     });
 
+    // startSession with minimal agent — all fields default to null
+    let doc3 = reducer(
+      utils.createDocument(),
+      startSession({
+        threadId: "t2",
+        resourceId: "r2",
+        startedAt: "2025-01-01T00:00:00Z",
+        agent: {},
+      }),
+    );
+    expect(doc3.state.global.agent).toStrictEqual({
+      id: null,
+      name: null,
+      model: null,
+      instructions: null,
+    });
+
     // also verify the false branch after startSession sets agent
     let doc2 = reducer(
       utils.createDocument(),

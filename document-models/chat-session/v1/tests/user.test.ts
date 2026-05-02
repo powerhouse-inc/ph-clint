@@ -14,7 +14,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("UserOperations", () => {
-  it("all error paths: MessageNotFound, NotAssistantMessage, ContentPartNotFound, NotUserMessage", () => {
+  it("all error paths: MessageNotFound, NotAssistantMessage, ContentPartNotFound, NotUserMessage, InvalidContentPart", () => {
     // set up: session with one assistant message and one user message
     let doc = reducer(
       utils.createDocument(),
@@ -118,10 +118,120 @@ describe("UserOperations", () => {
     );
     expect(doc.operations.global[++opIdx].error).toContain("Message not found");
 
-    // state unchanged through all errors
-    expect(doc.state.global.messages).toHaveLength(
-      stateBeforeErrors.messages.length,
+    // 9. addAssistantMessage — TEXT part without text
+    doc = reducer(
+      doc,
+      addAssistantMessage({
+        id: "bad-1",
+        content: [{ id: "p", type: "TEXT" }],
+        createdAt: "2025-01-01T00:00:03Z",
+      }),
     );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "TEXT part requires text",
+    );
+
+    // 10. addAssistantMessage — TOOL_CALL without toolCallId
+    doc = reducer(
+      doc,
+      addAssistantMessage({
+        id: "bad-2",
+        content: [{ id: "p", type: "TOOL_CALL", toolName: "search" }],
+        createdAt: "2025-01-01T00:00:04Z",
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "TOOL_CALL part requires toolCallId",
+    );
+
+    // 11. addAssistantMessage — TOOL_CALL without toolName
+    doc = reducer(
+      doc,
+      addAssistantMessage({
+        id: "bad-3",
+        content: [{ id: "p", type: "TOOL_CALL", toolCallId: "tc-1" }],
+        createdAt: "2025-01-01T00:00:05Z",
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "TOOL_CALL part requires toolName",
+    );
+
+    // 12. appendAssistantContent — REASONING without text
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "msg-a",
+        part: { id: "p", type: "REASONING" },
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "REASONING part requires text",
+    );
+
+    // 13. appendAssistantContent — TOOL_CALL without toolCallId
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "msg-a",
+        part: { id: "p", type: "TOOL_CALL", toolName: "search" },
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "TOOL_CALL part requires toolCallId",
+    );
+
+    // 14. appendAssistantContent — TOOL_CALL without toolName
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "msg-a",
+        part: { id: "p", type: "TOOL_CALL", toolCallId: "tc-1" },
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "TOOL_CALL part requires toolName",
+    );
+
+    // 15. appendAssistantContent — ERROR without error field
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "msg-a",
+        part: { id: "p", type: "ERROR" },
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "ERROR part requires error field",
+    );
+
+    // 16. addAssistantMessage — ERROR part without error field
+    doc = reducer(
+      doc,
+      addAssistantMessage({
+        id: "bad-4",
+        content: [{ id: "p", type: "ERROR" }],
+        createdAt: "2025-01-01T00:00:06Z",
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "ERROR part requires error field",
+    );
+
+    // 17. addUserMessage — TEXT part without text
+    doc = reducer(
+      doc,
+      addUserMessage({
+        id: "bad-5",
+        content: [{ id: "p", type: "TEXT" }],
+        createdAt: "2025-01-01T00:00:07Z",
+      }),
+    );
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "TEXT part requires text",
+    );
+
+    // state unchanged through all errors
     expect(doc.state.global.messages).toStrictEqual(
       stateBeforeErrors.messages,
     );

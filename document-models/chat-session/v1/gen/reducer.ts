@@ -47,18 +47,6 @@ const stateReducer: StateReducer<ChatSessionPHState> = (
       break;
     }
 
-    case "END_SESSION": {
-      EndSessionInputSchema().parse(action.input);
-
-      chatSessionSystemOperations.endSessionOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
-
-      break;
-    }
-
     case "SET_AGENT_INFO": {
       SetAgentInfoInputSchema().parse(action.input);
 
@@ -71,10 +59,10 @@ const stateReducer: StateReducer<ChatSessionPHState> = (
       break;
     }
 
-    case "ADD_SYSTEM_MESSAGE": {
-      AddSystemMessageInputSchema().parse(action.input);
+    case "END_SESSION": {
+      EndSessionInputSchema().parse(action.input);
 
-      chatSessionSystemOperations.addSystemMessageOperation(
+      chatSessionSystemOperations.endSessionOperation(
         (state as any)[action.scope],
         action as any,
         dispatch,
@@ -87,6 +75,18 @@ const stateReducer: StateReducer<ChatSessionPHState> = (
       UpdateUsageSummaryInputSchema().parse(action.input);
 
       chatSessionSystemOperations.updateUsageSummaryOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
+
+      break;
+    }
+
+    case "ADD_SYSTEM_MESSAGE": {
+      AddSystemMessageInputSchema().parse(action.input);
+
+      chatSessionSystemOperations.addSystemMessageOperation(
         (state as any)[action.scope],
         action as any,
         dispatch,

@@ -20,7 +20,7 @@ export const documentModel: DocumentModelGlobalState = {
         },
         global: {
           schema:
-            "enum SessionStatus {\n  ACTIVE\n  COMPLETED\n  ABORTED\n  ERROR\n}\n\nenum MessageRole {\n  SYSTEM\n  USER\n  ASSISTANT\n  TOOL\n}\n\nenum ContentPartType {\n  TEXT\n  IMAGE\n  FILE\n  TOOL_CALL\n  TOOL_RESULT\n  REASONING\n  ERROR\n}\n\ntype AgentInfo {\n  id: String\n  name: String\n  model: String\n  instructions: String\n}\n\ntype MessageUsage {\n  promptTokens: Int\n  completionTokens: Int\n  totalTokens: Int\n}\n\ntype UsageSummary {\n  totalPromptTokens: Int\n  totalCompletionTokens: Int\n  totalTokens: Int\n  totalSteps: Int\n  totalMessages: Int\n  totalToolCalls: Int\n}\n\ntype ContentPart {\n  id: OID!\n  type: ContentPartType!\n  text: String\n  toolCallId: String\n  toolName: String\n  args: String\n  result: String\n  isError: Boolean\n  mediaType: String\n  url: URL\n  data: String\n  filename: String\n  error: String\n}\n\ntype Message {\n  id: OID!\n  role: MessageRole!\n  content: [ContentPart!]!\n  stepIndex: Int\n  createdAt: DateTime!\n  usage: MessageUsage\n}\n\ntype ChatSessionState {\n  threadId: String\n  resourceId: String\n  agent: AgentInfo\n  status: SessionStatus!\n  startedAt: DateTime\n  endedAt: DateTime\n  messages: [Message!]!\n  usage: UsageSummary\n}",
+            "enum SessionStatus {\n  ACTIVE\n  COMPLETED\n  ABORTED\n  ERROR\n}\n\nenum MessageRole {\n  SYSTEM\n  USER\n  ASSISTANT\n  TOOL\n}\n\nenum ContentPartType {\n  TEXT\n  IMAGE\n  FILE\n  TOOL_CALL\n  TOOL_RESULT\n  REASONING\n  ERROR\n}\n\ntype AgentInfo {\n  id: String\n  name: String\n  model: String\n  instructions: String\n}\n\ntype MessageUsage {\n  promptTokens: Int\n  completionTokens: Int\n  totalTokens: Int\n}\n\ntype UsageSummary {\n  totalPromptTokens: Int!\n  totalCompletionTokens: Int!\n  totalTokens: Int!\n  totalSteps: Int!\n  totalMessages: Int!\n  totalToolCalls: Int!\n}\n\ntype ContentPart {\n  id: OID!\n  type: ContentPartType!\n  text: String\n  toolCallId: String\n  toolName: String\n  args: String\n  result: String\n  isError: Boolean\n  mediaType: String\n  url: URL\n  data: String\n  filename: String\n  error: String\n}\n\ntype Message {\n  id: OID!\n  role: MessageRole!\n  content: [ContentPart!]!\n  stepIndex: Int\n  createdAt: DateTime!\n  usage: MessageUsage\n}\n\ntype ChatSessionState {\n  threadId: String\n  resourceId: String\n  agent: AgentInfo\n  status: SessionStatus!\n  startedAt: DateTime\n  endedAt: DateTime\n  messages: [Message!]!\n  usage: UsageSummary\n}",
           examples: [],
           initialValue:
             '{"threadId":null,"resourceId":null,"agent":null,"status":"ACTIVE","startedAt":null,"endedAt":null,"messages":[],"usage":null}',
@@ -49,21 +49,6 @@ export const documentModel: DocumentModelGlobalState = {
               scope: "global",
             },
             {
-              id: "op-end-session",
-              name: "END_SESSION",
-              description:
-                "Mark the session as completed or errored with an end timestamp.",
-              schema:
-                "input EndSessionInput {\n  status: SessionStatus!\n  endedAt: DateTime!\n}",
-              template:
-                "Mark the session as completed or errored with an end timestamp.",
-              reducer:
-                "state.status = action.input.status;\nstate.endedAt = action.input.endedAt;",
-              errors: [],
-              examples: [],
-              scope: "global",
-            },
-            {
               id: "op-set-agent-info",
               name: "SET_AGENT_INFO",
               description:
@@ -79,16 +64,16 @@ export const documentModel: DocumentModelGlobalState = {
               scope: "global",
             },
             {
-              id: "op-add-system-message",
-              name: "ADD_SYSTEM_MESSAGE",
+              id: "op-end-session",
+              name: "END_SESSION",
               description:
-                "Add a system prompt or instruction message to the conversation.",
+                "Mark the session as completed or errored with an end timestamp.",
               schema:
-                "input AddSystemMessageInput {\n  id: OID!\n  text: String!\n  createdAt: DateTime!\n}",
+                "input EndSessionInput {\n  status: SessionStatus!\n  endedAt: DateTime!\n}",
               template:
-                "Add a system prompt or instruction message to the conversation.",
+                "Mark the session as completed or errored with an end timestamp.",
               reducer:
-                "state.messages.push({\n  id: action.input.id,\n  role: 'SYSTEM',\n  content: [{\n    id: action.input.id + '-text',\n    type: 'TEXT',\n    text: action.input.text,\n    toolCallId: null,\n    toolName: null,\n    args: null,\n    result: null,\n    isError: null,\n    mediaType: null,\n    url: null,\n    data: null,\n    filename: null,\n    error: null,\n  }],\n  stepIndex: null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) state.usage.totalMessages = (state.usage.totalMessages ?? 0) + 1;",
+                "state.status = action.input.status;\nstate.endedAt = action.input.endedAt;",
               errors: [],
               examples: [],
               scope: "global",
@@ -104,6 +89,21 @@ export const documentModel: DocumentModelGlobalState = {
                 "Update cumulative token usage and message/tool-call counts for the session.",
               reducer:
                 "if (!state.usage) {\n  state.usage = { totalPromptTokens: 0, totalCompletionTokens: 0, totalTokens: 0, totalSteps: 0, totalMessages: 0, totalToolCalls: 0 };\n}\nif (action.input.totalPromptTokens !== undefined && action.input.totalPromptTokens !== null) state.usage.totalPromptTokens = action.input.totalPromptTokens;\nif (action.input.totalCompletionTokens !== undefined && action.input.totalCompletionTokens !== null) state.usage.totalCompletionTokens = action.input.totalCompletionTokens;\nif (action.input.totalTokens !== undefined && action.input.totalTokens !== null) state.usage.totalTokens = action.input.totalTokens;\nif (action.input.totalSteps !== undefined && action.input.totalSteps !== null) state.usage.totalSteps = action.input.totalSteps;\nif (action.input.totalMessages !== undefined && action.input.totalMessages !== null) state.usage.totalMessages = action.input.totalMessages;\nif (action.input.totalToolCalls !== undefined && action.input.totalToolCalls !== null) state.usage.totalToolCalls = action.input.totalToolCalls;",
+              errors: [],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "op-add-system-message",
+              name: "ADD_SYSTEM_MESSAGE",
+              description:
+                "Add a system prompt or instruction message to the conversation.",
+              schema:
+                "input AddSystemMessageInput {\n  id: OID!\n  text: String!\n  createdAt: DateTime!\n}",
+              template:
+                "Add a system prompt or instruction message to the conversation.",
+              reducer:
+                "state.messages.push({\n  id: action.input.id,\n  role: 'SYSTEM',\n  content: [{\n    id: action.input.id + '-text',\n    type: 'TEXT',\n    text: action.input.text,\n    toolCallId: null,\n    toolName: null,\n    args: null,\n    result: null,\n    isError: null,\n    mediaType: null,\n    url: null,\n    data: null,\n    filename: null,\n    error: null,\n  }],\n  stepIndex: null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) state.usage.totalMessages += 1;",
               errors: [],
               examples: [],
               scope: "global",
@@ -126,8 +126,17 @@ export const documentModel: DocumentModelGlobalState = {
               template:
                 "Add a user message with text, image, and/or file content parts.",
               reducer:
-                "const parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: null,\n  toolName: null,\n  args: null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: p.filename || null,\n  error: null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'USER',\n  content: parts,\n  stepIndex: null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) state.usage.totalMessages = (state.usage.totalMessages ?? 0) + 1;",
-              errors: [],
+                "for (const p of action.input.content) {\n  if (p.type === 'TEXT' && !p.text) {\n    throw new InvalidContentPartError('TEXT part requires text');\n  }\n}\nconst parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: null,\n  toolName: null,\n  args: null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: p.filename || null,\n  error: null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'USER',\n  content: parts,\n  stepIndex: null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) state.usage.totalMessages += 1;",
+              errors: [
+                {
+                  id: "err-invalid-part-3",
+                  name: "InvalidContentPartError",
+                  code: "INVALID_CONTENT_PART",
+                  description:
+                    "A content part is missing required fields for its type (e.g. TEXT without text).",
+                  template: "",
+                },
+              ],
               examples: [],
               scope: "global",
             },
@@ -140,7 +149,7 @@ export const documentModel: DocumentModelGlobalState = {
               template:
                 "Remove a user message by ID. Only messages with role USER can be deleted.",
               reducer:
-                "const idx = state.messages.findIndex(m => m.id === action.input.messageId);\nif (idx === -1) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);\nif (state.messages[idx].role !== 'USER') throw new NotUserMessageError('Can only delete USER messages');\nstate.messages.splice(idx, 1);\nif (state.usage) state.usage.totalMessages = (state.usage.totalMessages ?? 0) - 1;",
+                "const idx = state.messages.findIndex(m => m.id === action.input.messageId);\nif (idx === -1) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);\nif (state.messages[idx].role !== 'USER') throw new NotUserMessageError('Can only delete USER messages');\nstate.messages.splice(idx, 1);\nif (state.usage) state.usage.totalMessages -= 1;",
               errors: [
                 {
                   id: "err-msg-not-found-1",
@@ -194,8 +203,17 @@ export const documentModel: DocumentModelGlobalState = {
               template:
                 "Add a complete assistant message with text, tool calls, reasoning, and/or file content parts.",
               reducer:
-                "const parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: p.toolCallId || null,\n  toolName: p.toolName || null,\n  args: p.args || null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: p.filename || null,\n  error: p.error || null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'ASSISTANT',\n  content: parts,\n  stepIndex: action.input.stepIndex ?? null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) {\n  state.usage.totalMessages = (state.usage.totalMessages ?? 0) + 1;\n  const toolCalls = parts.filter(p => p.type === 'TOOL_CALL').length;\n  state.usage.totalToolCalls = (state.usage.totalToolCalls ?? 0) + toolCalls;\n}",
-              errors: [],
+                "for (const p of action.input.content) {\n  if ((p.type === 'TEXT' || p.type === 'REASONING') && !p.text) {\n    throw new InvalidContentPartError(p.type + ' part requires text');\n  }\n  if (p.type === 'TOOL_CALL') {\n    if (!p.toolCallId) throw new InvalidContentPartError('TOOL_CALL part requires toolCallId');\n    if (!p.toolName) throw new InvalidContentPartError('TOOL_CALL part requires toolName');\n  }\n  if (p.type === 'ERROR' && !p.error) {\n    throw new InvalidContentPartError('ERROR part requires error field');\n  }\n}\nconst parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: p.toolCallId || null,\n  toolName: p.toolName || null,\n  args: p.args || null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: p.filename || null,\n  error: p.error || null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'ASSISTANT',\n  content: parts,\n  stepIndex: action.input.stepIndex ?? null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) {\n  state.usage.totalMessages += 1;\n  const toolCalls = parts.filter(p => p.type === 'TOOL_CALL').length;\n  state.usage.totalToolCalls += toolCalls;\n}",
+              errors: [
+                {
+                  id: "err-invalid-part-1",
+                  name: "InvalidContentPartError",
+                  code: "INVALID_CONTENT_PART",
+                  description:
+                    "A content part is missing required fields for its type (e.g. TEXT without text, TOOL_CALL without toolCallId).",
+                  template: "",
+                },
+              ],
               examples: [],
               scope: "global",
             },
@@ -209,7 +227,7 @@ export const documentModel: DocumentModelGlobalState = {
               template:
                 "Add a content part to an existing assistant message. Used during streaming to build up a message incrementally.",
               reducer:
-                "const msg = state.messages.find(m => m.id === action.input.messageId);\nif (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);\nif (msg.role !== 'ASSISTANT') throw new NotAssistantMessageError('Can only append to ASSISTANT messages');\nconst p = action.input.part;\nmsg.content.push({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: p.toolCallId || null,\n  toolName: p.toolName || null,\n  args: p.args || null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: p.filename || null,\n  error: p.error || null,\n});\nif (state.usage && p.type === 'TOOL_CALL') state.usage.totalToolCalls = (state.usage.totalToolCalls ?? 0) + 1;",
+                "const msg = state.messages.find(m => m.id === action.input.messageId);\nif (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);\nif (msg.role !== 'ASSISTANT') throw new NotAssistantMessageError('Can only append to ASSISTANT messages');\nconst p = action.input.part;\nif ((p.type === 'TEXT' || p.type === 'REASONING') && !p.text) {\n  throw new InvalidContentPartError(p.type + ' part requires text');\n}\nif (p.type === 'TOOL_CALL') {\n  if (!p.toolCallId) throw new InvalidContentPartError('TOOL_CALL part requires toolCallId');\n  if (!p.toolName) throw new InvalidContentPartError('TOOL_CALL part requires toolName');\n}\nif (p.type === 'ERROR' && !p.error) {\n  throw new InvalidContentPartError('ERROR part requires error field');\n}\nmsg.content.push({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: p.toolCallId || null,\n  toolName: p.toolName || null,\n  args: p.args || null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: p.filename || null,\n  error: p.error || null,\n});\nif (state.usage && p.type === 'TOOL_CALL') state.usage.totalToolCalls += 1;",
               errors: [
                 {
                   id: "err-msg-not-found-2",
@@ -225,6 +243,14 @@ export const documentModel: DocumentModelGlobalState = {
                   code: "NOT_ASSISTANT_MESSAGE",
                   description:
                     "Content can only be appended to messages with role ASSISTANT.",
+                  template: "",
+                },
+                {
+                  id: "err-invalid-part-2",
+                  name: "InvalidContentPartError",
+                  code: "INVALID_CONTENT_PART",
+                  description:
+                    "A content part is missing required fields for its type (e.g. TEXT without text, TOOL_CALL without toolCallId).",
                   template: "",
                 },
               ],
@@ -303,7 +329,7 @@ export const documentModel: DocumentModelGlobalState = {
               template:
                 "Add a tool result message containing one or more result parts (success or error). Links back to a tool call via toolCallId.",
               reducer:
-                "const parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: p.toolCallId,\n  toolName: p.toolName,\n  args: null,\n  result: p.result || null,\n  isError: p.isError ?? null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: null,\n  error: null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'TOOL',\n  content: parts,\n  stepIndex: action.input.stepIndex ?? null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) state.usage.totalMessages = (state.usage.totalMessages ?? 0) + 1;",
+                "const parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: p.toolCallId,\n  toolName: p.toolName,\n  args: null,\n  result: p.result || null,\n  isError: p.isError ?? null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  data: p.data || null,\n  filename: null,\n  error: null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'TOOL',\n  content: parts,\n  stepIndex: action.input.stepIndex ?? null,\n  createdAt: action.input.createdAt,\n  usage: null,\n});\nif (state.usage) state.usage.totalMessages += 1;",
               errors: [],
               examples: [],
               scope: "global",

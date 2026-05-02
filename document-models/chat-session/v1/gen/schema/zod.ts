@@ -329,12 +329,12 @@ export function UpdateUsageSummaryInputSchema(): z.ZodObject<
 export function UsageSummarySchema(): z.ZodObject<Properties<UsageSummary>> {
   return z.object({
     __typename: z.literal("UsageSummary").optional(),
-    totalCompletionTokens: z.number().nullish(),
-    totalMessages: z.number().nullish(),
-    totalPromptTokens: z.number().nullish(),
-    totalSteps: z.number().nullish(),
-    totalTokens: z.number().nullish(),
-    totalToolCalls: z.number().nullish(),
+    totalCompletionTokens: z.number(),
+    totalMessages: z.number(),
+    totalPromptTokens: z.number(),
+    totalSteps: z.number(),
+    totalTokens: z.number(),
+    totalToolCalls: z.number(),
   });
 }
 

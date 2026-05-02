@@ -15,26 +15,26 @@ export type StartSessionAction = Action & {
   type: "START_SESSION";
   input: StartSessionInput;
 };
-export type EndSessionAction = Action & {
-  type: "END_SESSION";
-  input: EndSessionInput;
-};
 export type SetAgentInfoAction = Action & {
   type: "SET_AGENT_INFO";
   input: SetAgentInfoInput;
 };
-export type AddSystemMessageAction = Action & {
-  type: "ADD_SYSTEM_MESSAGE";
-  input: AddSystemMessageInput;
+export type EndSessionAction = Action & {
+  type: "END_SESSION";
+  input: EndSessionInput;
 };
 export type UpdateUsageSummaryAction = Action & {
   type: "UPDATE_USAGE_SUMMARY";
   input: UpdateUsageSummaryInput;
 };
+export type AddSystemMessageAction = Action & {
+  type: "ADD_SYSTEM_MESSAGE";
+  input: AddSystemMessageInput;
+};
 
 export type ChatSessionSystemAction =
   | StartSessionAction
-  | EndSessionAction
   | SetAgentInfoAction
-  | AddSystemMessageAction
-  | UpdateUsageSummaryAction;
+  | EndSessionAction
+  | UpdateUsageSummaryAction
+  | AddSystemMessageAction;

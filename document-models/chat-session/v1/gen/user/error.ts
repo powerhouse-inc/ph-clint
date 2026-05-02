@@ -1,7 +1,17 @@
-export type ErrorCode = "MessageNotFoundError" | "NotUserMessageError";
+export type ErrorCode =
+  | "InvalidContentPartError"
+  | "MessageNotFoundError"
+  | "NotUserMessageError";
 
 export interface ReducerError {
   errorCode: ErrorCode;
+}
+
+export class InvalidContentPartError extends Error implements ReducerError {
+  errorCode = "InvalidContentPartError" as ErrorCode;
+  constructor(message = "InvalidContentPartError") {
+    super(message);
+  }
 }
 
 export class MessageNotFoundError extends Error implements ReducerError {
@@ -19,5 +29,6 @@ export class NotUserMessageError extends Error implements ReducerError {
 }
 
 export const errors = {
+  AddUserMessage: { InvalidContentPartError },
   DeleteUserMessage: { MessageNotFoundError, NotUserMessageError },
 };

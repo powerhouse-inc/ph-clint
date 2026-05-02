@@ -1,12 +1,31 @@
 import type { ChatSessionAgentOperations } from "document-models/chat-session/v1";
 import {
   ContentPartNotFoundError,
+  InvalidContentPartError,
   MessageNotFoundError,
   NotAssistantMessageError,
 } from "../../gen/agent/error.js";
 
 export const chatSessionAgentOperations: ChatSessionAgentOperations = {
   addAssistantMessageOperation(state, action) {
+    for (const p of action.input.content) {
+      if ((p.type === "TEXT" || p.type === "REASONING") && !p.text) {
+        throw new InvalidContentPartError(p.type + " part requires text");
+      }
+      if (p.type === "TOOL_CALL") {
+        if (!p.toolCallId)
+          throw new InvalidContentPartError(
+            "TOOL_CALL part requires toolCallId",
+          );
+        if (!p.toolName)
+          throw new InvalidContentPartError(
+            "TOOL_CALL part requires toolName",
+          );
+      }
+      if (p.type === "ERROR" && !p.error) {
+        throw new InvalidContentPartError("ERROR part requires error field");
+      }
+    }
     const parts = action.input.content.map((p) => ({
       id: p.id,
       type: p.type,
@@ -47,6 +66,20 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
         "Can only append to ASSISTANT messages",
       );
     const p = action.input.part;
+    if ((p.type === "TEXT" || p.type === "REASONING") && !p.text) {
+      throw new InvalidContentPartError(p.type + " part requires text");
+    }
+    if (p.type === "TOOL_CALL") {
+      if (!p.toolCallId)
+        throw new InvalidContentPartError(
+          "TOOL_CALL part requires toolCallId",
+        );
+      if (!p.toolName)
+        throw new InvalidContentPartError("TOOL_CALL part requires toolName");
+    }
+    if (p.type === "ERROR" && !p.error) {
+      throw new InvalidContentPartError("ERROR part requires error field");
+    }
     msg.content.push({
       id: p.id,
       type: p.type,

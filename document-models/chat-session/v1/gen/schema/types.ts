@@ -246,12 +246,12 @@ export type UpdateUsageSummaryInput = {
 };
 
 export type UsageSummary = {
-  totalCompletionTokens: Maybe<Scalars["Int"]["output"]>;
-  totalMessages: Maybe<Scalars["Int"]["output"]>;
-  totalPromptTokens: Maybe<Scalars["Int"]["output"]>;
-  totalSteps: Maybe<Scalars["Int"]["output"]>;
-  totalTokens: Maybe<Scalars["Int"]["output"]>;
-  totalToolCalls: Maybe<Scalars["Int"]["output"]>;
+  totalCompletionTokens: Scalars["Int"]["output"];
+  totalMessages: Scalars["Int"]["output"];
+  totalPromptTokens: Scalars["Int"]["output"];
+  totalSteps: Scalars["Int"]["output"];
+  totalTokens: Scalars["Int"]["output"];
+  totalToolCalls: Scalars["Int"]["output"];
 };
 
 export type UserContentPartInput = {
