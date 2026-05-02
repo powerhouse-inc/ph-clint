@@ -11,6 +11,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { GenerateProjectResult } from './index.js';
 import type { ClintProjectSpec, ExternalSkill } from '../spec/types.js';
+import { getAppPackageName } from '../spec/types.js';
 import type { ProcessRunOptions } from '@powerhousedao/ph-clint';
 
 // ---------------------------------------------------------------------------
@@ -20,6 +21,7 @@ import type { ProcessRunOptions } from '@powerhousedao/ph-clint';
 export type PostGenAction =
   | { kind: 'ph-init'; targetDir: string; appDir: string; spec: ClintProjectSpec }
   | { kind: 'app-install'; dir: string }
+  | { kind: 'app-ph-install'; appDir: string; packages: string[] }
   | { kind: 'app-build'; dir: string }
   | { kind: 'cli-install'; dir: string }
   | { kind: 'cli-build'; dir: string }
@@ -50,6 +52,7 @@ export interface PostGenActionResult {
 const ACTION_ORDER: PostGenActionKind[] = [
   'ph-init',
   'app-install',
+  'app-ph-install',
   'app-build',
   'cli-install',
   'cli-build',
@@ -69,11 +72,12 @@ function dependsOn(
   downstream: PostGenActionKind,
   upstream: PostGenActionKind,
 ): boolean {
-  // ph-init → app-install → app-build → cli-install → cli-build
+  // ph-init → app-install → app-ph-install → app-build → cli-install → cli-build
   // skills-sync is independent of the build chain
   const chain: PostGenActionKind[] = [
     'ph-init',
     'app-install',
+    'app-ph-install',
     'app-build',
     'cli-install',
     'cli-build',
@@ -95,6 +99,42 @@ async function fileExists(filePath: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** External packages that have document types (not the app package). */
+function getExternalPackages(spec: ClintProjectSpec) {
+  const appPkg = getAppPackageName(spec);
+  return spec.packages.filter(
+    (p) => p.packageName !== appPkg && p.documentTypes.length > 0,
+  );
+}
+
+/**
+ * Returns package names from `extPkgs` that are not yet registered in
+ * the app's `powerhouse.config.json`.
+ */
+async function getMissingPhPackages(
+  appDir: string,
+  extPkgs: { packageName: string }[],
+): Promise<string[]> {
+  try {
+    const raw = await fs.readFile(
+      path.join(appDir, 'powerhouse.config.json'),
+      'utf8',
+    );
+    const config = JSON.parse(raw);
+    const registered = new Set(
+      (config.packages ?? []).map(
+        (p: { packageName?: string }) => p.packageName,
+      ),
+    );
+    return extPkgs
+      .map((p) => p.packageName)
+      .filter((name) => !registered.has(name));
+  } catch {
+    // No config file yet (pre-init) — all packages are missing
+    return extPkgs.map((p) => p.packageName);
   }
 }
 
@@ -190,6 +230,17 @@ export async function collectPostGenActions(
     }
   }
 
+  // Check if external packages need registering in the app
+  const extPkgs = split && result.appDir ? getExternalPackages(spec) : [];
+  if (split && result.appDir && extPkgs.length > 0) {
+    const missing = await getMissingPhPackages(result.appDir, extPkgs);
+    if (missing.length > 0) {
+      if (!earliest || actionIndex(earliest) > actionIndex('app-ph-install')) {
+        earliest = 'app-ph-install';
+      }
+    }
+  }
+
   // Build the action list from earliest onward
   const actions: PostGenAction[] = [];
 
@@ -206,6 +257,12 @@ export async function collectPostGenActions(
     }
     if (ei <= actionIndex('app-install')) {
       actions.push({ kind: 'app-install', dir: result.appDir });
+    }
+    if (ei <= actionIndex('app-ph-install') && extPkgs.length > 0) {
+      const missing = await getMissingPhPackages(result.appDir, extPkgs);
+      if (missing.length > 0) {
+        actions.push({ kind: 'app-ph-install', appDir: result.appDir, packages: missing });
+      }
     }
     if (ei <= actionIndex('app-build')) {
       // Add install if not already in the list and node_modules is missing
@@ -264,6 +321,8 @@ function actionLabel(action: PostGenAction): string {
       return `Initialize reactor package (${path.basename(action.appDir)})`;
     case 'app-install':
       return `Install dependencies (${path.basename(action.dir)})`;
+    case 'app-ph-install':
+      return `Register external packages (${action.packages.join(', ')})`;
     case 'app-build':
       return `Build (${path.basename(action.dir)})`;
     case 'cli-install':
@@ -291,7 +350,8 @@ export async function runPostGenActions(
   // corresponding install is skipped (building without install is pointless).
   const effective = actions.filter((a) => {
     if (skip.has(a.kind)) return false;
-    // If app-install is skipped, also skip app-build
+    // If app-install is skipped, also skip app-ph-install and app-build
+    if (a.kind === 'app-ph-install' && skip.has('app-install')) return false;
     if (a.kind === 'app-build' && skip.has('app-install')) return false;
     // If cli-install is skipped, also skip cli-build
     if (a.kind === 'cli-build' && skip.has('cli-install')) return false;
@@ -414,6 +474,16 @@ async function executeAction(
         }
       }
       return result.exitCode === 0;
+    }
+
+    case 'app-ph-install': {
+      const { runPhInstallPackages } = await import('./scaffold.js');
+      return runPhInstallPackages({
+        appDir: action.appDir,
+        packages: action.packages,
+        log: (msg) => ctx.log(`      ${msg}`),
+        runProcess: ctx.runProcess,
+      });
     }
 
     case 'app-install':

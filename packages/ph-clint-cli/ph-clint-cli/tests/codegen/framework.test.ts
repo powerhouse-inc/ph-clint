@@ -97,7 +97,7 @@ describe('buildFrameworkGenTs', () => {
     const code = buildFrameworkGenTs(spec);
     expect(code).not.toBeNull();
     expect(code).toContain("import { PhClintProject } from 'foo-app';");
-    expect(code).toContain("import { Invoice } from '@acme/reactor-pkg';");
+    expect(code).toContain("import { Invoice } from '@acme/reactor-pkg/document-models/invoice';");
   });
 });
 

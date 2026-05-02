@@ -5,6 +5,14 @@
  */
 import { type ClintProjectSpec, getAppPackageName, phAtLeast } from '../../spec/types.js';
 
+/** External packages that have document types (not the app package). */
+function getExternalPackages(spec: ClintProjectSpec) {
+  const appPkg = getAppPackageName(spec);
+  return spec.packages.filter(
+    (p) => p.packageName !== appPkg && p.documentTypes.length > 0,
+  );
+}
+
 export function buildCliTs(spec: ClintProjectSpec): string {
   const { mastra, routine, powerhouse } = spec.features;
   const ph = powerhouse;
@@ -32,6 +40,11 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push(`import { configSchema, secretsSchema } from './framework.js';`);
   if (phAtLeast(ph, 'Reactor')) {
     lines.push(`import { documentModels } from '${getAppPackageName(spec)}';`);
+    const extPkgs = getExternalPackages(spec);
+    for (let i = 0; i < extPkgs.length; i++) {
+      const alias = extPkgs.length === 1 ? 'extModels' : `extModels${i}`;
+      lines.push(`import { documentModels as ${alias} } from '${extPkgs[i].packageName}';`);
+    }
   }
   if (mastra.enabled) {
     lines.push(`import { createAgent } from './agents/agent.js';`);
@@ -133,7 +146,13 @@ export function buildCliTs(spec: ClintProjectSpec): string {
     lines.push('cli.configureReactor({');
     lines.push('  create: (ctx) =>');
     lines.push('    buildDefaultReactor(ctx, {');
-    lines.push('      documentModels,');
+    const extPkgs = getExternalPackages(spec);
+    if (extPkgs.length === 0) {
+      lines.push('      documentModels,');
+    } else {
+      const aliases = extPkgs.map((_, i) => extPkgs.length === 1 ? 'extModels' : `extModels${i}`);
+      lines.push(`      documentModels: [...documentModels, ${aliases.map(a => `...${a}`).join(', ')}],`);
+    }
     lines.push(`      drive: { name: '${spec.name}' },`);
     lines.push('    }),');
     lines.push(

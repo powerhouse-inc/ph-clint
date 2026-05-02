@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/clint-common",
-  "version": "0.1.0-dev.45",
+  "version": "0.1.0-dev.48",
   "license": "AGPL-3.0-only",
   "type": "module",
   "files": [
@@ -9,37 +9,37 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/browser/index.d.ts",
+      "types": "./dist/index.d.ts",
       "browser": "./dist/browser/index.js",
       "node": "./dist/node/index.mjs"
     },
     "./document-models": {
-      "types": "./dist/browser/document-models/index.d.ts",
+      "types": "./dist/document-models/index.d.ts",
       "browser": "./dist/browser/document-models/index.js",
       "node": "./dist/node/document-models/index.mjs"
     },
     "./document-models/*": {
-      "types": "./dist/browser/document-models/*/index.d.ts",
+      "types": "./dist/document-models/*/index.d.ts",
       "browser": "./dist/browser/document-models/*/index.js",
       "node": "./dist/node/document-models/*/index.mjs"
     },
     "./editors": {
-      "types": "./dist/browser/editors/index.d.ts",
+      "types": "./dist/editors/index.d.ts",
       "browser": "./dist/browser/editors/index.js",
       "node": "./dist/node/editors/index.mjs"
     },
     "./editors/*": {
-      "types": "./dist/browser/editors/*/editor.d.ts",
+      "types": "./dist/editors/*/editor.d.ts",
       "browser": "./dist/browser/editors/*/editor.js",
       "node": "./dist/node/editors/*/editor.mjs"
     },
     "./subgraphs": {
-      "types": "./dist/browser/subgraphs/index.d.ts",
+      "types": "./dist/subgraphs/index.d.ts",
       "browser": "./dist/browser/subgraphs/index.js",
       "node": "./dist/node/subgraphs/index.mjs"
     },
     "./processors": {
-      "types": "./dist/browser/processors/index.d.ts",
+      "types": "./dist/processors/index.d.ts",
       "browser": "./dist/browser/processors/index.js",
       "node": "./dist/node/processors/index.mjs"
     },
@@ -56,7 +56,7 @@
     "check-circular-imports": "npx dpdm -T ./index.ts",
     "generate": "ph-cli generate",
     "connect": "ph-cli connect",
-    "build": "ph-cli build",
+    "build": "ph-cli build && tsc",
     "reactor": "ph-cli reactor",
     "service": "ph-cli service",
     "vetra": "ph-cli vetra",

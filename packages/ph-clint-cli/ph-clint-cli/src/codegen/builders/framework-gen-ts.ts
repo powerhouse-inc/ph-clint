@@ -19,6 +19,7 @@ import {
   type ClintProjectSpec,
   getAppPackageName,
   getDocumentTypeModuleName,
+  getDocumentTypeSlug,
   phAtLeast,
 } from '../../spec/types.js';
 
@@ -28,14 +29,19 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
   const appPkg = getAppPackageName(spec);
 
   // Collect all (docType, moduleName, importFrom) tuples across packages.
+  // App-package modules are imported from the app barrel which re-exports
+  // bare PascalCase names. External packages use the per-slug deep subpath
+  // (`<pkg>/document-models/<slug>`) so TypeScript can resolve internal
+  // types (e.g. PHState) from stable import paths for declaration emit.
   const entries: { docType: string; name: string; importFrom: string }[] = [];
   for (const pkg of spec.packages) {
-    const importFrom = pkg.packageName === appPkg ? appPkg : pkg.packageName;
+    const isApp = pkg.packageName === appPkg;
     for (const docType of pkg.documentTypes) {
+      const slug = getDocumentTypeSlug(docType);
       entries.push({
         docType,
         name: getDocumentTypeModuleName(docType),
-        importFrom,
+        importFrom: isApp ? appPkg : `${pkg.packageName}/document-models/${slug}`,
       });
     }
   }

@@ -176,6 +176,45 @@ async function patchScopedName(options: PhInitOptions, _appFolder: string, log: 
   await patchAppPackageName(options.appDir, options.spec, log);
 }
 
+/**
+ * Run `ph install <packages> --local --pnpm` in the app directory to register
+ * external packages in `powerhouse.config.json`.
+ */
+export async function runPhInstallPackages(options: {
+  appDir: string;
+  packages: string[];
+  log?: (msg: string) => void;
+  runProcess?: RunProcess;
+}): Promise<boolean> {
+  const { appDir, packages, log = () => {}, runProcess } = options;
+  const binName = 'ph';
+
+  if (!(await hasCommandOnPath(binName))) {
+    log(`Skipping — \`${binName}\` is not on PATH.`);
+    return false;
+  }
+
+  const args = ['install', ...packages, '--local', '--pnpm'];
+  log(
+    `Running \`${binName} install ${packages.join(' ')} --local\` in ${path.basename(appDir)} …`,
+  );
+
+  if (runProcess) {
+    const result = await runProcess(`${binName} ${args.join(' ')}`, {
+      cwd: appDir,
+      timeout: 300_000,
+    });
+    return result.success;
+  }
+
+  const { runCommand } = await import('./exec.js');
+  const result = await runCommand(binName, args, {
+    cwd: appDir,
+    stdio: 'inherit',
+  });
+  return result.exitCode === 0;
+}
+
 export interface PnpmInstallOptions {
   /** Directories to run `pnpm install` in, in order. */
   dirs: string[];
