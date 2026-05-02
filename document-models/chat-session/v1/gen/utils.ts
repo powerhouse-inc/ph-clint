@@ -2,18 +2,33 @@
  * WARNING: DO NOT EDIT
  * This file is auto-generated and updated by codegen
  */
-import type { DocumentModelUtils } from 'document-model';
-import { baseCreateDocument, baseLoadFromInput, baseSaveToFileHandle, defaultBaseState, generateId } from 'document-model';
-import { assertIsChatSessionDocument, assertIsChatSessionState, isChatSessionDocument, isChatSessionState } from './document-schema.js';
-import { chatSessionDocumentType } from './document-type.js';
-import { reducer } from './reducer.js';
-import type { ChatSessionGlobalState, ChatSessionLocalState, ChatSessionPHState } from './types.js';
+import type { DocumentModelUtils } from "document-model";
+import {
+  baseCreateDocument,
+  baseLoadFromInput,
+  baseSaveToFileHandle,
+  defaultBaseState,
+  generateId,
+} from "document-model";
+import {
+  assertIsChatSessionDocument,
+  assertIsChatSessionState,
+  isChatSessionDocument,
+  isChatSessionState,
+} from "./document-schema.js";
+import { chatSessionDocumentType } from "./document-type.js";
+import { reducer } from "./reducer.js";
+import type {
+  ChatSessionGlobalState,
+  ChatSessionLocalState,
+  ChatSessionPHState,
+} from "./types.js";
 
 export const initialGlobalState: ChatSessionGlobalState = {
   threadId: null,
   resourceId: null,
   agent: null,
-  status: 'ACTIVE',
+  status: "ACTIVE",
   startedAt: null,
   endedAt: null,
   messages: [],
@@ -22,7 +37,7 @@ export const initialGlobalState: ChatSessionGlobalState = {
 export const initialLocalState: ChatSessionLocalState = {};
 
 export const utils: DocumentModelUtils<ChatSessionPHState> = {
-  fileExtension: 'chat',
+  fileExtension: "chat",
   createState(state) {
     return {
       ...defaultBaseState(),

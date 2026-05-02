@@ -1,4 +1,4 @@
-import type { ChatSessionSystemOperations } from 'document-models/chat-session/v1';
+import type { ChatSessionSystemOperations } from "document-models/chat-session/v1";
 
 export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   startSessionOperation(state, action) {
@@ -10,7 +10,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       model: action.input.agent.model || null,
       instructions: action.input.agent.instructions || null,
     };
-    state.status = 'ACTIVE';
+    state.status = "ACTIVE";
     state.startedAt = action.input.startedAt;
     state.usage = {
       totalPromptTokens: 0,
@@ -32,16 +32,17 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
     if (action.input.id) state.agent.id = action.input.id;
     if (action.input.name) state.agent.name = action.input.name;
     if (action.input.model) state.agent.model = action.input.model;
-    if (action.input.instructions) state.agent.instructions = action.input.instructions;
+    if (action.input.instructions)
+      state.agent.instructions = action.input.instructions;
   },
   addSystemMessageOperation(state, action) {
     state.messages.push({
       id: action.input.id,
-      role: 'SYSTEM',
+      role: "SYSTEM",
       content: [
         {
-          id: action.input.id + '-text',
-          type: 'TEXT',
+          id: action.input.id + "-text",
+          type: "TEXT",
           text: action.input.text,
           toolCallId: null,
           toolName: null,
@@ -59,7 +60,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       createdAt: action.input.createdAt,
       usage: null,
     });
-    if (state.usage) state.usage.totalMessages = (state.usage.totalMessages ?? 0) + 1;
+    if (state.usage) state.usage.totalMessages += 1;
   },
   updateUsageSummaryOperation(state, action) {
     if (!state.usage) {
@@ -72,11 +73,35 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
         totalToolCalls: 0,
       };
     }
-    if (action.input.totalPromptTokens !== undefined && action.input.totalPromptTokens !== null) state.usage.totalPromptTokens = action.input.totalPromptTokens;
-    if (action.input.totalCompletionTokens !== undefined && action.input.totalCompletionTokens !== null) state.usage.totalCompletionTokens = action.input.totalCompletionTokens;
-    if (action.input.totalTokens !== undefined && action.input.totalTokens !== null) state.usage.totalTokens = action.input.totalTokens;
-    if (action.input.totalSteps !== undefined && action.input.totalSteps !== null) state.usage.totalSteps = action.input.totalSteps;
-    if (action.input.totalMessages !== undefined && action.input.totalMessages !== null) state.usage.totalMessages = action.input.totalMessages;
-    if (action.input.totalToolCalls !== undefined && action.input.totalToolCalls !== null) state.usage.totalToolCalls = action.input.totalToolCalls;
+    if (
+      action.input.totalPromptTokens !== undefined &&
+      action.input.totalPromptTokens !== null
+    )
+      state.usage.totalPromptTokens = action.input.totalPromptTokens;
+    if (
+      action.input.totalCompletionTokens !== undefined &&
+      action.input.totalCompletionTokens !== null
+    )
+      state.usage.totalCompletionTokens = action.input.totalCompletionTokens;
+    if (
+      action.input.totalTokens !== undefined &&
+      action.input.totalTokens !== null
+    )
+      state.usage.totalTokens = action.input.totalTokens;
+    if (
+      action.input.totalSteps !== undefined &&
+      action.input.totalSteps !== null
+    )
+      state.usage.totalSteps = action.input.totalSteps;
+    if (
+      action.input.totalMessages !== undefined &&
+      action.input.totalMessages !== null
+    )
+      state.usage.totalMessages = action.input.totalMessages;
+    if (
+      action.input.totalToolCalls !== undefined &&
+      action.input.totalToolCalls !== null
+    )
+      state.usage.totalToolCalls = action.input.totalToolCalls;
   },
 };

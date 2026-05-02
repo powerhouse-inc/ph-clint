@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import type { Reducer, StateReducer } from 'document-model';
-import { createReducer, isDocumentAction } from 'document-model';
-import type { ChatSessionPHState } from 'document-models/chat-session/v1';
+import type { Reducer, StateReducer } from "document-model";
+import { createReducer, isDocumentAction } from "document-model";
+import type { ChatSessionPHState } from "document-models/chat-session/v1";
 
-import { chatSessionAgentOperations } from '../src/reducers/agent.js';
-import { chatSessionSystemOperations } from '../src/reducers/system.js';
-import { chatSessionToolOperations } from '../src/reducers/tool.js';
-import { chatSessionUserOperations } from '../src/reducers/user.js';
+import { chatSessionAgentOperations } from "../src/reducers/agent.js";
+import { chatSessionSystemOperations } from "../src/reducers/system.js";
+import { chatSessionToolOperations } from "../src/reducers/tool.js";
+import { chatSessionUserOperations } from "../src/reducers/user.js";
 
 import {
   AbortSessionInputSchema,
@@ -24,121 +24,181 @@ import {
   StartSessionInputSchema,
   UpdateAssistantContentInputSchema,
   UpdateUsageSummaryInputSchema,
-} from './schema/zod.js';
+} from "./schema/zod.js";
 
-const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch) => {
+const stateReducer: StateReducer<ChatSessionPHState> = (
+  state,
+  action,
+  dispatch,
+) => {
   if (isDocumentAction(action)) {
     return state;
   }
   switch (action.type) {
-    case 'START_SESSION': {
+    case "START_SESSION": {
       StartSessionInputSchema().parse(action.input);
 
-      chatSessionSystemOperations.startSessionOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionSystemOperations.startSessionOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'END_SESSION': {
+    case "END_SESSION": {
       EndSessionInputSchema().parse(action.input);
 
-      chatSessionSystemOperations.endSessionOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionSystemOperations.endSessionOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'SET_AGENT_INFO': {
+    case "SET_AGENT_INFO": {
       SetAgentInfoInputSchema().parse(action.input);
 
-      chatSessionSystemOperations.setAgentInfoOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionSystemOperations.setAgentInfoOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'ADD_SYSTEM_MESSAGE': {
+    case "ADD_SYSTEM_MESSAGE": {
       AddSystemMessageInputSchema().parse(action.input);
 
-      chatSessionSystemOperations.addSystemMessageOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionSystemOperations.addSystemMessageOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'UPDATE_USAGE_SUMMARY': {
+    case "UPDATE_USAGE_SUMMARY": {
       UpdateUsageSummaryInputSchema().parse(action.input);
 
-      chatSessionSystemOperations.updateUsageSummaryOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionSystemOperations.updateUsageSummaryOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'ADD_USER_MESSAGE': {
+    case "ADD_USER_MESSAGE": {
       AddUserMessageInputSchema().parse(action.input);
 
-      chatSessionUserOperations.addUserMessageOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionUserOperations.addUserMessageOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'DELETE_USER_MESSAGE': {
+    case "DELETE_USER_MESSAGE": {
       DeleteUserMessageInputSchema().parse(action.input);
 
-      chatSessionUserOperations.deleteUserMessageOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionUserOperations.deleteUserMessageOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'ABORT_SESSION': {
+    case "ABORT_SESSION": {
       AbortSessionInputSchema().parse(action.input);
 
-      chatSessionUserOperations.abortSessionOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionUserOperations.abortSessionOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'ADD_ASSISTANT_MESSAGE': {
+    case "ADD_ASSISTANT_MESSAGE": {
       AddAssistantMessageInputSchema().parse(action.input);
 
-      chatSessionAgentOperations.addAssistantMessageOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionAgentOperations.addAssistantMessageOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'APPEND_ASSISTANT_CONTENT': {
+    case "APPEND_ASSISTANT_CONTENT": {
       AppendAssistantContentInputSchema().parse(action.input);
 
-      chatSessionAgentOperations.appendAssistantContentOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionAgentOperations.appendAssistantContentOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'UPDATE_ASSISTANT_CONTENT': {
+    case "UPDATE_ASSISTANT_CONTENT": {
       UpdateAssistantContentInputSchema().parse(action.input);
 
-      chatSessionAgentOperations.updateAssistantContentOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionAgentOperations.updateAssistantContentOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'SET_MESSAGE_USAGE': {
+    case "SET_MESSAGE_USAGE": {
       SetMessageUsageInputSchema().parse(action.input);
 
-      chatSessionAgentOperations.setMessageUsageOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionAgentOperations.setMessageUsageOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'ADD_TOOL_RESULT': {
+    case "ADD_TOOL_RESULT": {
       AddToolResultInputSchema().parse(action.input);
 
-      chatSessionToolOperations.addToolResultOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionToolOperations.addToolResultOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }
 
-    case 'ADD_TOOL_OUTPUT': {
+    case "ADD_TOOL_OUTPUT": {
       AddToolOutputInputSchema().parse(action.input);
 
-      chatSessionToolOperations.addToolOutputOperation((state as any)[action.scope], action as any, dispatch);
+      chatSessionToolOperations.addToolOutputOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
 
       break;
     }

@@ -1,5 +1,8 @@
-import type { ChatSessionUserOperations } from 'document-models/chat-session/v1';
-import { MessageNotFoundError, NotUserMessageError } from '../../gen/user/error.js';
+import type { ChatSessionUserOperations } from "document-models/chat-session/v1";
+import {
+  MessageNotFoundError,
+  NotUserMessageError,
+} from "../../gen/user/error.js";
 
 export const chatSessionUserOperations: ChatSessionUserOperations = {
   addUserMessageOperation(state, action) {
@@ -20,23 +23,29 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
     }));
     state.messages.push({
       id: action.input.id,
-      role: 'USER',
+      role: "USER",
       content: parts,
       stepIndex: null,
       createdAt: action.input.createdAt,
       usage: null,
     });
-    if (state.usage) state.usage.totalMessages = (state.usage.totalMessages ?? 0) + 1;
+    if (state.usage) state.usage.totalMessages += 1;
   },
   deleteUserMessageOperation(state, action) {
-    const idx = state.messages.findIndex((m) => m.id === action.input.messageId);
-    if (idx === -1) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);
-    if (state.messages[idx].role !== 'USER') throw new NotUserMessageError('Can only delete USER messages');
+    const idx = state.messages.findIndex(
+      (m) => m.id === action.input.messageId,
+    );
+    if (idx === -1)
+      throw new MessageNotFoundError(
+        "Message not found: " + action.input.messageId,
+      );
+    if (state.messages[idx].role !== "USER")
+      throw new NotUserMessageError("Can only delete USER messages");
     state.messages.splice(idx, 1);
-    if (state.usage) state.usage.totalMessages = (state.usage.totalMessages ?? 0) - 1;
+    if (state.usage) state.usage.totalMessages -= 1;
   },
   abortSessionOperation(state, action) {
-    state.status = 'ABORTED';
+    state.status = "ABORTED";
     state.endedAt = action.input.endedAt;
   },
 };

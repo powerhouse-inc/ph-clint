@@ -1,2 +1,2 @@
-export { chatSessionUpgradeManifest } from './upgrade-manifest.js';
-export { latestVersion, supportedVersions } from './versions.js';
+export { chatSessionUpgradeManifest } from "./upgrade-manifest.js";
+export { latestVersion, supportedVersions } from "./versions.js";

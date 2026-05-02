@@ -3,17 +3,22 @@
  * This file is auto-generated and updated by codegen
  * Factory methods for creating ChatSessionDocument instances
  */
-import type { PHAuthState, PHBaseState, PHDocumentState } from 'document-model';
-import { createBaseState, defaultBaseState } from 'document-model';
-import type { ChatSessionDocument, ChatSessionGlobalState, ChatSessionLocalState, ChatSessionPHState } from './types.js';
-import { utils } from './utils.js';
+import type { PHAuthState, PHBaseState, PHDocumentState } from "document-model";
+import { createBaseState, defaultBaseState } from "document-model";
+import type {
+  ChatSessionDocument,
+  ChatSessionGlobalState,
+  ChatSessionLocalState,
+  ChatSessionPHState,
+} from "./types.js";
+import { utils } from "./utils.js";
 
 export function defaultGlobalState(): ChatSessionGlobalState {
   return {
     threadId: null,
     resourceId: null,
     agent: null,
-    status: 'ACTIVE',
+    status: "ACTIVE",
     startedAt: null,
     endedAt: null,
     messages: [],
@@ -33,21 +38,29 @@ export function defaultPHState(): ChatSessionPHState {
   };
 }
 
-export function createGlobalState(state?: Partial<ChatSessionGlobalState>): ChatSessionGlobalState {
+export function createGlobalState(
+  state?: Partial<ChatSessionGlobalState>,
+): ChatSessionGlobalState {
   return {
     ...defaultGlobalState(),
     ...(state || {}),
   };
 }
 
-export function createLocalState(state?: Partial<ChatSessionLocalState>): ChatSessionLocalState {
+export function createLocalState(
+  state?: Partial<ChatSessionLocalState>,
+): ChatSessionLocalState {
   return {
     ...defaultLocalState(),
     ...(state || {}),
   } as ChatSessionLocalState;
 }
 
-export function createState(baseState?: Partial<PHBaseState>, globalState?: Partial<ChatSessionGlobalState>, localState?: Partial<ChatSessionLocalState>): ChatSessionPHState {
+export function createState(
+  baseState?: Partial<PHBaseState>,
+  globalState?: Partial<ChatSessionGlobalState>,
+  localState?: Partial<ChatSessionLocalState>,
+): ChatSessionPHState {
   return {
     ...createBaseState(baseState?.auth, baseState?.document),
     global: createGlobalState(globalState),
@@ -68,7 +81,15 @@ export function createChatSessionDocument(
     local?: Partial<ChatSessionLocalState>;
   }>,
 ): ChatSessionDocument {
-  const document = utils.createDocument(state ? createState(createBaseState(state.auth, state.document), state.global, state.local) : undefined);
+  const document = utils.createDocument(
+    state
+      ? createState(
+          createBaseState(state.auth, state.document),
+          state.global,
+          state.local,
+        )
+      : undefined,
+  );
 
   return document;
 }

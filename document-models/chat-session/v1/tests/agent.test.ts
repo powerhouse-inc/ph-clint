@@ -1,4 +1,4 @@
-import { generateMock } from 'document-model';
+import { generateMock } from "document-model";
 import {
   addAssistantMessage,
   AddAssistantMessageInputSchema,
@@ -11,11 +11,11 @@ import {
   updateAssistantContent,
   UpdateAssistantContentInputSchema,
   utils,
-} from 'document-models/chat-session/v1';
-import { describe, expect, it } from 'vitest';
+} from "document-models/chat-session/v1";
+import { describe, expect, it } from "vitest";
 
-describe('AgentOperations', () => {
-  it('should handle addAssistantMessage operation', () => {
+describe("AgentOperations", () => {
+  it("should handle addAssistantMessage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AddAssistantMessageInputSchema());
 
@@ -23,12 +23,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_ASSISTANT_MESSAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_ASSISTANT_MESSAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle appendAssistantContent operation', () => {
+  it("should handle appendAssistantContent operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AppendAssistantContentInputSchema());
 
@@ -36,12 +40,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('APPEND_ASSISTANT_CONTENT');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "APPEND_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle updateAssistantContent operation', () => {
+  it("should handle updateAssistantContent operation", () => {
     const document = utils.createDocument();
     const input = generateMock(UpdateAssistantContentInputSchema());
 
@@ -49,12 +57,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('UPDATE_ASSISTANT_CONTENT');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "UPDATE_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle setMessageUsage operation', () => {
+  it("should handle setMessageUsage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(SetMessageUsageInputSchema());
 
@@ -62,12 +74,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('SET_MESSAGE_USAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "SET_MESSAGE_USAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle addAssistantMessage operation', () => {
+  it("should handle addAssistantMessage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AddAssistantMessageInputSchema());
 
@@ -75,12 +91,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_ASSISTANT_MESSAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_ASSISTANT_MESSAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle appendAssistantContent operation', () => {
+  it("should handle appendAssistantContent operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AppendAssistantContentInputSchema());
 
@@ -88,12 +108,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('APPEND_ASSISTANT_CONTENT');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "APPEND_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle updateAssistantContent operation', () => {
+  it("should handle updateAssistantContent operation", () => {
     const document = utils.createDocument();
     const input = generateMock(UpdateAssistantContentInputSchema());
 
@@ -101,12 +125,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('UPDATE_ASSISTANT_CONTENT');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "UPDATE_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle setMessageUsage operation', () => {
+  it("should handle setMessageUsage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(SetMessageUsageInputSchema());
 
@@ -114,12 +142,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('SET_MESSAGE_USAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "SET_MESSAGE_USAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle addAssistantMessage operation', () => {
+  it("should handle addAssistantMessage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AddAssistantMessageInputSchema());
 
@@ -127,12 +159,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_ASSISTANT_MESSAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_ASSISTANT_MESSAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle appendAssistantContent operation', () => {
+  it("should handle appendAssistantContent operation", () => {
     const document = utils.createDocument();
     const input = generateMock(AppendAssistantContentInputSchema());
 
@@ -140,12 +176,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('APPEND_ASSISTANT_CONTENT');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "APPEND_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle updateAssistantContent operation', () => {
+  it("should handle updateAssistantContent operation", () => {
     const document = utils.createDocument();
     const input = generateMock(UpdateAssistantContentInputSchema());
 
@@ -153,12 +193,16 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('UPDATE_ASSISTANT_CONTENT');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "UPDATE_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('should handle setMessageUsage operation', () => {
+  it("should handle setMessageUsage operation", () => {
     const document = utils.createDocument();
     const input = generateMock(SetMessageUsageInputSchema());
 
@@ -166,8 +210,80 @@ describe('AgentOperations', () => {
 
     expect(isChatSessionDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe('SET_MESSAGE_USAGE');
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "SET_MESSAGE_USAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it("should handle addAssistantMessage operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddAssistantMessageInputSchema());
+
+    const updatedDocument = reducer(document, addAssistantMessage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_ASSISTANT_MESSAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it("should handle appendAssistantContent operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(AppendAssistantContentInputSchema());
+
+    const updatedDocument = reducer(document, appendAssistantContent(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "APPEND_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it("should handle updateAssistantContent operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(UpdateAssistantContentInputSchema());
+
+    const updatedDocument = reducer(document, updateAssistantContent(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "UPDATE_ASSISTANT_CONTENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it("should handle setMessageUsage operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetMessageUsageInputSchema());
+
+    const updatedDocument = reducer(document, setMessageUsage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "SET_MESSAGE_USAGE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });
