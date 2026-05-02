@@ -44,9 +44,9 @@ function needsMigration(from: ClintProjectSpec, to: ClintProjectSpec): boolean {
  * inherit the from-fixture's name.
  */
 function helpPatternsForSpec(spec: ClintProjectSpec): RegExp[] {
-  const patterns: RegExp[] = [/--verbose/, /config/];
+  const patterns: RegExp[] = [/--verbose/];
   if (spec.features.mastra.enabled) {
-    patterns.push(/--resume/);
+    patterns.push(/--resume/, /config/);
   }
   if (spec.features.powerhouse !== 'Disabled') {
     // Switchboard and Connect get --no-api / --no-studio
