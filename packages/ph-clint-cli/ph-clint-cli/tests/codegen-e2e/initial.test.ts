@@ -50,7 +50,6 @@ const HELP_PATTERNS: Record<string, RegExp[]> = {
     /0\.0\.1-dev\.0/,
     /--verbose/,
     /--meta/,
-    /config/,
   ],
   'mastra-demo': [
     /test-mastra-demo/,
@@ -73,7 +72,6 @@ const HELP_PATTERNS: Record<string, RegExp[]> = {
   'reactor-minimal': [
     /test-reactor/,
     /--verbose/,
-    /config/,
   ],
   switchboard: [
     /test-switchboard/,
