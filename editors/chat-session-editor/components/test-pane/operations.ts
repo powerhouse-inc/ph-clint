@@ -26,7 +26,6 @@ export const OPERATIONS: OperationDef[] = [
       { name: 'name', type: 'string', label: 'Name' },
       { name: 'model', type: 'string', label: 'Model' },
       { name: 'id', type: 'string', label: 'ID' },
-      { name: 'instructions', type: 'text', label: 'Instructions' },
       { name: 'description', type: 'text', label: 'Description' },
     ],
   },

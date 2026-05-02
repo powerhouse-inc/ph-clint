@@ -8,7 +8,6 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       id: action.input.agent.id || null,
       name: action.input.agent.name || null,
       model: action.input.agent.model || null,
-      instructions: action.input.agent.instructions || null,
       description: action.input.agent.description || null,
       image: null,
       imageMediaType: null,
@@ -31,12 +30,11 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentInfoOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, instructions: null, description: null, image: null, imageMediaType: null, imageUrl: null };
+      state.agent = { id: null, name: null, model: null, description: null, image: null, imageMediaType: null, imageUrl: null };
     }
     if (action.input.id) state.agent.id = action.input.id;
     if (action.input.name) state.agent.name = action.input.name;
     if (action.input.model) state.agent.model = action.input.model;
-    if (action.input.instructions) state.agent.instructions = action.input.instructions;
     if (action.input.description) state.agent.description = action.input.description;
   },
   addSystemMessageOperation(state, action) {
@@ -86,16 +84,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentImageOperation(state, action) {
     if (!state.agent) {
-      state.agent = {
-        id: null,
-        name: null,
-        model: null,
-        instructions: null,
-        description: null,
-        image: null,
-        imageMediaType: null,
-        imageUrl: null,
-      };
+      state.agent = { id: null, name: null, model: null, description: null, image: null, imageMediaType: null, imageUrl: null };
     }
     state.agent.image = action.input.data || null;
     state.agent.imageMediaType = action.input.mediaType || null;
@@ -103,16 +92,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentDescriptionOperation(state, action) {
     if (!state.agent) {
-      state.agent = {
-        id: null,
-        name: null,
-        model: null,
-        instructions: null,
-        description: null,
-        image: null,
-        imageMediaType: null,
-        imageUrl: null,
-      };
+      state.agent = { id: null, name: null, model: null, description: null, image: null, imageMediaType: null, imageUrl: null };
     }
     state.agent.description = action.input.description;
   },

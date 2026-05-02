@@ -47,7 +47,6 @@ type AgentInfo {
   id: String
   name: String
   model: String
-  instructions: String
   description: String
   image: String
   imageMediaType: String
@@ -111,7 +110,6 @@ input AgentInfoInput {
   id: String
   name: String
   model: String
-  instructions: String
   description: String
 }
 
@@ -126,7 +124,6 @@ input SetAgentInfoInput {
   id: String
   name: String
   model: String
-  instructions: String
   description: String
 }
 

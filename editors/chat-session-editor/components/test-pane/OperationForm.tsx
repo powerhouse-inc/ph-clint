@@ -296,7 +296,6 @@ function AgentInfoFields({ value, onChange }: { value: Record<string, string>; o
       <input className={inputClass} placeholder="name" value={value.name || ''} onChange={(e) => update('name', e.target.value)} />
       <input className={inputClass} placeholder="model" value={value.model || ''} onChange={(e) => update('model', e.target.value)} />
       <input className={inputClass} placeholder="id" value={value.id || ''} onChange={(e) => update('id', e.target.value)} />
-      <textarea className={cn(inputClass, 'min-h-[60px] resize-y')} placeholder="instructions" value={value.instructions || ''} onChange={(e) => update('instructions', e.target.value)} />
       <textarea className={cn(inputClass, 'min-h-[60px] resize-y')} placeholder="description" value={value.description || ''} onChange={(e) => update('description', e.target.value)} />
     </fieldset>
   );

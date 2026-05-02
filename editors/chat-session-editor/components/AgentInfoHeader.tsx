@@ -1,7 +1,6 @@
 import type { AgentInfo } from 'document-models/chat-session';
-import { BotIcon, BrainIcon, BookOpenIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+import { BotIcon, BrainIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { useState } from 'react';
-import { cn } from '../lib/utils.js';
 
 interface AgentInfoHeaderProps {
   agent: AgentInfo | null | undefined;
@@ -9,7 +8,6 @@ interface AgentInfoHeaderProps {
 
 export function AgentInfoHeader({ agent }: AgentInfoHeaderProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
 
   if (!agent) return null;
 
@@ -55,21 +53,10 @@ export function AgentInfoHeader({ agent }: AgentInfoHeaderProps) {
           {agent.id && <span className="text-xs text-muted-foreground font-mono">{agent.id}</span>}
           {agent.description && <p className="text-xs text-muted-foreground mt-1">{agent.description}</p>}
         </div>
-        {agent.instructions && (
-          <button
-            type="button"
-            onClick={() => setShowInstructions(!showInstructions)}
-            className={cn('flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors', showInstructions && 'bg-muted text-foreground')}
-          >
-            <BookOpenIcon className="size-3" />
-            Instructions
-          </button>
-        )}
         <button type="button" onClick={() => setCollapsed(true)} className="flex items-center rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors">
           <ChevronUpIcon className="size-4" />
         </button>
       </div>
-      {showInstructions && agent.instructions && <div className="mt-3 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground whitespace-pre-wrap">{agent.instructions}</div>}
     </div>
   );
 }

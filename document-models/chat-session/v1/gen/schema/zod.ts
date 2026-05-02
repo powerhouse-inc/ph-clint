@@ -107,7 +107,6 @@ export function AgentInfoSchema(): z.ZodObject<Properties<AgentInfo>> {
     image: z.string().nullish(),
     imageMediaType: z.string().nullish(),
     imageUrl: z.url().nullish(),
-    instructions: z.string().nullish(),
     model: z.string().nullish(),
     name: z.string().nullish(),
   });
@@ -117,7 +116,6 @@ export function AgentInfoInputSchema(): z.ZodObject<Properties<AgentInfoInput>> 
   return z.object({
     description: z.string().nullish(),
     id: z.string().nullish(),
-    instructions: z.string().nullish(),
     model: z.string().nullish(),
     name: z.string().nullish(),
   });
@@ -231,7 +229,6 @@ export function SetAgentInfoInputSchema(): z.ZodObject<Properties<SetAgentInfoIn
   return z.object({
     description: z.string().nullish(),
     id: z.string().nullish(),
-    instructions: z.string().nullish(),
     model: z.string().nullish(),
     name: z.string().nullish(),
   });
