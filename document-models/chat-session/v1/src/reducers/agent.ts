@@ -26,7 +26,7 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       id: action.input.id,
       role: "ASSISTANT",
       content: parts,
-      stepIndex: action.input.stepIndex || null,
+      stepIndex: action.input.stepIndex ?? null,
       createdAt: action.input.createdAt,
       usage: null,
     });
@@ -86,9 +86,9 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
         "Message not found: " + action.input.messageId,
       );
     msg.usage = {
-      promptTokens: action.input.promptTokens || null,
-      completionTokens: action.input.completionTokens || null,
-      totalTokens: action.input.totalTokens || null,
+      promptTokens: action.input.promptTokens ?? null,
+      completionTokens: action.input.completionTokens ?? null,
+      totalTokens: action.input.totalTokens ?? null,
     };
   },
 };

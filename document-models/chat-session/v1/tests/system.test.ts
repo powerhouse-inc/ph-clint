@@ -1,359 +1,111 @@
-import { generateMock } from "document-model";
 import {
-  addSystemMessage,
-  AddSystemMessageInputSchema,
-  endSession,
-  EndSessionInputSchema,
-  isChatSessionDocument,
   reducer,
   setAgentInfo,
-  SetAgentInfoInputSchema,
   startSession,
-  StartSessionInputSchema,
   updateUsageSummary,
-  UpdateUsageSummaryInputSchema,
   utils,
 } from "document-models/chat-session/v1";
 import { describe, expect, it } from "vitest";
 
 describe("SystemOperations", () => {
-  it("should handle startSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(StartSessionInputSchema());
-
-    const updatedDocument = reducer(document, startSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "START_SESSION",
+  it("setAgentInfo: partial updates and agent creation branches", () => {
+    // on fresh doc, agent is null — should create it
+    let doc = reducer(
+      utils.createDocument(),
+      setAgentInfo({ name: "TestBot" }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+
+    expect(doc.state.global.agent).toStrictEqual({
+      id: null,
+      name: "TestBot",
+      model: null,
+      instructions: null,
+    });
+
+    // agent already exists — partial update preserves other fields
+    doc = reducer(doc, setAgentInfo({ model: "gpt-4" }));
+
+    expect(doc.state.global.agent).toStrictEqual({
+      id: null,
+      name: "TestBot",
+      model: "gpt-4",
+      instructions: null,
+    });
+
+    // update id specifically
+    doc = reducer(doc, setAgentInfo({ id: "agent-42" }));
+    expect(doc.state.global.agent!.id).toBe("agent-42");
+
+    // all-empty input — no fields change
+    doc = reducer(doc, setAgentInfo({}));
+
+    expect(doc.state.global.agent).toStrictEqual({
+      id: "agent-42",
+      name: "TestBot",
+      model: "gpt-4",
+      instructions: null,
+    });
+
+    // also verify the false branch after startSession sets agent
+    let doc2 = reducer(
+      utils.createDocument(),
+      startSession({
+        threadId: "t",
+        resourceId: "r",
+        startedAt: "2025-01-01T00:00:00Z",
+        agent: { id: "a1", name: "Bot", model: "m1", instructions: "be nice" },
+      }),
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    doc2 = reducer(doc2, setAgentInfo({ instructions: "be helpful" }));
+
+    expect(doc2.state.global.agent).toStrictEqual({
+      id: "a1",
+      name: "Bot",
+      model: "m1",
+      instructions: "be helpful",
+    });
   });
 
-  it("should handle endSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(EndSessionInputSchema());
-
-    const updatedDocument = reducer(document, endSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "END_SESSION",
+  it("updateUsageSummary: creation from null, partial updates, zero values, all-null no-op", () => {
+    // fresh doc has usage: null — should create with zero defaults
+    let doc = reducer(
+      utils.createDocument(),
+      updateUsageSummary({ totalPromptTokens: 100 }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+
+    expect(doc.state.global.usage).toStrictEqual({
+      totalPromptTokens: 100,
+      totalCompletionTokens: 0,
+      totalTokens: 0,
+      totalSteps: 0,
+      totalMessages: 0,
+      totalToolCalls: 0,
+    });
+
+    // partial update — only provided fields change
+    doc = reducer(doc, updateUsageSummary({ totalSteps: 5, totalTokens: 999 }));
+
+    expect(doc.state.global.usage!.totalPromptTokens).toBe(100); // unchanged
+    expect(doc.state.global.usage!.totalSteps).toBe(5);
+    expect(doc.state.global.usage!.totalTokens).toBe(999);
+
+    // explicit 0 overwrites (not skipped)
+    doc = reducer(doc, updateUsageSummary({ totalPromptTokens: 0 }));
+    expect(doc.state.global.usage!.totalPromptTokens).toBe(0);
+
+    // all-null input — nothing changes
+    const before = { ...doc.state.global.usage! };
+    doc = reducer(
+      doc,
+      updateUsageSummary({
+        totalPromptTokens: null,
+        totalCompletionTokens: null,
+        totalTokens: null,
+        totalSteps: null,
+        totalMessages: null,
+        totalToolCalls: null,
+      }),
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setAgentInfo operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentInfoInputSchema());
-
-    const updatedDocument = reducer(document, setAgentInfo(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_INFO",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addSystemMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddSystemMessageInputSchema());
-
-    const updatedDocument = reducer(document, addSystemMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_SYSTEM_MESSAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle updateUsageSummary operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(UpdateUsageSummaryInputSchema());
-
-    const updatedDocument = reducer(document, updateUsageSummary(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "UPDATE_USAGE_SUMMARY",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle startSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(StartSessionInputSchema());
-
-    const updatedDocument = reducer(document, startSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "START_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle endSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(EndSessionInputSchema());
-
-    const updatedDocument = reducer(document, endSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "END_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setAgentInfo operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentInfoInputSchema());
-
-    const updatedDocument = reducer(document, setAgentInfo(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_INFO",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addSystemMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddSystemMessageInputSchema());
-
-    const updatedDocument = reducer(document, addSystemMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_SYSTEM_MESSAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle updateUsageSummary operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(UpdateUsageSummaryInputSchema());
-
-    const updatedDocument = reducer(document, updateUsageSummary(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "UPDATE_USAGE_SUMMARY",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle startSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(StartSessionInputSchema());
-
-    const updatedDocument = reducer(document, startSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "START_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle endSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(EndSessionInputSchema());
-
-    const updatedDocument = reducer(document, endSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "END_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setAgentInfo operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentInfoInputSchema());
-
-    const updatedDocument = reducer(document, setAgentInfo(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_INFO",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addSystemMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddSystemMessageInputSchema());
-
-    const updatedDocument = reducer(document, addSystemMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_SYSTEM_MESSAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle updateUsageSummary operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(UpdateUsageSummaryInputSchema());
-
-    const updatedDocument = reducer(document, updateUsageSummary(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "UPDATE_USAGE_SUMMARY",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle startSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(StartSessionInputSchema());
-
-    const updatedDocument = reducer(document, startSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "START_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle endSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(EndSessionInputSchema());
-
-    const updatedDocument = reducer(document, endSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "END_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setAgentInfo operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentInfoInputSchema());
-
-    const updatedDocument = reducer(document, setAgentInfo(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_INFO",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addSystemMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddSystemMessageInputSchema());
-
-    const updatedDocument = reducer(document, addSystemMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_SYSTEM_MESSAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle updateUsageSummary operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(UpdateUsageSummaryInputSchema());
-
-    const updatedDocument = reducer(document, updateUsageSummary(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "UPDATE_USAGE_SUMMARY",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    expect(doc.state.global.usage).toStrictEqual(before);
   });
 });

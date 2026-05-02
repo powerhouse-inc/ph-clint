@@ -1,219 +1,134 @@
-import { generateMock } from "document-model";
 import {
   abortSession,
-  AbortSessionInputSchema,
+  addAssistantMessage,
+  addToolOutput,
   addUserMessage,
-  AddUserMessageInputSchema,
+  appendAssistantContent,
   deleteUserMessage,
-  DeleteUserMessageInputSchema,
-  isChatSessionDocument,
   reducer,
+  setMessageUsage,
+  startSession,
+  updateAssistantContent,
   utils,
 } from "document-models/chat-session/v1";
 import { describe, expect, it } from "vitest";
 
 describe("UserOperations", () => {
-  it("should handle addUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, addUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_USER_MESSAGE",
+  it("all error paths: MessageNotFound, NotAssistantMessage, ContentPartNotFound, NotUserMessage", () => {
+    // set up: session with one assistant message and one user message
+    let doc = reducer(
+      utils.createDocument(),
+      startSession({
+        threadId: "t",
+        resourceId: "r",
+        startedAt: "2025-01-01T00:00:00Z",
+        agent: { name: "Bot" },
+      }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+    doc = reducer(
+      doc,
+      addAssistantMessage({
+        id: "msg-a",
+        content: [{ id: "part-a", type: "TEXT", text: "hello" }],
+        createdAt: "2025-01-01T00:00:01Z",
+      }),
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle deleteUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(DeleteUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, deleteUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "DELETE_USER_MESSAGE",
+    doc = reducer(
+      doc,
+      addUserMessage({
+        id: "msg-u",
+        content: [{ id: "part-u", type: "TEXT", text: "hi" }],
+        createdAt: "2025-01-01T00:00:02Z",
+      }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+
+    const stateBeforeErrors = doc.state.global;
+    let opIdx = 3; // next operation index
+
+    // 1. appendAssistantContent — nonexistent message
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "nonexistent",
+        part: { id: "x", type: "TEXT", text: "x" },
+      }),
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
+    expect(doc.operations.global[opIdx].error).toContain("Message not found");
 
-  it("should handle abortSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AbortSessionInputSchema());
-
-    const updatedDocument = reducer(document, abortSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ABORT_SESSION",
+    // 2. appendAssistantContent — target is USER message
+    doc = reducer(
+      doc,
+      appendAssistantContent({
+        messageId: "msg-u",
+        part: { id: "x", type: "TEXT", text: "x" },
+      }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "Can only append to ASSISTANT",
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
 
-  it("should handle addUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, addUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_USER_MESSAGE",
+    // 3. updateAssistantContent — valid message, nonexistent part
+    doc = reducer(
+      doc,
+      updateAssistantContent({
+        messageId: "msg-a",
+        partId: "nonexistent",
+        text: "x",
+      }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "Content part not found",
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
 
-  it("should handle deleteUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(DeleteUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, deleteUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "DELETE_USER_MESSAGE",
+    // 4. updateAssistantContent — nonexistent message
+    doc = reducer(
+      doc,
+      updateAssistantContent({
+        messageId: "nonexistent",
+        partId: "x",
+        text: "x",
+      }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+    expect(doc.operations.global[++opIdx].error).toContain("Message not found");
+
+    // 5. setMessageUsage — nonexistent message
+    doc = reducer(doc, setMessageUsage({ messageId: "nonexistent" }));
+    expect(doc.operations.global[++opIdx].error).toContain("Message not found");
+
+    // 6. deleteUserMessage — nonexistent
+    doc = reducer(doc, deleteUserMessage({ messageId: "nonexistent" }));
+    expect(doc.operations.global[++opIdx].error).toContain("Message not found");
+
+    // 7. deleteUserMessage — target is ASSISTANT message
+    doc = reducer(doc, deleteUserMessage({ messageId: "msg-a" }));
+    expect(doc.operations.global[++opIdx].error).toContain(
+      "Can only delete USER",
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
 
-  it("should handle abortSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AbortSessionInputSchema());
-
-    const updatedDocument = reducer(document, abortSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ABORT_SESSION",
+    // 8. addToolOutput — nonexistent message
+    doc = reducer(
+      doc,
+      addToolOutput({
+        messageId: "nonexistent",
+        partId: "x",
+        text: "x",
+        toolCallId: "tc",
+        toolName: "t",
+      }),
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
+    expect(doc.operations.global[++opIdx].error).toContain("Message not found");
+
+    // state unchanged through all errors
+    expect(doc.state.global.messages).toHaveLength(
+      stateBeforeErrors.messages.length,
     );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, addUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_USER_MESSAGE",
+    expect(doc.state.global.messages).toStrictEqual(
+      stateBeforeErrors.messages,
     );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
 
-  it("should handle deleteUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(DeleteUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, deleteUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "DELETE_USER_MESSAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle abortSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AbortSessionInputSchema());
-
-    const updatedDocument = reducer(document, abortSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ABORT_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, addUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_USER_MESSAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle deleteUserMessage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(DeleteUserMessageInputSchema());
-
-    const updatedDocument = reducer(document, deleteUserMessage(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "DELETE_USER_MESSAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle abortSession operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AbortSessionInputSchema());
-
-    const updatedDocument = reducer(document, abortSession(input));
-
-    expect(isChatSessionDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ABORT_SESSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    // abortSession sets status and endedAt
+    doc = reducer(doc, abortSession({ endedAt: "2025-01-01T00:01:00Z" }));
+    expect(doc.state.global.status).toBe("ABORTED");
+    expect(doc.state.global.endedAt).toBe("2025-01-01T00:01:00Z");
   });
 });

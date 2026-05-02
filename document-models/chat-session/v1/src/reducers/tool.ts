@@ -11,7 +11,7 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
       toolName: p.toolName,
       args: null,
       result: p.result || null,
-      isError: p.isError || null,
+      isError: p.isError ?? null,
       mediaType: p.mediaType || null,
       url: p.url || null,
       data: p.data || null,
@@ -22,7 +22,7 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
       id: action.input.id,
       role: "TOOL",
       content: parts,
-      stepIndex: action.input.stepIndex || null,
+      stepIndex: action.input.stepIndex ?? null,
       createdAt: action.input.createdAt,
       usage: null,
     });
