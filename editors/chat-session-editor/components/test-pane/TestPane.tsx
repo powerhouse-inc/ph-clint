@@ -5,6 +5,8 @@ import type { ChatSessionAction } from 'document-models/chat-session';
 import {
   startSession,
   setAgentInfo,
+  setAgentImage,
+  setAgentDescription,
   endSession,
   updateUsageSummary,
   addSystemMessage,
@@ -32,6 +34,8 @@ type ActionCreatorMap = Record<string, (input: any) => ChatSessionAction>;
 const actionCreators: ActionCreatorMap = {
   START_SESSION: startSession,
   SET_AGENT_INFO: setAgentInfo,
+  SET_AGENT_IMAGE: setAgentImage,
+  SET_AGENT_DESCRIPTION: setAgentDescription,
   END_SESSION: endSession,
   UPDATE_USAGE_SUMMARY: updateUsageSummary,
   ADD_SYSTEM_MESSAGE: addSystemMessage,

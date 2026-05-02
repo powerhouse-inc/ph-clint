@@ -26,7 +26,16 @@ export function OperationForm({ operation, onDispatch }: OperationFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onDispatch(values);
+    // Flatten composite fields (e.g. _image → { data, mediaType })
+    const output: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(values)) {
+      if (k.startsWith('_') && v && typeof v === 'object' && !Array.isArray(v)) {
+        Object.assign(output, v);
+      } else if (!k.startsWith('_')) {
+        output[k] = v;
+      }
+    }
+    onDispatch(output);
     setValues(buildDefaults(operation));
   };
 
@@ -44,7 +53,7 @@ export function OperationForm({ operation, onDispatch }: OperationFormProps) {
 
 export interface FieldDef {
   name: string;
-  type: 'string' | 'text' | 'oid' | 'datetime' | 'int' | 'boolean' | 'enum' | 'content-parts' | 'assistant-content-parts' | 'tool-result-parts' | 'agent-info';
+  type: 'string' | 'text' | 'oid' | 'datetime' | 'int' | 'boolean' | 'enum' | 'content-parts' | 'assistant-content-parts' | 'tool-result-parts' | 'agent-info' | 'image-file';
   required?: boolean;
   label?: string;
   enumValues?: readonly string[];
@@ -76,6 +85,9 @@ function buildDefaults(operation: OperationDef): Record<string, unknown> {
         break;
       case 'agent-info':
         defaults[field.name] = { name: '', model: '' };
+        break;
+      case 'image-file':
+        defaults[field.name] = null;
         break;
       default:
         defaults[field.name] = '';
@@ -179,6 +191,9 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
     case 'tool-result-parts':
       return <ContentPartBuilder label={field.label ?? field.name} variant="tool-result" parts={value as ToolResultPartFormData[]} onChange={onChange} />;
 
+    case 'image-file':
+      return <ImageFilePicker label={field.label ?? field.name} value={value as ImageFileValue | null} onChange={onChange} />;
+
     case 'agent-info':
       return <AgentInfoFields value={value as Record<string, string>} onChange={onChange} />;
 
@@ -227,6 +242,47 @@ export interface ToolResultPartFormData {
   data?: string;
 }
 
+interface ImageFileValue {
+  data: string;
+  mediaType: string;
+}
+
+function ImageFilePicker({ label, value, onChange }: { label: string; value: ImageFileValue | null; onChange: (v: unknown) => void }) {
+  const previewSrc = value ? `data:${value.mediaType};base64,${value.data}` : null;
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      onChange({ data: base64, mediaType: file.type });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs file:text-secondary-foreground hover:file:bg-secondary/80"
+      />
+      {previewSrc && (
+        <div className="mt-1 flex items-center gap-2">
+          <img src={previewSrc} alt="preview" className="size-10 rounded-md object-cover border border-border" />
+          <button type="button" onClick={() => onChange(null)} className="text-xs text-destructive hover:underline">
+            Remove
+          </button>
+        </div>
+      )}
+    </label>
+  );
+}
+
 function AgentInfoFields({ value, onChange }: { value: Record<string, string>; onChange: (v: unknown) => void }) {
   const inputClass = 'w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring';
 
@@ -241,6 +297,7 @@ function AgentInfoFields({ value, onChange }: { value: Record<string, string>; o
       <input className={inputClass} placeholder="model" value={value.model || ''} onChange={(e) => update('model', e.target.value)} />
       <input className={inputClass} placeholder="id" value={value.id || ''} onChange={(e) => update('id', e.target.value)} />
       <textarea className={cn(inputClass, 'min-h-[60px] resize-y')} placeholder="instructions" value={value.instructions || ''} onChange={(e) => update('instructions', e.target.value)} />
+      <textarea className={cn(inputClass, 'min-h-[60px] resize-y')} placeholder="description" value={value.description || ''} onChange={(e) => update('description', e.target.value)} />
     </fieldset>
   );
 }

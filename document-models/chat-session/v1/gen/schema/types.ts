@@ -95,13 +95,18 @@ export type AddUserMessageInput = {
 };
 
 export type AgentInfo = {
+  description: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  image: Maybe<Scalars['String']['output']>;
+  imageMediaType: Maybe<Scalars['String']['output']>;
+  imageUrl: Maybe<Scalars['URL']['output']>;
   instructions: Maybe<Scalars['String']['output']>;
   model: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
 };
 
 export type AgentInfoInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
   instructions?: InputMaybe<Scalars['String']['input']>;
   model?: InputMaybe<Scalars['String']['input']>;
@@ -184,7 +189,18 @@ export type MessageUsage = {
 
 export type SessionStatus = 'ABORTED' | 'ACTIVE' | 'COMPLETED' | 'ERROR';
 
+export type SetAgentDescriptionInput = {
+  description: Scalars['String']['input'];
+};
+
+export type SetAgentImageInput = {
+  data?: InputMaybe<Scalars['String']['input']>;
+  mediaType?: InputMaybe<Scalars['String']['input']>;
+  url?: InputMaybe<Scalars['URL']['input']>;
+};
+
 export type SetAgentInfoInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
   instructions?: InputMaybe<Scalars['String']['input']>;
   model?: InputMaybe<Scalars['String']['input']>;

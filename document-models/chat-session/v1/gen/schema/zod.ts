@@ -21,6 +21,8 @@ import type {
   MessageRole,
   MessageUsage,
   SessionStatus,
+  SetAgentDescriptionInput,
+  SetAgentImageInput,
   SetAgentInfoInput,
   SetMessageUsageInput,
   StartSessionInput,
@@ -100,7 +102,11 @@ export function AddUserMessageInputSchema(): z.ZodObject<Properties<AddUserMessa
 export function AgentInfoSchema(): z.ZodObject<Properties<AgentInfo>> {
   return z.object({
     __typename: z.literal('AgentInfo').optional(),
+    description: z.string().nullish(),
     id: z.string().nullish(),
+    image: z.string().nullish(),
+    imageMediaType: z.string().nullish(),
+    imageUrl: z.url().nullish(),
     instructions: z.string().nullish(),
     model: z.string().nullish(),
     name: z.string().nullish(),
@@ -109,6 +115,7 @@ export function AgentInfoSchema(): z.ZodObject<Properties<AgentInfo>> {
 
 export function AgentInfoInputSchema(): z.ZodObject<Properties<AgentInfoInput>> {
   return z.object({
+    description: z.string().nullish(),
     id: z.string().nullish(),
     instructions: z.string().nullish(),
     model: z.string().nullish(),
@@ -206,8 +213,23 @@ export function MessageUsageSchema(): z.ZodObject<Properties<MessageUsage>> {
   });
 }
 
+export function SetAgentDescriptionInputSchema(): z.ZodObject<Properties<SetAgentDescriptionInput>> {
+  return z.object({
+    description: z.string(),
+  });
+}
+
+export function SetAgentImageInputSchema(): z.ZodObject<Properties<SetAgentImageInput>> {
+  return z.object({
+    data: z.string().nullish(),
+    mediaType: z.string().nullish(),
+    url: z.url().nullish(),
+  });
+}
+
 export function SetAgentInfoInputSchema(): z.ZodObject<Properties<SetAgentInfoInput>> {
   return z.object({
+    description: z.string().nullish(),
     id: z.string().nullish(),
     instructions: z.string().nullish(),
     model: z.string().nullish(),

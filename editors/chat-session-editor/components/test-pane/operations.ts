@@ -27,7 +27,18 @@ export const OPERATIONS: OperationDef[] = [
       { name: 'model', type: 'string', label: 'Model' },
       { name: 'id', type: 'string', label: 'ID' },
       { name: 'instructions', type: 'text', label: 'Instructions' },
+      { name: 'description', type: 'text', label: 'Description' },
     ],
+  },
+  {
+    name: 'SET_AGENT_IMAGE',
+    module: 'system',
+    fields: [{ name: '_image', type: 'image-file', label: 'Agent Avatar' }],
+  },
+  {
+    name: 'SET_AGENT_DESCRIPTION',
+    module: 'system',
+    fields: [{ name: 'description', type: 'text', required: true, label: 'Description' }],
   },
   {
     name: 'END_SESSION',

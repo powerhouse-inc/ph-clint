@@ -9,6 +9,10 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       name: action.input.agent.name || null,
       model: action.input.agent.model || null,
       instructions: action.input.agent.instructions || null,
+      description: action.input.agent.description || null,
+      image: null,
+      imageMediaType: null,
+      imageUrl: null,
     };
     state.status = 'ACTIVE';
     state.startedAt = action.input.startedAt;
@@ -27,12 +31,13 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentInfoOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, instructions: null };
+      state.agent = { id: null, name: null, model: null, instructions: null, description: null, image: null, imageMediaType: null, imageUrl: null };
     }
     if (action.input.id) state.agent.id = action.input.id;
     if (action.input.name) state.agent.name = action.input.name;
     if (action.input.model) state.agent.model = action.input.model;
     if (action.input.instructions) state.agent.instructions = action.input.instructions;
+    if (action.input.description) state.agent.description = action.input.description;
   },
   addSystemMessageOperation(state, action) {
     state.messages.push({
@@ -78,5 +83,37 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
     if (action.input.totalSteps !== undefined && action.input.totalSteps !== null) state.usage.totalSteps = action.input.totalSteps;
     if (action.input.totalMessages !== undefined && action.input.totalMessages !== null) state.usage.totalMessages = action.input.totalMessages;
     if (action.input.totalToolCalls !== undefined && action.input.totalToolCalls !== null) state.usage.totalToolCalls = action.input.totalToolCalls;
+  },
+  setAgentImageOperation(state, action) {
+    if (!state.agent) {
+      state.agent = {
+        id: null,
+        name: null,
+        model: null,
+        instructions: null,
+        description: null,
+        image: null,
+        imageMediaType: null,
+        imageUrl: null,
+      };
+    }
+    state.agent.image = action.input.data || null;
+    state.agent.imageMediaType = action.input.mediaType || null;
+    state.agent.imageUrl = action.input.url || null;
+  },
+  setAgentDescriptionOperation(state, action) {
+    if (!state.agent) {
+      state.agent = {
+        id: null,
+        name: null,
+        model: null,
+        instructions: null,
+        description: null,
+        image: null,
+        imageMediaType: null,
+        imageUrl: null,
+      };
+    }
+    state.agent.description = action.input.description;
   },
 };

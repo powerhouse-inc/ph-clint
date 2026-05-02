@@ -15,8 +15,8 @@
 	"apps": [],
 	"editors": [
 		{
-			"name": "chat-session-editor",
 			"id": "chat-session-editor",
+			"name": "chat-session-editor",
 			"documentTypes": [
 				"powerhouse/chat-session"
 			]

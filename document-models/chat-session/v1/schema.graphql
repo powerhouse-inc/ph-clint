@@ -48,6 +48,10 @@ type AgentInfo {
   name: String
   model: String
   instructions: String
+  description: String
+  image: String
+  imageMediaType: String
+  imageUrl: URL
 }
 
 type MessageUsage {
@@ -108,6 +112,7 @@ input AgentInfoInput {
   name: String
   model: String
   instructions: String
+  description: String
 }
 
 input StartSessionInput {
@@ -122,6 +127,7 @@ input SetAgentInfoInput {
   name: String
   model: String
   instructions: String
+  description: String
 }
 
 input EndSessionInput {
@@ -142,6 +148,16 @@ input AddSystemMessageInput {
   id: OID!
   text: String!
   createdAt: DateTime!
+}
+
+input SetAgentImageInput {
+  data: String
+  mediaType: String
+  url: URL
+}
+
+input SetAgentDescriptionInput {
+  description: String!
 }
 
 # user

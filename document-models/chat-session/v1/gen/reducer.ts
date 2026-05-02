@@ -19,6 +19,8 @@ import {
   AppendAssistantContentInputSchema,
   DeleteUserMessageInputSchema,
   EndSessionInputSchema,
+  SetAgentDescriptionInputSchema,
+  SetAgentImageInputSchema,
   SetAgentInfoInputSchema,
   SetMessageUsageInputSchema,
   StartSessionInputSchema,
@@ -67,6 +69,22 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
       AddSystemMessageInputSchema().parse(action.input);
 
       chatSessionSystemOperations.addSystemMessageOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_AGENT_IMAGE': {
+      SetAgentImageInputSchema().parse(action.input);
+
+      chatSessionSystemOperations.setAgentImageOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_AGENT_DESCRIPTION': {
+      SetAgentDescriptionInputSchema().parse(action.input);
+
+      chatSessionSystemOperations.setAgentDescriptionOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
