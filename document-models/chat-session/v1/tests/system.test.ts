@@ -1,58 +1,49 @@
-import {
-  reducer,
-  setAgentInfo,
-  startSession,
-  updateUsageSummary,
-  utils,
-} from "document-models/chat-session/v1";
-import { describe, expect, it } from "vitest";
+import { reducer, setAgentInfo, startSession, updateUsageSummary, utils } from 'document-models/chat-session/v1';
+import { describe, expect, it } from 'vitest';
 
-describe("SystemOperations", () => {
-  it("setAgentInfo: partial updates and agent creation branches", () => {
+describe('SystemOperations', () => {
+  it('setAgentInfo: partial updates and agent creation branches', () => {
     // on fresh doc, agent is null — should create it
-    let doc = reducer(
-      utils.createDocument(),
-      setAgentInfo({ name: "TestBot" }),
-    );
+    let doc = reducer(utils.createDocument(), setAgentInfo({ name: 'TestBot' }));
 
     expect(doc.state.global.agent).toStrictEqual({
       id: null,
-      name: "TestBot",
+      name: 'TestBot',
       model: null,
       instructions: null,
     });
 
     // agent already exists — partial update preserves other fields
-    doc = reducer(doc, setAgentInfo({ model: "gpt-4" }));
+    doc = reducer(doc, setAgentInfo({ model: 'gpt-4' }));
 
     expect(doc.state.global.agent).toStrictEqual({
       id: null,
-      name: "TestBot",
-      model: "gpt-4",
+      name: 'TestBot',
+      model: 'gpt-4',
       instructions: null,
     });
 
     // update id specifically
-    doc = reducer(doc, setAgentInfo({ id: "agent-42" }));
-    expect(doc.state.global.agent!.id).toBe("agent-42");
+    doc = reducer(doc, setAgentInfo({ id: 'agent-42' }));
+    expect(doc.state.global.agent!.id).toBe('agent-42');
 
     // all-empty input — no fields change
     doc = reducer(doc, setAgentInfo({}));
 
     expect(doc.state.global.agent).toStrictEqual({
-      id: "agent-42",
-      name: "TestBot",
-      model: "gpt-4",
+      id: 'agent-42',
+      name: 'TestBot',
+      model: 'gpt-4',
       instructions: null,
     });
 
     // startSession with minimal agent — all fields default to null
-    let doc3 = reducer(
+    const doc3 = reducer(
       utils.createDocument(),
       startSession({
-        threadId: "t2",
-        resourceId: "r2",
-        startedAt: "2025-01-01T00:00:00Z",
+        threadId: 't2',
+        resourceId: 'r2',
+        startedAt: '2025-01-01T00:00:00Z',
         agent: {},
       }),
     );
@@ -67,28 +58,25 @@ describe("SystemOperations", () => {
     let doc2 = reducer(
       utils.createDocument(),
       startSession({
-        threadId: "t",
-        resourceId: "r",
-        startedAt: "2025-01-01T00:00:00Z",
-        agent: { id: "a1", name: "Bot", model: "m1", instructions: "be nice" },
+        threadId: 't',
+        resourceId: 'r',
+        startedAt: '2025-01-01T00:00:00Z',
+        agent: { id: 'a1', name: 'Bot', model: 'm1', instructions: 'be nice' },
       }),
     );
-    doc2 = reducer(doc2, setAgentInfo({ instructions: "be helpful" }));
+    doc2 = reducer(doc2, setAgentInfo({ instructions: 'be helpful' }));
 
     expect(doc2.state.global.agent).toStrictEqual({
-      id: "a1",
-      name: "Bot",
-      model: "m1",
-      instructions: "be helpful",
+      id: 'a1',
+      name: 'Bot',
+      model: 'm1',
+      instructions: 'be helpful',
     });
   });
 
-  it("updateUsageSummary: creation from null, partial updates, zero values, all-null no-op", () => {
+  it('updateUsageSummary: creation from null, partial updates, zero values, all-null no-op', () => {
     // fresh doc has usage: null — should create with zero defaults
-    let doc = reducer(
-      utils.createDocument(),
-      updateUsageSummary({ totalPromptTokens: 100 }),
-    );
+    let doc = reducer(utils.createDocument(), updateUsageSummary({ totalPromptTokens: 100 }));
 
     expect(doc.state.global.usage).toStrictEqual({
       totalPromptTokens: 100,

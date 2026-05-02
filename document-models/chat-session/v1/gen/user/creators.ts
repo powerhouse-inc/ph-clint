@@ -2,46 +2,13 @@
  * WARNING: DO NOT EDIT
  * This file is auto-generated and updated by codegen
  */
-import { createAction } from "document-model";
-import {
-  AbortSessionInputSchema,
-  AddUserMessageInputSchema,
-  DeleteUserMessageInputSchema,
-} from "../schema/zod.js";
-import type {
-  AbortSessionInput,
-  AddUserMessageInput,
-  DeleteUserMessageInput,
-} from "../types.js";
-import type {
-  AbortSessionAction,
-  AddUserMessageAction,
-  DeleteUserMessageAction,
-} from "./actions.js";
+import { createAction } from 'document-model';
+import { AbortSessionInputSchema, AddUserMessageInputSchema, DeleteUserMessageInputSchema } from '../schema/zod.js';
+import type { AbortSessionInput, AddUserMessageInput, DeleteUserMessageInput } from '../types.js';
+import type { AbortSessionAction, AddUserMessageAction, DeleteUserMessageAction } from './actions.js';
 
-export const addUserMessage = (input: AddUserMessageInput) =>
-  createAction<AddUserMessageAction>(
-    "ADD_USER_MESSAGE",
-    { ...input },
-    undefined,
-    AddUserMessageInputSchema,
-    "global",
-  );
+export const addUserMessage = (input: AddUserMessageInput) => createAction<AddUserMessageAction>('ADD_USER_MESSAGE', { ...input }, undefined, AddUserMessageInputSchema, 'global');
 
-export const deleteUserMessage = (input: DeleteUserMessageInput) =>
-  createAction<DeleteUserMessageAction>(
-    "DELETE_USER_MESSAGE",
-    { ...input },
-    undefined,
-    DeleteUserMessageInputSchema,
-    "global",
-  );
+export const deleteUserMessage = (input: DeleteUserMessageInput) => createAction<DeleteUserMessageAction>('DELETE_USER_MESSAGE', { ...input }, undefined, DeleteUserMessageInputSchema, 'global');
 
-export const abortSession = (input: AbortSessionInput) =>
-  createAction<AbortSessionAction>(
-    "ABORT_SESSION",
-    { ...input },
-    undefined,
-    AbortSessionInputSchema,
-    "global",
-  );
+export const abortSession = (input: AbortSessionInput) => createAction<AbortSessionAction>('ABORT_SESSION', { ...input }, undefined, AbortSessionInputSchema, 'global');
