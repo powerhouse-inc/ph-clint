@@ -19,6 +19,7 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 export type ToolHeaderProps = {
   title?: string;
   className?: string;
+  preview?: string;
 } & (
   | { type: ToolUIPart['type']; state: ToolUIPart['state']; toolName?: never }
   | {
@@ -55,17 +56,18 @@ export const getStatusBadge = (status: ToolPart['state']) => (
   </Badge>
 );
 
-export const ToolHeader = ({ className, title, type, state, toolName, ...props }: ToolHeaderProps) => {
+export const ToolHeader = ({ className, title, type, state, toolName, preview, ...props }: ToolHeaderProps) => {
   const derivedName = type === 'dynamic-tool' ? toolName : type.split('-').slice(1).join('-');
 
   return (
     <CollapsibleTrigger className={cn('flex w-full items-center justify-between gap-4 p-3', className)} {...props}>
-      <div className="flex items-center gap-2">
-        <WrenchIcon className="size-4 text-muted-foreground" />
-        <span className="font-medium text-sm">{title ?? derivedName}</span>
+      <div className="flex items-center gap-2 min-w-0">
+        <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="font-medium text-sm shrink-0">{title ?? derivedName}</span>
         {getStatusBadge(state)}
+        {preview && <span className="truncate text-xs text-muted-foreground max-w-[200px] group-data-[state=open]:hidden">{preview}</span>}
       </div>
-      <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+      <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
     </CollapsibleTrigger>
   );
 };

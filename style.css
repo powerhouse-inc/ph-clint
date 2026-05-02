@@ -99,6 +99,28 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  /* Override Tailwind @theme color variables for embedded dark mode.
+     @theme inline resolves var(--background) at :root scope, so .dark
+     overrides of --background don't cascade to --color-background. */
+  --color-background: oklch(0.145 0 0);
+  --color-foreground: oklch(0.985 0 0);
+  --color-card: oklch(0.145 0 0);
+  --color-card-foreground: oklch(0.985 0 0);
+  --color-popover: oklch(0.145 0 0);
+  --color-popover-foreground: oklch(0.985 0 0);
+  --color-primary: oklch(0.985 0 0);
+  --color-primary-foreground: oklch(0.205 0 0);
+  --color-secondary: oklch(0.269 0 0);
+  --color-secondary-foreground: oklch(0.985 0 0);
+  --color-muted: oklch(0.269 0 0);
+  --color-muted-foreground: oklch(0.708 0 0);
+  --color-accent: oklch(0.269 0 0);
+  --color-accent-foreground: oklch(0.985 0 0);
+  --color-destructive: oklch(0.396 0.141 25.723);
+  --color-destructive-foreground: oklch(0.637 0.237 25.331);
+  --color-border: oklch(0.269 0 0);
+  --color-input: oklch(0.269 0 0);
+  --color-ring: oklch(0.439 0 0);
 }
 
 @layer base {
@@ -108,4 +130,84 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Fix Streamdown code block layout: the actions overlay row uses -mt-10 to
+   overlap the language label, but in flex-col it still occupies flow space,
+   creating a visible blank row. Make the wrapper relative and position the
+   actions absolutely so they overlay without affecting layout. */
+.rounded-xl.bg-sidebar.flex-col {
+  position: relative;
+}
+.rounded-xl.bg-sidebar.flex-col > .sticky.-mt-10 {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  margin-top: 0;
+}
+
+/* Force Streamdown / markdown elements inside .dark to inherit theme colors
+   instead of using the library's hardcoded light-mode values. */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark p,
+.dark li,
+.dark td,
+.dark th,
+.dark blockquote,
+.dark figcaption,
+.dark strong,
+.dark em,
+.dark code:not(pre code),
+.dark span {
+  color: inherit;
+}
+
+/* Override DocumentToolbar's hardcoded light-mode colors in dark mode.
+   The component uses bg-slate-50, bg-white, border-gray-200, text-gray-500/900. */
+.dark .bg-slate-50 {
+  background-color: oklch(0.205 0 0) !important;
+}
+.dark .bg-slate-50 .bg-white {
+  background-color: oklch(0.269 0 0) !important;
+}
+.dark .bg-slate-50 .border-gray-200 {
+  border-color: oklch(0.371 0 0) !important;
+}
+.dark .bg-slate-50 .text-gray-500 {
+  color: oklch(0.708 0 0) !important;
+}
+.dark .bg-slate-50 .text-gray-900 {
+  color: oklch(0.985 0 0) !important;
+}
+.dark .bg-slate-50.border-gray-200 {
+  border-color: oklch(0.371 0 0) !important;
+}
+
+/* Allow horizontal scroll in the attachment gallery despite InputGroup's overflow-hidden */
+[data-slot='input-group']:has(.chat-attachment-gallery) {
+  overflow: visible;
+}
+
+/* Dark scrollbar for dark mode */
+.dark * {
+  scrollbar-color: oklch(0.4 0 0) transparent;
+}
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0 0);
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0);
 }

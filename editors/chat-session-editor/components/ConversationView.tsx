@@ -22,13 +22,32 @@ export function ConversationView({ messages }: ConversationViewProps) {
     return map;
   }, [messages]);
 
+  const visibleMessages = useMemo(() => {
+    const ids = new Set<string>();
+    for (const msg of messages) {
+      if (msg.role !== 'ASSISTANT') continue;
+      for (const part of msg.content) {
+        if (part.type === 'TOOL_CALL' && part.toolCallId) {
+          ids.add(part.toolCallId);
+        }
+      }
+    }
+
+    const visible = messages.filter((msg) => {
+      if (msg.role !== 'TOOL') return true;
+      return !msg.content.every((part) => part.toolCallId && ids.has(part.toolCallId));
+    });
+
+    return visible;
+  }, [messages]);
+
   return (
     <Conversation className="flex-1">
-      <ConversationContent>
-        {messages.length === 0 ? (
-          <ConversationEmptyState title="No messages yet" description="Use the Test Pane to dispatch operations and build a conversation" icon={<MessageSquareIcon className="size-8" />} />
+      <ConversationContent className="mx-auto max-w-[1100px]">
+        {visibleMessages.length === 0 ? (
+          <ConversationEmptyState title="No messages yet" description="Type a message below to start the conversation" icon={<MessageSquareIcon className="size-8" />} />
         ) : (
-          messages.map((message) => <MessageBubble key={message.id} message={message} toolResultMap={toolResultMap} />)
+          visibleMessages.map((message) => <MessageBubble key={message.id} message={message} toolResultMap={toolResultMap} />)
         )}
       </ConversationContent>
       <ConversationScrollButton />

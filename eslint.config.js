@@ -8,7 +8,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 /** These files are typically ignored by eslint by default, so there is no need to investigate why they are ignored. */
-const ignoredFiles = ['**/node_modules/', '**/dist/', '**/.ph/', '**/storybook-static/', '**/.vite/'];
+const ignoredFiles = ['**/node_modules/', '**/dist/', '**/.ph/', '**/storybook-static/', '**/.vite/', '**/.playwright-cli/'];
 
 /** Global configs for eslint ignores */
 const ignored = globalIgnores(ignoredFiles);
