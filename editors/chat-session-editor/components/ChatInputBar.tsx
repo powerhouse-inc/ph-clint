@@ -2,10 +2,21 @@ import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, UserContentPartInput } from 'document-models/chat-session';
 import { addUserMessage } from 'document-models/chat-session';
 import { generateId } from 'document-model';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type MutableRefObject } from 'react';
 import type { PromptInputMessage } from './ai-elements/prompt-input.js';
 import { PromptInput, PromptInputTextarea, PromptInputFooter, PromptInputSubmit, usePromptInputAttachments } from './ai-elements/prompt-input.js';
 import { FileIcon, ImageIcon, XIcon } from 'lucide-react';
+
+function DropBridge({ addFilesRef }: { addFilesRef?: MutableRefObject<((files: FileList) => void) | null> }) {
+  const { add } = usePromptInputAttachments();
+  useEffect(() => {
+    if (addFilesRef) addFilesRef.current = add;
+    return () => {
+      if (addFilesRef) addFilesRef.current = null;
+    };
+  }, [add, addFilesRef]);
+  return null;
+}
 
 function AttachButton({ disabled }: { disabled?: boolean }) {
   const attachments = usePromptInputAttachments();
@@ -79,9 +90,10 @@ function AttachmentPreviews() {
 interface ChatInputBarProps {
   dispatch: DocumentDispatch<ChatSessionAction>;
   disabled?: boolean;
+  addFilesRef?: MutableRefObject<((files: FileList) => void) | null>;
 }
 
-export function ChatInputBar({ dispatch, disabled }: ChatInputBarProps) {
+export function ChatInputBar({ dispatch, disabled, addFilesRef }: ChatInputBarProps) {
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       const text = message.text.trim();
@@ -134,6 +146,7 @@ export function ChatInputBar({ dispatch, disabled }: ChatInputBarProps) {
   return (
     <div className="shrink-0 border-t border-border bg-background px-4 py-3">
       <PromptInput onSubmit={handleSubmit} multiple className="mx-auto max-w-[1100px]">
+        <DropBridge addFilesRef={addFilesRef} />
         <PromptInputTextarea disabled={disabled} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
         <AttachmentPreviews />
         <PromptInputFooter>
