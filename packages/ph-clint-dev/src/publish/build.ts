@@ -16,7 +16,7 @@ function runInPackage(
   return new Promise((resolve, reject) => {
     const proc = spawn(cmd, args, {
       cwd: pkg.absPath,
-      stdio: verbose ? 'inherit' : 'pipe',
+      stdio: verbose ? 'inherit' : ['ignore', 'ignore', 'pipe'],
       shell: false,
     });
 

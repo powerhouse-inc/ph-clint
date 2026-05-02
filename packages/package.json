@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "install": "pnpm --prefix ph-clint install && pnpm --prefix ph-clint-dev install && pnpm --prefix ph-clint-cli/ph-clint-app install && pnpm --prefix ph-clint-cli/ph-clint-cli install",
-    "build": "pnpm --prefix ph-clint build && pnpm --prefix ph-clint-dev build && pnpm --prefix ph-clint-cli/ph-clint-app build && pnpm --prefix ph-clint-cli/ph-clint-cli build",
-    "test": "pnpm --prefix ph-clint test && pnpm --prefix ph-clint-dev test && pnpm --prefix ph-clint-cli/ph-clint-app test && pnpm --prefix ph-clint-cli/ph-clint-cli test",
+    "install": "pnpm --prefix ph-clint install && pnpm --prefix ph-clint-dev install && pnpm --prefix ph-clint-cli/ph-clint-app install && pnpm --prefix ph-clint-cli/ph-clint-cli install && pnpm --prefix clint-common install",
+    "build": "pnpm --prefix ph-clint build && pnpm --prefix ph-clint-dev build && pnpm --prefix ph-clint-cli/ph-clint-app build && pnpm --prefix ph-clint-cli/ph-clint-cli build && pnpm --prefix clint-common build",
+    "test": "pnpm --prefix ph-clint test && pnpm --prefix ph-clint-dev test && pnpm --prefix ph-clint-cli/ph-clint-app test && pnpm --prefix ph-clint-cli/ph-clint-cli test && pnpm --prefix clint-common test",
     "publish:dev": "tsx ph-clint-dev/src/publish-cli.ts dev -c ./publish.config.js",
     "publish:staging": "tsx ph-clint-dev/src/publish-cli.ts staging -c ./publish.config.js",
     "publish:production": "tsx ph-clint-dev/src/publish-cli.ts production -c ./publish.config.js"
