@@ -13,6 +13,7 @@ import {
   ReorderProfilesInputSchema,
   SetAgentDescriptionInputSchema,
   SetAgentImageInputSchema,
+  ClearAgentImageInputSchema,
 } from "../schema/zod.js";
 import type {
   EnableMastraInput,
@@ -28,6 +29,7 @@ import type {
   ReorderProfilesInput,
   SetAgentDescriptionInput,
   SetAgentImageInput,
+  ClearAgentImageInput,
 } from "../types.js";
 import type {
   EnableMastraAction,
@@ -43,6 +45,7 @@ import type {
   ReorderProfilesAction,
   SetAgentDescriptionAction,
   SetAgentImageAction,
+  ClearAgentImageAction,
 } from "./actions.js";
 
 export const enableMastra = (input: EnableMastraInput) =>
@@ -159,5 +162,14 @@ export const setAgentImage = (input: SetAgentImageInput) =>
     { ...input },
     undefined,
     SetAgentImageInputSchema,
+    "global",
+  );
+
+export const clearAgentImage = (input: ClearAgentImageInput) =>
+  createAction<ClearAgentImageAction>(
+    "CLEAR_AGENT_IMAGE",
+    { ...input },
+    undefined,
+    ClearAgentImageInputSchema,
     "global",
   );

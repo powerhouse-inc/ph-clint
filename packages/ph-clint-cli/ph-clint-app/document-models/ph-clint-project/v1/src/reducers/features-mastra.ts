@@ -8,6 +8,7 @@ import {
   InvalidProfileIdError,
   DuplicateProfileError,
   ProfileNotFoundError,
+  InvalidAgentImageError,
 } from "../../gen/features-mastra/error.js";
 import type { PhClintProjectFeaturesMastraOperations } from "document-models/ph-clint-project/v1";
 
@@ -26,6 +27,19 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
       state.features.mastra.enabled = true;
       state.features.mastra.agentId = action.input.agentId;
       state.features.mastra.agentName = trimmedName;
+      if (state.features.mastra.models.length === 0) {
+        state.features.mastra.models.push({
+          id: "clint/demo-agent",
+          isDefault: true,
+        });
+      }
+      if (state.features.mastra.profiles.length === 0) {
+        state.features.mastra.profiles.push({
+          id: "base",
+          title: "Base Profile",
+          content: "You are a helpful assistant",
+        });
+      }
     },
     disableMastraOperation(state) {
       state.features.mastra.enabled = false;
@@ -237,6 +251,19 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
           "Cannot set agent image when Mastra is disabled.",
         );
       }
+      if (!/^data:[a-z]+\/[a-z0-9.+-]+;base64,/.test(action.input.image)) {
+        throw new InvalidAgentImageError(
+          "Invalid image: must be a data URL (data:<mime>;base64,...)",
+        );
+      }
       state.features.mastra.agentImage = action.input.image;
+    },
+    clearAgentImageOperation(state, action) {
+      if (!state.features.mastra.enabled) {
+        throw new MastraNotEnabledError(
+          "Cannot clear agent image when Mastra is disabled.",
+        );
+      }
+      state.features.mastra.agentImage = null;
     },
   };

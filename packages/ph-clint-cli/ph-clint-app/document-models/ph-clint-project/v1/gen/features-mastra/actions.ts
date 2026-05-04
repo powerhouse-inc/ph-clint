@@ -13,6 +13,7 @@ import type {
   ReorderProfilesInput,
   SetAgentDescriptionInput,
   SetAgentImageInput,
+  ClearAgentImageInput,
 } from "../types.js";
 
 export type EnableMastraAction = Action & {
@@ -67,6 +68,10 @@ export type SetAgentImageAction = Action & {
   type: "SET_AGENT_IMAGE";
   input: SetAgentImageInput;
 };
+export type ClearAgentImageAction = Action & {
+  type: "CLEAR_AGENT_IMAGE";
+  input: ClearAgentImageInput;
+};
 
 export type PhClintProjectFeaturesMastraAction =
   | EnableMastraAction
@@ -81,4 +86,5 @@ export type PhClintProjectFeaturesMastraAction =
   | RemoveProfileAction
   | ReorderProfilesAction
   | SetAgentDescriptionAction
-  | SetAgentImageAction;
+  | SetAgentImageAction
+  | ClearAgentImageAction;

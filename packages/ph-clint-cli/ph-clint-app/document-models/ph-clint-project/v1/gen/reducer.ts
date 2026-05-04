@@ -32,6 +32,7 @@ import {
   ReorderProfilesInputSchema,
   SetAgentDescriptionInputSchema,
   SetAgentImageInputSchema,
+  ClearAgentImageInputSchema,
   EnableRoutineInputSchema,
   DisableRoutineInputSchema,
   AddPowerhousePackageInputSchema,
@@ -259,6 +260,18 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (
       SetAgentImageInputSchema().parse(action.input);
 
       phClintProjectFeaturesMastraOperations.setAgentImageOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
+
+      break;
+    }
+
+    case "CLEAR_AGENT_IMAGE": {
+      ClearAgentImageInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.clearAgentImageOperation(
         (state as any)[action.scope],
         action as any,
         dispatch,

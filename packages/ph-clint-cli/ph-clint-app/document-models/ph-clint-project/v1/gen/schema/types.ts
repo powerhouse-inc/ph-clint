@@ -95,6 +95,10 @@ export type BumpVersionInput = {
   version: Scalars["String"]["input"];
 };
 
+export type ClearAgentImageInput = {
+  _?: InputMaybe<Scalars["Boolean"]["input"]>;
+};
+
 export type DisableMastraInput = {
   _?: InputMaybe<Scalars["Boolean"]["input"]>;
 };
@@ -183,7 +187,7 @@ export type PhClintFeatures = {
 export type PhClintMastraFeature = {
   agentDescription: Maybe<Scalars["String"]["output"]>;
   agentId: Maybe<Scalars["String"]["output"]>;
-  agentImage: Maybe<Scalars["URL"]["output"]>;
+  agentImage: Maybe<Scalars["String"]["output"]>;
   agentName: Maybe<Scalars["String"]["output"]>;
   enabled: Scalars["Boolean"]["output"];
   models: Array<PhClintAgentModel>;
@@ -286,7 +290,7 @@ export type SetAgentIdInput = {
 };
 
 export type SetAgentImageInput = {
-  image: Scalars["URL"]["input"];
+  image: Scalars["String"]["input"];
 };
 
 export type SetAgentNameInput = {

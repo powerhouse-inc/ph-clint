@@ -13,6 +13,7 @@ import type {
   ReorderProfilesAction,
   SetAgentDescriptionAction,
   SetAgentImageAction,
+  ClearAgentImageAction,
 } from "./actions.js";
 import type { PhClintProjectState } from "../types.js";
 
@@ -80,6 +81,11 @@ export interface PhClintProjectFeaturesMastraOperations {
   setAgentImageOperation: (
     state: PhClintProjectState,
     action: SetAgentImageAction,
+    dispatch?: SignalDispatch,
+  ) => void;
+  clearAgentImageOperation: (
+    state: PhClintProjectState,
+    action: ClearAgentImageAction,
     dispatch?: SignalDispatch,
   ) => void;
 }

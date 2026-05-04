@@ -20,7 +20,7 @@ export const documentModel: DocumentModelGlobalState = {
         },
         global: {
           schema:
-            "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n  version: String\n  managed: Boolean!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}",
+            "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: String\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n  version: String\n  managed: Boolean!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}",
           examples: [],
           initialValue:
             '{\n  "name": null,\n  "scope": null,\n  "version": "0.1.0",\n  "description": "",\n  "features": {\n    "powerhouse": "Disabled",\n    "mastra": {\n      "enabled": false,\n      "agentId": null,\n      "agentName": null,\n      "agentDescription": null,\n      "agentImage": null,\n      "models": [],\n      "profiles": []\n    },\n    "routine": { "enabled": false }\n  },\n  "packages": [],\n  "externalSkills": [],\n  "publishHistory": [],\n  "deployment": {\n    "proxyEnabled": false,\n    "supportedResources": [\n      "vetra-agent-s",\n      "vetra-agent-m",\n      "vetra-agent-l",\n      "vetra-agent-xl",\n      "vetra-agent-xxl"\n    ]\n  }\n}',
@@ -141,7 +141,7 @@ export const documentModel: DocumentModelGlobalState = {
               template:
                 "Enable the Mastra agent feature. Mastra and Routine are orthogonal \u2014 enable Routine separately if needed. Idempotent.",
               reducer:
-                "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(`Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`);\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nstate.features.mastra.agentId = action.input.agentId;\nstate.features.mastra.agentName = trimmedName;",
+                "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(\n    `Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`,\n  );\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nstate.features.mastra.agentId = action.input.agentId;\nstate.features.mastra.agentName = trimmedName;\n// Auto-add default model and profile\nif (state.features.mastra.models.length === 0) {\n  state.features.mastra.models.push({ id: 'clint/demo-agent', isDefault: true });\n}\nif (state.features.mastra.profiles.length === 0) {\n  state.features.mastra.profiles.push({ id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' });\n}",
               errors: [
                 {
                   id: "e-enable-mastra-invalid-id",
@@ -500,11 +500,11 @@ export const documentModel: DocumentModelGlobalState = {
               name: "SET_AGENT_IMAGE",
               description:
                 "Set the agent image URL (avatar). Only valid when mastra is enabled.",
-              schema: "input SetAgentImageInput {\n  image: URL!\n}",
+              schema: "input SetAgentImageInput {\n  image: String!\n}",
               template:
                 "Set the agent image URL (avatar). Only valid when mastra is enabled.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent image when Mastra is disabled.');\n}\nstate.features.mastra.agentImage = action.input.image;",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError(\n    'Cannot set agent image when Mastra is disabled.',\n  );\n}\nif (!/^data:[a-z]+\\/[a-z0-9.+-]+;base64,/.test(action.input.image)) {\n  throw new InvalidAgentImageError(\n    'Agent image must be a data URL (data:image/...;base64,...)',\n  );\n}\nstate.features.mastra.agentImage = action.input.image;",
               errors: [
                 {
                   id: "e-set-agent-image-not-enabled",
@@ -512,6 +512,33 @@ export const documentModel: DocumentModelGlobalState = {
                   code: "MASTRA_NOT_ENABLED",
                   description:
                     "Mastra must be enabled before setting agent image.",
+                  template: "",
+                },
+                {
+                  id: "e-invalid-agent-image",
+                  name: "InvalidAgentImageError",
+                  code: "INVALID_AGENT_IMAGE",
+                  description: "Agent image must be a data URL",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-clear-agent-image",
+              name: "CLEAR_AGENT_IMAGE",
+              description: "",
+              schema: "input ClearAgentImageInput {\n  _: Boolean\n}",
+              template: "",
+              reducer:
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError(\n    'Cannot clear agent image when Mastra is disabled.',\n  );\n}\nstate.features.mastra.agentImage = null;",
+              errors: [
+                {
+                  id: "e-mastra-not-enabled-clear-img",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description: "Mastra must be enabled",
                   template: "",
                 },
               ],

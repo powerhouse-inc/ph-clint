@@ -8,6 +8,7 @@ import type {
   AddProfileInput,
   AddSupportedResourceInput,
   BumpVersionInput,
+  ClearAgentImageInput,
   DisableMastraInput,
   DisableRoutineInput,
   EnableMastraInput,
@@ -145,6 +146,14 @@ export function BumpVersionInputSchema(): z.ZodObject<
 > {
   return z.object({
     version: z.string(),
+  });
+}
+
+export function ClearAgentImageInputSchema(): z.ZodObject<
+  Properties<ClearAgentImageInput>
+> {
+  return z.object({
+    _: z.boolean().nullish(),
   });
 }
 
@@ -299,7 +308,7 @@ export function PhClintMastraFeatureSchema(): z.ZodObject<
     __typename: z.literal("PhClintMastraFeature").optional(),
     agentDescription: z.string().nullish(),
     agentId: z.string().nullish(),
-    agentImage: z.url().nullish(),
+    agentImage: z.string().nullish(),
     agentName: z.string().nullish(),
     enabled: z.boolean(),
     models: z.array(z.lazy(() => PhClintAgentModelSchema())),
@@ -462,7 +471,7 @@ export function SetAgentImageInputSchema(): z.ZodObject<
   Properties<SetAgentImageInput>
 > {
   return z.object({
-    image: z.url(),
+    image: z.string(),
   });
 }
 
