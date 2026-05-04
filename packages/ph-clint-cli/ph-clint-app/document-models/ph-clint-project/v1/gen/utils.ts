@@ -35,6 +35,7 @@ export const initialGlobalState: PhClintProjectGlobalState = {
       agentImage: null,
       models: [],
       profiles: [],
+      common: { enableChat: false },
     },
     routine: { enabled: false },
   },

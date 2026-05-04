@@ -184,11 +184,16 @@ export type PhClintFeatures = {
   routine: PhClintRoutineFeature;
 };
 
+export type PhClintMastraCommon = {
+  enableChat: Scalars["Boolean"]["output"];
+};
+
 export type PhClintMastraFeature = {
   agentDescription: Maybe<Scalars["String"]["output"]>;
   agentId: Maybe<Scalars["String"]["output"]>;
   agentImage: Maybe<Scalars["String"]["output"]>;
   agentName: Maybe<Scalars["String"]["output"]>;
+  common: PhClintMastraCommon;
   enabled: Scalars["Boolean"]["output"];
   models: Array<PhClintAgentModel>;
   profiles: Array<PhClintAgentProfile>;
@@ -303,6 +308,10 @@ export type SetDefaultModelInput = {
 
 export type SetDescriptionInput = {
   description: Scalars["String"]["input"];
+};
+
+export type SetEnableChatInput = {
+  enabled: Scalars["Boolean"]["input"];
 };
 
 export type SetExternalSkillGithubUrlInput = {

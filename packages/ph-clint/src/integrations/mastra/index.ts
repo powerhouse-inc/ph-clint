@@ -133,6 +133,9 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
 
       return {
         id: agentId,
+        name: agentName,
+        description: options?.description,
+        image: options?.image,
         mastraAgent: agent,
         async *stream(prompt: string, opts?) {
           const streamOpts: Record<string, unknown> = { maxSteps };

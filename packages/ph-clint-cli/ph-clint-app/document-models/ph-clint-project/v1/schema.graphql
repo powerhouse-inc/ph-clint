@@ -52,6 +52,11 @@ type PhClintMastraFeature {
   agentImage: String
   models: [PhClintAgentModel!]!
   profiles: [PhClintAgentProfile!]!
+  common: PhClintMastraCommon!
+}
+
+type PhClintMastraCommon {
+  enableChat: Boolean!
 }
 
 type PhClintAgentModel {
@@ -194,6 +199,10 @@ input SetAgentImageInput {
 
 input ClearAgentImageInput {
   _: Boolean
+}
+
+input SetEnableChatInput {
+  enabled: Boolean!
 }
 
 # features_routine

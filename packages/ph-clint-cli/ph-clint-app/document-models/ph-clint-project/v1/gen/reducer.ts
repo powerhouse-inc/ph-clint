@@ -33,6 +33,7 @@ import {
   SetAgentDescriptionInputSchema,
   SetAgentImageInputSchema,
   ClearAgentImageInputSchema,
+  SetEnableChatInputSchema,
   EnableRoutineInputSchema,
   DisableRoutineInputSchema,
   AddPowerhousePackageInputSchema,
@@ -272,6 +273,18 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (
       ClearAgentImageInputSchema().parse(action.input);
 
       phClintProjectFeaturesMastraOperations.clearAgentImageOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
+
+      break;
+    }
+
+    case "SET_ENABLE_CHAT": {
+      SetEnableChatInputSchema().parse(action.input);
+
+      phClintProjectFeaturesMastraOperations.setEnableChatOperation(
         (state as any)[action.scope],
         action as any,
         dispatch,

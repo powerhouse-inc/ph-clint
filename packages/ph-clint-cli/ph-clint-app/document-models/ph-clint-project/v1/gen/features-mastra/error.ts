@@ -8,7 +8,8 @@ export type ErrorCode =
   | "InvalidProfileIdError"
   | "DuplicateProfileError"
   | "ProfileNotFoundError"
-  | "InvalidAgentImageError";
+  | "InvalidAgentImageError"
+  | "PowerhouseNotEnabledError";
 
 export interface ReducerError {
   errorCode: ErrorCode;
@@ -84,6 +85,13 @@ export class InvalidAgentImageError extends Error implements ReducerError {
   }
 }
 
+export class PowerhouseNotEnabledError extends Error implements ReducerError {
+  errorCode = "PowerhouseNotEnabledError" as ErrorCode;
+  constructor(message = "PowerhouseNotEnabledError") {
+    super(message);
+  }
+}
+
 export const errors = {
   EnableMastra: { InvalidAgentIdError, InvalidAgentNameError },
   SetAgentId: { MastraNotEnabledError, InvalidAgentIdError },
@@ -103,4 +111,5 @@ export const errors = {
   SetAgentDescription: { MastraNotEnabledError },
   SetAgentImage: { MastraNotEnabledError, InvalidAgentImageError },
   ClearAgentImage: { MastraNotEnabledError },
+  SetEnableChat: { MastraNotEnabledError, PowerhouseNotEnabledError },
 };

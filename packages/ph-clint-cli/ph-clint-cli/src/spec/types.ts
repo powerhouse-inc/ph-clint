@@ -52,6 +52,10 @@ export const agentProfileSchema = z.object({
 
 export type AgentProfile = z.infer<typeof agentProfileSchema>;
 
+const mastraCommonSchema = z.object({
+  enableChat: z.boolean().default(false),
+});
+
 const mastraFeatureSchema = z.object({
   enabled: z.boolean().default(false),
   agentId: z.string().nullable().default(null),
@@ -60,6 +64,7 @@ const mastraFeatureSchema = z.object({
   agentImage: z.string().nullable().default(null),
   models: z.array(agentModelSchema).default([]),
   profiles: z.array(agentProfileSchema).default([]),
+  common: mastraCommonSchema.default({ enableChat: false }),
 });
 
 const routineFeatureSchema = z.object({
@@ -74,6 +79,7 @@ const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
   agentImage: null,
   models: [],
   profiles: [],
+  common: { enableChat: false },
 };
 const DEFAULT_ROUTINE = { enabled: false } as const;
 

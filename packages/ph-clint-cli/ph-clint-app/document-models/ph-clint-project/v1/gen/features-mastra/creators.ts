@@ -14,6 +14,7 @@ import {
   SetAgentDescriptionInputSchema,
   SetAgentImageInputSchema,
   ClearAgentImageInputSchema,
+  SetEnableChatInputSchema,
 } from "../schema/zod.js";
 import type {
   EnableMastraInput,
@@ -30,6 +31,7 @@ import type {
   SetAgentDescriptionInput,
   SetAgentImageInput,
   ClearAgentImageInput,
+  SetEnableChatInput,
 } from "../types.js";
 import type {
   EnableMastraAction,
@@ -46,6 +48,7 @@ import type {
   SetAgentDescriptionAction,
   SetAgentImageAction,
   ClearAgentImageAction,
+  SetEnableChatAction,
 } from "./actions.js";
 
 export const enableMastra = (input: EnableMastraInput) =>
@@ -171,5 +174,14 @@ export const clearAgentImage = (input: ClearAgentImageInput) =>
     { ...input },
     undefined,
     ClearAgentImageInputSchema,
+    "global",
+  );
+
+export const setEnableChat = (input: SetEnableChatInput) =>
+  createAction<SetEnableChatAction>(
+    "SET_ENABLE_CHAT",
+    { ...input },
+    undefined,
+    SetEnableChatInputSchema,
     "global",
   );

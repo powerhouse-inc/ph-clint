@@ -37,6 +37,10 @@ export interface WrapAgentOptions {
    * minimum cacheable token threshold (e.g. 4,096 for Haiku 4.5).
    */
   cacheControl?: boolean | { ttl?: '5m' | '1h' };
+  /** Agent description (forwarded to AgentProvider.description). */
+  description?: string;
+  /** Agent avatar image — data URI or URL (forwarded to AgentProvider.image). */
+  image?: string;
 }
 
 export interface MastraHelpers {

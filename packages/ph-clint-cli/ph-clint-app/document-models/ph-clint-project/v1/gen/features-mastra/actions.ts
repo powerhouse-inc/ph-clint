@@ -14,6 +14,7 @@ import type {
   SetAgentDescriptionInput,
   SetAgentImageInput,
   ClearAgentImageInput,
+  SetEnableChatInput,
 } from "../types.js";
 
 export type EnableMastraAction = Action & {
@@ -72,6 +73,10 @@ export type ClearAgentImageAction = Action & {
   type: "CLEAR_AGENT_IMAGE";
   input: ClearAgentImageInput;
 };
+export type SetEnableChatAction = Action & {
+  type: "SET_ENABLE_CHAT";
+  input: SetEnableChatInput;
+};
 
 export type PhClintProjectFeaturesMastraAction =
   | EnableMastraAction
@@ -87,4 +92,5 @@ export type PhClintProjectFeaturesMastraAction =
   | ReorderProfilesAction
   | SetAgentDescriptionAction
   | SetAgentImageAction
-  | ClearAgentImageAction;
+  | ClearAgentImageAction
+  | SetEnableChatAction;

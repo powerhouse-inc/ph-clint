@@ -14,6 +14,7 @@ import type {
   SetAgentDescriptionAction,
   SetAgentImageAction,
   ClearAgentImageAction,
+  SetEnableChatAction,
 } from "./actions.js";
 import type { PhClintProjectState } from "../types.js";
 
@@ -86,6 +87,11 @@ export interface PhClintProjectFeaturesMastraOperations {
   clearAgentImageOperation: (
     state: PhClintProjectState,
     action: ClearAgentImageAction,
+    dispatch?: SignalDispatch,
+  ) => void;
+  setEnableChatOperation: (
+    state: PhClintProjectState,
+    action: SetEnableChatAction,
     dispatch?: SignalDispatch,
   ) => void;
 }

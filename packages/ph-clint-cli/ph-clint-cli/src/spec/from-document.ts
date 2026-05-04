@@ -26,30 +26,8 @@ export function specFromDocumentState(
   if (!state.name) return null;
 
   const parsed = clintProjectSpecSchema.safeParse({
-    name: state.name,
+    ...state,
     scope: state.scope ?? undefined,
-    version: state.version,
-    description: state.description,
-    features: {
-      powerhouse: state.features.powerhouse,
-      mastra: { ...state.features.mastra },
-      routine: { ...state.features.routine },
-    },
-    packages: state.packages.map((p) => ({
-      id: p.id,
-      packageName: p.packageName,
-      documentTypes: [...p.documentTypes],
-      version: p.version ?? null,
-    })),
-    externalSkills: state.externalSkills.map((s) => ({
-      id: s.id,
-      name: s.name,
-      githubUrl: s.githubUrl,
-    })),
-    deployment: {
-      proxyEnabled: state.deployment.proxyEnabled,
-      supportedResources: [...state.deployment.supportedResources],
-    },
     documentId: meta?.documentId,
     documentType: meta?.documentType,
   });

@@ -12,6 +12,9 @@ export function buildDemoAgentTs(spec: ClintProjectSpec): string | null {
   if (!mastra.enabled || !mastra.agentId || mastra.models.length === 0) return null;
 
   const agentId = mastra.agentId;
+  const agentName = mastra.agentName ?? agentId;
+  const agentDescription = mastra.agentDescription;
+  const agentImage = mastra.agentImage;
   return [
     "import type { AgentProvider, StreamChunk } from '@powerhousedao/ph-clint';",
     '',
@@ -25,6 +28,9 @@ export function buildDemoAgentTs(spec: ClintProjectSpec): string | null {
     '',
     '  return {',
     `    id: '${agentId}',`,
+    `    name: '${agentName}',`,
+    ...(agentDescription ? [`    description: ${JSON.stringify(agentDescription)},`] : []),
+    ...(agentImage ? [`    image: ${JSON.stringify(agentImage)},`] : []),
     '    async *stream(prompt, opts) {',
     "      const threadId = opts?.threadId ?? 'default';",
     '      if (!conversations.has(threadId)) {',

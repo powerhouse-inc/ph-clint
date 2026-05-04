@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { generateId } from 'document-model';
 import { DocumentToolbar } from '@powerhousedao/design-system/connect';
 import { useSelectedPhClintProjectDocument, actions } from 'document-models/ph-clint-project';
@@ -11,10 +11,10 @@ const POWERHOUSE_LEVELS: { value: PowerhouseLevel; description: string }[] = [
   { value: 'Connect', description: 'Web UI for document management' },
 ];
 
-function TextField(props: { label: string; value: string; placeholder?: string; readOnly?: boolean; onCommit: (value: string) => void }) {
+function TextField(props: { label: string; value: string; placeholder?: string; readOnly?: boolean; compact?: boolean; onCommit: (value: string) => void }) {
   return (
-    <label className="my-3 block">
-      <h3 className="text-base">{props.label}</h3>
+    <label className={props.compact ? 'my-1 block' : 'my-3 block'}>
+      <h3 className={props.compact ? 'text-xs text-gray-600' : 'text-base'}>{props.label}</h3>
       <input
         type="text"
         defaultValue={props.value}
@@ -101,6 +101,8 @@ export default function Editor() {
   const reorderProfiles = (ids: string[], insertBefore: string | null) => dispatch(actions.reorderProfiles({ ids, insertBefore }));
   const setAgentDescription = (description: string) => dispatch(actions.setAgentDescription({ description }));
   const setAgentImage = (image: string) => dispatch(actions.setAgentImage({ image }));
+  const clearAgentImage = () => dispatch(actions.clearAgentImage({ _: true }));
+  const setEnableChat = (enabled: boolean) => dispatch(actions.setEnableChat({ enabled }));
 
   // deployment dispatchers
   const setProxyEnabled = (enabled: boolean) => dispatch(actions.setProxyEnabled({ enabled }));
@@ -155,10 +157,13 @@ export default function Editor() {
         {activeTab === 'agent' && (
           <AgentTab
             mastra={mastra}
+            isAboveDisabled={isAboveDisabled}
             setAgentId={setAgentId}
             setAgentName={setAgentName}
             setAgentDescription={setAgentDescription}
             setAgentImage={setAgentImage}
+            clearAgentImage={clearAgentImage}
+            setEnableChat={setEnableChat}
             addModel={addModel}
             removeModel={removeModel}
             setDefaultModel={setDefaultModel}
@@ -169,17 +174,7 @@ export default function Editor() {
           />
         )}
 
-        {activeTab === 'powerhouse' && (
-          <PowerhouseTab
-            packages={state.packages}
-            isAboveDisabled={isAboveDisabled}
-            appPackageName={state.name ? state.name.replace(/-cli$/, '-app') : null}
-            addPackage={addPackage}
-            removePackage={removePackage}
-            addDocType={addDocType}
-            removeDocType={removeDocType}
-          />
-        )}
+        {activeTab === 'powerhouse' && <PowerhouseTab packages={state.packages} isAboveDisabled={isAboveDisabled} addPackage={addPackage} removePackage={removePackage} addDocType={addDocType} removeDocType={removeDocType} />}
 
         {activeTab === 'skills' && <SkillsTab skills={state.externalSkills} addSkill={addSkill} removeSkill={removeSkill} />}
 
@@ -274,7 +269,6 @@ function SpecTab(props: {
 function PowerhouseTab(props: {
   packages: PowerhousePackage[];
   isAboveDisabled: boolean;
-  appPackageName: string | null;
   addPackage: (packageName: string) => void;
   removePackage: (id: string) => void;
   addDocType: (packageId: string, documentType: string) => void;
@@ -289,17 +283,20 @@ function PowerhouseTab(props: {
     );
   }
 
-  return <PackagesSection packages={props.packages} addPackage={props.addPackage} removePackage={props.removePackage} addDocType={props.addDocType} removeDocType={props.removeDocType} appPackageName={props.appPackageName} />;
+  return <PackagesSection packages={props.packages} addPackage={props.addPackage} removePackage={props.removePackage} addDocType={props.addDocType} removeDocType={props.removeDocType} />;
 }
 
 /* ── Agent Tab ────────────────────────────────────────────────── */
 
 function AgentTab(props: {
   mastra: PhClintMastraFeature;
+  isAboveDisabled: boolean;
   setAgentId: (agentId: string) => void;
   setAgentName: (agentName: string) => void;
   setAgentDescription: (description: string) => void;
   setAgentImage: (image: string) => void;
+  clearAgentImage: () => void;
+  setEnableChat: (enabled: boolean) => void;
   addModel: (id: string, isDefault?: boolean) => void;
   removeModel: (id: string) => void;
   setDefaultModel: (id: string) => void;
@@ -323,11 +320,18 @@ function AgentTab(props: {
     <>
       {/* Agent Identity */}
       <section className="my-6">
-        <h3 className="text-lg font-semibold">Agent Identity</h3>
-        <TextField label="Agent ID" value={mastra.agentId ?? ''} placeholder="my-agent" onCommit={props.setAgentId} />
-        <TextField label="Agent Name" value={mastra.agentName ?? ''} placeholder="My Agent" onCommit={props.setAgentName} />
-        <TextField label="Agent Description" value={mastra.agentDescription ?? ''} placeholder="A brief description of what this agent does" onCommit={props.setAgentDescription} />
-        <TextField label="Agent Image URL" value={mastra.agentImage ?? ''} placeholder="https://example.com/avatar.png" onCommit={props.setAgentImage} />
+        <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <div style={{ flexShrink: 0, width: '7rem' }}>
+            <AgentImageField image={mastra.agentImage ?? null} onSetImage={props.setAgentImage} onClearImage={props.clearAgentImage} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="grid grid-cols-[1fr_2fr] gap-4">
+              <TextField compact label="Agent ID" value={mastra.agentId ?? ''} placeholder="my-agent" onCommit={props.setAgentId} />
+              <TextField compact label="Agent Name" value={mastra.agentName ?? ''} placeholder="My Agent" onCommit={props.setAgentName} />
+            </div>
+            <TextField compact label="Agent Description" value={mastra.agentDescription ?? ''} placeholder="A brief description of what this agent does" onCommit={props.setAgentDescription} />
+          </div>
+        </div>
       </section>
 
       <hr />
@@ -339,7 +343,122 @@ function AgentTab(props: {
 
       {/* Profiles */}
       <ProfilesSection profiles={mastra.profiles} addProfile={props.addProfile} updateProfile={props.updateProfile} removeProfile={props.removeProfile} reorderProfiles={props.reorderProfiles} />
+
+      <hr />
+
+      {/* Common */}
+      <section className="my-6">
+        <h3 className="text-lg font-semibold">Common</h3>
+        <div className="my-3 rounded border border-gray-200 bg-white p-4">
+          <Toggle
+            label="Enable Chat"
+            checked={mastra.common.enableChat}
+            disabled={!props.isAboveDisabled}
+            hint={props.isAboveDisabled ? 'Chat session integration via clint-common' : 'Requires Powerhouse to be enabled'}
+            onChange={props.setEnableChat}
+          />
+        </div>
+      </section>
     </>
+  );
+}
+
+function AgentImageField(props: { image: string | null; onSetImage: (dataUrl: string) => void; onClearImage: () => void }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragDepthRef = useRef(0);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') props.onSetImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Must stopPropagation on all drag events to prevent Connect's DropZone
+  // from intercepting and blocking non-.phd file drops (see editor-drag-drop.md)
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, []);
+
+  const onDragEnter = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.stopPropagation();
+      dragDepthRef.current += 1;
+      if (dragDepthRef.current === 1) setIsDragOver(true);
+    }
+  }, []);
+
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.stopPropagation();
+      dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+      if (dragDepthRef.current === 0) setIsDragOver(false);
+    }
+  }, []);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+      dragDepthRef.current = 0;
+      setIsDragOver(false);
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    }
+  }, []);
+
+  const SIZE = '7rem';
+
+  return (
+    <div style={{ width: SIZE, height: SIZE, flexShrink: 0 }} className="relative my-3">
+      {props.image ? (
+        <>
+          <img src={props.image} alt="Agent" style={{ width: SIZE, height: SIZE }} className="rounded border border-gray-200 object-cover" />
+          <div className="mt-1 flex justify-center gap-1">
+            <label className="cursor-pointer rounded bg-gray-100 px-2 py-0.5 text-xs hover:bg-gray-200">
+              Replace
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFile(e.target.files[0]);
+                }}
+              />
+            </label>
+            <button className="rounded bg-gray-100 px-2 py-0.5 text-xs text-red-600 hover:bg-gray-200" onClick={props.onClearImage}>
+              Remove
+            </button>
+          </div>
+        </>
+      ) : (
+        <div
+          style={{ width: SIZE, height: SIZE }}
+          className={`flex flex-col items-center justify-center rounded border-2 border-dashed text-center ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white'}`}
+          onDragOver={onDragOver}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+        >
+          <label className="cursor-pointer p-2 text-xs text-gray-500 hover:text-blue-600">
+            Drop image or click
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.[0]) handleFile(e.target.files[0]);
+              }}
+            />
+          </label>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -776,17 +895,16 @@ function PackagesSection(props: {
   removePackage: (id: string) => void;
   addDocType: (packageId: string, documentType: string) => void;
   removeDocType: (packageId: string, documentType: string) => void;
-  appPackageName: string | null;
 }) {
   const [newPkgName, setNewPkgName] = useState('');
 
   return (
     <section className="my-6">
       <h3 className="text-lg font-semibold">Powerhouse Packages</h3>
-      <p className="text-sm text-gray-600">Reactor packages and their document types. The app package is auto-managed.</p>
+      <p className="text-sm text-gray-600">Reactor packages and their document types. Managed packages are framework-controlled.</p>
 
       {props.packages.map((pkg) => (
-        <PackageCard key={pkg.id} pkg={pkg} isAppPackage={pkg.packageName === props.appPackageName} addDocType={props.addDocType} removeDocType={props.removeDocType} removePackage={props.removePackage} />
+        <PackageCard key={pkg.id} pkg={pkg} addDocType={props.addDocType} removeDocType={props.removeDocType} removePackage={props.removePackage} />
       ))}
 
       <div className="mt-4 flex items-center gap-2">
@@ -818,18 +936,20 @@ function PackagesSection(props: {
   );
 }
 
-function PackageCard(props: { pkg: PowerhousePackage; isAppPackage: boolean; addDocType: (packageId: string, documentType: string) => void; removeDocType: (packageId: string, documentType: string) => void; removePackage: (id: string) => void }) {
+function PackageCard(props: { pkg: PowerhousePackage; addDocType: (packageId: string, documentType: string) => void; removeDocType: (packageId: string, documentType: string) => void; removePackage: (id: string) => void }) {
   const [newDocType, setNewDocType] = useState('');
   const { pkg } = props;
+  const hasWildcard = pkg.documentTypes.includes('*/*');
 
   return (
     <div className="my-3 rounded border border-gray-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <div>
           <span className="font-mono font-semibold">{pkg.packageName}</span>
-          {props.isAppPackage && <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">app</span>}
+          {pkg.managed && <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">managed</span>}
+          {pkg.version && <span className="ml-2 text-xs text-gray-500">v{pkg.version}</span>}
         </div>
-        {!props.isAppPackage && (
+        {!pkg.managed && (
           <button className="text-sm text-red-500 hover:text-red-700" onClick={() => props.removePackage(pkg.id)}>
             Remove
           </button>
@@ -840,7 +960,7 @@ function PackageCard(props: { pkg: PowerhousePackage; isAppPackage: boolean; add
         <ul className="mt-2 space-y-1">
           {pkg.documentTypes.map((dt) => (
             <li key={dt} className="flex items-center gap-2 text-sm">
-              <span className="font-mono">{dt}</span>
+              <span className="font-mono">{dt === '*/*' ? 'All document models' : dt}</span>
               <button className="text-xs text-red-400 hover:text-red-600" onClick={() => props.removeDocType(pkg.id, dt)}>
                 x
               </button>
@@ -849,7 +969,7 @@ function PackageCard(props: { pkg: PowerhousePackage; isAppPackage: boolean; add
         </ul>
       )}
 
-      <div className="mt-2 flex items-center gap-2">
+      {!hasWildcard && <div className="mt-2 flex items-center gap-2">
         <input
           type="text"
           placeholder="org/document-type"
@@ -873,7 +993,7 @@ function PackageCard(props: { pkg: PowerhousePackage; isAppPackage: boolean; add
         >
           + doc type
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -125,4 +125,30 @@ describe('buildCliTs', () => {
     expect(code).not.toContain('proxyEnabled');
     expect(code).not.toContain('jsonPostAnnounce');
   });
+
+  it('emits chatSessionWatchTrigger import when enableChat is true', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: { enabled: true, common: { enableChat: true } },
+      },
+    });
+    const code = buildCliTs(spec);
+    expect(code).toContain(
+      "import { chatSessionWatchTrigger } from '@powerhousedao/clint-common/chat'",
+    );
+    expect(code).toContain('triggers: [chatSessionWatchTrigger]');
+  });
+
+  it('omits chatSessionWatchTrigger when enableChat is false', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: { enabled: true },
+      },
+    });
+    const code = buildCliTs(spec);
+    expect(code).not.toContain('chatSessionWatchTrigger');
+    expect(code).toContain('triggers: []');
+  });
 });

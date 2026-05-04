@@ -27,6 +27,7 @@ export function defaultGlobalState(): PhClintProjectGlobalState {
         agentImage: null,
         models: [],
         profiles: [],
+        common: { enableChat: false },
       },
       routine: { enabled: false },
     },

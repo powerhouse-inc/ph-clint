@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/chat",
+    "rootDir": ".",
+    "emitDeclarationOnly": false
+  },
+  "include": ["chat/**/*.ts"]
+}

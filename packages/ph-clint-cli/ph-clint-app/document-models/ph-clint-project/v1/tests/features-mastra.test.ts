@@ -18,6 +18,8 @@ import {
   setAgentDescription,
   setAgentImage,
   clearAgentImage,
+  setEnableChat,
+  setPowerhouseLevel,
   isPhClintProjectDocument,
 } from "document-models/ph-clint-project/v1";
 
@@ -794,5 +796,94 @@ describe("FeaturesMastraOperations", () => {
       input,
     );
     expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+});
+
+/**
+ * Helper: creates a doc with Mastra and Powerhouse both enabled.
+ * Operations: setPowerhouseLevel(0), enableMastra(1)
+ */
+function createMastraPowerhouseDoc() {
+  let doc = utils.createDocument();
+  doc = reducer(
+    doc,
+    setPowerhouseLevel({ level: "Reactor" as const }),
+  );
+  doc = reducer(
+    doc,
+    enableMastra({ agentId: "test-agent", agentName: "Test Agent" }),
+  );
+  return doc;
+}
+
+describe("SetEnableChatOperation", () => {
+  it("should enable chat and auto-add clint-common managed package", () => {
+    const doc = createMastraPowerhouseDoc();
+    const updated = reducer(doc, setEnableChat({ enabled: true }));
+
+    expect(updated.state.global.features.mastra.common.enableChat).toBe(true);
+    const ccPkg = updated.state.global.packages.find(
+      (p) => p.packageName === "@powerhousedao/clint-common",
+    );
+    expect(ccPkg).toBeDefined();
+    expect(ccPkg!.managed).toBe(true);
+    expect(ccPkg!.documentTypes).toEqual(["powerhouse/chat-session"]);
+  });
+
+  it("should disable chat and remove clint-common package", () => {
+    let doc = createMastraPowerhouseDoc();
+    doc = reducer(doc, setEnableChat({ enabled: true }));
+    const updated = reducer(doc, setEnableChat({ enabled: false }));
+
+    expect(updated.state.global.features.mastra.common.enableChat).toBe(false);
+    const ccPkg = updated.state.global.packages.find(
+      (p) => p.packageName === "@powerhousedao/clint-common",
+    );
+    expect(ccPkg).toBeUndefined();
+  });
+
+  it("should error when Mastra is disabled", () => {
+    let doc = utils.createDocument();
+    doc = reducer(
+      doc,
+      setPowerhouseLevel({ level: "Reactor" as const }),
+    );
+    const updated = reducer(doc, setEnableChat({ enabled: true }));
+
+    expect(updated.operations.global[1].error).toBe(
+      "Cannot toggle chat when Mastra is disabled.",
+    );
+  });
+
+  it("should error when Powerhouse is disabled", () => {
+    const doc = createEnabledDoc();
+    const updated = reducer(doc, setEnableChat({ enabled: true }));
+
+    expect(updated.operations.global[1].error).toBe(
+      "Cannot toggle chat when Powerhouse is disabled.",
+    );
+  });
+
+  it("should not duplicate clint-common if already present", () => {
+    let doc = createMastraPowerhouseDoc();
+    doc = reducer(doc, setEnableChat({ enabled: true }));
+    const updated = reducer(doc, setEnableChat({ enabled: true }));
+
+    const ccPkgs = updated.state.global.packages.filter(
+      (p) => p.packageName === "@powerhousedao/clint-common",
+    );
+    expect(ccPkgs).toHaveLength(1);
+  });
+
+  it("disableMastra should reset enableChat and remove clint-common", () => {
+    let doc = createMastraPowerhouseDoc();
+    doc = reducer(doc, setEnableChat({ enabled: true }));
+    const updated = reducer(doc, disableMastra({ _: true }));
+
+    expect(updated.state.global.features.mastra.common.enableChat).toBe(false);
+    const ccPkg = updated.state.global.packages.find(
+      (p) => p.packageName === "@powerhousedao/clint-common",
+    );
+    expect(ccPkg).toBeUndefined();
   });
 });

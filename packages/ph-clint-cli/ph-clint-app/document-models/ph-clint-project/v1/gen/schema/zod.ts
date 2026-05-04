@@ -23,6 +23,7 @@ import type {
   PhClintAgentProfile,
   PhClintDeployment,
   PhClintFeatures,
+  PhClintMastraCommon,
   PhClintMastraFeature,
   PhClintProjectState,
   PhClintRoutineFeature,
@@ -47,6 +48,7 @@ import type {
   SetAgentNameInput,
   SetDefaultModelInput,
   SetDescriptionInput,
+  SetEnableChatInput,
   SetExternalSkillGithubUrlInput,
   SetExternalSkillNameInput,
   SetPackageIdentifierInput,
@@ -301,6 +303,15 @@ export function PhClintFeaturesSchema(): z.ZodObject<
   });
 }
 
+export function PhClintMastraCommonSchema(): z.ZodObject<
+  Properties<PhClintMastraCommon>
+> {
+  return z.object({
+    __typename: z.literal("PhClintMastraCommon").optional(),
+    enableChat: z.boolean(),
+  });
+}
+
 export function PhClintMastraFeatureSchema(): z.ZodObject<
   Properties<PhClintMastraFeature>
 > {
@@ -310,6 +321,7 @@ export function PhClintMastraFeatureSchema(): z.ZodObject<
     agentId: z.string().nullish(),
     agentImage: z.string().nullish(),
     agentName: z.string().nullish(),
+    common: z.lazy(() => PhClintMastraCommonSchema()),
     enabled: z.boolean(),
     models: z.array(z.lazy(() => PhClintAgentModelSchema())),
     profiles: z.array(z.lazy(() => PhClintAgentProfileSchema())),
@@ -496,6 +508,14 @@ export function SetDescriptionInputSchema(): z.ZodObject<
 > {
   return z.object({
     description: z.string(),
+  });
+}
+
+export function SetEnableChatInputSchema(): z.ZodObject<
+  Properties<SetEnableChatInput>
+> {
+  return z.object({
+    enabled: z.boolean(),
   });
 }
 

@@ -255,6 +255,12 @@ export interface AgentStreamOptions {
  */
 export interface AgentProvider {
   id: string;
+  /** Human-readable display name. */
+  name?: string;
+  /** Short description of the agent's capabilities. */
+  description?: string;
+  /** Agent avatar image (data URI or URL). */
+  image?: string;
   /** The underlying Mastra Agent instance, if one was used to create this provider. */
   mastraAgent?: unknown;
   stream(

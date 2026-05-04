@@ -22,7 +22,9 @@ function providerImport(provider: string): { pkg: string; fn: string } {
 }
 
 function buildDemoAgent(spec: ClintProjectSpec): string {
-  const id = spec.features.mastra.agentId ?? spec.name;
+  const mastra = spec.features.mastra;
+  const id = mastra.agentId ?? spec.name;
+  const name = mastra.agentName ?? id;
   return [
     "import type { AgentProvider, AgentSetupContext, StreamChunk } from '@powerhousedao/ph-clint';",
     "import type { Config } from '../framework.js';",
@@ -34,6 +36,7 @@ function buildDemoAgent(spec: ClintProjectSpec): string {
     'function createDemoAgent(): AgentProvider {',
     '  return {',
     `    id: '${id}',`,
+    `    name: '${name}',`,
     '    async *stream(prompt) {',
     '      yield {',
     "        type: 'text-delta',",
@@ -111,6 +114,12 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   lines.push('    enableLogging: ctx.config.agentLogging,');
   lines.push("    logDirectory: store.getStoreFolder('logs'),");
   lines.push('    cacheControl: true,');
+  if (mastra.agentDescription) {
+    lines.push(`    description: ${JSON.stringify(mastra.agentDescription)},`);
+  }
+  if (mastra.agentImage) {
+    lines.push(`    image: ${JSON.stringify(mastra.agentImage)},`);
+  }
   lines.push('  };');
   lines.push('  return m.wrapAgent(agent, wrapOpts);');
   lines.push('}');

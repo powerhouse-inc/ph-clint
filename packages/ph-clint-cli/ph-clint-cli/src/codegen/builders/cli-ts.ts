@@ -49,6 +49,9 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   if (mastra.enabled) {
     lines.push(`import { createAgent } from './agents/agent.js';`);
   }
+  if (mastra.enabled && mastra.common?.enableChat) {
+    lines.push(`import { chatSessionWatchTrigger } from '@powerhousedao/clint-common/chat';`);
+  }
   lines.push('// @clint:end imports');
   lines.push('');
 
@@ -73,8 +76,8 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('  // @clint:end services');
   lines.push('');
   lines.push('  // @clint:begin triggers');
-  if (routine.enabled) {
-    lines.push('  triggers: [],');
+  if (mastra.enabled && mastra.common?.enableChat) {
+    lines.push('  triggers: [chatSessionWatchTrigger],');
   } else {
     lines.push('  triggers: [],');
   }

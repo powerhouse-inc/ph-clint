@@ -95,7 +95,6 @@ export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
     scope: spec.scope ?? null,
     version: spec.version,
     description: spec.description,
-    bin: spec.bin ?? null,
     powerhouse: spec.features.powerhouse,
     mastraEnabled: spec.features.mastra.enabled,
     routineEnabled: spec.features.routine.enabled,
