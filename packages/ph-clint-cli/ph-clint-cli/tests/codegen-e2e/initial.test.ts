@@ -17,6 +17,7 @@ import { generateProject } from '../../src/codegen/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 import type { PostGenActionKind } from '../../src/codegen/actions.js';
 import { FIXTURES } from './fixtures.js';
+import { getBinName } from '../../src/spec/types.js';
 import {
   mkTmpDir,
   rmRf,
@@ -248,8 +249,9 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
       if (!cliDir) return;
 
       // ── --meta: verify introspection reflects the spec ──
+      // CLI_NAME strips the -cli suffix at runtime (pkg.name.replace(/-cli$/, ''))
       const meta = runMeta(cliDir);
-      expect(meta.name).toBe(spec.name);
+      expect(meta.name).toBe(getBinName(spec));
       expect(meta.hasAgent).toBe(spec.features.mastra.enabled);
       expect(meta.hasReactor).toBe(spec.features.powerhouse !== 'Disabled');
 
@@ -294,10 +296,11 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
         expect(output).toMatch(/Reactor ready \(drive: [0-9a-f-]+\)/);
 
         // Verify PGlite storage directory was created on disk.
+        // Store folder uses CLI_NAME (bin name, without -cli suffix).
         const storagePath = path.join(
           cliDir,
           '.ph',
-          spec.name,
+          getBinName(spec),
           'reactor-storage',
         );
         expect(await pathExists(storagePath)).toBe(true);
@@ -312,7 +315,7 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
       if (!cliDir) return;
       if (spec.features.powerhouse !== 'Switchboard') return;
 
-      const sbPort = defaultPort(spec.name, 'switchboard');
+      const sbPort = defaultPort(getBinName(spec), 'switchboard');
 
       const output = await withLiveProcess(
         cliDir,
@@ -346,7 +349,7 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
       if (!cliDir) return;
       if (spec.features.powerhouse !== 'Connect') return;
 
-      const connectPort = defaultPort(spec.name, 'connect');
+      const connectPort = defaultPort(getBinName(spec), 'connect');
 
       // Boot with --no-api. Connect launches as a detached child process
       // that survives the parent CLI exiting.
@@ -363,7 +366,7 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
       } finally {
         // Clean up the detached Connect child process.
         try {
-          runCommand(cliDir, `${spec.name}-studio-stop`);
+          runCommand(cliDir, `${getBinName(spec)}-studio-stop`);
         } catch {
           // Best-effort cleanup.
         }
