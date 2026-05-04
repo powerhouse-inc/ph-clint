@@ -54,8 +54,8 @@ describe('buildSpec', () => {
       enableRoutine: false,
       force: false,
     });
-    expect(spec.features.mastra.agentId).toBe('foo-cli-agent');
-    expect(spec.features.mastra.agentName).toBe('Foo Cli Agent');
+    expect(spec.features.mastra.agentId).toBe('foo-agent');
+    expect(spec.features.mastra.agentName).toBe('Foo Agent');
     expect(spec.features.mastra.models).toEqual([
       { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
     ]);

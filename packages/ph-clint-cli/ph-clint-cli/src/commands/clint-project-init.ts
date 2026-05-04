@@ -58,10 +58,13 @@ const inputSchema = z.object({
 
 type InitInput = z.output<typeof inputSchema>;
 
-/** Parse `@scope/name` into { scope, name }. */
+/** Parse `@scope/name` into { scope, name }. Auto-appends `-cli` if missing. */
 function splitPackageName(raw: string): { scope?: string; name: string } {
   const match = /^@([a-z0-9][a-z0-9-]*)\/([a-z0-9][a-z0-9-]*)$/.exec(raw);
-  if (match) return { scope: `@${match[1]}`, name: match[2] };
+  if (match) {
+    const name = match[2].endsWith('-cli') ? match[2] : `${match[2]}-cli`;
+    return { scope: `@${match[1]}`, name };
+  }
   if (raw.startsWith('@')) {
     throw new Error(
       `invalid package name "${raw}" — expected "@scope/name" with lowercase letters, digits, hyphens`,
@@ -72,7 +75,8 @@ function splitPackageName(raw: string): { scope?: string; name: string } {
       `invalid project name "${raw}" — expected lowercase letters, digits, hyphens`,
     );
   }
-  return { name: raw };
+  const name = raw.endsWith('-cli') ? raw : `${raw}-cli`;
+  return { name };
 }
 
 export function buildSpec(input: InitInput): ClintProjectSpec {
@@ -82,11 +86,12 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
   // the agent routine loop is what most users actually want.
   const routine = input.enableRoutine || input.enableMastra;
 
+  const baseName = name.replace(/-cli$/, '');
   const mastra = input.enableMastra
     ? {
         enabled: true,
-        agentId: `${name}-agent`,
-        agentName: `${name.charAt(0).toUpperCase()}${name.slice(1).replace(/-(\w)/g, (_, c: string) => ' ' + c.toUpperCase())} Agent`,
+        agentId: `${baseName}-agent`,
+        agentName: `${baseName.charAt(0).toUpperCase()}${baseName.slice(1).replace(/-(\w)/g, (_, c: string) => ' ' + c.toUpperCase())} Agent`,
         models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
         profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
       }
