@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   reducer,
@@ -19,8 +21,11 @@ import {
   isPhClintProjectDocument,
 } from "document-models/ph-clint-project/v1";
 
-const DATA_URL =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const PROMETHEUS_PNG = resolve(
+  import.meta.dirname,
+  "prometheus-zoomed-small.png",
+);
+const DATA_URL = `data:image/png;base64,${readFileSync(PROMETHEUS_PNG).toString("base64")}`;
 
 /**
  * Helper: creates a document with mastra enabled.
