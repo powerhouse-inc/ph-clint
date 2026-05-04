@@ -71,7 +71,7 @@ export interface TypedFactory<
         ctx: CommandContext<TConfig, R>,
       ) => Promise<TOutput>;
     },
-  ): Command<TInput, TOutput, TConfig>;
+  ): Command<TInput, TOutput, TConfig, R>;
 
   /**
    * Typed `defineTrigger` — `ctx.state` is `TState`, `ctx.context.config`

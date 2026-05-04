@@ -181,13 +181,14 @@ export interface Command<
   TInput extends z.ZodType = z.ZodType,
   TOutput = unknown,
   TConfig = Record<string, unknown>,
+  R extends DocumentRegistry = any,
 > {
   id: string;
   description: string;
   inputSchema: TInput;
   outputSchema?: z.ZodType<TOutput>;
   prompt?: PromptConfig;
-  execute: (input: z.output<TInput>, context: CommandContext<TConfig>) => Promise<TOutput>;
+  execute: (input: z.output<TInput>, context: CommandContext<TConfig, R>) => Promise<TOutput>;
 }
 
 // ── Streaming ────────────────────────────────────────────────────

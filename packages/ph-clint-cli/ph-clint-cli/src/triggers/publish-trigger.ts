@@ -129,13 +129,10 @@ export const publishTrigger = createDocumentChangeTrigger({
               const { clintProjectPublish } = await import(
                 '../commands/clint-project-publish.js'
               );
-              // FIXME(type-strictness): Command.execute drops the R generic,
-              // so typed trigger contexts can't be passed directly. See
-              // specs/plans/20260504-command-registry-generic.md
-              const result = await (clintProjectPublish.execute as Function)(
+              const result = await clintProjectPublish.execute(
                 { tag: cliTag, dryRun: false, skipBuild: false, skipGitCheck: true, verbose: false },
                 ctx.commandContext,
-              ) as { text: string };
+              );
               success = !result.text.includes('failed');
             } catch (err) {
               log?.error(
