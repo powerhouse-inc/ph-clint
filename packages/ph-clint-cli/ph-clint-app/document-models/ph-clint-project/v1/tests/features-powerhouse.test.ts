@@ -144,4 +144,35 @@ describe("FeaturesPowerhouseOperations", () => {
     expect(appPkg!.version).toBeNull();
     expect(appPkg!.documentTypes).toEqual(["*/*"]);
   });
+
+  it("should auto-create managed app package even when name is null", () => {
+    const doc = utils.createDocument();
+    const updated = reducer(
+      doc,
+      setPowerhouseLevel({ level: "Reactor" as const }),
+    );
+
+    expect(updated.state.global.packages).toHaveLength(1);
+    const managed = updated.state.global.packages[0];
+    expect(managed.managed).toBe(true);
+    expect(managed.packageName).toBe("app");
+    expect(managed.documentTypes).toEqual(["*/*"]);
+  });
+
+  it("should rename managed app package when identifier is set after enabling Powerhouse", () => {
+    let doc = utils.createDocument();
+    doc = reducer(
+      doc,
+      setPowerhouseLevel({ level: "Reactor" as const }),
+    );
+    const updated = reducer(
+      doc,
+      setPackageIdentifier({ identifier: "@myorg/my-tool-cli" }),
+    );
+
+    const managed = updated.state.global.packages.find((p) => p.managed);
+    expect(managed).toBeDefined();
+    expect(managed!.packageName).toBe("@myorg/my-tool-app");
+    expect(managed!.id).toBe("app-my-tool-cli");
+  });
 });

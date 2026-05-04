@@ -15,10 +15,19 @@ import {
   reorderProfiles,
   setAgentDescription,
   setAgentImage,
+  clearAgentImage,
   isPhClintProjectDocument,
 } from "document-models/ph-clint-project/v1";
 
-/** Helper: creates a document with mastra enabled */
+const DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+/**
+ * Helper: creates a document with mastra enabled.
+ * enableMastra auto-creates:
+ *   model: { id: "clint/demo-agent", isDefault: true }
+ *   profile: { id: "base", title: "Base Profile", content: "You are a helpful assistant" }
+ */
 function createEnabledDoc() {
   const doc = utils.createDocument();
   return reducer(
@@ -27,7 +36,11 @@ function createEnabledDoc() {
   );
 }
 
-/** Helper: creates enabled doc with some models */
+/**
+ * Helper: creates enabled doc with 4 models.
+ * [clint/demo-agent (default), anthropic/claude-sonnet-4-5, openai/gpt-4o, anthropic/claude-haiku-4-5]
+ * Operations: enable(0), addModel(1), addModel(2), addModel(3)
+ */
 function createDocWithModels() {
   let doc = createEnabledDoc();
   doc = reducer(doc, addModel({ id: "anthropic/claude-sonnet-4-5" }));
@@ -36,13 +49,13 @@ function createDocWithModels() {
   return doc;
 }
 
-/** Helper: creates enabled doc with some profiles */
+/**
+ * Helper: creates enabled doc with 3 profiles.
+ * [base (auto-default), tools, style]
+ * Operations: enable(0), addProfile(1), addProfile(2)
+ */
 function createDocWithProfiles() {
   let doc = createEnabledDoc();
-  doc = reducer(
-    doc,
-    addProfile({ id: "base", title: "Base", content: "Base instructions." }),
-  );
   doc = reducer(
     doc,
     addProfile({ id: "tools", title: "Tools", content: "Tool usage." }),
@@ -67,6 +80,25 @@ describe("FeaturesMastraOperations", () => {
       expect(updated.state.global.features.mastra.agentId).toBe("my-agent");
       expect(updated.state.global.features.mastra.agentName).toBe("My Agent");
       expect(updated.operations.global[0].error).toBeUndefined();
+    });
+
+    it("should auto-create default model and profile", () => {
+      const doc = utils.createDocument();
+      const updated = reducer(
+        doc,
+        enableMastra({ agentId: "my-agent", agentName: "My Agent" }),
+      );
+
+      expect(updated.state.global.features.mastra.models).toEqual([
+        { id: "clint/demo-agent", isDefault: true },
+      ]);
+      expect(updated.state.global.features.mastra.profiles).toEqual([
+        {
+          id: "base",
+          title: "Base Profile",
+          content: "You are a helpful assistant",
+        },
+      ]);
     });
 
     it("should trim agentName", () => {
@@ -108,7 +140,7 @@ describe("FeaturesMastraOperations", () => {
       doc = reducer(doc, addModel({ id: "anthropic/claude-sonnet-4-5" }));
       doc = reducer(
         doc,
-        addProfile({ id: "base", title: "Base", content: "content" }),
+        addProfile({ id: "extra", title: "Extra", content: "content" }),
       );
 
       const disabled = reducer(doc, disableMastra({ _: true }));
@@ -123,10 +155,7 @@ describe("FeaturesMastraOperations", () => {
     it("should clear agentDescription and agentImage on disable", () => {
       let doc = createEnabledDoc();
       doc = reducer(doc, setAgentDescription({ description: "desc" }));
-      doc = reducer(
-        doc,
-        setAgentImage({ image: "https://example.com/img.png" }),
-      );
+      doc = reducer(doc, setAgentImage({ image: DATA_URL }));
 
       const disabled = reducer(doc, disableMastra({ _: true }));
 
@@ -194,7 +223,7 @@ describe("FeaturesMastraOperations", () => {
   });
 
   describe("ADD_MODEL", () => {
-    it("should add first model as default", () => {
+    it("should add model after auto-default", () => {
       const doc = createEnabledDoc();
       const updated = reducer(
         doc,
@@ -202,17 +231,19 @@ describe("FeaturesMastraOperations", () => {
       );
 
       expect(updated.state.global.features.mastra.models).toEqual([
-        { id: "anthropic/claude-sonnet-4-5", isDefault: true },
+        { id: "clint/demo-agent", isDefault: true },
+        { id: "anthropic/claude-sonnet-4-5", isDefault: false },
       ]);
     });
 
-    it("should add second model as non-default", () => {
+    it("should add subsequent models as non-default", () => {
       let doc = createEnabledDoc();
       doc = reducer(doc, addModel({ id: "anthropic/claude-sonnet-4-5" }));
       const updated = reducer(doc, addModel({ id: "openai/gpt-4o" }));
 
       expect(updated.state.global.features.mastra.models).toEqual([
-        { id: "anthropic/claude-sonnet-4-5", isDefault: true },
+        { id: "clint/demo-agent", isDefault: true },
+        { id: "anthropic/claude-sonnet-4-5", isDefault: false },
         { id: "openai/gpt-4o", isDefault: false },
       ]);
     });
@@ -226,6 +257,7 @@ describe("FeaturesMastraOperations", () => {
       );
 
       expect(updated.state.global.features.mastra.models).toEqual([
+        { id: "clint/demo-agent", isDefault: false },
         { id: "anthropic/claude-sonnet-4-5", isDefault: false },
         { id: "openai/gpt-4o", isDefault: true },
       ]);
@@ -267,7 +299,7 @@ describe("FeaturesMastraOperations", () => {
       const doc = createDocWithModels();
       const updated = reducer(doc, removeModel({ id: "openai/gpt-4o" }));
 
-      expect(updated.state.global.features.mastra.models).toHaveLength(2);
+      expect(updated.state.global.features.mastra.models).toHaveLength(3);
       expect(
         updated.state.global.features.mastra.models.find(
           (m) => m.id === "openai/gpt-4o",
@@ -282,12 +314,12 @@ describe("FeaturesMastraOperations", () => {
       const doc = createDocWithModels();
       const updated = reducer(
         doc,
-        removeModel({ id: "anthropic/claude-sonnet-4-5" }),
+        removeModel({ id: "clint/demo-agent" }),
       );
 
-      expect(updated.state.global.features.mastra.models).toHaveLength(2);
+      expect(updated.state.global.features.mastra.models).toHaveLength(3);
       expect(updated.state.global.features.mastra.models[0].id).toBe(
-        "openai/gpt-4o",
+        "anthropic/claude-sonnet-4-5",
       );
       expect(updated.state.global.features.mastra.models[0].isDefault).toBe(
         true,
@@ -296,10 +328,9 @@ describe("FeaturesMastraOperations", () => {
 
     it("should allow removing the last model", () => {
       let doc = createEnabledDoc();
-      doc = reducer(doc, addModel({ id: "anthropic/claude-sonnet-4-5" }));
       const updated = reducer(
         doc,
-        removeModel({ id: "anthropic/claude-sonnet-4-5" }),
+        removeModel({ id: "clint/demo-agent" }),
       );
 
       expect(updated.state.global.features.mastra.models).toEqual([]);
@@ -332,6 +363,9 @@ describe("FeaturesMastraOperations", () => {
 
       const models = updated.state.global.features.mastra.models;
       expect(
+        models.find((m) => m.id === "clint/demo-agent")!.isDefault,
+      ).toBe(false);
+      expect(
         models.find((m) => m.id === "anthropic/claude-sonnet-4-5")!.isDefault,
       ).toBe(false);
       expect(models.find((m) => m.id === "openai/gpt-4o")!.isDefault).toBe(
@@ -363,15 +397,20 @@ describe("FeaturesMastraOperations", () => {
   });
 
   describe("ADD_PROFILE", () => {
-    it("should append profile to end by default", () => {
+    it("should append profile after auto-default", () => {
       const doc = createEnabledDoc();
       const updated = reducer(
         doc,
-        addProfile({ id: "base", title: "Base", content: "Hello" }),
+        addProfile({ id: "tools", title: "Tools", content: "Hello" }),
       );
 
       expect(updated.state.global.features.mastra.profiles).toEqual([
-        { id: "base", title: "Base", content: "Hello" },
+        {
+          id: "base",
+          title: "Base Profile",
+          content: "You are a helpful assistant",
+        },
+        { id: "tools", title: "Tools", content: "Hello" },
       ]);
     });
 
@@ -398,7 +437,7 @@ describe("FeaturesMastraOperations", () => {
       const ids = updated.state.global.features.mastra.profiles.map(
         (p) => p.id,
       );
-      expect(ids).toEqual(["first", "second", "third"]);
+      expect(ids).toEqual(["base", "first", "second", "third"]);
     });
 
     it("should reject invalid profile ID", () => {
@@ -414,17 +453,14 @@ describe("FeaturesMastraOperations", () => {
     });
 
     it("should reject duplicate profile ID", () => {
-      let doc = createEnabledDoc();
-      doc = reducer(
-        doc,
-        addProfile({ id: "base", title: "Base", content: "c" }),
-      );
+      const doc = createEnabledDoc();
+      // "base" was auto-created by enableMastra
       const updated = reducer(
         doc,
         addProfile({ id: "base", title: "Base2", content: "c2" }),
       );
 
-      expect(updated.operations.global[2].error).toContain("already exists");
+      expect(updated.operations.global[1].error).toContain("already exists");
     });
 
     it("should error when insertBefore target does not exist", () => {
@@ -448,7 +484,7 @@ describe("FeaturesMastraOperations", () => {
       const doc = utils.createDocument();
       const updated = reducer(
         doc,
-        addProfile({ id: "base", title: "Base", content: "c" }),
+        addProfile({ id: "tools", title: "Tools", content: "c" }),
       );
 
       expect(updated.operations.global[0].error).toContain(
@@ -462,27 +498,27 @@ describe("FeaturesMastraOperations", () => {
       const doc = createDocWithProfiles();
       const updated = reducer(
         doc,
-        updateProfile({ id: "base", title: "New Title" }),
+        updateProfile({ id: "tools", title: "New Title" }),
       );
 
       const profile = updated.state.global.features.mastra.profiles.find(
-        (p) => p.id === "base",
+        (p) => p.id === "tools",
       )!;
       expect(profile.title).toBe("New Title");
-      expect(profile.content).toBe("Base instructions.");
+      expect(profile.content).toBe("Tool usage.");
     });
 
     it("should update content only", () => {
       const doc = createDocWithProfiles();
       const updated = reducer(
         doc,
-        updateProfile({ id: "base", content: "New content." }),
+        updateProfile({ id: "tools", content: "New content." }),
       );
 
       const profile = updated.state.global.features.mastra.profiles.find(
-        (p) => p.id === "base",
+        (p) => p.id === "tools",
       )!;
-      expect(profile.title).toBe("Base");
+      expect(profile.title).toBe("Tools");
       expect(profile.content).toBe("New content.");
     });
 
@@ -491,14 +527,14 @@ describe("FeaturesMastraOperations", () => {
       const updated = reducer(
         doc,
         updateProfile({
-          id: "base",
+          id: "tools",
           title: "Updated",
           content: "Updated content.",
         }),
       );
 
       const profile = updated.state.global.features.mastra.profiles.find(
-        (p) => p.id === "base",
+        (p) => p.id === "tools",
       )!;
       expect(profile.title).toBe("Updated");
       expect(profile.content).toBe("Updated content.");
@@ -610,13 +646,14 @@ describe("FeaturesMastraOperations", () => {
     });
 
     it("should error when a moved profile does not exist", () => {
+      // createDocWithProfiles: enable(0) + addProfile(1) + addProfile(2) = 3 ops
       const doc = createDocWithProfiles();
       const updated = reducer(
         doc,
         reorderProfiles({ ids: ["nonexistent"], insertBefore: null }),
       );
 
-      expect(updated.operations.global[4].error).toContain("not found");
+      expect(updated.operations.global[3].error).toContain("not found");
     });
 
     it("should error when insertBefore target does not exist", () => {
@@ -626,7 +663,7 @@ describe("FeaturesMastraOperations", () => {
         reorderProfiles({ ids: ["base"], insertBefore: "nonexistent" }),
       );
 
-      expect(updated.operations.global[4].error).toContain(
+      expect(updated.operations.global[3].error).toContain(
         "insertBefore profile not found",
       );
     });
@@ -672,25 +709,47 @@ describe("FeaturesMastraOperations", () => {
   });
 
   describe("SET_AGENT_IMAGE", () => {
-    it("should set agent image URL when enabled", () => {
+    it("should set agent image with valid data URL", () => {
+      const doc = createEnabledDoc();
+      const updated = reducer(doc, setAgentImage({ image: DATA_URL }));
+
+      expect(updated.state.global.features.mastra.agentImage).toBe(DATA_URL);
+      expect(updated.operations.global[1].error).toBeUndefined();
+    });
+
+    it("should reject plain URL (must be data URL)", () => {
       const doc = createEnabledDoc();
       const updated = reducer(
         doc,
         setAgentImage({ image: "https://example.com/avatar.png" }),
       );
 
-      expect(updated.state.global.features.mastra.agentImage).toBe(
-        "https://example.com/avatar.png",
-      );
-      expect(updated.operations.global[1].error).toBeUndefined();
+      expect(updated.operations.global[1].error).toContain("Invalid image");
     });
 
     it("should reject when mastra is disabled", () => {
       const doc = utils.createDocument();
-      const updated = reducer(
-        doc,
-        setAgentImage({ image: "https://example.com/avatar.png" }),
+      const updated = reducer(doc, setAgentImage({ image: DATA_URL }));
+
+      expect(updated.operations.global[0].error).toContain(
+        "Mastra is disabled",
       );
+    });
+  });
+
+  describe("CLEAR_AGENT_IMAGE", () => {
+    it("should clear agent image when enabled", () => {
+      let doc = createEnabledDoc();
+      doc = reducer(doc, setAgentImage({ image: DATA_URL }));
+      const updated = reducer(doc, clearAgentImage({ _: true }));
+
+      expect(updated.state.global.features.mastra.agentImage).toBeNull();
+      expect(updated.operations.global[2].error).toBeUndefined();
+    });
+
+    it("should reject when mastra is disabled", () => {
+      const doc = utils.createDocument();
+      const updated = reducer(doc, clearAgentImage({ _: true }));
 
       expect(updated.operations.global[0].error).toContain(
         "Mastra is disabled",
