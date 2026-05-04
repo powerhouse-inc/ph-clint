@@ -120,3 +120,4 @@ export {
 export { buildRootPackageJson } from './root-package-json.js';
 export { buildPublishConfigJs } from './publish-config-js.js';
 export { buildReadme } from './readme-md.js';
+export { buildAppIndexTs } from './app-index-ts.js';

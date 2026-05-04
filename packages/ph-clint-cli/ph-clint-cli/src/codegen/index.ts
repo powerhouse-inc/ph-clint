@@ -55,6 +55,7 @@ import {
   buildReadme,
   buildRootPackageJson,
   buildPublishConfigJs,
+  buildAppIndexTs,
 } from './builders/index.js';
 import {
   collectPostGenActions,
@@ -230,6 +231,17 @@ function planFiles(
       absolutePath: appReadme,
       content: buildAppReadmeContent(spec),
     });
+    // Top-level barrel for the reactor package — lets impl code import from
+    // `{name}-app` instead of drilling into `document-models/<slug>/v1/gen`.
+    const appIndex = buildAppIndexTs(spec);
+    if (appIndex !== null) {
+      const appIndexAbs = path.join(appDir, 'index.ts');
+      planned.push({
+        relativePath: path.relative(targetDir, appIndexAbs),
+        absolutePath: appIndexAbs,
+        content: appIndex,
+      });
+    }
   }
 
   return { planned, cliDir, appDir };
