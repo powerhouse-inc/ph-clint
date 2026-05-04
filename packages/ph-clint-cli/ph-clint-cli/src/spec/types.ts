@@ -221,3 +221,30 @@ export function getDocumentTypeModuleName(documentType: string): string {
     .map((s) => s[0].toUpperCase() + s.slice(1))
     .join('');
 }
+
+/**
+ * Returns true when a documentType entry contains glob wildcards (`*`).
+ * Glob entries like `*​/*`, `powerhouse/*`, or `powerhouse/doc-*` are spec
+ * shorthand meaning "all matching document types from this package" and
+ * must be resolved at runtime rather than emitted as static imports.
+ */
+export function isDocTypeGlob(documentType: string): boolean {
+  return documentType.includes('*');
+}
+
+/**
+ * Convert a documentType glob pattern to a regex source string suitable
+ * for embedding in a `/pattern/` literal.  Each `*` matches any non-`/`
+ * characters. Forward slashes are escaped so the output is safe inside
+ * `/.../`.
+ *
+ * Examples:
+ *   `*​/*`            → `^[^\/]*\/[^\/]*$`   (any org, any name)
+ *   `powerhouse/*`   → `^powerhouse\/[^\/]*$`
+ *   `powerhouse/doc-*` → `^powerhouse\/doc-[^\/]*$`
+ */
+export function docTypeGlobToRegex(pattern: string): string {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\\/]/g, '\\$&');
+  const withWildcards = escaped.replace(/\*/g, '[^\\/]*');
+  return `^${withWildcards}$`;
+}

@@ -99,6 +99,77 @@ describe('buildFrameworkGenTs', () => {
     expect(code).toContain("import { PhClintProject } from 'foo-app';");
     expect(code).toContain("import { Invoice } from '@acme/reactor-pkg/document-models/invoice';");
   });
+
+  it('emits runtime filter for */* glob on app package', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+      packages: [appPkg('foo', ['*/*'])],
+    });
+    const code = buildFrameworkGenTs(spec)!;
+    expect(code).toContain("import { documentModels as globModels } from 'foo-app';");
+    expect(code).toContain('...globModels.filter(');
+    expect(code).toContain('.test(m.documentModel.global.id)');
+    // No `as const` when globs are present (runtime array loses literal types).
+    expect(code).not.toContain('as const');
+  });
+
+  it('emits runtime filter for partial glob like powerhouse/*', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+      packages: [appPkg('foo', ['powerhouse/*'])],
+    });
+    const code = buildFrameworkGenTs(spec)!;
+    expect(code).toContain("import { documentModels as globModels } from 'foo-app';");
+    expect(code).toMatch(/powerhouse\\/); // regex contains powerhouse\/ (escaped slash)
+  });
+
+  it('mixes explicit and glob entries from the same package', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+      packages: [
+        appPkg('foo', ['powerhouse/ph-clint-project', 'acme/*']),
+      ],
+    });
+    const code = buildFrameworkGenTs(spec)!;
+    // Explicit entry imported by name.
+    expect(code).toContain("import { PhClintProject } from 'foo-app';");
+    // Glob entry uses documentModels filter.
+    expect(code).toContain("import { documentModels as globModels } from 'foo-app';");
+    expect(code).toContain('  PhClintProject,');
+    expect(code).toContain('...globModels.filter(');
+  });
+
+  it('emits runtime filter for glob on external package', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+      packages: [
+        appPkg('foo', ['powerhouse/ph-clint-project']),
+        extPkg('@acme/reactor-pkg', ['*/*']),
+      ],
+    });
+    const code = buildFrameworkGenTs(spec)!;
+    expect(code).toContain("import { PhClintProject } from 'foo-app';");
+    expect(code).toContain("import { documentModels as globModels } from '@acme/reactor-pkg';");
+    expect(code).toContain('...globModels.filter(');
+  });
+
+  it('uses unique aliases for multiple glob packages', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+      packages: [
+        appPkg('foo', ['*/*']),
+        extPkg('@acme/reactor-pkg', ['*/*']),
+      ],
+    });
+    const code = buildFrameworkGenTs(spec)!;
+    expect(code).toContain('globModels');
+    expect(code).toContain('globModels1');
+  });
 });
 
 describe('buildFrameworkTs', () => {
@@ -182,6 +253,29 @@ describe('buildAppIndexTs', () => {
     const code = buildAppIndexTs(spec);
     expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
     expect(code).not.toContain('invoice');
+  });
+
+  it('uses barrel re-export for glob patterns', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+      packages: [appPkg('foo', ['*/*'])],
+    });
+    const code = buildAppIndexTs(spec)!;
+    expect(code).toContain("export * from './document-models/index.js';");
+    // No per-slug re-exports for globs.
+    expect(code).not.toMatch(/document-models\/\*\//);
+  });
+
+  it('emits barrel re-export plus explicit slugs when mixed', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+      packages: [appPkg('foo', ['powerhouse/ph-clint-project', 'acme/*'])],
+    });
+    const code = buildAppIndexTs(spec)!;
+    expect(code).toContain("export * from './document-models/index.js';");
+    expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
   });
 });
 
