@@ -1,9 +1,8 @@
 /**
- * Phase 4 codegen tests — framework.ts + framework.gen.ts + app-index.ts.
+ * Phase 4 codegen tests — framework.ts + framework.gen.ts.
  *
  * Covers the split-binding emit (user-owned `framework.ts`, machine-owned
- * `framework.gen.ts`), the init-only vs regen-always semantics, and the
- * top-level reactor-package barrel.
+ * `framework.gen.ts`) and the init-only vs regen-always semantics.
  */
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs/promises';
@@ -13,7 +12,6 @@ import { generateProject } from '../../src/codegen/index.js';
 import {
   buildFrameworkTs,
   buildFrameworkGenTs,
-  buildAppIndexTs,
 } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
@@ -214,71 +212,6 @@ describe('buildFrameworkTs', () => {
   });
 });
 
-describe('buildAppIndexTs', () => {
-  it('returns null when Powerhouse disabled', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    expect(buildAppIndexTs(spec)).toBeNull();
-  });
-
-  it('returns null when Powerhouse on but no document types in app package', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: { powerhouse: 'Connect' },
-    });
-    expect(buildAppIndexTs(spec)).toBeNull();
-  });
-
-  it('emits a barrel re-export per documentType slug from the app package', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: { powerhouse: 'Connect' },
-      packages: [
-        appPkg('foo', ['powerhouse/ph-clint-project', 'acme/invoice']),
-      ],
-    });
-    const code = buildAppIndexTs(spec);
-    expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
-    expect(code).toContain("export * from './document-models/invoice/index.js';");
-  });
-
-  it('does not re-export external package document types', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: { powerhouse: 'Connect' },
-      packages: [
-        appPkg('foo', ['powerhouse/ph-clint-project']),
-        extPkg('@acme/reactor-pkg', ['acme/invoice']),
-      ],
-    });
-    const code = buildAppIndexTs(spec);
-    expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
-    expect(code).not.toContain('invoice');
-  });
-
-  it('uses barrel re-export for glob patterns', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: { powerhouse: 'Connect' },
-      packages: [appPkg('foo', ['*/*'])],
-    });
-    const code = buildAppIndexTs(spec)!;
-    expect(code).toContain("export * from './document-models/index.js';");
-    // No per-slug re-exports for globs.
-    expect(code).not.toMatch(/document-models\/\*\//);
-  });
-
-  it('emits barrel re-export plus explicit slugs when mixed', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: { powerhouse: 'Connect' },
-      packages: [appPkg('foo', ['powerhouse/ph-clint-project', 'acme/*'])],
-    });
-    const code = buildAppIndexTs(spec)!;
-    expect(code).toContain("export * from './document-models/index.js';");
-    expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
-  });
-});
-
 describe('generateProject — framework files', () => {
   let tmp: string;
   beforeEach(async () => {
@@ -357,19 +290,4 @@ describe('generateProject — framework files', () => {
     expect(v2).toContain('PhClintProject,');
   });
 
-  it('init emits the reactor-package top-level index.ts when app package has document types', async () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: { powerhouse: 'Connect' },
-      packages: [appPkg('foo', ['powerhouse/ph-clint-project'])],
-    });
-    await generateProject({ targetDir: tmp, spec });
-
-    const appIndex = path.join(tmp, 'foo-app/index.ts');
-    expect(await exists(appIndex)).toBe(true);
-    const content = await fs.readFile(appIndex, 'utf8');
-    expect(content).toContain(
-      "export * from './document-models/ph-clint-project/index.js';",
-    );
-  });
 });
