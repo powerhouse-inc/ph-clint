@@ -220,15 +220,19 @@ describe('buildAppIndexTs', () => {
     expect(buildAppIndexTs(spec)).toBeNull();
   });
 
-  it('returns null when Powerhouse on but no document types in app package', () => {
+  it('emits standard Powerhouse barrel even with no document types', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
-    expect(buildAppIndexTs(spec)).toBeNull();
+    const code = buildAppIndexTs(spec)!;
+    expect(code).toContain("export { documentModels } from './document-models/document-models.js';");
+    expect(code).toContain("export { editors } from './editors/editors.js';");
+    expect(code).toContain("export { processorFactory } from './processors/factory.js';");
+    expect(code).toContain('export const manifest: Manifest = manifestJson;');
   });
 
-  it('emits a barrel re-export per documentType slug from the app package', () => {
+  it('emits barrel plus per-slug re-exports when app package has document types', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
@@ -236,7 +240,8 @@ describe('buildAppIndexTs', () => {
         appPkg('foo', ['powerhouse/ph-clint-project', 'acme/invoice']),
       ],
     });
-    const code = buildAppIndexTs(spec);
+    const code = buildAppIndexTs(spec)!;
+    expect(code).toContain("export { documentModels }");
     expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
     expect(code).toContain("export * from './document-models/invoice/index.js';");
   });
@@ -250,7 +255,7 @@ describe('buildAppIndexTs', () => {
         extPkg('@acme/reactor-pkg', ['acme/invoice']),
       ],
     });
-    const code = buildAppIndexTs(spec);
+    const code = buildAppIndexTs(spec)!;
     expect(code).toContain("export * from './document-models/ph-clint-project/index.js';");
     expect(code).not.toContain('invoice');
   });
@@ -263,7 +268,6 @@ describe('buildAppIndexTs', () => {
     });
     const code = buildAppIndexTs(spec)!;
     expect(code).toContain("export * from './document-models/index.js';");
-    // No per-slug re-exports for globs.
     expect(code).not.toMatch(/document-models\/\*\//);
   });
 
