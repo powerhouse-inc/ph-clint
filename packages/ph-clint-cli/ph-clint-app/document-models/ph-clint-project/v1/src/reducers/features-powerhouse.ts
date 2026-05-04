@@ -24,9 +24,7 @@ export const phClintProjectFeaturesPowerhouseOperations: PhClintProjectFeaturesP
             ? state.name.replace(/-cli$/, "-app")
             : "app";
           const appName =
-            state.scope && state.name
-              ? `${state.scope}/${baseName}`
-              : baseName;
+            state.scope && state.name ? `${state.scope}/${baseName}` : baseName;
           state.packages.push({
             id: `app-${state.name || "managed"}`,
             packageName: appName,
