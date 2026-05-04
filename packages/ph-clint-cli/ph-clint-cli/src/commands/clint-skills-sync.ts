@@ -4,7 +4,7 @@
  * longer referenced, and updates `.skills-manifest.json`.
  */
 import path from 'node:path';
-import { defineCommand } from '@powerhousedao/ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { readProjectSpec } from '../spec/file.js';
 import { syncExternalSkills } from '../skills/sync.js';

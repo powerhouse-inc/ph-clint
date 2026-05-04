@@ -220,8 +220,10 @@ export const specChangeTrigger = createDocumentChangeTrigger({
       }
 
       // Run post-generation actions (ph-init, install, build, skills-sync).
+      // Route through ctx.context.stdout so output flows through
+      // routine.onOutput → service log buffer → ServicePanel.
       await runPostGenActions(result.pendingActions, {
-        log: (msg) => log?.info(`${TAG} ${msg}`),
+        log: (msg) => ctx.context.stdout(`${TAG} ${msg}\n`),
         runProcess: ctx.context.runProcess,
       });
     }

@@ -31,7 +31,7 @@ export type PostGenActionKind = PostGenAction['kind'];
 
 export interface PostGenActionContext {
   log: (msg: string) => void;
-  runProcess?: (
+  runProcess: (
     command: string,
     opts?: Omit<ProcessRunOptions, 'onOutput'>,
   ) => Promise<{ success: boolean; output: string }>;
@@ -488,20 +488,11 @@ async function executeAction(
 
     case 'app-install':
     case 'cli-install': {
-      if (ctx.runProcess) {
-        const result = await ctx.runProcess('pnpm install', {
-          cwd: action.dir,
-          timeout: 300_000,
-        });
-        return result.success;
-      }
-      // Fallback: direct spawn
-      const { runCommand } = await import('./exec.js');
-      const result = await runCommand('pnpm', ['install'], {
+      const result = await ctx.runProcess('pnpm install', {
         cwd: action.dir,
-        stdio: 'inherit',
+        timeout: 300_000,
       });
-      return result.exitCode === 0;
+      return result.success;
     }
 
     case 'app-build':
@@ -525,20 +516,11 @@ async function runBuild(
   dir: string,
   ctx: PostGenActionContext,
 ): Promise<boolean> {
-  if (ctx.runProcess) {
-    const result = await ctx.runProcess('pnpm build', {
-      cwd: dir,
-      timeout: 120_000,
-    });
-    return result.success;
-  }
-  // Fallback: direct spawn
-  const { runCommand } = await import('./exec.js');
-  const result = await runCommand('pnpm', ['build'], {
+  const result = await ctx.runProcess('pnpm build', {
     cwd: dir,
-    stdio: 'inherit',
+    timeout: 120_000,
   });
-  return result.exitCode === 0;
+  return result.success;
 }
 
 function formatDuration(ms: number): string {

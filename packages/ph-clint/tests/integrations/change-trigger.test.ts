@@ -42,20 +42,26 @@ function makeContext<TState>(
   emit: (event: string, data: unknown) => void;
 } {
   const bus = opts.withBus !== false ? createEventBus() : undefined;
+  const reactorAccessor = async () =>
+    opts.reactor === null ? undefined : (opts.reactor ?? undefined);
+  const agentAccessor = async () => undefined;
   const core: CoreContext = {
     workdir: '/tmp/test',
     workspace: {} as any,
     config: {},
     stdout: () => {},
+    runProcess: async () => ({ success: true, output: '' }),
     on: bus?.on,
     emit: bus?.emit,
   };
   const ctx: TriggerContext<TState> = {
     context: core,
+    get commandContext() {
+      return { ...core, reactor: reactorAccessor, agent: agentAccessor };
+    },
     state: undefined as any,
-    reactor: async () =>
-      opts.reactor === null ? undefined : (opts.reactor ?? undefined),
-    agent: async () => undefined,
+    reactor: reactorAccessor,
+    agent: agentAccessor,
   };
   return {
     ctx,

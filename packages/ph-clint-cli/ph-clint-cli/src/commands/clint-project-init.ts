@@ -12,7 +12,7 @@
  *   8. Print next-steps guidance.
  */
 import path from 'node:path';
-import { defineCommand } from '@powerhousedao/ph-clint';
+import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import {
   clintProjectSpecSchema,

@@ -20,6 +20,8 @@ type RunProcess = (
   opts?: Omit<ProcessRunOptions, 'onOutput'>,
 ) => Promise<{ success: boolean; output: string }>;
 
+export type { RunProcess };
+
 export interface PhInitOptions {
   /** Absolute path to the project root. */
   targetDir: string;
@@ -30,8 +32,8 @@ export interface PhInitOptions {
   log?: (msg: string) => void;
   /** Override `ph` binary name (for tests). */
   binName?: string;
-  /** Subprocess runner — uses CommandContext.runProcess when available. */
-  runProcess?: RunProcess;
+  /** Subprocess runner — matches CommandContext.runProcess. */
+  runProcess: RunProcess;
   /** Explicit Powerhouse version to pin `ph init` to (tag or semver). */
   phVersion?: string;
 }
@@ -102,37 +104,19 @@ export async function runPhInit(
   const args = ['init', appFolder, ...versionArgs, '--pnpm'];
   log(`Running \`${binName} init ${appFolder}\` (version: ${phVersion ?? 'auto'}) in ${options.targetDir} …`);
 
-  const run = options.runProcess;
-  if (run) {
-    const result = await run(`${binName} ${args.join(' ')}`, {
-      cwd: options.targetDir,
-      timeout: 300_000, // ph init + pnpm install can be slow
-    });
-    const exitCode = result.success ? 0 : 1;
-    if (!result.success) {
-      log(
-        `\`${binName} init\` failed. ` +
-          'You can re-run it manually after resolving the issue.',
-      );
-    }
-    // Patch scoped name
-    await patchScopedName(options, appFolder, log);
-    return { ran: true, exitCode };
-  }
-
-  // Fallback: direct spawn with stdio inherit (for backward compat / tests without context)
-  const { runCommand } = await import('./exec.js');
-  const result = await runCommand(binName, args, { cwd: options.targetDir, stdio: 'inherit' });
-
-  if (result.exitCode !== 0) {
+  const result = await options.runProcess(`${binName} ${args.join(' ')}`, {
+    cwd: options.targetDir,
+    timeout: 300_000,
+  });
+  const exitCode = result.success ? 0 : 1;
+  if (!result.success) {
     log(
-      `\`${binName} init\` exited with code ${result.exitCode}. ` +
+      `\`${binName} init\` failed. ` +
         'You can re-run it manually after resolving the issue.',
     );
   }
-
   await patchScopedName(options, appFolder, log);
-  return { ran: true, exitCode: result.exitCode };
+  return { ran: true, exitCode };
 }
 
 /**
@@ -184,7 +168,7 @@ export async function runPhInstallPackages(options: {
   appDir: string;
   packages: string[];
   log?: (msg: string) => void;
-  runProcess?: RunProcess;
+  runProcess: RunProcess;
 }): Promise<boolean> {
   const { appDir, packages, log = () => {}, runProcess } = options;
   const binName = 'ph';
@@ -199,20 +183,11 @@ export async function runPhInstallPackages(options: {
     `Running \`${binName} install ${packages.join(' ')} --local\` in ${path.basename(appDir)} …`,
   );
 
-  if (runProcess) {
-    const result = await runProcess(`${binName} ${args.join(' ')}`, {
-      cwd: appDir,
-      timeout: 300_000,
-    });
-    return result.success;
-  }
-
-  const { runCommand } = await import('./exec.js');
-  const result = await runCommand(binName, args, {
+  const result = await runProcess(`${binName} ${args.join(' ')}`, {
     cwd: appDir,
-    stdio: 'inherit',
+    timeout: 300_000,
   });
-  return result.exitCode === 0;
+  return result.success;
 }
 
 export interface PnpmInstallOptions {
@@ -221,8 +196,8 @@ export interface PnpmInstallOptions {
   log?: (msg: string) => void;
   /** Override `pnpm` binary name (for tests). */
   binName?: string;
-  /** Subprocess runner — uses CommandContext.runProcess when available. */
-  runProcess?: RunProcess;
+  /** Subprocess runner — matches CommandContext.runProcess. */
+  runProcess: RunProcess;
 }
 
 export interface PnpmInstallResult {
@@ -249,30 +224,15 @@ export async function runPnpmInstall(
   for (const dir of options.dirs) {
     log(`Running \`${binName} install\` in ${dir} …`);
 
-    const run = options.runProcess;
-    if (run) {
-      const result = await run(`${binName} install`, {
-        cwd: dir,
-        timeout: 300_000,
-      });
-      if (!result.success) {
-        log(
-          `\`${binName} install\` failed in ${dir}. ` +
-            'Retry manually once the underlying issue is resolved.',
-        );
-      }
-    } else {
-      const { runCommand } = await import('./exec.js');
-      const result = await runCommand(binName, ['install'], {
-        cwd: dir,
-        stdio: 'inherit',
-      });
-      if (result.exitCode !== 0) {
-        log(
-          `\`${binName} install\` exited with code ${result.exitCode} in ${dir}. ` +
-            'Retry manually once the underlying issue is resolved.',
-        );
-      }
+    const result = await options.runProcess(`${binName} install`, {
+      cwd: dir,
+      timeout: 300_000,
+    });
+    if (!result.success) {
+      log(
+        `\`${binName} install\` failed in ${dir}. ` +
+          'Retry manually once the underlying issue is resolved.',
+      );
     }
     ran.push(dir);
   }

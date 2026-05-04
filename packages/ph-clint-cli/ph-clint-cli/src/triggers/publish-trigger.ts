@@ -18,7 +18,6 @@
  *      b. Runs `ph-clint clint-project-publish --tag <tag>`.
  *      c. Dispatches SET_PUBLISH_STATUS({ id, status: "Succeeded"|"Failed" }).
  */
-import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { scanProjects, getProjectMapping } from '@powerhousedao/ph-clint';
 import type { WorkItem } from '@powerhousedao/ph-clint';
@@ -29,35 +28,6 @@ import { clintProject } from '../services/clint-project.js';
 
 const DOCUMENT_TYPE = 'powerhouse/ph-clint-project' as const;
 const TAG = '[publish]';
-
-/** Run a shell command and return stdout. Rejects on non-zero exit. */
-function exec(
-  cmd: string,
-  args: string[],
-  cwd: string,
-  onLog?: (msg: string) => void,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
-    const out: string[] = [];
-    const err: string[] = [];
-    proc.stdout?.on('data', (d: Buffer) => {
-      const s = d.toString();
-      out.push(s);
-      if (onLog) for (const line of s.split('\n')) if (line.trim()) onLog(line.trim());
-    });
-    proc.stderr?.on('data', (d: Buffer) => {
-      const s = d.toString();
-      err.push(s);
-      if (onLog) for (const line of s.split('\n')) if (line.trim()) onLog(line.trim());
-    });
-    proc.on('error', reject);
-    proc.on('close', (code) => {
-      if (code === 0) resolve(out.join(''));
-      else reject(new Error(`${cmd} ${args.join(' ')} exited ${code}\n${err.join('')}`));
-    });
-  });
-}
 
 /** Map document model PublishTag values to CLI --tag values. */
 export function tagToCli(tag: string): 'dev' | 'staging' | 'production' | null {
@@ -124,6 +94,8 @@ export const publishTrigger = createDocumentChangeTrigger({
         `${TAG} found pending ${record.tag} publish for doc ${doc.header.id} (id=${record.id}, version=${record.version})`,
       );
 
+      const { runProcess, stdout } = ctx.context;
+
       return {
         type: 'function',
         params: {
@@ -141,35 +113,29 @@ export const publishTrigger = createDocumentChangeTrigger({
             ]);
 
             // Install dependencies in the generated project before publishing.
-            log?.info(`${TAG} running pnpm install in ${workdir}`);
-            try {
-              await exec('pnpm', ['install'], workdir, (msg) =>
-                log?.debug(`${TAG} [install] ${msg}`),
-              );
-            } catch (installErr) {
-              log?.error(
-                `${TAG} pnpm install failed: ${installErr instanceof Error ? installErr.message : String(installErr)}`,
-              );
+            stdout(`${TAG} running pnpm install in ${workdir}\n`);
+            const installResult = await runProcess('pnpm install', {
+              cwd: workdir,
+              timeout: 300_000,
+            });
+            if (!installResult.success) {
+              log?.error(`${TAG} pnpm install failed in ${workdir}`);
             }
 
             // Run the publish command.
             let success = false;
             try {
-              log?.info(
-                `${TAG} invoking clint-project-publish --tag ${cliTag}`,
-              );
+              stdout(`${TAG} invoking clint-project-publish --tag ${cliTag}\n`);
               const { clintProjectPublish } = await import(
                 '../commands/clint-project-publish.js'
               );
-              const result = await clintProjectPublish.execute(
+              // FIXME(type-strictness): Command.execute drops the R generic,
+              // so typed trigger contexts can't be passed directly. See
+              // specs/plans/20260504-command-registry-generic.md
+              const result = await (clintProjectPublish.execute as Function)(
                 { tag: cliTag, dryRun: false, skipBuild: false, skipGitCheck: true, verbose: false },
-                // @ts-expect-error — minimal context; publish uses workdir + stdout.
-                {
-                  workdir,
-                  stdout: (msg: string) => log?.info(`${TAG} ${msg}`),
-                  log,
-                },
-              );
+                ctx.commandContext,
+              ) as { text: string };
               success = !result.text.includes('failed');
             } catch (err) {
               log?.error(
@@ -179,7 +145,7 @@ export const publishTrigger = createDocumentChangeTrigger({
 
             // Update status.
             const finalStatus = success ? 'Succeeded' : 'Failed';
-            log?.info(`${TAG} marking record ${record.id} as ${finalStatus}`);
+            stdout(`${TAG} marking record ${record.id} as ${finalStatus}\n`);
             await reactor.client.execute(doc.header.id, 'main', [
               setPublishStatus({
                 id: record.id,

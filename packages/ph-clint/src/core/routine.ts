@@ -65,11 +65,16 @@ export function createRoutine(options: RoutineOptions): Routine {
     // defines a `state()` initializer, it is called exactly once per
     // trigger instance before setup()/poll() run.
     const state: unknown = trigger.state ? trigger.state() : {};
+    const reactorAccessor = () => getReactor?.() ?? Promise.resolve(undefined);
+    const agentAccessor = () => getAgent?.() ?? Promise.resolve(undefined);
     return {
       get context(): CoreContext { return ctx; },
+      get commandContext(): CommandContext {
+        return { ...ctx, reactor: reactorAccessor, agent: agentAccessor };
+      },
       state,
-      reactor: () => getReactor?.() ?? Promise.resolve(undefined),
-      agent: () => getAgent?.() ?? Promise.resolve(undefined),
+      reactor: reactorAccessor,
+      agent: agentAccessor,
     } as TriggerContext<any, any, any>;
   }
 
@@ -219,6 +224,13 @@ export function createRoutine(options: RoutineOptions): Routine {
     },
     setContext(newCtx: CommandContext) {
       ctx = newCtx;
+      // Rewire ctx.stdout so all output (including runProcess lines) flows
+      // through routine.onOutput → RoutineServiceAdapter log buffer.
+      const originalStdout = ctx.stdout;
+      ctx.stdout = (text: string) => {
+        if (routine.onOutput) routine.onOutput(text);
+        else originalStdout(text);
+      };
     },
     setCapabilities(caps) {
       // Erase R at storage — the registry generic is only for caller-side

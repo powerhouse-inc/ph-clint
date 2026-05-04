@@ -297,6 +297,8 @@ export interface TriggerContext<
 > {
   /** Live reference to the core context (workdir, config, emit, services, etc.). */
   context: CoreContext<TConfig, R>;
+  /** Full CommandContext assembled from core context + capability accessors. */
+  commandContext: CommandContext<TConfig, R>;
   state: TState;
   /** Lazy reactor accessor — returns the ReactorContext or undefined if not configured. */
   reactor: () => Promise<ReactorContext<R> | undefined>;
