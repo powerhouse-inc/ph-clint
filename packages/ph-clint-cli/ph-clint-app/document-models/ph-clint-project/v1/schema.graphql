@@ -73,6 +73,8 @@ type PowerhousePackage {
   id: OID!
   packageName: String!
   documentTypes: [String!]!
+  version: String
+  managed: Boolean!
 }
 
 type ExternalSkill {
@@ -221,6 +223,11 @@ input RemovePackageDocumentTypeInput {
   documentType: String!
 }
 
+input SetPackageVersionInput {
+  packageId: OID!
+  version: String
+}
+
 # external_skills
 
 input AddExternalSkillInput {
@@ -291,6 +298,7 @@ input ImportPackageInput {
   id: OID!
   packageName: String!
   documentTypes: [String!]!
+  version: String
 }
 
 input ImportSkillInput {

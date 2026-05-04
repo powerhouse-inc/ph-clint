@@ -4,6 +4,7 @@ import {
   utils,
   isPhClintProjectDocument,
   setPowerhouseLevel,
+  setPackageIdentifier,
 } from "document-models/ph-clint-project/v1";
 
 describe("FeaturesPowerhouseOperations", () => {
@@ -122,5 +123,25 @@ describe("FeaturesPowerhouseOperations", () => {
 
     expect(atReactor.state.global.features.powerhouse).toBe("Reactor");
     expect(atReactor.operations.global[1].error).toBeUndefined();
+  });
+
+  it("should auto-create managed app package with */* when enabling Powerhouse", () => {
+    let doc = utils.createDocument();
+    doc = reducer(
+      doc,
+      setPackageIdentifier({ identifier: "@myorg/my-tool-cli" }),
+    );
+    const updated = reducer(
+      doc,
+      setPowerhouseLevel({ level: "Reactor" as const }),
+    );
+
+    const appPkg = updated.state.global.packages.find(
+      (p) => p.packageName === "@myorg/my-tool-app",
+    );
+    expect(appPkg).toBeDefined();
+    expect(appPkg!.managed).toBe(true);
+    expect(appPkg!.version).toBeNull();
+    expect(appPkg!.documentTypes).toEqual(["*/*"]);
   });
 });

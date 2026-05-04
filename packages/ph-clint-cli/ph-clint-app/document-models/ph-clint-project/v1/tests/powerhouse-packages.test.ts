@@ -7,11 +7,14 @@ import {
   removePowerhousePackage,
   addPackageDocumentType,
   removePackageDocumentType,
+  setPackageVersion,
+  setPackageIdentifier,
+  setPowerhouseLevel,
 } from "document-models/ph-clint-project/v1";
 
 describe("PowerhousePackagesOperations", () => {
   describe("ADD_POWERHOUSE_PACKAGE", () => {
-    it("should add a package", () => {
+    it("should add a package with managed=false and version=null", () => {
       const doc = utils.createDocument();
       const updated = reducer(
         doc,
@@ -22,7 +25,13 @@ describe("PowerhousePackagesOperations", () => {
       );
 
       expect(updated.state.global.packages).toEqual([
-        { id: "pkg-1", packageName: "@myorg/my-package", documentTypes: [] },
+        {
+          id: "pkg-1",
+          packageName: "@myorg/my-package",
+          documentTypes: [],
+          version: null,
+          managed: false,
+        },
       ]);
       expect(updated.operations.global[0].error).toBeUndefined();
     });
@@ -57,19 +66,39 @@ describe("PowerhousePackagesOperations", () => {
   });
 
   describe("REMOVE_POWERHOUSE_PACKAGE", () => {
-    it("should remove a package", () => {
+    it("should remove an unmanaged package", () => {
       let doc = utils.createDocument();
       doc = reducer(
         doc,
         addPowerhousePackage({ id: "pkg-1", packageName: "my-package" }),
       );
-      const updated = reducer(
-        doc,
-        removePowerhousePackage({ id: "pkg-1" }),
-      );
+      const updated = reducer(doc, removePowerhousePackage({ id: "pkg-1" }));
 
       expect(updated.state.global.packages).toEqual([]);
       expect(updated.operations.global[1].error).toBeUndefined();
+    });
+
+    it("should reject removing a managed package", () => {
+      let doc = utils.createDocument();
+      doc = reducer(
+        doc,
+        setPackageIdentifier({ identifier: "my-tool-cli" }),
+      );
+      doc = reducer(
+        doc,
+        setPowerhouseLevel({ level: "Reactor" as const }),
+      );
+      const appPkg = doc.state.global.packages.find((p) => p.managed);
+      expect(appPkg).toBeDefined();
+
+      const updated = reducer(
+        doc,
+        removePowerhousePackage({ id: appPkg!.id }),
+      );
+
+      expect(updated.operations.global[2].error).toContain(
+        "Cannot remove a managed package",
+      );
     });
 
     it("should error on non-existent package", () => {
@@ -77,6 +106,65 @@ describe("PowerhousePackagesOperations", () => {
       const updated = reducer(
         doc,
         removePowerhousePackage({ id: "nonexistent" }),
+      );
+
+      expect(updated.operations.global[0].error).toContain("not found");
+    });
+  });
+
+  describe("SET_PACKAGE_VERSION", () => {
+    it("should set a valid semver version", () => {
+      let doc = utils.createDocument();
+      doc = reducer(
+        doc,
+        addPowerhousePackage({ id: "pkg-1", packageName: "my-package" }),
+      );
+      const updated = reducer(
+        doc,
+        setPackageVersion({ packageId: "pkg-1", version: "1.2.3" }),
+      );
+
+      expect(updated.state.global.packages[0].version).toBe("1.2.3");
+      expect(updated.operations.global[1].error).toBeUndefined();
+    });
+
+    it("should set version to null for auto", () => {
+      let doc = utils.createDocument();
+      doc = reducer(
+        doc,
+        addPowerhousePackage({ id: "pkg-1", packageName: "my-package" }),
+      );
+      doc = reducer(
+        doc,
+        setPackageVersion({ packageId: "pkg-1", version: "1.0.0" }),
+      );
+      const updated = reducer(
+        doc,
+        setPackageVersion({ packageId: "pkg-1", version: null }),
+      );
+
+      expect(updated.state.global.packages[0].version).toBeNull();
+    });
+
+    it("should reject invalid version string", () => {
+      let doc = utils.createDocument();
+      doc = reducer(
+        doc,
+        addPowerhousePackage({ id: "pkg-1", packageName: "my-package" }),
+      );
+      const updated = reducer(
+        doc,
+        setPackageVersion({ packageId: "pkg-1", version: "not-semver" }),
+      );
+
+      expect(updated.operations.global[1].error).toContain("Invalid version");
+    });
+
+    it("should error on non-existent package", () => {
+      const doc = utils.createDocument();
+      const updated = reducer(
+        doc,
+        setPackageVersion({ packageId: "nonexistent", version: "1.0.0" }),
       );
 
       expect(updated.operations.global[0].error).toContain("not found");
@@ -104,6 +192,55 @@ describe("PowerhousePackagesOperations", () => {
       expect(updated.operations.global[1].error).toBeUndefined();
     });
 
+    it("should accept */* wildcard and clear existing types", () => {
+      let doc = utils.createDocument();
+      doc = reducer(
+        doc,
+        addPowerhousePackage({ id: "pkg-1", packageName: "my-package" }),
+      );
+      doc = reducer(
+        doc,
+        addPackageDocumentType({
+          packageId: "pkg-1",
+          documentType: "org/my-doc",
+        }),
+      );
+      const updated = reducer(
+        doc,
+        addPackageDocumentType({
+          packageId: "pkg-1",
+          documentType: "*/*",
+        }),
+      );
+
+      expect(updated.state.global.packages[0].documentTypes).toEqual(["*/*"]);
+    });
+
+    it("should silently skip adding specific type when */* is present", () => {
+      let doc = utils.createDocument();
+      doc = reducer(
+        doc,
+        addPowerhousePackage({ id: "pkg-1", packageName: "my-package" }),
+      );
+      doc = reducer(
+        doc,
+        addPackageDocumentType({
+          packageId: "pkg-1",
+          documentType: "*/*",
+        }),
+      );
+      const updated = reducer(
+        doc,
+        addPackageDocumentType({
+          packageId: "pkg-1",
+          documentType: "org/my-doc",
+        }),
+      );
+
+      expect(updated.state.global.packages[0].documentTypes).toEqual(["*/*"]);
+      expect(updated.operations.global[2].error).toBeUndefined();
+    });
+
     it("should reject invalid document type format", () => {
       let doc = utils.createDocument();
       doc = reducer(
@@ -118,7 +255,9 @@ describe("PowerhousePackagesOperations", () => {
         }),
       );
 
-      expect(updated.operations.global[1].error).toContain("Invalid document type");
+      expect(updated.operations.global[1].error).toContain(
+        "Invalid document type",
+      );
     });
 
     it("should reject duplicate document type", () => {

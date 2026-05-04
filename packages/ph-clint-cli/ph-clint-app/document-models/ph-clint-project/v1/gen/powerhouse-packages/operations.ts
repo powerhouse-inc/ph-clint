@@ -4,6 +4,7 @@ import type {
   RemovePowerhousePackageAction,
   AddPackageDocumentTypeAction,
   RemovePackageDocumentTypeAction,
+  SetPackageVersionAction,
 } from "./actions.js";
 import type { PhClintProjectState } from "../types.js";
 
@@ -26,6 +27,11 @@ export interface PhClintProjectPowerhousePackagesOperations {
   removePackageDocumentTypeOperation: (
     state: PhClintProjectState,
     action: RemovePackageDocumentTypeAction,
+    dispatch?: SignalDispatch,
+  ) => void;
+  setPackageVersionOperation: (
+    state: PhClintProjectState,
+    action: SetPackageVersionAction,
     dispatch?: SignalDispatch,
   ) => void;
 }

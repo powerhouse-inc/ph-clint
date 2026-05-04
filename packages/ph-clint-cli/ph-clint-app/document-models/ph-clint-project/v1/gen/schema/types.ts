@@ -127,6 +127,7 @@ export type ImportPackageInput = {
   documentTypes: Array<Scalars["String"]["input"]>;
   id: Scalars["OID"]["input"];
   packageName: Scalars["String"]["input"];
+  version?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type ImportProfileInput = {
@@ -214,7 +215,9 @@ export type PowerhouseLevel =
 export type PowerhousePackage = {
   documentTypes: Array<Scalars["String"]["output"]>;
   id: Scalars["OID"]["output"];
+  managed: Scalars["Boolean"]["output"];
   packageName: Scalars["String"]["output"];
+  version: Maybe<Scalars["String"]["output"]>;
 };
 
 export type PublishDevInput = {
@@ -310,6 +313,11 @@ export type SetExternalSkillNameInput = {
 
 export type SetPackageIdentifierInput = {
   identifier: Scalars["String"]["input"];
+};
+
+export type SetPackageVersionInput = {
+  packageId: Scalars["OID"]["input"];
+  version?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type SetPowerhouseLevelInput = {

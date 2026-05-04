@@ -38,6 +38,7 @@ import {
   RemovePowerhousePackageInputSchema,
   AddPackageDocumentTypeInputSchema,
   RemovePackageDocumentTypeInputSchema,
+  SetPackageVersionInputSchema,
   AddExternalSkillInputSchema,
   RemoveExternalSkillInputSchema,
   SetExternalSkillNameInputSchema,
@@ -330,6 +331,18 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (
       RemovePackageDocumentTypeInputSchema().parse(action.input);
 
       phClintProjectPowerhousePackagesOperations.removePackageDocumentTypeOperation(
+        (state as any)[action.scope],
+        action as any,
+        dispatch,
+      );
+
+      break;
+    }
+
+    case "SET_PACKAGE_VERSION": {
+      SetPackageVersionInputSchema().parse(action.input);
+
+      phClintProjectPowerhousePackagesOperations.setPackageVersionOperation(
         (state as any)[action.scope],
         action as any,
         dispatch,

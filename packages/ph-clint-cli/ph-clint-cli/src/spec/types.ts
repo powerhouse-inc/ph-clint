@@ -81,6 +81,7 @@ export const powerhousePackageSchema = z.object({
   id: z.string(),
   packageName: z.string(),
   documentTypes: z.array(z.string()).default([]),
+  version: z.string().nullable().default(null),
 });
 
 export type PowerhousePackage = z.infer<typeof powerhousePackageSchema>;

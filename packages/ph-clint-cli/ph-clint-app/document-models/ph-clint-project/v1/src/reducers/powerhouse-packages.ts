@@ -1,12 +1,15 @@
 import {
   DuplicatePackageError,
   PackageNotFoundError,
-  CannotRemoveAppPackageError,
+  CannotRemoveManagedPackageError,
   InvalidDocumentTypeError,
   DuplicateDocumentTypeError,
   DocumentTypeNotFoundError,
+  InvalidVersionError,
 } from "../../gen/powerhouse-packages/error.js";
 import type { PhClintProjectPowerhousePackagesOperations } from "document-models/ph-clint-project/v1";
+
+const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 export const phClintProjectPowerhousePackagesOperations: PhClintProjectPowerhousePackagesOperations =
   {
@@ -25,6 +28,8 @@ export const phClintProjectPowerhousePackagesOperations: PhClintProjectPowerhous
         id: action.input.id,
         packageName: action.input.packageName,
         documentTypes: [],
+        version: null,
+        managed: false,
       });
     },
     removePowerhousePackageOperation(state, action) {
@@ -33,18 +38,18 @@ export const phClintProjectPowerhousePackagesOperations: PhClintProjectPowerhous
         throw new PackageNotFoundError(`Package not found: ${action.input.id}`);
       }
       const pkg = state.packages[idx];
-      const appName = state.name ? state.name.replace(/-cli$/, "-app") : null;
-      const fullAppName =
-        appName && state.scope ? `${state.scope}/${appName}` : appName;
-      if (pkg.packageName === fullAppName) {
-        throw new CannotRemoveAppPackageError(
-          "Cannot remove the auto-managed app package",
+      if (pkg.managed) {
+        throw new CannotRemoveManagedPackageError(
+          "Cannot remove a managed package",
         );
       }
       state.packages.splice(idx, 1);
     },
     addPackageDocumentTypeOperation(state, action) {
-      if (!/^[a-z0-9-]+\/[a-z0-9-]+$/.test(action.input.documentType)) {
+      if (
+        action.input.documentType !== "*/*" &&
+        !/^[a-z0-9-]+\/[a-z0-9-]+$/.test(action.input.documentType)
+      ) {
         throw new InvalidDocumentTypeError(
           `Invalid document type format: ${action.input.documentType}. Expected org/name.`,
         );
@@ -54,6 +59,14 @@ export const phClintProjectPowerhousePackagesOperations: PhClintProjectPowerhous
         throw new PackageNotFoundError(
           `Package not found: ${action.input.packageId}`,
         );
+      }
+      if (action.input.documentType === "*/*") {
+        pkg.documentTypes.length = 0;
+        pkg.documentTypes.push("*/*");
+        return;
+      }
+      if (pkg.documentTypes.includes("*/*")) {
+        return;
       }
       if (pkg.documentTypes.includes(action.input.documentType)) {
         throw new DuplicateDocumentTypeError(
@@ -76,5 +89,21 @@ export const phClintProjectPowerhousePackagesOperations: PhClintProjectPowerhous
         );
       }
       pkg.documentTypes.splice(idx, 1);
+    },
+    setPackageVersionOperation(state, action) {
+      const pkg = state.packages.find((p) => p.id === action.input.packageId);
+      if (!pkg) {
+        throw new PackageNotFoundError(
+          `Package not found: ${action.input.packageId}`,
+        );
+      }
+      if (action.input.version != null) {
+        if (!SEMVER.test(action.input.version)) {
+          throw new InvalidVersionError(
+            `Invalid version: ${action.input.version}`,
+          );
+        }
+      }
+      pkg.version = action.input.version || null;
     },
   };

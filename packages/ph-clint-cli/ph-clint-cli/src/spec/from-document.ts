@@ -39,6 +39,7 @@ export function specFromDocumentState(
       id: p.id,
       packageName: p.packageName,
       documentTypes: [...p.documentTypes],
+      version: p.version ?? null,
     })),
     externalSkills: state.externalSkills.map((s) => ({
       id: s.id,

@@ -49,6 +49,7 @@ import type {
   SetExternalSkillGithubUrlInput,
   SetExternalSkillNameInput,
   SetPackageIdentifierInput,
+  SetPackageVersionInput,
   SetPowerhouseLevelInput,
   SetProxyEnabledInput,
   SetPublishStatusInput,
@@ -205,6 +206,7 @@ export function ImportPackageInputSchema(): z.ZodObject<
     documentTypes: z.array(z.string()),
     id: z.string(),
     packageName: z.string(),
+    version: z.string().nullish(),
   });
 }
 
@@ -338,7 +340,9 @@ export function PowerhousePackageSchema(): z.ZodObject<
     __typename: z.literal("PowerhousePackage").optional(),
     documentTypes: z.array(z.string()),
     id: z.string(),
+    managed: z.boolean(),
     packageName: z.string(),
+    version: z.string().nullish(),
   });
 }
 
@@ -509,6 +513,15 @@ export function SetPackageIdentifierInputSchema(): z.ZodObject<
 > {
   return z.object({
     identifier: z.string(),
+  });
+}
+
+export function SetPackageVersionInputSchema(): z.ZodObject<
+  Properties<SetPackageVersionInput>
+> {
+  return z.object({
+    packageId: z.string(),
+    version: z.string().nullish(),
   });
 }
 

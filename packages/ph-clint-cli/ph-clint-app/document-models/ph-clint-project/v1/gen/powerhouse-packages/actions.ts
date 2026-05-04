@@ -4,6 +4,7 @@ import type {
   RemovePowerhousePackageInput,
   AddPackageDocumentTypeInput,
   RemovePackageDocumentTypeInput,
+  SetPackageVersionInput,
 } from "../types.js";
 
 export type AddPowerhousePackageAction = Action & {
@@ -22,9 +23,14 @@ export type RemovePackageDocumentTypeAction = Action & {
   type: "REMOVE_PACKAGE_DOCUMENT_TYPE";
   input: RemovePackageDocumentTypeInput;
 };
+export type SetPackageVersionAction = Action & {
+  type: "SET_PACKAGE_VERSION";
+  input: SetPackageVersionInput;
+};
 
 export type PhClintProjectPowerhousePackagesAction =
   | AddPowerhousePackageAction
   | RemovePowerhousePackageAction
   | AddPackageDocumentTypeAction
-  | RemovePackageDocumentTypeAction;
+  | RemovePackageDocumentTypeAction
+  | SetPackageVersionAction;

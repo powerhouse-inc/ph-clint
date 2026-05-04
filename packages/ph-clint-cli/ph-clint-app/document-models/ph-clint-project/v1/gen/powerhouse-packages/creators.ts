@@ -4,18 +4,21 @@ import {
   RemovePowerhousePackageInputSchema,
   AddPackageDocumentTypeInputSchema,
   RemovePackageDocumentTypeInputSchema,
+  SetPackageVersionInputSchema,
 } from "../schema/zod.js";
 import type {
   AddPowerhousePackageInput,
   RemovePowerhousePackageInput,
   AddPackageDocumentTypeInput,
   RemovePackageDocumentTypeInput,
+  SetPackageVersionInput,
 } from "../types.js";
 import type {
   AddPowerhousePackageAction,
   RemovePowerhousePackageAction,
   AddPackageDocumentTypeAction,
   RemovePackageDocumentTypeAction,
+  SetPackageVersionAction,
 } from "./actions.js";
 
 export const addPowerhousePackage = (input: AddPowerhousePackageInput) =>
@@ -53,5 +56,14 @@ export const removePackageDocumentType = (
     { ...input },
     undefined,
     RemovePackageDocumentTypeInputSchema,
+    "global",
+  );
+
+export const setPackageVersion = (input: SetPackageVersionInput) =>
+  createAction<SetPackageVersionAction>(
+    "SET_PACKAGE_VERSION",
+    { ...input },
+    undefined,
+    SetPackageVersionInputSchema,
     "global",
   );

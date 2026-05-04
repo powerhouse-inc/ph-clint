@@ -2,9 +2,11 @@ export type ErrorCode =
   | "DuplicatePackageError"
   | "PackageNotFoundError"
   | "CannotRemoveAppPackageError"
+  | "CannotRemoveManagedPackageError"
   | "InvalidDocumentTypeError"
   | "DuplicateDocumentTypeError"
-  | "DocumentTypeNotFoundError";
+  | "DocumentTypeNotFoundError"
+  | "InvalidVersionError";
 
 export interface ReducerError {
   errorCode: ErrorCode;
@@ -31,6 +33,16 @@ export class CannotRemoveAppPackageError extends Error implements ReducerError {
   }
 }
 
+export class CannotRemoveManagedPackageError
+  extends Error
+  implements ReducerError
+{
+  errorCode = "CannotRemoveManagedPackageError" as ErrorCode;
+  constructor(message = "CannotRemoveManagedPackageError") {
+    super(message);
+  }
+}
+
 export class InvalidDocumentTypeError extends Error implements ReducerError {
   errorCode = "InvalidDocumentTypeError" as ErrorCode;
   constructor(message = "InvalidDocumentTypeError") {
@@ -52,11 +64,19 @@ export class DocumentTypeNotFoundError extends Error implements ReducerError {
   }
 }
 
+export class InvalidVersionError extends Error implements ReducerError {
+  errorCode = "InvalidVersionError" as ErrorCode;
+  constructor(message = "InvalidVersionError") {
+    super(message);
+  }
+}
+
 export const errors = {
   AddPowerhousePackage: { DuplicatePackageError },
   RemovePowerhousePackage: {
     PackageNotFoundError,
     CannotRemoveAppPackageError,
+    CannotRemoveManagedPackageError,
   },
   AddPackageDocumentType: {
     InvalidDocumentTypeError,
@@ -67,4 +87,5 @@ export const errors = {
     PackageNotFoundError,
     DocumentTypeNotFoundError,
   },
+  SetPackageVersion: { PackageNotFoundError, InvalidVersionError },
 };

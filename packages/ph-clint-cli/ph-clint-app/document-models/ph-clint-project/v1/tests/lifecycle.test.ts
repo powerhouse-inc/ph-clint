@@ -59,6 +59,8 @@ describe("LifecycleOperations", () => {
         id: "pkg-1",
         packageName: "my-project-app",
         documentTypes: ["org/doc-a"],
+        version: null,
+        managed: false,
       },
     ]);
     expect(state.externalSkills).toEqual([

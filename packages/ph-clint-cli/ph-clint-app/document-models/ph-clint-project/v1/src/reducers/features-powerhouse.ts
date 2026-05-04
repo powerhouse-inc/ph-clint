@@ -25,7 +25,9 @@ export const phClintProjectFeaturesPowerhouseOperations: PhClintProjectFeaturesP
           state.packages.push({
             id: `app-${state.name}`,
             packageName: appName,
-            documentTypes: [],
+            documentTypes: ["*/*"],
+            version: null,
+            managed: true,
           });
         }
       }
