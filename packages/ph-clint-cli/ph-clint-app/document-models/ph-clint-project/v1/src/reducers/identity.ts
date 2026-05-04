@@ -57,5 +57,12 @@ export const phClintProjectIdentityOperations: PhClintProjectIdentityOperations 
       }
       state.scope = scopePart ? `@${scopePart}` : null;
       state.name = namePart;
+      // Update managed app package name to match new identity
+      const managed = state.packages.find((p) => p.managed);
+      if (managed) {
+        const appBase = namePart.replace(/-cli$/, "-app");
+        managed.packageName = scopePart ? `@${scopePart}/${appBase}` : appBase;
+        managed.id = `app-${namePart}`;
+      }
     },
   };

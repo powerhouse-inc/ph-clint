@@ -16,14 +16,19 @@ export const phClintProjectFeaturesPowerhouseOperations: PhClintProjectFeaturesP
         );
       }
       state.features.powerhouse = action.input.level;
-      // Auto-create app package when transitioning from Disabled to any higher level
-      if (current === 0 && next >= 1 && state.name) {
-        const baseName = state.name.replace(/-cli$/, "-app");
-        const appName = state.scope ? `${state.scope}/${baseName}` : baseName;
-        const exists = state.packages.find((p) => p.packageName === appName);
-        if (!exists) {
+      // Auto-create managed app package when transitioning from Disabled to enabled
+      if (current === 0 && next >= 1) {
+        const hasManaged = state.packages.some((p) => p.managed);
+        if (!hasManaged) {
+          const baseName = state.name
+            ? state.name.replace(/-cli$/, "-app")
+            : "app";
+          const appName =
+            state.scope && state.name
+              ? `${state.scope}/${baseName}`
+              : baseName;
           state.packages.push({
-            id: `app-${state.name}`,
+            id: `app-${state.name || "managed"}`,
             packageName: appName,
             documentTypes: ["*/*"],
             version: null,
