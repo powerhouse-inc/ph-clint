@@ -1,926 +1,983 @@
-import type { DocumentModelGlobalState } from 'document-model';
+import type { DocumentModelGlobalState } from "document-model";
 
 export const documentModel: DocumentModelGlobalState = {
-  id: 'powerhouse/ph-clint-project',
-  name: 'PhClintProject',
+  id: "powerhouse/ph-clint-project",
+  name: "PhClintProject",
   author: {
-    name: 'Powerhouse Inc.',
-    website: 'https://powerhouse.inc',
+    name: "Powerhouse Inc.",
+    website: "https://powerhouse.inc",
   },
-  extension: 'pcp',
+  extension: "pcp",
   description:
-    'A ph-clint implementation project specification. Drives code generation of a ph-clint CLI project: identity fields (name, scope, version, description, bin) plus three feature toggles (Powerhouse, Mastra, Routine). Enabling Powerhouse is irreversible; enabling Mastra auto-enables Routine; disabling Routine is blocked while Mastra is on.',
+    "A ph-clint implementation project specification. Drives code generation of a ph-clint CLI project: identity fields (name, scope, version, description, bin) plus three feature toggles (Powerhouse, Mastra, Routine). Enabling Powerhouse is irreversible; enabling Mastra auto-enables Routine; disabling Routine is blocked while Mastra is on.",
   specifications: [
     {
       state: {
         local: {
-          schema: '',
+          schema: "",
           examples: [],
-          initialValue: '',
+          initialValue: "",
         },
         global: {
           schema:
-            'type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}',
+            "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}",
           examples: [],
           initialValue:
-            '{\n  "name": null,\n  "scope": null,\n  "version": "0.1.0",\n  "description": "",\n  "bin": null,\n  "features": {\n    "powerhouse": "Disabled",\n    "mastra": {\n      "enabled": false,\n      "agentId": null,\n      "agentName": null,\n      "agentDescription": null,\n      "agentImage": null,\n      "models": [],\n      "profiles": []\n    },\n    "routine": { "enabled": false }\n  },\n  "packages": [],\n  "externalSkills": [],\n  "publishHistory": [],\n  "deployment": {\n    "proxyEnabled": false,\n    "supportedResources": [\n      "vetra-agent-s",\n      "vetra-agent-m",\n      "vetra-agent-l",\n      "vetra-agent-xl",\n      "vetra-agent-xxl"\n    ]\n  }\n}',
+            '{\n  "name": null,\n  "scope": null,\n  "version": "0.1.0",\n  "description": "",\n  "features": {\n    "powerhouse": "Disabled",\n    "mastra": {\n      "enabled": false,\n      "agentId": null,\n      "agentName": null,\n      "agentDescription": null,\n      "agentImage": null,\n      "models": [],\n      "profiles": []\n    },\n    "routine": { "enabled": false }\n  },\n  "packages": [],\n  "externalSkills": [],\n  "publishHistory": [],\n  "deployment": {\n    "proxyEnabled": false,\n    "supportedResources": [\n      "vetra-agent-s",\n      "vetra-agent-m",\n      "vetra-agent-l",\n      "vetra-agent-xl",\n      "vetra-agent-xxl"\n    ]\n  }\n}',
         },
       },
       modules: [
         {
-          id: 'm-identity',
-          name: 'identity',
-          description: 'Package identity fields: name, scope, version, description, bin',
+          id: "m-identity",
+          name: "identity",
+          description:
+            "Package identity fields: name, scope, version, description, bin",
           operations: [
             {
-              id: 'o-set-package-name',
-              name: 'SET_PACKAGE_NAME',
-              description: 'Set the bare package name (no scope). Must match /^[a-z][a-z0-9-]*$/.',
-              schema: 'input SetPackageNameInput {\n  name: String!\n}',
-              template: 'Set the bare package name (no scope). Must match /^[a-z][a-z0-9-]*$/.',
-              reducer: 'if (!/^[a-z][a-z0-9-]*$/.test(action.input.name)) {\n  throw new InvalidNameError(`Invalid package name: ${action.input.name}`);\n}\nstate.name = action.input.name;',
-              errors: [
-                {
-                  id: 'e-set-package-name-invalid',
-                  name: 'InvalidNameError',
-                  code: 'INVALID_NAME',
-                  description: 'The package name must match /^[a-z][a-z0-9-]*$/ \u2014 lowercase letter followed by lowercase letters, digits, and hyphens.',
-                  template: 'Invalid package name: {{name}}',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-clear-bin',
-              name: 'CLEAR_BIN',
-              description: 'Clear the bin override. The generator will fall back to the package name.',
-              schema: 'input ClearBinInput {\n  _: Boolean\n}',
-              template: 'Clear the bin override. The generator will fall back to the package name.',
-              reducer: 'state.bin = null;',
+              id: "o-set-description",
+              name: "SET_DESCRIPTION",
+              description: "Set the package description.",
+              schema: "input SetDescriptionInput {\n  description: String!\n}",
+              template: "Set the package description.",
+              reducer: "state.description = action.input.description;",
               errors: [],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-set-bin',
-              name: 'SET_BIN',
-              description: 'Set the bin name (CLI binary). Defaults to package name when not set. Must match /^[a-z][a-z0-9-]*$/.',
-              schema: 'input SetBinInput {\n  bin: String!\n}',
-              template: 'Set the bin name (CLI binary). Defaults to package name when not set. Must match /^[a-z][a-z0-9-]*$/.',
-              reducer: 'if (!/^[a-z][a-z0-9-]*$/.test(action.input.bin)) {\n  throw new InvalidNameError(`Invalid bin name: ${action.input.bin}`);\n}\nstate.bin = action.input.bin;',
-              errors: [
-                {
-                  id: 'e-set-bin-invalid',
-                  name: 'InvalidNameError',
-                  code: 'INVALID_NAME',
-                  description: 'The bin name must match /^[a-z][a-z0-9-]*$/ \u2014 same rule as the package name.',
-                  template: 'Invalid bin name: {{bin}}',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-description',
-              name: 'SET_DESCRIPTION',
-              description: 'Set the package description.',
-              schema: 'input SetDescriptionInput {\n  description: String!\n}',
-              template: 'Set the package description.',
-              reducer: 'state.description = action.input.description;',
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-version',
-              name: 'SET_VERSION',
-              description: 'Set the package version. Must be a valid semver string.',
-              schema: 'input SetVersionInput {\n  version: String!\n}',
-              template: 'Set the package version. Must be a valid semver string.',
-              reducer: 'if (!/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$/.test(action.input.version)) {\n  throw new InvalidVersionError(`Invalid version: ${action.input.version}`);\n}\nstate.version = action.input.version;',
-              errors: [
-                {
-                  id: 'e-set-version-invalid',
-                  name: 'InvalidVersionError',
-                  code: 'INVALID_VERSION',
-                  description: 'The version must be a valid semver string (major.minor.patch, optionally with prerelease/build metadata).',
-                  template: 'Invalid version: {{version}}',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-clear-scope',
-              name: 'CLEAR_SCOPE',
-              description: 'Clear the npm scope.',
-              schema: 'input ClearScopeInput {\n  _: Boolean\n}',
-              template: 'Clear the npm scope.',
-              reducer: 'state.scope = null;',
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-scope',
-              name: 'SET_SCOPE',
-              description: "Set the npm scope (organization), stored without the '@' prefix. Must match /^[a-z][a-z0-9-]*$/.",
-              schema: 'input SetScopeInput {\n  scope: String!\n}',
-              template: "Set the npm scope (organization), stored without the '@' prefix. Must match /^[a-z][a-z0-9-]*$/.",
-              reducer: 'if (!/^[a-z][a-z0-9-]*$/.test(action.input.scope)) {\n  throw new InvalidScopeError(`Invalid scope: ${action.input.scope}`);\n}\nstate.scope = action.input.scope;',
-              errors: [
-                {
-                  id: 'e-set-scope-invalid',
-                  name: 'InvalidScopeError',
-                  code: 'INVALID_SCOPE',
-                  description: "The scope must match /^[a-z][a-z0-9-]*$/ and must not include the '@' prefix (it is stored without it).",
-                  template: 'Invalid scope: {{scope}}',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-          ],
-        },
-        {
-          id: 'm-features-powerhouse',
-          name: 'features_powerhouse',
-          description: 'Powerhouse integration level. Ordered enum: Disabled < Reactor < Switchboard < Connect. Once above Disabled, cannot go back to Disabled (irreversible migration).',
-          operations: [
-            {
-              id: 'o-set-powerhouse-level',
-              name: 'SET_POWERHOUSE_LEVEL',
-              description: 'Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).',
-              schema: 'input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n  skipAutoProxy: Boolean\n}',
-              template: 'Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).',
+              id: "o-set-version",
+              name: "SET_VERSION",
+              description:
+                "Set the package version. Must be a valid semver string.",
+              schema: "input SetVersionInput {\n  version: String!\n}",
+              template:
+                "Set the package version. Must be a valid semver string.",
               reducer:
-                "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const appName = `${state.name}-app`;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}\n// Auto-enable proxy when reaching Switchboard or above\nif (next >= 2 && !action.input.skipAutoProxy) {\n  state.deployment.proxyEnabled = true;\n}",
+                "if (!/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$/.test(action.input.version)) {\n  throw new InvalidVersionError(`Invalid version: ${action.input.version}`);\n}\nstate.version = action.input.version;",
               errors: [
                 {
-                  id: 'e-cannot-lower-powerhouse',
-                  name: 'CannotLowerPowerhouseError',
-                  code: 'CANNOT_LOWER_POWERHOUSE',
-                  description: 'Cannot lower the Powerhouse level below Reactor once it has been set above Disabled.',
-                  template: 'Cannot lower Powerhouse level below Reactor once enabled',
+                  id: "e-set-version-invalid",
+                  name: "InvalidVersionError",
+                  code: "INVALID_VERSION",
+                  description:
+                    "The version must be a valid semver string (major.minor.patch, optionally with prerelease/build metadata).",
+                  template: "Invalid version: {{version}}",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
+            },
+            {
+              id: "o-set-package-identifier",
+              name: "SET_PACKAGE_IDENTIFIER",
+              description:
+                "Set the package identifier. Parses scope and name from a string like '@scope/name-cli' or just 'name-cli'. Auto-adds '-cli' suffix if missing, stores scope with '@' prefix.",
+              schema:
+                "input SetPackageIdentifierInput {\n  identifier: String!\n}",
+              template:
+                "Set the package identifier. Parses scope and name from a string like '@scope/name-cli' or just 'name-cli'.",
+              reducer:
+                "const trimmed = action.input.identifier.trim();\nif (!trimmed) {\n  throw new InvalidPackageIdentifierError('Package identifier must not be empty');\n}\nlet scopePart = null;\nlet namePart = trimmed;\nif (trimmed.includes('/')) {\n  const parts = trimmed.split('/');\n  if (parts.length !== 2 || !parts[0] || !parts[1]) {\n    throw new InvalidPackageIdentifierError(`Invalid package identifier: ${trimmed}`);\n  }\n  scopePart = parts[0].replace(/^@/, '');\n  namePart = parts[1];\n}\nif (scopePart !== null) {\n  if (!/^[a-z][a-z0-9-]*$/.test(scopePart)) {\n    throw new InvalidPackageIdentifierError(`Invalid scope: ${scopePart}`);\n  }\n}\nif (!namePart.endsWith('-cli')) {\n  namePart = namePart + '-cli';\n}\nif (!/^[a-z][a-z0-9-]*$/.test(namePart)) {\n  throw new InvalidPackageIdentifierError(`Invalid package name: ${namePart}`);\n}\nstate.scope = scopePart ? `@${scopePart}` : null;\nstate.name = namePart;",
+              errors: [
+                {
+                  id: "e-invalid-package-identifier",
+                  name: "InvalidPackageIdentifierError",
+                  code: "INVALID_PACKAGE_IDENTIFIER",
+                  description:
+                    "The package identifier is invalid. Must be a valid npm package name with optional scope.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
             },
           ],
         },
         {
-          id: 'm-features-mastra',
-          name: 'features_mastra',
-          description: 'Mastra agent feature toggle. Orthogonal to Routine.',
+          id: "m-features-powerhouse",
+          name: "features_powerhouse",
+          description:
+            "Powerhouse integration level. Ordered enum: Disabled < Reactor < Switchboard < Connect. Once above Disabled, cannot go back to Disabled (irreversible migration).",
           operations: [
             {
-              id: 'o-enable-mastra',
-              name: 'ENABLE_MASTRA',
-              description: 'Enable the Mastra agent feature. Mastra and Routine are orthogonal \u2014 enable Routine separately if needed. Idempotent.',
-              schema: 'input EnableMastraInput {\n  agentId: String!\n  agentName: String!\n}',
-              template: 'Enable the Mastra agent feature. Mastra and Routine are orthogonal \u2014 enable Routine separately if needed. Idempotent.',
+              id: "o-set-powerhouse-level",
+              name: "SET_POWERHOUSE_LEVEL",
+              description:
+                "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
+              schema:
+                "input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n  skipAutoProxy: Boolean\n}",
+              template:
+                "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
+              reducer:
+                "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const baseName = state.name.replace(/-cli$/, '-app');\n  const appName = state.scope ? `${state.scope}/${baseName}` : baseName;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}\n// Auto-enable proxy when reaching Switchboard or above\nif (next >= 2 && !action.input.skipAutoProxy) {\n  state.deployment.proxyEnabled = true;\n}",
+              errors: [
+                {
+                  id: "e-cannot-lower-powerhouse",
+                  name: "CannotLowerPowerhouseError",
+                  code: "CANNOT_LOWER_POWERHOUSE",
+                  description:
+                    "Cannot lower the Powerhouse level below Reactor once it has been set above Disabled.",
+                  template:
+                    "Cannot lower Powerhouse level below Reactor once enabled",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+          ],
+        },
+        {
+          id: "m-features-mastra",
+          name: "features_mastra",
+          description: "Mastra agent feature toggle. Orthogonal to Routine.",
+          operations: [
+            {
+              id: "o-enable-mastra",
+              name: "ENABLE_MASTRA",
+              description:
+                "Enable the Mastra agent feature. Mastra and Routine are orthogonal \u2014 enable Routine separately if needed. Idempotent.",
+              schema:
+                "input EnableMastraInput {\n  agentId: String!\n  agentName: String!\n}",
+              template:
+                "Enable the Mastra agent feature. Mastra and Routine are orthogonal \u2014 enable Routine separately if needed. Idempotent.",
               reducer:
                 "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(`Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`);\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nstate.features.mastra.agentId = action.input.agentId;\nstate.features.mastra.agentName = trimmedName;",
               errors: [
                 {
-                  id: 'e-enable-mastra-invalid-id',
-                  name: 'InvalidAgentIdError',
-                  code: 'INVALID_AGENT_ID',
-                  description: 'The agent ID must match /^[a-z][a-z0-9-]*$/ \u2014 lowercase kebab-case.',
-                  template: '',
+                  id: "e-enable-mastra-invalid-id",
+                  name: "InvalidAgentIdError",
+                  code: "INVALID_AGENT_ID",
+                  description:
+                    "The agent ID must match /^[a-z][a-z0-9-]*$/ \u2014 lowercase kebab-case.",
+                  template: "",
                 },
                 {
-                  id: 'e-enable-mastra-invalid-name',
-                  name: 'InvalidAgentNameError',
-                  code: 'INVALID_AGENT_NAME',
-                  description: 'The agent name must not be empty after trimming.',
-                  template: '',
+                  id: "e-enable-mastra-invalid-name",
+                  name: "InvalidAgentNameError",
+                  code: "INVALID_AGENT_NAME",
+                  description:
+                    "The agent name must not be empty after trimming.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-disable-mastra',
-              name: 'DISABLE_MASTRA',
-              description: 'Disable the Mastra agent feature. Does not affect Routine \u2014 disable that separately if desired.',
-              schema: 'input DisableMastraInput {\n  _: Boolean\n}',
-              template: 'Disable the Mastra agent feature. Does not affect Routine \u2014 disable that separately if desired.',
+              id: "o-disable-mastra",
+              name: "DISABLE_MASTRA",
+              description:
+                "Disable the Mastra agent feature. Does not affect Routine \u2014 disable that separately if desired.",
+              schema: "input DisableMastraInput {\n  _: Boolean\n}",
+              template:
+                "Disable the Mastra agent feature. Does not affect Routine \u2014 disable that separately if desired.",
               reducer:
-                'state.features.mastra.enabled = false;\nstate.features.mastra.agentId = null;\nstate.features.mastra.agentName = null;\nstate.features.mastra.agentDescription = null;\nstate.features.mastra.agentImage = null;\nstate.features.mastra.models = [];\nstate.features.mastra.profiles = [];',
+                "state.features.mastra.enabled = false;\nstate.features.mastra.agentId = null;\nstate.features.mastra.agentName = null;\nstate.features.mastra.agentDescription = null;\nstate.features.mastra.agentImage = null;\nstate.features.mastra.models = [];\nstate.features.mastra.profiles = [];",
               errors: [],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-set-agent-id',
-              name: 'SET_AGENT_ID',
-              description: 'Set the agent ID. Must be lowercase kebab-case. Only valid when mastra is enabled.',
-              schema: 'input SetAgentIdInput {\n  agentId: String!\n}',
-              template: 'Set the agent ID. Must be lowercase kebab-case. Only valid when mastra is enabled.',
+              id: "o-set-agent-id",
+              name: "SET_AGENT_ID",
+              description:
+                "Set the agent ID. Must be lowercase kebab-case. Only valid when mastra is enabled.",
+              schema: "input SetAgentIdInput {\n  agentId: String!\n}",
+              template:
+                "Set the agent ID. Must be lowercase kebab-case. Only valid when mastra is enabled.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent ID when Mastra is disabled.');\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(`Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`);\n}\nstate.features.mastra.agentId = action.input.agentId;",
               errors: [
                 {
-                  id: 'e-set-agent-id-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before setting agent identity.',
-                  template: '',
+                  id: "e-set-agent-id-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before setting agent identity.",
+                  template: "",
                 },
                 {
-                  id: 'e-set-agent-id-invalid',
-                  name: 'InvalidAgentIdError',
-                  code: 'INVALID_AGENT_ID',
-                  description: 'The agent ID must match /^[a-z][a-z0-9-]*$/ \u2014 lowercase kebab-case.',
-                  template: '',
+                  id: "e-set-agent-id-invalid",
+                  name: "InvalidAgentIdError",
+                  code: "INVALID_AGENT_ID",
+                  description:
+                    "The agent ID must match /^[a-z][a-z0-9-]*$/ \u2014 lowercase kebab-case.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-set-agent-name',
-              name: 'SET_AGENT_NAME',
-              description: 'Set the agent display name. Must be non-empty after trim. Only valid when mastra is enabled.',
-              schema: 'input SetAgentNameInput {\n  agentName: String!\n}',
-              template: 'Set the agent display name. Must be non-empty after trim. Only valid when mastra is enabled.',
+              id: "o-set-agent-name",
+              name: "SET_AGENT_NAME",
+              description:
+                "Set the agent display name. Must be non-empty after trim. Only valid when mastra is enabled.",
+              schema: "input SetAgentNameInput {\n  agentName: String!\n}",
+              template:
+                "Set the agent display name. Must be non-empty after trim. Only valid when mastra is enabled.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent name when Mastra is disabled.');\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.agentName = trimmedName;",
               errors: [
                 {
-                  id: 'e-set-agent-name-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before setting agent identity.',
-                  template: '',
+                  id: "e-set-agent-name-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before setting agent identity.",
+                  template: "",
                 },
                 {
-                  id: 'e-set-agent-name-invalid',
-                  name: 'InvalidAgentNameError',
-                  code: 'INVALID_AGENT_NAME',
-                  description: 'The agent name must not be empty after trimming.',
-                  template: '',
+                  id: "e-set-agent-name-invalid",
+                  name: "InvalidAgentNameError",
+                  code: "INVALID_AGENT_NAME",
+                  description:
+                    "The agent name must not be empty after trimming.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-add-model',
-              name: 'ADD_MODEL',
-              description: 'Add a model to the agent. ID must be provider/model-name format. First model is forced default. If isDefault is true, previous default is unset.',
-              schema: 'input AddModelInput {\n  id: String!\n  isDefault: Boolean\n}',
-              template: 'Add a model to the agent. ID must be provider/model-name format. First model is forced default. If isDefault is true, previous default is unset.',
+              id: "o-add-model",
+              name: "ADD_MODEL",
+              description:
+                "Add a model to the agent. ID must be provider/model-name format. First model is forced default. If isDefault is true, previous default is unset.",
+              schema:
+                "input AddModelInput {\n  id: String!\n  isDefault: Boolean\n}",
+              template:
+                "Add a model to the agent. ID must be provider/model-name format. First model is forced default. If isDefault is true, previous default is unset.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add model when Mastra is disabled.');\n}\nif (!/^[a-z0-9-]+\\/[a-z0-9._-]+$/.test(action.input.id)) {\n  throw new InvalidModelIdError(`Invalid model ID: ${action.input.id}. Must be provider/model-name format.`);\n}\nif (state.features.mastra.models.find(m => m.id === action.input.id)) {\n  throw new DuplicateModelError(`Model already exists: ${action.input.id}`);\n}\nconst isFirst = state.features.mastra.models.length === 0;\nconst makeDefault = isFirst || action.input.isDefault === true;\nif (makeDefault) {\n  for (const m of state.features.mastra.models) {\n    m.isDefault = false;\n  }\n}\nstate.features.mastra.models.push({\n  id: action.input.id,\n  isDefault: makeDefault,\n});",
               errors: [
                 {
-                  id: 'e-add-model-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before managing models.',
-                  template: '',
+                  id: "e-add-model-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description: "Mastra must be enabled before managing models.",
+                  template: "",
                 },
                 {
-                  id: 'e-add-model-invalid-id',
-                  name: 'InvalidModelIdError',
-                  code: 'INVALID_MODEL_ID',
-                  description: 'Model ID must match provider/model-name format.',
-                  template: '',
+                  id: "e-add-model-invalid-id",
+                  name: "InvalidModelIdError",
+                  code: "INVALID_MODEL_ID",
+                  description:
+                    "Model ID must match provider/model-name format.",
+                  template: "",
                 },
                 {
-                  id: 'e-add-model-duplicate',
-                  name: 'DuplicateModelError',
-                  code: 'DUPLICATE_MODEL',
-                  description: 'A model with this ID already exists.',
-                  template: '',
+                  id: "e-add-model-duplicate",
+                  name: "DuplicateModelError",
+                  code: "DUPLICATE_MODEL",
+                  description: "A model with this ID already exists.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-remove-model',
-              name: 'REMOVE_MODEL',
-              description: 'Remove a model. If removing the default and others remain, promotes first remaining to default.',
-              schema: 'input RemoveModelInput {\n  id: String!\n}',
-              template: 'Remove a model. If removing the default and others remain, promotes first remaining to default.',
+              id: "o-remove-model",
+              name: "REMOVE_MODEL",
+              description:
+                "Remove a model. If removing the default and others remain, promotes first remaining to default.",
+              schema: "input RemoveModelInput {\n  id: String!\n}",
+              template:
+                "Remove a model. If removing the default and others remain, promotes first remaining to default.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove model when Mastra is disabled.');\n}\nconst idx = state.features.mastra.models.findIndex(m => m.id === action.input.id);\nif (idx === -1) {\n  throw new ModelNotFoundError(`Model not found: ${action.input.id}`);\n}\nconst wasDefault = state.features.mastra.models[idx].isDefault;\nstate.features.mastra.models.splice(idx, 1);\nif (wasDefault && state.features.mastra.models.length > 0) {\n  state.features.mastra.models[0].isDefault = true;\n}",
               errors: [
                 {
-                  id: 'e-remove-model-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before managing models.',
-                  template: '',
+                  id: "e-remove-model-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description: "Mastra must be enabled before managing models.",
+                  template: "",
                 },
                 {
-                  id: 'e-remove-model-not-found',
-                  name: 'ModelNotFoundError',
-                  code: 'MODEL_NOT_FOUND',
-                  description: 'The specified model was not found.',
-                  template: '',
+                  id: "e-remove-model-not-found",
+                  name: "ModelNotFoundError",
+                  code: "MODEL_NOT_FOUND",
+                  description: "The specified model was not found.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-set-default-model',
-              name: 'SET_DEFAULT_MODEL',
-              description: 'Set a model as the default. Unsets the previous default.',
-              schema: 'input SetDefaultModelInput {\n  id: String!\n}',
-              template: 'Set a model as the default. Unsets the previous default.',
+              id: "o-set-default-model",
+              name: "SET_DEFAULT_MODEL",
+              description:
+                "Set a model as the default. Unsets the previous default.",
+              schema: "input SetDefaultModelInput {\n  id: String!\n}",
+              template:
+                "Set a model as the default. Unsets the previous default.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set default model when Mastra is disabled.');\n}\nconst model = state.features.mastra.models.find(m => m.id === action.input.id);\nif (!model) {\n  throw new ModelNotFoundError(`Model not found: ${action.input.id}`);\n}\nfor (const m of state.features.mastra.models) {\n  m.isDefault = false;\n}\nmodel.isDefault = true;",
               errors: [
                 {
-                  id: 'e-set-default-model-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before managing models.',
-                  template: '',
+                  id: "e-set-default-model-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description: "Mastra must be enabled before managing models.",
+                  template: "",
                 },
                 {
-                  id: 'e-set-default-model-not-found',
-                  name: 'ModelNotFoundError',
-                  code: 'MODEL_NOT_FOUND',
-                  description: 'The specified model was not found.',
-                  template: '',
+                  id: "e-set-default-model-not-found",
+                  name: "ModelNotFoundError",
+                  code: "MODEL_NOT_FOUND",
+                  description: "The specified model was not found.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-add-profile',
-              name: 'ADD_PROFILE',
-              description: 'Add an agent profile section. Inserted before insertBefore if provided, otherwise appended to end.',
-              schema: 'input AddProfileInput {\n  id: String!\n  title: String!\n  content: String!\n  insertBefore: String\n}',
-              template: 'Add an agent profile section. Inserted before insertBefore if provided, otherwise appended to end.',
+              id: "o-add-profile",
+              name: "ADD_PROFILE",
+              description:
+                "Add an agent profile section. Inserted before insertBefore if provided, otherwise appended to end.",
+              schema:
+                "input AddProfileInput {\n  id: String!\n  title: String!\n  content: String!\n  insertBefore: String\n}",
+              template:
+                "Add an agent profile section. Inserted before insertBefore if provided, otherwise appended to end.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add profile when Mastra is disabled.');\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.id)) {\n  throw new InvalidProfileIdError(`Invalid profile ID: ${action.input.id}. Must be lowercase kebab-case.`);\n}\nif (state.features.mastra.profiles.find(p => p.id === action.input.id)) {\n  throw new DuplicateProfileError(`Profile already exists: ${action.input.id}`);\n}\nconst profile = {\n  id: action.input.id,\n  title: action.input.title,\n  content: action.input.content,\n};\nif (action.input.insertBefore) {\n  const beforeIdx = state.features.mastra.profiles.findIndex(p => p.id === action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileNotFoundError(`insertBefore profile not found: ${action.input.insertBefore}`);\n  }\n  state.features.mastra.profiles.splice(beforeIdx, 0, profile);\n} else {\n  state.features.mastra.profiles.push(profile);\n}",
               errors: [
                 {
-                  id: 'e-add-profile-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before managing profiles.',
-                  template: '',
+                  id: "e-add-profile-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before managing profiles.",
+                  template: "",
                 },
                 {
-                  id: 'e-add-profile-invalid-id',
-                  name: 'InvalidProfileIdError',
-                  code: 'INVALID_PROFILE_ID',
-                  description: 'Profile ID must match /^[a-z][a-z0-9-]*$/ \u2014 lowercase kebab-case.',
-                  template: '',
+                  id: "e-add-profile-invalid-id",
+                  name: "InvalidProfileIdError",
+                  code: "INVALID_PROFILE_ID",
+                  description:
+                    "Profile ID must match /^[a-z][a-z0-9-]*$/ \u2014 lowercase kebab-case.",
+                  template: "",
                 },
                 {
-                  id: 'e-add-profile-duplicate',
-                  name: 'DuplicateProfileError',
-                  code: 'DUPLICATE_PROFILE',
-                  description: 'A profile with this ID already exists.',
-                  template: '',
+                  id: "e-add-profile-duplicate",
+                  name: "DuplicateProfileError",
+                  code: "DUPLICATE_PROFILE",
+                  description: "A profile with this ID already exists.",
+                  template: "",
                 },
                 {
-                  id: 'e-add-profile-not-found',
-                  name: 'ProfileNotFoundError',
-                  code: 'PROFILE_NOT_FOUND',
-                  description: 'The insertBefore profile was not found.',
-                  template: '',
+                  id: "e-add-profile-not-found",
+                  name: "ProfileNotFoundError",
+                  code: "PROFILE_NOT_FOUND",
+                  description: "The insertBefore profile was not found.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-update-profile',
-              name: 'UPDATE_PROFILE',
-              description: "Update an existing profile's title and/or content. Only updates provided fields.",
-              schema: 'input UpdateProfileInput {\n  id: String!\n  title: String\n  content: String\n}',
-              template: "Update an existing profile's title and/or content. Only updates provided fields.",
+              id: "o-update-profile",
+              name: "UPDATE_PROFILE",
+              description:
+                "Update an existing profile's title and/or content. Only updates provided fields.",
+              schema:
+                "input UpdateProfileInput {\n  id: String!\n  title: String\n  content: String\n}",
+              template:
+                "Update an existing profile's title and/or content. Only updates provided fields.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot update profile when Mastra is disabled.');\n}\nconst profile = state.features.mastra.profiles.find(p => p.id === action.input.id);\nif (!profile) {\n  throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);\n}\nif (action.input.title) profile.title = action.input.title;\nif (action.input.content) profile.content = action.input.content;",
               errors: [
                 {
-                  id: 'e-update-profile-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before managing profiles.',
-                  template: '',
+                  id: "e-update-profile-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before managing profiles.",
+                  template: "",
                 },
                 {
-                  id: 'e-update-profile-not-found',
-                  name: 'ProfileNotFoundError',
-                  code: 'PROFILE_NOT_FOUND',
-                  description: 'The specified profile was not found.',
-                  template: '',
+                  id: "e-update-profile-not-found",
+                  name: "ProfileNotFoundError",
+                  code: "PROFILE_NOT_FOUND",
+                  description: "The specified profile was not found.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-remove-profile',
-              name: 'REMOVE_PROFILE',
-              description: 'Remove an agent profile section.',
-              schema: 'input RemoveProfileInput {\n  id: String!\n}',
-              template: 'Remove an agent profile section.',
+              id: "o-remove-profile",
+              name: "REMOVE_PROFILE",
+              description: "Remove an agent profile section.",
+              schema: "input RemoveProfileInput {\n  id: String!\n}",
+              template: "Remove an agent profile section.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove profile when Mastra is disabled.');\n}\nconst idx = state.features.mastra.profiles.findIndex(p => p.id === action.input.id);\nif (idx === -1) {\n  throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);\n}\nstate.features.mastra.profiles.splice(idx, 1);",
               errors: [
                 {
-                  id: 'e-remove-profile-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before managing profiles.',
-                  template: '',
+                  id: "e-remove-profile-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before managing profiles.",
+                  template: "",
                 },
                 {
-                  id: 'e-remove-profile-not-found',
-                  name: 'ProfileNotFoundError',
-                  code: 'PROFILE_NOT_FOUND',
-                  description: 'The specified profile was not found.',
-                  template: '',
+                  id: "e-remove-profile-not-found",
+                  name: "ProfileNotFoundError",
+                  code: "PROFILE_NOT_FOUND",
+                  description: "The specified profile was not found.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-reorder-profiles',
-              name: 'REORDER_PROFILES',
-              description: 'Move one or more profiles before another profile, or to the end if insertBefore is null.',
-              schema: 'input ReorderProfilesInput {\n  ids: [String!]!\n  insertBefore: String\n}',
-              template: 'Move one or more profiles before another profile, or to the end if insertBefore is null.',
+              id: "o-reorder-profiles",
+              name: "REORDER_PROFILES",
+              description:
+                "Move one or more profiles before another profile, or to the end if insertBefore is null.",
+              schema:
+                "input ReorderProfilesInput {\n  ids: [String!]!\n  insertBefore: String\n}",
+              template:
+                "Move one or more profiles before another profile, or to the end if insertBefore is null.",
               reducer:
                 "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot reorder profiles when Mastra is disabled.');\n}\nconst moving = [];\nfor (const id of action.input.ids) {\n  const profile = state.features.mastra.profiles.find(p => p.id === id);\n  if (!profile) {\n    throw new ProfileNotFoundError(`Profile not found: ${id}`);\n  }\n  moving.push(profile);\n}\n// Remove moved profiles\nstate.features.mastra.profiles = state.features.mastra.profiles.filter(p => !action.input.ids.includes(p.id));\n// Insert at target position\nif (action.input.insertBefore) {\n  const beforeIdx = state.features.mastra.profiles.findIndex(p => p.id === action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileNotFoundError(`insertBefore profile not found: ${action.input.insertBefore}`);\n  }\n  state.features.mastra.profiles.splice(beforeIdx, 0, ...moving);\n} else {\n  state.features.mastra.profiles.push(...moving);\n}",
               errors: [
                 {
-                  id: 'e-reorder-profiles-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before managing profiles.',
-                  template: '',
+                  id: "e-reorder-profiles-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before managing profiles.",
+                  template: "",
                 },
                 {
-                  id: 'e-reorder-profiles-not-found',
-                  name: 'ProfileNotFoundError',
-                  code: 'PROFILE_NOT_FOUND',
-                  description: 'A referenced profile was not found.',
-                  template: '',
+                  id: "e-reorder-profiles-not-found",
+                  name: "ProfileNotFoundError",
+                  code: "PROFILE_NOT_FOUND",
+                  description: "A referenced profile was not found.",
+                  template: "",
                 },
               ],
               examples: [],
-              scope: 'global',
+              scope: "global",
             },
             {
-              id: 'o-set-agent-description',
-              name: 'SET_AGENT_DESCRIPTION',
-              description: 'Set the agent description. Only valid when mastra is enabled.',
-              schema: 'input SetAgentDescriptionInput {\n  description: String!\n}',
-              template: 'Set the agent description. Only valid when mastra is enabled.',
-              reducer: "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent description when Mastra is disabled.');\n}\nstate.features.mastra.agentDescription = action.input.description;",
-              errors: [
-                {
-                  id: 'e-set-agent-desc-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before setting agent description.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-agent-image',
-              name: 'SET_AGENT_IMAGE',
-              description: 'Set the agent image URL (avatar). Only valid when mastra is enabled.',
-              schema: 'input SetAgentImageInput {\n  image: URL!\n}',
-              template: 'Set the agent image URL (avatar). Only valid when mastra is enabled.',
-              reducer: "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent image when Mastra is disabled.');\n}\nstate.features.mastra.agentImage = action.input.image;",
-              errors: [
-                {
-                  id: 'e-set-agent-image-not-enabled',
-                  name: 'MastraNotEnabledError',
-                  code: 'MASTRA_NOT_ENABLED',
-                  description: 'Mastra must be enabled before setting agent image.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-          ],
-        },
-        {
-          id: 'm-features-routine',
-          name: 'features_routine',
-          description: 'Routine loop feature toggle.',
-          operations: [
-            {
-              id: 'o-enable-routine',
-              name: 'ENABLE_ROUTINE',
-              description: 'Enable the routine loop. Idempotent.',
-              schema: 'input EnableRoutineInput {\n  _: Boolean\n}',
-              template: 'Enable the routine loop. Idempotent.',
-              reducer: 'state.features.routine.enabled = true;',
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-disable-routine',
-              name: 'DISABLE_ROUTINE',
-              description: 'Disable the routine loop. Always allowed.',
-              schema: 'input DisableRoutineInput {\n  _: Boolean\n}',
-              template: 'Disable the routine loop.',
-              reducer: 'state.features.routine.enabled = false;',
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-          ],
-        },
-        {
-          id: 'm-powerhouse-packages',
-          name: 'powerhouse_packages',
-          description: 'Manage reactor packages and their document types. The app package is auto-created when Powerhouse level goes above Disabled.',
-          operations: [
-            {
-              id: 'o-add-powerhouse-package',
-              name: 'ADD_POWERHOUSE_PACKAGE',
-              description: 'Add an external reactor package. The app package is auto-managed by SET_POWERHOUSE_LEVEL.',
-              schema: 'input AddPowerhousePackageInput {\n  id: OID!\n  packageName: String!\n}',
-              template: 'Add an external reactor package. The app package is auto-managed by SET_POWERHOUSE_LEVEL.',
-              reducer:
-                'const exists = state.packages.find(p => p.id === action.input.id || p.packageName === action.input.packageName);\nif (exists) {\n  throw new DuplicatePackageError(`Package already exists: ${action.input.packageName}`);\n}\nstate.packages.push({\n  id: action.input.id,\n  packageName: action.input.packageName,\n  documentTypes: [],\n});',
-              errors: [
-                {
-                  id: 'e-duplicate-package',
-                  name: 'DuplicatePackageError',
-                  code: 'DUPLICATE_PACKAGE',
-                  description: 'A package with the same ID or name already exists.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-remove-powerhouse-package',
-              name: 'REMOVE_POWERHOUSE_PACKAGE',
-              description: 'Remove a reactor package. Cannot remove the auto-managed app package.',
-              schema: 'input RemovePowerhousePackageInput {\n  id: OID!\n}',
-              template: 'Remove a reactor package. Cannot remove the auto-managed app package.',
-              reducer:
-                "const idx = state.packages.findIndex(p => p.id === action.input.id);\nif (idx === -1) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.id}`);\n}\nconst pkg = state.packages[idx];\nif (pkg.packageName === `${state.name}-app`) {\n  throw new CannotRemoveAppPackageError('Cannot remove the auto-managed app package');\n}\nstate.packages.splice(idx, 1);",
-              errors: [
-                {
-                  id: 'e-package-not-found-remove',
-                  name: 'PackageNotFoundError',
-                  code: 'PACKAGE_NOT_FOUND',
-                  description: 'The specified package ID was not found.',
-                  template: '',
-                },
-                {
-                  id: 'e-cannot-remove-app-package',
-                  name: 'CannotRemoveAppPackageError',
-                  code: 'CANNOT_REMOVE_APP_PACKAGE',
-                  description: 'The auto-managed app package cannot be removed.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-add-package-document-type',
-              name: 'ADD_PACKAGE_DOCUMENT_TYPE',
-              description: 'Add a document type ID to a package (app or external).',
-              schema: 'input AddPackageDocumentTypeInput {\n  packageId: OID!\n  documentType: String!\n}',
-              template: 'Add a document type ID to a package (app or external).',
-              reducer:
-                'if (!/^[a-z0-9-]+\\/[a-z0-9-]+$/.test(action.input.documentType)) {\n  throw new InvalidDocumentTypeError(`Invalid document type format: ${action.input.documentType}. Expected org/name.`);\n}\nconst pkg = state.packages.find(p => p.id === action.input.packageId);\nif (!pkg) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.packageId}`);\n}\nif (pkg.documentTypes.includes(action.input.documentType)) {\n  throw new DuplicateDocumentTypeError(`Document type already registered: ${action.input.documentType}`);\n}\npkg.documentTypes.push(action.input.documentType);',
-              errors: [
-                {
-                  id: 'e-invalid-document-type',
-                  name: 'InvalidDocumentTypeError',
-                  code: 'INVALID_DOCUMENT_TYPE',
-                  description: 'Document type must match org/name format (e.g. powerhouse/ph-clint-project).',
-                  template: '',
-                },
-                {
-                  id: 'e-package-not-found-add-dt',
-                  name: 'PackageNotFoundError',
-                  code: 'PACKAGE_NOT_FOUND',
-                  description: 'The specified package ID was not found.',
-                  template: '',
-                },
-                {
-                  id: 'e-duplicate-document-type',
-                  name: 'DuplicateDocumentTypeError',
-                  code: 'DUPLICATE_DOCUMENT_TYPE',
-                  description: 'This document type is already registered in the package.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-remove-package-document-type',
-              name: 'REMOVE_PACKAGE_DOCUMENT_TYPE',
-              description: 'Remove a document type ID from a package.',
-              schema: 'input RemovePackageDocumentTypeInput {\n  packageId: OID!\n  documentType: String!\n}',
-              template: 'Remove a document type ID from a package.',
-              reducer:
-                'const pkg = state.packages.find(p => p.id === action.input.packageId);\nif (!pkg) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.packageId}`);\n}\nconst idx = pkg.documentTypes.indexOf(action.input.documentType);\nif (idx === -1) {\n  throw new DocumentTypeNotFoundError(`Document type not found: ${action.input.documentType}`);\n}\npkg.documentTypes.splice(idx, 1);',
-              errors: [
-                {
-                  id: 'e-package-not-found-rm-dt',
-                  name: 'PackageNotFoundError',
-                  code: 'PACKAGE_NOT_FOUND',
-                  description: 'The specified package ID was not found.',
-                  template: '',
-                },
-                {
-                  id: 'e-document-type-not-found',
-                  name: 'DocumentTypeNotFoundError',
-                  code: 'DOCUMENT_TYPE_NOT_FOUND',
-                  description: 'The specified document type was not found in this package.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-          ],
-        },
-        {
-          id: 'm-external-skills',
-          name: 'external_skills',
-          description: 'External skills from the skills.sh ecosystem. Each skill has a name and GitHub URL for installation.',
-          operations: [
-            {
-              id: 'o-add-external-skill',
-              name: 'ADD_EXTERNAL_SKILL',
-              description: 'Add an external skill. Name must be lowercase kebab-case.',
-              schema: 'input AddExternalSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}',
-              template: 'Add an external skill. Name must be lowercase kebab-case.',
-              reducer:
-                'if (!/^[a-z][a-z0-9-]*$/.test(action.input.name)) {\n  throw new InvalidSkillNameError(`Invalid skill name: ${action.input.name}. Must be lowercase kebab-case.`);\n}\nconst exists = state.externalSkills.find(s => s.id === action.input.id || s.name === action.input.name);\nif (exists) {\n  throw new DuplicateSkillError(`Skill already exists: ${action.input.name}`);\n}\nstate.externalSkills.push({\n  id: action.input.id,\n  name: action.input.name,\n  githubUrl: action.input.githubUrl,\n});',
-              errors: [
-                {
-                  id: 'e-invalid-skill-name',
-                  name: 'InvalidSkillNameError',
-                  code: 'INVALID_SKILL_NAME',
-                  description: 'Skill name must be lowercase kebab-case (e.g. playwright-cli).',
-                  template: '',
-                },
-                {
-                  id: 'e-duplicate-skill',
-                  name: 'DuplicateSkillError',
-                  code: 'DUPLICATE_SKILL',
-                  description: 'A skill with the same ID or name already exists.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-remove-external-skill',
-              name: 'REMOVE_EXTERNAL_SKILL',
-              description: 'Remove an external skill by ID.',
-              schema: 'input RemoveExternalSkillInput {\n  id: OID!\n}',
-              template: 'Remove an external skill by ID.',
-              reducer: 'const idx = state.externalSkills.findIndex(s => s.id === action.input.id);\nif (idx === -1) {\n  throw new SkillNotFoundError(`Skill not found: ${action.input.id}`);\n}\nstate.externalSkills.splice(idx, 1);',
-              errors: [
-                {
-                  id: 'e-skill-not-found-remove',
-                  name: 'SkillNotFoundError',
-                  code: 'SKILL_NOT_FOUND',
-                  description: 'The specified skill ID was not found.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-external-skill-name',
-              name: 'SET_EXTERNAL_SKILL_NAME',
-              description: 'Update the name of an external skill.',
-              schema: 'input SetExternalSkillNameInput {\n  id: OID!\n  name: String!\n}',
-              template: 'Update the name of an external skill.',
-              reducer:
-                'const skill = state.externalSkills.find(s => s.id === action.input.id);\nif (!skill) {\n  throw new SkillNotFoundError(`Skill not found: ${action.input.id}`);\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.name)) {\n  throw new InvalidSkillNameError(`Invalid skill name: ${action.input.name}. Must be lowercase kebab-case.`);\n}\nconst duplicate = state.externalSkills.find(s => s.name === action.input.name && s.id !== action.input.id);\nif (duplicate) {\n  throw new DuplicateSkillError(`Skill name already in use: ${action.input.name}`);\n}\nskill.name = action.input.name;',
-              errors: [
-                {
-                  id: 'e-skill-not-found-set-name',
-                  name: 'SkillNotFoundError',
-                  code: 'SKILL_NOT_FOUND',
-                  description: 'The specified skill ID was not found.',
-                  template: '',
-                },
-                {
-                  id: 'e-invalid-skill-name-set',
-                  name: 'InvalidSkillNameError',
-                  code: 'INVALID_SKILL_NAME',
-                  description: 'Skill name must be lowercase kebab-case.',
-                  template: '',
-                },
-                {
-                  id: 'e-duplicate-skill-set-name',
-                  name: 'DuplicateSkillError',
-                  code: 'DUPLICATE_SKILL',
-                  description: 'Another skill already uses this name.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-external-skill-github-url',
-              name: 'SET_EXTERNAL_SKILL_GITHUB_URL',
-              description: 'Update the GitHub URL of an external skill.',
-              schema: 'input SetExternalSkillGithubUrlInput {\n  id: OID!\n  githubUrl: URL!\n}',
-              template: 'Update the GitHub URL of an external skill.',
-              reducer: 'const skill = state.externalSkills.find(s => s.id === action.input.id);\nif (!skill) {\n  throw new SkillNotFoundError(`Skill not found: ${action.input.id}`);\n}\nskill.githubUrl = action.input.githubUrl;',
-              errors: [
-                {
-                  id: 'e-skill-not-found-set-url',
-                  name: 'SkillNotFoundError',
-                  code: 'SKILL_NOT_FOUND',
-                  description: 'The specified skill ID was not found.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-          ],
-        },
-        {
-          id: 'm-publishing',
-          name: 'publishing',
-          description: 'Version bumping and publish records. Tracks dev/staging/production publish intents and their status.',
-          operations: [
-            {
-              id: 'o-bump-version',
-              name: 'BUMP_VERSION',
-              description: 'Bump the project version. Must be a valid semver string greater than the current version.',
-              schema: 'input BumpVersionInput {\n  version: String!\n}',
-              template: 'Bump the project version. Must be a valid semver string greater than the current version.',
-              reducer: 'if (!/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$/.test(action.input.version)) {\n  throw new InvalidVersionError(`Invalid version: ${action.input.version}`);\n}\nstate.version = action.input.version;',
-              errors: [
-                {
-                  id: 'e-invalid-version-bump',
-                  name: 'InvalidVersionError',
-                  code: 'INVALID_VERSION',
-                  description: 'The version must be a valid semver string.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-publish-dev',
-              name: 'PUBLISH_DEV',
-              description: 'Record a dev publish intent. Creates a Pending publish record.',
-              schema: 'input PublishDevInput {\n  id: OID!\n  timestamp: DateTime!\n}',
-              template: 'Record a dev publish intent. Creates a Pending publish record.',
-              reducer: "state.publishHistory.push({\n  id: action.input.id,\n  tag: 'Dev',\n  version: state.version,\n  timestamp: action.input.timestamp,\n  status: 'Pending',\n});",
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-publish-staging',
-              name: 'PUBLISH_STAGING',
-              description: 'Record a staging publish intent. Creates a Pending publish record.',
-              schema: 'input PublishStagingInput {\n  id: OID!\n  timestamp: DateTime!\n}',
-              template: 'Record a staging publish intent. Creates a Pending publish record.',
-              reducer: "state.publishHistory.push({\n  id: action.input.id,\n  tag: 'Staging',\n  version: state.version,\n  timestamp: action.input.timestamp,\n  status: 'Pending',\n});",
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-publish-production',
-              name: 'PUBLISH_PRODUCTION',
-              description: 'Record a production publish intent. Creates a Pending publish record.',
-              schema: 'input PublishProductionInput {\n  id: OID!\n  timestamp: DateTime!\n}',
-              template: 'Record a production publish intent. Creates a Pending publish record.',
-              reducer: "state.publishHistory.push({\n  id: action.input.id,\n  tag: 'Production',\n  version: state.version,\n  timestamp: action.input.timestamp,\n  status: 'Pending',\n});",
-              errors: [],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-publish-status',
-              name: 'SET_PUBLISH_STATUS',
-              description: 'Update the status of a publish record. Used by the trigger after publish completes.',
-              schema: 'input SetPublishStatusInput {\n  id: OID!\n  status: PublishStatus!\n}',
-              template: 'Update the status of a publish record. Used by the trigger after publish completes.',
-              reducer: 'const record = state.publishHistory.find(r => r.id === action.input.id);\nif (!record) {\n  throw new PublishRecordNotFoundError(`Publish record not found: ${action.input.id}`);\n}\nrecord.status = action.input.status;',
-              errors: [
-                {
-                  id: 'e-publish-record-not-found',
-                  name: 'PublishRecordNotFoundError',
-                  code: 'PUBLISH_RECORD_NOT_FOUND',
-                  description: 'The specified publish record ID was not found.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-          ],
-        },
-        {
-          id: 'm-lifecycle',
-          name: 'lifecycle',
-          description: 'Document lifecycle operations. IMPORT_SPEC bulk-imports a full project spec into the document.',
-          operations: [
-            {
-              id: 'o-import-spec',
-              name: 'IMPORT_SPEC',
-              description: 'Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.',
+              id: "o-set-agent-description",
+              name: "SET_AGENT_DESCRIPTION",
+              description:
+                "Set the agent description. Only valid when mastra is enabled.",
               schema:
-                'input ImportSpecInput {\n  name: String!\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  powerhouse: PowerhouseLevel!\n  mastraEnabled: Boolean!\n  routineEnabled: Boolean!\n  packages: [ImportPackageInput!]!\n  externalSkills: [ImportSkillInput!]!\n  agentId: String\n  agentName: String\n  models: [ImportModelInput!]\n  profiles: [ImportProfileInput!]\n}\n\ninput ImportPackageInput {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ninput ImportSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\ninput ImportModelInput {\n  id: String!\n  isDefault: Boolean!\n}\n\ninput ImportProfileInput {\n  id: String!\n  title: String!\n  content: String!\n}',
-              template: 'Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.',
+                "input SetAgentDescriptionInput {\n  description: String!\n}",
+              template:
+                "Set the agent description. Only valid when mastra is enabled.",
               reducer:
-                'state.name = action.input.name;\nstate.scope = action.input.scope || null;\nstate.version = action.input.version;\nstate.description = action.input.description;\nstate.bin = action.input.bin || null;\nstate.features.powerhouse = action.input.powerhouse;\nstate.features.mastra.enabled = action.input.mastraEnabled;\nstate.features.routine.enabled = action.input.routineEnabled;\nstate.packages = action.input.packages.map(p => ({\n  id: p.id,\n  packageName: p.packageName,\n  documentTypes: [...p.documentTypes],\n}));\nstate.externalSkills = action.input.externalSkills.map(s => ({\n  id: s.id,\n  name: s.name,\n  githubUrl: s.githubUrl,\n}));\nstate.features.mastra.agentId = action.input.agentId || null;\nstate.features.mastra.agentName = action.input.agentName || null;\nstate.features.mastra.models = action.input.models ? action.input.models.map(m => ({\n  id: m.id,\n  isDefault: m.isDefault,\n})) : [];\nstate.features.mastra.profiles = action.input.profiles ? action.input.profiles.map(p => ({\n  id: p.id,\n  title: p.title,\n  content: p.content,\n})) : [];',
-              errors: [],
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent description when Mastra is disabled.');\n}\nstate.features.mastra.agentDescription = action.input.description;",
+              errors: [
+                {
+                  id: "e-set-agent-desc-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before setting agent description.",
+                  template: "",
+                },
+              ],
               examples: [],
-              scope: 'global',
+              scope: "global",
+            },
+            {
+              id: "o-set-agent-image",
+              name: "SET_AGENT_IMAGE",
+              description:
+                "Set the agent image URL (avatar). Only valid when mastra is enabled.",
+              schema: "input SetAgentImageInput {\n  image: URL!\n}",
+              template:
+                "Set the agent image URL (avatar). Only valid when mastra is enabled.",
+              reducer:
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent image when Mastra is disabled.');\n}\nstate.features.mastra.agentImage = action.input.image;",
+              errors: [
+                {
+                  id: "e-set-agent-image-not-enabled",
+                  name: "MastraNotEnabledError",
+                  code: "MASTRA_NOT_ENABLED",
+                  description:
+                    "Mastra must be enabled before setting agent image.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
             },
           ],
         },
         {
-          id: 'm-deployment',
-          name: 'deployment',
-          description: 'Deployment settings: service announcement toggle and supported resource tiers.',
+          id: "m-features-routine",
+          name: "features_routine",
+          description: "Routine loop feature toggle.",
           operations: [
             {
-              id: 'o-add-supported-resource',
-              name: 'ADD_SUPPORTED_RESOURCE',
-              description: 'Add a supported resource tier. Guards against duplicates.',
-              schema: 'input AddSupportedResourceInput {\n  resource: String!\n}',
-              template: 'Add a supported resource tier. Guards against duplicates.',
-              reducer:
-                'if (state.deployment.supportedResources.includes(action.input.resource)) {\n  throw new DuplicateResourceError(`Resource already exists: ${action.input.resource}`);\n}\nstate.deployment.supportedResources.push(action.input.resource);',
-              errors: [
-                {
-                  id: 'e-duplicate-resource',
-                  name: 'DuplicateResourceError',
-                  code: 'DUPLICATE_RESOURCE',
-                  description: 'This resource is already in the supported resources list.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-remove-supported-resource',
-              name: 'REMOVE_SUPPORTED_RESOURCE',
-              description: 'Remove a supported resource tier.',
-              schema: 'input RemoveSupportedResourceInput {\n  resource: String!\n}',
-              template: 'Remove a supported resource tier.',
-              reducer:
-                'const idx = state.deployment.supportedResources.indexOf(action.input.resource);\nif (idx === -1) {\n  throw new ResourceNotFoundError(`Resource not found: ${action.input.resource}`);\n}\nstate.deployment.supportedResources.splice(idx, 1);',
-              errors: [
-                {
-                  id: 'e-resource-not-found',
-                  name: 'ResourceNotFoundError',
-                  code: 'RESOURCE_NOT_FOUND',
-                  description: 'The specified resource was not found in the supported resources list.',
-                  template: '',
-                },
-              ],
-              examples: [],
-              scope: 'global',
-            },
-            {
-              id: 'o-set-proxy-enabled',
-              name: 'SET_PROXY_ENABLED',
-              description: 'Toggle the embedded reverse proxy.',
-              schema: 'input SetProxyEnabledInput {\n  enabled: Boolean!\n}',
-              template: 'Toggle the embedded reverse proxy.',
-              reducer: 'state.deployment.proxyEnabled = action.input.enabled;',
+              id: "o-enable-routine",
+              name: "ENABLE_ROUTINE",
+              description: "Enable the routine loop. Idempotent.",
+              schema: "input EnableRoutineInput {\n  _: Boolean\n}",
+              template: "Enable the routine loop. Idempotent.",
+              reducer: "state.features.routine.enabled = true;",
               errors: [],
               examples: [],
-              scope: 'global',
+              scope: "global",
+            },
+            {
+              id: "o-disable-routine",
+              name: "DISABLE_ROUTINE",
+              description: "Disable the routine loop. Always allowed.",
+              schema: "input DisableRoutineInput {\n  _: Boolean\n}",
+              template: "Disable the routine loop.",
+              reducer: "state.features.routine.enabled = false;",
+              errors: [],
+              examples: [],
+              scope: "global",
+            },
+          ],
+        },
+        {
+          id: "m-powerhouse-packages",
+          name: "powerhouse_packages",
+          description:
+            "Manage reactor packages and their document types. The app package is auto-created when Powerhouse level goes above Disabled.",
+          operations: [
+            {
+              id: "o-add-powerhouse-package",
+              name: "ADD_POWERHOUSE_PACKAGE",
+              description:
+                "Add an external reactor package. The app package is auto-managed by SET_POWERHOUSE_LEVEL.",
+              schema:
+                "input AddPowerhousePackageInput {\n  id: OID!\n  packageName: String!\n}",
+              template:
+                "Add an external reactor package. The app package is auto-managed by SET_POWERHOUSE_LEVEL.",
+              reducer:
+                "const exists = state.packages.find(p => p.id === action.input.id || p.packageName === action.input.packageName);\nif (exists) {\n  throw new DuplicatePackageError(`Package already exists: ${action.input.packageName}`);\n}\nstate.packages.push({\n  id: action.input.id,\n  packageName: action.input.packageName,\n  documentTypes: [],\n});",
+              errors: [
+                {
+                  id: "e-duplicate-package",
+                  name: "DuplicatePackageError",
+                  code: "DUPLICATE_PACKAGE",
+                  description:
+                    "A package with the same ID or name already exists.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-remove-powerhouse-package",
+              name: "REMOVE_POWERHOUSE_PACKAGE",
+              description:
+                "Remove a reactor package. Cannot remove the auto-managed app package.",
+              schema: "input RemovePowerhousePackageInput {\n  id: OID!\n}",
+              template:
+                "Remove a reactor package. Cannot remove the auto-managed app package.",
+              reducer:
+                "const idx = state.packages.findIndex(p => p.id === action.input.id);\nif (idx === -1) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.id}`);\n}\nconst pkg = state.packages[idx];\nconst appName = state.name ? state.name.replace(/-cli$/, '-app') : null;\nconst fullAppName = appName && state.scope ? `${state.scope}/${appName}` : appName;\nif (pkg.packageName === fullAppName) {\n  throw new CannotRemoveAppPackageError('Cannot remove the auto-managed app package');\n}\nstate.packages.splice(idx, 1);",
+              errors: [
+                {
+                  id: "e-package-not-found-remove",
+                  name: "PackageNotFoundError",
+                  code: "PACKAGE_NOT_FOUND",
+                  description: "The specified package ID was not found.",
+                  template: "",
+                },
+                {
+                  id: "e-cannot-remove-app-package",
+                  name: "CannotRemoveAppPackageError",
+                  code: "CANNOT_REMOVE_APP_PACKAGE",
+                  description:
+                    "The auto-managed app package cannot be removed.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-add-package-document-type",
+              name: "ADD_PACKAGE_DOCUMENT_TYPE",
+              description:
+                "Add a document type ID to a package (app or external).",
+              schema:
+                "input AddPackageDocumentTypeInput {\n  packageId: OID!\n  documentType: String!\n}",
+              template:
+                "Add a document type ID to a package (app or external).",
+              reducer:
+                "if (!/^[a-z0-9-]+\\/[a-z0-9-]+$/.test(action.input.documentType)) {\n  throw new InvalidDocumentTypeError(`Invalid document type format: ${action.input.documentType}. Expected org/name.`);\n}\nconst pkg = state.packages.find(p => p.id === action.input.packageId);\nif (!pkg) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.packageId}`);\n}\nif (pkg.documentTypes.includes(action.input.documentType)) {\n  throw new DuplicateDocumentTypeError(`Document type already registered: ${action.input.documentType}`);\n}\npkg.documentTypes.push(action.input.documentType);",
+              errors: [
+                {
+                  id: "e-invalid-document-type",
+                  name: "InvalidDocumentTypeError",
+                  code: "INVALID_DOCUMENT_TYPE",
+                  description:
+                    "Document type must match org/name format (e.g. powerhouse/ph-clint-project).",
+                  template: "",
+                },
+                {
+                  id: "e-package-not-found-add-dt",
+                  name: "PackageNotFoundError",
+                  code: "PACKAGE_NOT_FOUND",
+                  description: "The specified package ID was not found.",
+                  template: "",
+                },
+                {
+                  id: "e-duplicate-document-type",
+                  name: "DuplicateDocumentTypeError",
+                  code: "DUPLICATE_DOCUMENT_TYPE",
+                  description:
+                    "This document type is already registered in the package.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-remove-package-document-type",
+              name: "REMOVE_PACKAGE_DOCUMENT_TYPE",
+              description: "Remove a document type ID from a package.",
+              schema:
+                "input RemovePackageDocumentTypeInput {\n  packageId: OID!\n  documentType: String!\n}",
+              template: "Remove a document type ID from a package.",
+              reducer:
+                "const pkg = state.packages.find(p => p.id === action.input.packageId);\nif (!pkg) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.packageId}`);\n}\nconst idx = pkg.documentTypes.indexOf(action.input.documentType);\nif (idx === -1) {\n  throw new DocumentTypeNotFoundError(`Document type not found: ${action.input.documentType}`);\n}\npkg.documentTypes.splice(idx, 1);",
+              errors: [
+                {
+                  id: "e-package-not-found-rm-dt",
+                  name: "PackageNotFoundError",
+                  code: "PACKAGE_NOT_FOUND",
+                  description: "The specified package ID was not found.",
+                  template: "",
+                },
+                {
+                  id: "e-document-type-not-found",
+                  name: "DocumentTypeNotFoundError",
+                  code: "DOCUMENT_TYPE_NOT_FOUND",
+                  description:
+                    "The specified document type was not found in this package.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+          ],
+        },
+        {
+          id: "m-external-skills",
+          name: "external_skills",
+          description:
+            "External skills from the skills.sh ecosystem. Each skill has a name and GitHub URL for installation.",
+          operations: [
+            {
+              id: "o-add-external-skill",
+              name: "ADD_EXTERNAL_SKILL",
+              description:
+                "Add an external skill. Name must be lowercase kebab-case.",
+              schema:
+                "input AddExternalSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}",
+              template:
+                "Add an external skill. Name must be lowercase kebab-case.",
+              reducer:
+                "if (!/^[a-z][a-z0-9-]*$/.test(action.input.name)) {\n  throw new InvalidSkillNameError(`Invalid skill name: ${action.input.name}. Must be lowercase kebab-case.`);\n}\nconst exists = state.externalSkills.find(s => s.id === action.input.id || s.name === action.input.name);\nif (exists) {\n  throw new DuplicateSkillError(`Skill already exists: ${action.input.name}`);\n}\nstate.externalSkills.push({\n  id: action.input.id,\n  name: action.input.name,\n  githubUrl: action.input.githubUrl,\n});",
+              errors: [
+                {
+                  id: "e-invalid-skill-name",
+                  name: "InvalidSkillNameError",
+                  code: "INVALID_SKILL_NAME",
+                  description:
+                    "Skill name must be lowercase kebab-case (e.g. playwright-cli).",
+                  template: "",
+                },
+                {
+                  id: "e-duplicate-skill",
+                  name: "DuplicateSkillError",
+                  code: "DUPLICATE_SKILL",
+                  description:
+                    "A skill with the same ID or name already exists.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-remove-external-skill",
+              name: "REMOVE_EXTERNAL_SKILL",
+              description: "Remove an external skill by ID.",
+              schema: "input RemoveExternalSkillInput {\n  id: OID!\n}",
+              template: "Remove an external skill by ID.",
+              reducer:
+                "const idx = state.externalSkills.findIndex(s => s.id === action.input.id);\nif (idx === -1) {\n  throw new SkillNotFoundError(`Skill not found: ${action.input.id}`);\n}\nstate.externalSkills.splice(idx, 1);",
+              errors: [
+                {
+                  id: "e-skill-not-found-remove",
+                  name: "SkillNotFoundError",
+                  code: "SKILL_NOT_FOUND",
+                  description: "The specified skill ID was not found.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-set-external-skill-name",
+              name: "SET_EXTERNAL_SKILL_NAME",
+              description: "Update the name of an external skill.",
+              schema:
+                "input SetExternalSkillNameInput {\n  id: OID!\n  name: String!\n}",
+              template: "Update the name of an external skill.",
+              reducer:
+                "const skill = state.externalSkills.find(s => s.id === action.input.id);\nif (!skill) {\n  throw new SkillNotFoundError(`Skill not found: ${action.input.id}`);\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.name)) {\n  throw new InvalidSkillNameError(`Invalid skill name: ${action.input.name}. Must be lowercase kebab-case.`);\n}\nconst duplicate = state.externalSkills.find(s => s.name === action.input.name && s.id !== action.input.id);\nif (duplicate) {\n  throw new DuplicateSkillError(`Skill name already in use: ${action.input.name}`);\n}\nskill.name = action.input.name;",
+              errors: [
+                {
+                  id: "e-skill-not-found-set-name",
+                  name: "SkillNotFoundError",
+                  code: "SKILL_NOT_FOUND",
+                  description: "The specified skill ID was not found.",
+                  template: "",
+                },
+                {
+                  id: "e-invalid-skill-name-set",
+                  name: "InvalidSkillNameError",
+                  code: "INVALID_SKILL_NAME",
+                  description: "Skill name must be lowercase kebab-case.",
+                  template: "",
+                },
+                {
+                  id: "e-duplicate-skill-set-name",
+                  name: "DuplicateSkillError",
+                  code: "DUPLICATE_SKILL",
+                  description: "Another skill already uses this name.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-set-external-skill-github-url",
+              name: "SET_EXTERNAL_SKILL_GITHUB_URL",
+              description: "Update the GitHub URL of an external skill.",
+              schema:
+                "input SetExternalSkillGithubUrlInput {\n  id: OID!\n  githubUrl: URL!\n}",
+              template: "Update the GitHub URL of an external skill.",
+              reducer:
+                "const skill = state.externalSkills.find(s => s.id === action.input.id);\nif (!skill) {\n  throw new SkillNotFoundError(`Skill not found: ${action.input.id}`);\n}\nskill.githubUrl = action.input.githubUrl;",
+              errors: [
+                {
+                  id: "e-skill-not-found-set-url",
+                  name: "SkillNotFoundError",
+                  code: "SKILL_NOT_FOUND",
+                  description: "The specified skill ID was not found.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+          ],
+        },
+        {
+          id: "m-publishing",
+          name: "publishing",
+          description:
+            "Version bumping and publish records. Tracks dev/staging/production publish intents and their status.",
+          operations: [
+            {
+              id: "o-bump-version",
+              name: "BUMP_VERSION",
+              description:
+                "Bump the project version. Must be a valid semver string greater than the current version.",
+              schema: "input BumpVersionInput {\n  version: String!\n}",
+              template:
+                "Bump the project version. Must be a valid semver string greater than the current version.",
+              reducer:
+                "if (!/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$/.test(action.input.version)) {\n  throw new InvalidVersionError(`Invalid version: ${action.input.version}`);\n}\nstate.version = action.input.version;",
+              errors: [
+                {
+                  id: "e-invalid-version-bump",
+                  name: "InvalidVersionError",
+                  code: "INVALID_VERSION",
+                  description: "The version must be a valid semver string.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-publish-dev",
+              name: "PUBLISH_DEV",
+              description:
+                "Record a dev publish intent. Creates a Pending publish record.",
+              schema:
+                "input PublishDevInput {\n  id: OID!\n  timestamp: DateTime!\n}",
+              template:
+                "Record a dev publish intent. Creates a Pending publish record.",
+              reducer:
+                "state.publishHistory.push({\n  id: action.input.id,\n  tag: 'Dev',\n  version: state.version,\n  timestamp: action.input.timestamp,\n  status: 'Pending',\n});",
+              errors: [],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-publish-staging",
+              name: "PUBLISH_STAGING",
+              description:
+                "Record a staging publish intent. Creates a Pending publish record.",
+              schema:
+                "input PublishStagingInput {\n  id: OID!\n  timestamp: DateTime!\n}",
+              template:
+                "Record a staging publish intent. Creates a Pending publish record.",
+              reducer:
+                "state.publishHistory.push({\n  id: action.input.id,\n  tag: 'Staging',\n  version: state.version,\n  timestamp: action.input.timestamp,\n  status: 'Pending',\n});",
+              errors: [],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-publish-production",
+              name: "PUBLISH_PRODUCTION",
+              description:
+                "Record a production publish intent. Creates a Pending publish record.",
+              schema:
+                "input PublishProductionInput {\n  id: OID!\n  timestamp: DateTime!\n}",
+              template:
+                "Record a production publish intent. Creates a Pending publish record.",
+              reducer:
+                "state.publishHistory.push({\n  id: action.input.id,\n  tag: 'Production',\n  version: state.version,\n  timestamp: action.input.timestamp,\n  status: 'Pending',\n});",
+              errors: [],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-set-publish-status",
+              name: "SET_PUBLISH_STATUS",
+              description:
+                "Update the status of a publish record. Used by the trigger after publish completes.",
+              schema:
+                "input SetPublishStatusInput {\n  id: OID!\n  status: PublishStatus!\n}",
+              template:
+                "Update the status of a publish record. Used by the trigger after publish completes.",
+              reducer:
+                "const record = state.publishHistory.find(r => r.id === action.input.id);\nif (!record) {\n  throw new PublishRecordNotFoundError(`Publish record not found: ${action.input.id}`);\n}\nrecord.status = action.input.status;",
+              errors: [
+                {
+                  id: "e-publish-record-not-found",
+                  name: "PublishRecordNotFoundError",
+                  code: "PUBLISH_RECORD_NOT_FOUND",
+                  description: "The specified publish record ID was not found.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+          ],
+        },
+        {
+          id: "m-lifecycle",
+          name: "lifecycle",
+          description:
+            "Document lifecycle operations. IMPORT_SPEC bulk-imports a full project spec into the document.",
+          operations: [
+            {
+              id: "o-import-spec",
+              name: "IMPORT_SPEC",
+              description:
+                "Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.",
+              schema:
+                "input ImportSpecInput {\n  name: String!\n  scope: String\n  version: String!\n  description: String!\n  powerhouse: PowerhouseLevel!\n  mastraEnabled: Boolean!\n  routineEnabled: Boolean!\n  packages: [ImportPackageInput!]!\n  externalSkills: [ImportSkillInput!]!\n  agentId: String\n  agentName: String\n  models: [ImportModelInput!]\n  profiles: [ImportProfileInput!]\n}\n\ninput ImportPackageInput {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ninput ImportSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\ninput ImportModelInput {\n  id: String!\n  isDefault: Boolean!\n}\n\ninput ImportProfileInput {\n  id: String!\n  title: String!\n  content: String!\n}",
+              template:
+                "Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.",
+              reducer:
+                "state.name = action.input.name;\nstate.scope = action.input.scope || null;\nstate.version = action.input.version;\nstate.description = action.input.description;\nstate.features.powerhouse = action.input.powerhouse;\nstate.features.mastra.enabled = action.input.mastraEnabled;\nstate.features.routine.enabled = action.input.routineEnabled;\nstate.packages = action.input.packages.map(p => ({\n  id: p.id,\n  packageName: p.packageName,\n  documentTypes: [...p.documentTypes],\n}));\nstate.externalSkills = action.input.externalSkills.map(s => ({\n  id: s.id,\n  name: s.name,\n  githubUrl: s.githubUrl,\n}));\nstate.features.mastra.agentId = action.input.agentId || null;\nstate.features.mastra.agentName = action.input.agentName || null;\nstate.features.mastra.models = action.input.models ? action.input.models.map(m => ({\n  id: m.id,\n  isDefault: m.isDefault,\n})) : [];\nstate.features.mastra.profiles = action.input.profiles ? action.input.profiles.map(p => ({\n  id: p.id,\n  title: p.title,\n  content: p.content,\n})) : [];",
+              errors: [],
+              examples: [],
+              scope: "global",
+            },
+          ],
+        },
+        {
+          id: "m-deployment",
+          name: "deployment",
+          description:
+            "Deployment settings: service announcement toggle and supported resource tiers.",
+          operations: [
+            {
+              id: "o-add-supported-resource",
+              name: "ADD_SUPPORTED_RESOURCE",
+              description:
+                "Add a supported resource tier. Guards against duplicates.",
+              schema:
+                "input AddSupportedResourceInput {\n  resource: String!\n}",
+              template:
+                "Add a supported resource tier. Guards against duplicates.",
+              reducer:
+                "if (state.deployment.supportedResources.includes(action.input.resource)) {\n  throw new DuplicateResourceError(`Resource already exists: ${action.input.resource}`);\n}\nstate.deployment.supportedResources.push(action.input.resource);",
+              errors: [
+                {
+                  id: "e-duplicate-resource",
+                  name: "DuplicateResourceError",
+                  code: "DUPLICATE_RESOURCE",
+                  description:
+                    "This resource is already in the supported resources list.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-remove-supported-resource",
+              name: "REMOVE_SUPPORTED_RESOURCE",
+              description: "Remove a supported resource tier.",
+              schema:
+                "input RemoveSupportedResourceInput {\n  resource: String!\n}",
+              template: "Remove a supported resource tier.",
+              reducer:
+                "const idx = state.deployment.supportedResources.indexOf(action.input.resource);\nif (idx === -1) {\n  throw new ResourceNotFoundError(`Resource not found: ${action.input.resource}`);\n}\nstate.deployment.supportedResources.splice(idx, 1);",
+              errors: [
+                {
+                  id: "e-resource-not-found",
+                  name: "ResourceNotFoundError",
+                  code: "RESOURCE_NOT_FOUND",
+                  description:
+                    "The specified resource was not found in the supported resources list.",
+                  template: "",
+                },
+              ],
+              examples: [],
+              scope: "global",
+            },
+            {
+              id: "o-set-proxy-enabled",
+              name: "SET_PROXY_ENABLED",
+              description: "Toggle the embedded reverse proxy.",
+              schema: "input SetProxyEnabledInput {\n  enabled: Boolean!\n}",
+              template: "Toggle the embedded reverse proxy.",
+              reducer: "state.deployment.proxyEnabled = action.input.enabled;",
+              errors: [],
+              examples: [],
+              scope: "global",
             },
           ],
         },

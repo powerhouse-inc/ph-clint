@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-import * as z from 'zod';
+import * as z from "zod";
 import type {
   AddExternalSkillInput,
   AddModelInput,
@@ -8,8 +8,6 @@ import type {
   AddProfileInput,
   AddSupportedResourceInput,
   BumpVersionInput,
-  ClearBinInput,
-  ClearScopeInput,
   DisableMastraInput,
   DisableRoutineInput,
   EnableMastraInput,
@@ -46,19 +44,17 @@ import type {
   SetAgentIdInput,
   SetAgentImageInput,
   SetAgentNameInput,
-  SetBinInput,
   SetDefaultModelInput,
   SetDescriptionInput,
   SetExternalSkillGithubUrlInput,
   SetExternalSkillNameInput,
-  SetPackageNameInput,
+  SetPackageIdentifierInput,
   SetPowerhouseLevelInput,
   SetProxyEnabledInput,
   SetPublishStatusInput,
-  SetScopeInput,
   SetVersionInput,
   UpdateProfileInput,
-} from './types.js';
+} from "./types.js";
 
 type Properties<T> = Required<{
   [K in keyof T]: z.ZodType<T[K]>;
@@ -66,17 +62,32 @@ type Properties<T> = Required<{
 
 type definedNonNullAny = {};
 
-export const isDefinedNonNullAny = (v: any): v is definedNonNullAny => v !== undefined && v !== null;
+export const isDefinedNonNullAny = (v: any): v is definedNonNullAny =>
+  v !== undefined && v !== null;
 
-export const definedNonNullAnySchema = z.any().refine((v) => isDefinedNonNullAny(v));
+export const definedNonNullAnySchema = z
+  .any()
+  .refine((v) => isDefinedNonNullAny(v));
 
-export const PowerhouseLevelSchema = z.enum(['Connect', 'Disabled', 'Reactor', 'Switchboard']);
+export const PowerhouseLevelSchema = z.enum([
+  "Connect",
+  "Disabled",
+  "Reactor",
+  "Switchboard",
+]);
 
-export const PublishStatusSchema = z.enum(['Failed', 'InProgress', 'Pending', 'Succeeded']);
+export const PublishStatusSchema = z.enum([
+  "Failed",
+  "InProgress",
+  "Pending",
+  "Succeeded",
+]);
 
-export const PublishTagSchema = z.enum(['Dev', 'Production', 'Staging']);
+export const PublishTagSchema = z.enum(["Dev", "Production", "Staging"]);
 
-export function AddExternalSkillInputSchema(): z.ZodObject<Properties<AddExternalSkillInput>> {
+export function AddExternalSkillInputSchema(): z.ZodObject<
+  Properties<AddExternalSkillInput>
+> {
   return z.object({
     githubUrl: z.url(),
     id: z.string(),
@@ -91,21 +102,27 @@ export function AddModelInputSchema(): z.ZodObject<Properties<AddModelInput>> {
   });
 }
 
-export function AddPackageDocumentTypeInputSchema(): z.ZodObject<Properties<AddPackageDocumentTypeInput>> {
+export function AddPackageDocumentTypeInputSchema(): z.ZodObject<
+  Properties<AddPackageDocumentTypeInput>
+> {
   return z.object({
     documentType: z.string(),
     packageId: z.string(),
   });
 }
 
-export function AddPowerhousePackageInputSchema(): z.ZodObject<Properties<AddPowerhousePackageInput>> {
+export function AddPowerhousePackageInputSchema(): z.ZodObject<
+  Properties<AddPowerhousePackageInput>
+> {
   return z.object({
     id: z.string(),
     packageName: z.string(),
   });
 }
 
-export function AddProfileInputSchema(): z.ZodObject<Properties<AddProfileInput>> {
+export function AddProfileInputSchema(): z.ZodObject<
+  Properties<AddProfileInput>
+> {
   return z.object({
     content: z.string(),
     id: z.string(),
@@ -114,50 +131,50 @@ export function AddProfileInputSchema(): z.ZodObject<Properties<AddProfileInput>
   });
 }
 
-export function AddSupportedResourceInputSchema(): z.ZodObject<Properties<AddSupportedResourceInput>> {
+export function AddSupportedResourceInputSchema(): z.ZodObject<
+  Properties<AddSupportedResourceInput>
+> {
   return z.object({
     resource: z.string(),
   });
 }
 
-export function BumpVersionInputSchema(): z.ZodObject<Properties<BumpVersionInput>> {
+export function BumpVersionInputSchema(): z.ZodObject<
+  Properties<BumpVersionInput>
+> {
   return z.object({
     version: z.string(),
   });
 }
 
-export function ClearBinInputSchema(): z.ZodObject<Properties<ClearBinInput>> {
+export function DisableMastraInputSchema(): z.ZodObject<
+  Properties<DisableMastraInput>
+> {
   return z.object({
     _: z.boolean().nullish(),
   });
 }
 
-export function ClearScopeInputSchema(): z.ZodObject<Properties<ClearScopeInput>> {
+export function DisableRoutineInputSchema(): z.ZodObject<
+  Properties<DisableRoutineInput>
+> {
   return z.object({
     _: z.boolean().nullish(),
   });
 }
 
-export function DisableMastraInputSchema(): z.ZodObject<Properties<DisableMastraInput>> {
-  return z.object({
-    _: z.boolean().nullish(),
-  });
-}
-
-export function DisableRoutineInputSchema(): z.ZodObject<Properties<DisableRoutineInput>> {
-  return z.object({
-    _: z.boolean().nullish(),
-  });
-}
-
-export function EnableMastraInputSchema(): z.ZodObject<Properties<EnableMastraInput>> {
+export function EnableMastraInputSchema(): z.ZodObject<
+  Properties<EnableMastraInput>
+> {
   return z.object({
     agentId: z.string(),
     agentName: z.string(),
   });
 }
 
-export function EnableRoutineInputSchema(): z.ZodObject<Properties<EnableRoutineInput>> {
+export function EnableRoutineInputSchema(): z.ZodObject<
+  Properties<EnableRoutineInput>
+> {
   return z.object({
     _: z.boolean().nullish(),
   });
@@ -165,21 +182,25 @@ export function EnableRoutineInputSchema(): z.ZodObject<Properties<EnableRoutine
 
 export function ExternalSkillSchema(): z.ZodObject<Properties<ExternalSkill>> {
   return z.object({
-    __typename: z.literal('ExternalSkill').optional(),
+    __typename: z.literal("ExternalSkill").optional(),
     githubUrl: z.url(),
     id: z.string(),
     name: z.string(),
   });
 }
 
-export function ImportModelInputSchema(): z.ZodObject<Properties<ImportModelInput>> {
+export function ImportModelInputSchema(): z.ZodObject<
+  Properties<ImportModelInput>
+> {
   return z.object({
     id: z.string(),
     isDefault: z.boolean(),
   });
 }
 
-export function ImportPackageInputSchema(): z.ZodObject<Properties<ImportPackageInput>> {
+export function ImportPackageInputSchema(): z.ZodObject<
+  Properties<ImportPackageInput>
+> {
   return z.object({
     documentTypes: z.array(z.string()),
     id: z.string(),
@@ -187,7 +208,9 @@ export function ImportPackageInputSchema(): z.ZodObject<Properties<ImportPackage
   });
 }
 
-export function ImportProfileInputSchema(): z.ZodObject<Properties<ImportProfileInput>> {
+export function ImportProfileInputSchema(): z.ZodObject<
+  Properties<ImportProfileInput>
+> {
   return z.object({
     content: z.string(),
     id: z.string(),
@@ -195,7 +218,9 @@ export function ImportProfileInputSchema(): z.ZodObject<Properties<ImportProfile
   });
 }
 
-export function ImportSkillInputSchema(): z.ZodObject<Properties<ImportSkillInput>> {
+export function ImportSkillInputSchema(): z.ZodObject<
+  Properties<ImportSkillInput>
+> {
   return z.object({
     githubUrl: z.url(),
     id: z.string(),
@@ -203,11 +228,12 @@ export function ImportSkillInputSchema(): z.ZodObject<Properties<ImportSkillInpu
   });
 }
 
-export function ImportSpecInputSchema(): z.ZodObject<Properties<ImportSpecInput>> {
+export function ImportSpecInputSchema(): z.ZodObject<
+  Properties<ImportSpecInput>
+> {
   return z.object({
     agentId: z.string().nullish(),
     agentName: z.string().nullish(),
-    bin: z.string().nullish(),
     description: z.string(),
     externalSkills: z.array(z.lazy(() => ImportSkillInputSchema())),
     mastraEnabled: z.boolean(),
@@ -222,43 +248,53 @@ export function ImportSpecInputSchema(): z.ZodObject<Properties<ImportSpecInput>
   });
 }
 
-export function PhClintAgentModelSchema(): z.ZodObject<Properties<PhClintAgentModel>> {
+export function PhClintAgentModelSchema(): z.ZodObject<
+  Properties<PhClintAgentModel>
+> {
   return z.object({
-    __typename: z.literal('PhClintAgentModel').optional(),
+    __typename: z.literal("PhClintAgentModel").optional(),
     id: z.string(),
     isDefault: z.boolean(),
   });
 }
 
-export function PhClintAgentProfileSchema(): z.ZodObject<Properties<PhClintAgentProfile>> {
+export function PhClintAgentProfileSchema(): z.ZodObject<
+  Properties<PhClintAgentProfile>
+> {
   return z.object({
-    __typename: z.literal('PhClintAgentProfile').optional(),
+    __typename: z.literal("PhClintAgentProfile").optional(),
     content: z.string(),
     id: z.string(),
     title: z.string(),
   });
 }
 
-export function PhClintDeploymentSchema(): z.ZodObject<Properties<PhClintDeployment>> {
+export function PhClintDeploymentSchema(): z.ZodObject<
+  Properties<PhClintDeployment>
+> {
   return z.object({
-    __typename: z.literal('PhClintDeployment').optional(),
+    __typename: z.literal("PhClintDeployment").optional(),
     proxyEnabled: z.boolean(),
     supportedResources: z.array(z.string()),
   });
 }
 
-export function PhClintFeaturesSchema(): z.ZodObject<Properties<PhClintFeatures>> {
+export function PhClintFeaturesSchema(): z.ZodObject<
+  Properties<PhClintFeatures>
+> {
   return z.object({
-    __typename: z.literal('PhClintFeatures').optional(),
+    __typename: z.literal("PhClintFeatures").optional(),
     mastra: z.lazy(() => PhClintMastraFeatureSchema()),
     powerhouse: PowerhouseLevelSchema,
     routine: z.lazy(() => PhClintRoutineFeatureSchema()),
   });
 }
 
-export function PhClintMastraFeatureSchema(): z.ZodObject<Properties<PhClintMastraFeature>> {
+export function PhClintMastraFeatureSchema(): z.ZodObject<
+  Properties<PhClintMastraFeature>
+> {
   return z.object({
-    __typename: z.literal('PhClintMastraFeature').optional(),
+    __typename: z.literal("PhClintMastraFeature").optional(),
     agentDescription: z.string().nullish(),
     agentId: z.string().nullish(),
     agentImage: z.url().nullish(),
@@ -269,10 +305,11 @@ export function PhClintMastraFeatureSchema(): z.ZodObject<Properties<PhClintMast
   });
 }
 
-export function PhClintProjectStateSchema(): z.ZodObject<Properties<PhClintProjectState>> {
+export function PhClintProjectStateSchema(): z.ZodObject<
+  Properties<PhClintProjectState>
+> {
   return z.object({
-    __typename: z.literal('PhClintProjectState').optional(),
-    bin: z.string().nullish(),
+    __typename: z.literal("PhClintProjectState").optional(),
     deployment: z.lazy(() => PhClintDeploymentSchema()),
     description: z.string(),
     externalSkills: z.array(z.lazy(() => ExternalSkillSchema())),
@@ -285,30 +322,38 @@ export function PhClintProjectStateSchema(): z.ZodObject<Properties<PhClintProje
   });
 }
 
-export function PhClintRoutineFeatureSchema(): z.ZodObject<Properties<PhClintRoutineFeature>> {
+export function PhClintRoutineFeatureSchema(): z.ZodObject<
+  Properties<PhClintRoutineFeature>
+> {
   return z.object({
-    __typename: z.literal('PhClintRoutineFeature').optional(),
+    __typename: z.literal("PhClintRoutineFeature").optional(),
     enabled: z.boolean(),
   });
 }
 
-export function PowerhousePackageSchema(): z.ZodObject<Properties<PowerhousePackage>> {
+export function PowerhousePackageSchema(): z.ZodObject<
+  Properties<PowerhousePackage>
+> {
   return z.object({
-    __typename: z.literal('PowerhousePackage').optional(),
+    __typename: z.literal("PowerhousePackage").optional(),
     documentTypes: z.array(z.string()),
     id: z.string(),
     packageName: z.string(),
   });
 }
 
-export function PublishDevInputSchema(): z.ZodObject<Properties<PublishDevInput>> {
+export function PublishDevInputSchema(): z.ZodObject<
+  Properties<PublishDevInput>
+> {
   return z.object({
     id: z.string(),
     timestamp: z.iso.datetime(),
   });
 }
 
-export function PublishProductionInputSchema(): z.ZodObject<Properties<PublishProductionInput>> {
+export function PublishProductionInputSchema(): z.ZodObject<
+  Properties<PublishProductionInput>
+> {
   return z.object({
     id: z.string(),
     timestamp: z.iso.datetime(),
@@ -317,7 +362,7 @@ export function PublishProductionInputSchema(): z.ZodObject<Properties<PublishPr
 
 export function PublishRecordSchema(): z.ZodObject<Properties<PublishRecord>> {
   return z.object({
-    __typename: z.literal('PublishRecord').optional(),
+    __typename: z.literal("PublishRecord").optional(),
     id: z.string(),
     status: PublishStatusSchema,
     tag: PublishTagSchema,
@@ -326,152 +371,184 @@ export function PublishRecordSchema(): z.ZodObject<Properties<PublishRecord>> {
   });
 }
 
-export function PublishStagingInputSchema(): z.ZodObject<Properties<PublishStagingInput>> {
+export function PublishStagingInputSchema(): z.ZodObject<
+  Properties<PublishStagingInput>
+> {
   return z.object({
     id: z.string(),
     timestamp: z.iso.datetime(),
   });
 }
 
-export function RemoveExternalSkillInputSchema(): z.ZodObject<Properties<RemoveExternalSkillInput>> {
+export function RemoveExternalSkillInputSchema(): z.ZodObject<
+  Properties<RemoveExternalSkillInput>
+> {
   return z.object({
     id: z.string(),
   });
 }
 
-export function RemoveModelInputSchema(): z.ZodObject<Properties<RemoveModelInput>> {
+export function RemoveModelInputSchema(): z.ZodObject<
+  Properties<RemoveModelInput>
+> {
   return z.object({
     id: z.string(),
   });
 }
 
-export function RemovePackageDocumentTypeInputSchema(): z.ZodObject<Properties<RemovePackageDocumentTypeInput>> {
+export function RemovePackageDocumentTypeInputSchema(): z.ZodObject<
+  Properties<RemovePackageDocumentTypeInput>
+> {
   return z.object({
     documentType: z.string(),
     packageId: z.string(),
   });
 }
 
-export function RemovePowerhousePackageInputSchema(): z.ZodObject<Properties<RemovePowerhousePackageInput>> {
+export function RemovePowerhousePackageInputSchema(): z.ZodObject<
+  Properties<RemovePowerhousePackageInput>
+> {
   return z.object({
     id: z.string(),
   });
 }
 
-export function RemoveProfileInputSchema(): z.ZodObject<Properties<RemoveProfileInput>> {
+export function RemoveProfileInputSchema(): z.ZodObject<
+  Properties<RemoveProfileInput>
+> {
   return z.object({
     id: z.string(),
   });
 }
 
-export function RemoveSupportedResourceInputSchema(): z.ZodObject<Properties<RemoveSupportedResourceInput>> {
+export function RemoveSupportedResourceInputSchema(): z.ZodObject<
+  Properties<RemoveSupportedResourceInput>
+> {
   return z.object({
     resource: z.string(),
   });
 }
 
-export function ReorderProfilesInputSchema(): z.ZodObject<Properties<ReorderProfilesInput>> {
+export function ReorderProfilesInputSchema(): z.ZodObject<
+  Properties<ReorderProfilesInput>
+> {
   return z.object({
     ids: z.array(z.string()),
     insertBefore: z.string().nullish(),
   });
 }
 
-export function SetAgentDescriptionInputSchema(): z.ZodObject<Properties<SetAgentDescriptionInput>> {
+export function SetAgentDescriptionInputSchema(): z.ZodObject<
+  Properties<SetAgentDescriptionInput>
+> {
   return z.object({
     description: z.string(),
   });
 }
 
-export function SetAgentIdInputSchema(): z.ZodObject<Properties<SetAgentIdInput>> {
+export function SetAgentIdInputSchema(): z.ZodObject<
+  Properties<SetAgentIdInput>
+> {
   return z.object({
     agentId: z.string(),
   });
 }
 
-export function SetAgentImageInputSchema(): z.ZodObject<Properties<SetAgentImageInput>> {
+export function SetAgentImageInputSchema(): z.ZodObject<
+  Properties<SetAgentImageInput>
+> {
   return z.object({
     image: z.url(),
   });
 }
 
-export function SetAgentNameInputSchema(): z.ZodObject<Properties<SetAgentNameInput>> {
+export function SetAgentNameInputSchema(): z.ZodObject<
+  Properties<SetAgentNameInput>
+> {
   return z.object({
     agentName: z.string(),
   });
 }
 
-export function SetBinInputSchema(): z.ZodObject<Properties<SetBinInput>> {
-  return z.object({
-    bin: z.string(),
-  });
-}
-
-export function SetDefaultModelInputSchema(): z.ZodObject<Properties<SetDefaultModelInput>> {
+export function SetDefaultModelInputSchema(): z.ZodObject<
+  Properties<SetDefaultModelInput>
+> {
   return z.object({
     id: z.string(),
   });
 }
 
-export function SetDescriptionInputSchema(): z.ZodObject<Properties<SetDescriptionInput>> {
+export function SetDescriptionInputSchema(): z.ZodObject<
+  Properties<SetDescriptionInput>
+> {
   return z.object({
     description: z.string(),
   });
 }
 
-export function SetExternalSkillGithubUrlInputSchema(): z.ZodObject<Properties<SetExternalSkillGithubUrlInput>> {
+export function SetExternalSkillGithubUrlInputSchema(): z.ZodObject<
+  Properties<SetExternalSkillGithubUrlInput>
+> {
   return z.object({
     githubUrl: z.url(),
     id: z.string(),
   });
 }
 
-export function SetExternalSkillNameInputSchema(): z.ZodObject<Properties<SetExternalSkillNameInput>> {
+export function SetExternalSkillNameInputSchema(): z.ZodObject<
+  Properties<SetExternalSkillNameInput>
+> {
   return z.object({
     id: z.string(),
     name: z.string(),
   });
 }
 
-export function SetPackageNameInputSchema(): z.ZodObject<Properties<SetPackageNameInput>> {
+export function SetPackageIdentifierInputSchema(): z.ZodObject<
+  Properties<SetPackageIdentifierInput>
+> {
   return z.object({
-    name: z.string(),
+    identifier: z.string(),
   });
 }
 
-export function SetPowerhouseLevelInputSchema(): z.ZodObject<Properties<SetPowerhouseLevelInput>> {
+export function SetPowerhouseLevelInputSchema(): z.ZodObject<
+  Properties<SetPowerhouseLevelInput>
+> {
   return z.object({
     level: PowerhouseLevelSchema,
     skipAutoProxy: z.boolean().nullish(),
   });
 }
 
-export function SetProxyEnabledInputSchema(): z.ZodObject<Properties<SetProxyEnabledInput>> {
+export function SetProxyEnabledInputSchema(): z.ZodObject<
+  Properties<SetProxyEnabledInput>
+> {
   return z.object({
     enabled: z.boolean(),
   });
 }
 
-export function SetPublishStatusInputSchema(): z.ZodObject<Properties<SetPublishStatusInput>> {
+export function SetPublishStatusInputSchema(): z.ZodObject<
+  Properties<SetPublishStatusInput>
+> {
   return z.object({
     id: z.string(),
     status: PublishStatusSchema,
   });
 }
 
-export function SetScopeInputSchema(): z.ZodObject<Properties<SetScopeInput>> {
-  return z.object({
-    scope: z.string(),
-  });
-}
-
-export function SetVersionInputSchema(): z.ZodObject<Properties<SetVersionInput>> {
+export function SetVersionInputSchema(): z.ZodObject<
+  Properties<SetVersionInput>
+> {
   return z.object({
     version: z.string(),
   });
 }
 
-export function UpdateProfileInputSchema(): z.ZodObject<Properties<UpdateProfileInput>> {
+export function UpdateProfileInputSchema(): z.ZodObject<
+  Properties<UpdateProfileInput>
+> {
   return z.object({
     content: z.string().nullish(),
     id: z.string(),

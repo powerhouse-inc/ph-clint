@@ -1,18 +1,32 @@
-import type { DocumentModelUtils } from 'document-model';
-import { baseCreateDocument, baseSaveToFileHandle, baseLoadFromInput, defaultBaseState, generateId } from 'document-model';
-import { reducer } from './reducer.js';
-import { phClintProjectDocumentType } from './document-type.js';
-import { assertIsPhClintProjectDocument, assertIsPhClintProjectState, isPhClintProjectDocument, isPhClintProjectState } from './document-schema.js';
-import type { PhClintProjectGlobalState, PhClintProjectLocalState, PhClintProjectPHState } from './types.js';
+import type { DocumentModelUtils } from "document-model";
+import {
+  baseCreateDocument,
+  baseSaveToFileHandle,
+  baseLoadFromInput,
+  defaultBaseState,
+  generateId,
+} from "document-model";
+import { reducer } from "./reducer.js";
+import { phClintProjectDocumentType } from "./document-type.js";
+import {
+  assertIsPhClintProjectDocument,
+  assertIsPhClintProjectState,
+  isPhClintProjectDocument,
+  isPhClintProjectState,
+} from "./document-schema.js";
+import type {
+  PhClintProjectGlobalState,
+  PhClintProjectLocalState,
+  PhClintProjectPHState,
+} from "./types.js";
 
 export const initialGlobalState: PhClintProjectGlobalState = {
   name: null,
   scope: null,
-  version: '0.1.0',
-  description: '',
-  bin: null,
+  version: "0.1.0",
+  description: "",
   features: {
-    powerhouse: 'Disabled',
+    powerhouse: "Disabled",
     mastra: {
       enabled: false,
       agentId: null,
@@ -29,13 +43,19 @@ export const initialGlobalState: PhClintProjectGlobalState = {
   publishHistory: [],
   deployment: {
     proxyEnabled: false,
-    supportedResources: ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'],
+    supportedResources: [
+      "vetra-agent-s",
+      "vetra-agent-m",
+      "vetra-agent-l",
+      "vetra-agent-xl",
+      "vetra-agent-xxl",
+    ],
   },
 };
 export const initialLocalState: PhClintProjectLocalState = {};
 
 export const utils: DocumentModelUtils<PhClintProjectPHState> = {
-  fileExtension: 'pcp',
+  fileExtension: "pcp",
   createState(state) {
     return {
       ...defaultBaseState(),

@@ -24,7 +24,6 @@ type PhClintProjectState {
   scope: String
   version: String!
   description: String!
-  bin: String
   features: PhClintFeatures!
   packages: [PowerhousePackage!]!
   externalSkills: [ExternalSkill!]!
@@ -110,18 +109,6 @@ type PhClintDeployment {
 
 # identity
 
-input SetPackageNameInput {
-  name: String!
-}
-
-input ClearBinInput {
-  _: Boolean
-}
-
-input SetBinInput {
-  bin: String!
-}
-
 input SetDescriptionInput {
   description: String!
 }
@@ -130,12 +117,8 @@ input SetVersionInput {
   version: String!
 }
 
-input ClearScopeInput {
-  _: Boolean
-}
-
-input SetScopeInput {
-  scope: String!
+input SetPackageIdentifierInput {
+  identifier: String!
 }
 
 # features_powerhouse
@@ -293,7 +276,6 @@ input ImportSpecInput {
   scope: String
   version: String!
   description: String!
-  bin: String
   powerhouse: PowerhouseLevel!
   mastraEnabled: Boolean!
   routineEnabled: Boolean!

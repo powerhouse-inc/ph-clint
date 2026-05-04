@@ -7,7 +7,6 @@ export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperation
       state.scope = action.input.scope || null;
       state.version = action.input.version;
       state.description = action.input.description;
-      state.bin = action.input.bin || null;
       state.features.powerhouse = action.input.powerhouse;
       state.features.mastra.enabled = action.input.mastraEnabled;
       state.features.routine.enabled = action.input.routineEnabled;

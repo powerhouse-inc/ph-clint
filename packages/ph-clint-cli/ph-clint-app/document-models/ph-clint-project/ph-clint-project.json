@@ -16,9 +16,9 @@
           "initialValue": ""
         },
         "global": {
-          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}",
+          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}",
           "examples": [],
-          "initialValue": "{\n  \"name\": null,\n  \"scope\": null,\n  \"version\": \"0.1.0\",\n  \"description\": \"\",\n  \"bin\": null,\n  \"features\": {\n    \"powerhouse\": \"Disabled\",\n    \"mastra\": {\n      \"enabled\": false,\n      \"agentId\": null,\n      \"agentName\": null,\n      \"agentDescription\": null,\n      \"agentImage\": null,\n      \"models\": [],\n      \"profiles\": []\n    },\n    \"routine\": { \"enabled\": false }\n  },\n  \"packages\": [],\n  \"externalSkills\": [],\n  \"publishHistory\": [],\n  \"deployment\": {\n    \"proxyEnabled\": false,\n    \"supportedResources\": [\n      \"vetra-agent-s\",\n      \"vetra-agent-m\",\n      \"vetra-agent-l\",\n      \"vetra-agent-xl\",\n      \"vetra-agent-xxl\"\n    ]\n  }\n}"
+          "initialValue": "{\n  \"name\": null,\n  \"scope\": null,\n  \"version\": \"0.1.0\",\n  \"description\": \"\",\n  \"features\": {\n    \"powerhouse\": \"Disabled\",\n    \"mastra\": {\n      \"enabled\": false,\n      \"agentId\": null,\n      \"agentName\": null,\n      \"agentDescription\": null,\n      \"agentImage\": null,\n      \"models\": [],\n      \"profiles\": []\n    },\n    \"routine\": { \"enabled\": false }\n  },\n  \"packages\": [],\n  \"externalSkills\": [],\n  \"publishHistory\": [],\n  \"deployment\": {\n    \"proxyEnabled\": false,\n    \"supportedResources\": [\n      \"vetra-agent-s\",\n      \"vetra-agent-m\",\n      \"vetra-agent-l\",\n      \"vetra-agent-xl\",\n      \"vetra-agent-xxl\"\n    ]\n  }\n}"
         }
       },
       "modules": [
@@ -27,55 +27,6 @@
           "name": "identity",
           "description": "Package identity fields: name, scope, version, description, bin",
           "operations": [
-            {
-              "id": "o-set-package-name",
-              "name": "SET_PACKAGE_NAME",
-              "description": "Set the bare package name (no scope). Must match /^[a-z][a-z0-9-]*$/.",
-              "schema": "input SetPackageNameInput {\n  name: String!\n}",
-              "template": "Set the bare package name (no scope). Must match /^[a-z][a-z0-9-]*$/.",
-              "reducer": "if (!/^[a-z][a-z0-9-]*$/.test(action.input.name)) {\n  throw new InvalidNameError(`Invalid package name: ${action.input.name}`);\n}\nstate.name = action.input.name;",
-              "errors": [
-                {
-                  "id": "e-set-package-name-invalid",
-                  "name": "InvalidNameError",
-                  "code": "INVALID_NAME",
-                  "description": "The package name must match /^[a-z][a-z0-9-]*$/ — lowercase letter followed by lowercase letters, digits, and hyphens.",
-                  "template": "Invalid package name: {{name}}"
-                }
-              ],
-              "examples": [],
-              "scope": "global"
-            },
-            {
-              "id": "o-clear-bin",
-              "name": "CLEAR_BIN",
-              "description": "Clear the bin override. The generator will fall back to the package name.",
-              "schema": "input ClearBinInput {\n  _: Boolean\n}",
-              "template": "Clear the bin override. The generator will fall back to the package name.",
-              "reducer": "state.bin = null;",
-              "errors": [],
-              "examples": [],
-              "scope": "global"
-            },
-            {
-              "id": "o-set-bin",
-              "name": "SET_BIN",
-              "description": "Set the bin name (CLI binary). Defaults to package name when not set. Must match /^[a-z][a-z0-9-]*$/.",
-              "schema": "input SetBinInput {\n  bin: String!\n}",
-              "template": "Set the bin name (CLI binary). Defaults to package name when not set. Must match /^[a-z][a-z0-9-]*$/.",
-              "reducer": "if (!/^[a-z][a-z0-9-]*$/.test(action.input.bin)) {\n  throw new InvalidNameError(`Invalid bin name: ${action.input.bin}`);\n}\nstate.bin = action.input.bin;",
-              "errors": [
-                {
-                  "id": "e-set-bin-invalid",
-                  "name": "InvalidNameError",
-                  "code": "INVALID_NAME",
-                  "description": "The bin name must match /^[a-z][a-z0-9-]*$/ — same rule as the package name.",
-                  "template": "Invalid bin name: {{bin}}"
-                }
-              ],
-              "examples": [],
-              "scope": "global"
-            },
             {
               "id": "o-set-description",
               "name": "SET_DESCRIPTION",
@@ -107,30 +58,19 @@
               "scope": "global"
             },
             {
-              "id": "o-clear-scope",
-              "name": "CLEAR_SCOPE",
-              "description": "Clear the npm scope.",
-              "schema": "input ClearScopeInput {\n  _: Boolean\n}",
-              "template": "Clear the npm scope.",
-              "reducer": "state.scope = null;",
-              "errors": [],
-              "examples": [],
-              "scope": "global"
-            },
-            {
-              "id": "o-set-scope",
-              "name": "SET_SCOPE",
-              "description": "Set the npm scope (organization), stored without the '@' prefix. Must match /^[a-z][a-z0-9-]*$/.",
-              "schema": "input SetScopeInput {\n  scope: String!\n}",
-              "template": "Set the npm scope (organization), stored without the '@' prefix. Must match /^[a-z][a-z0-9-]*$/.",
-              "reducer": "if (!/^[a-z][a-z0-9-]*$/.test(action.input.scope)) {\n  throw new InvalidScopeError(`Invalid scope: ${action.input.scope}`);\n}\nstate.scope = action.input.scope;",
+              "id": "o-set-package-identifier",
+              "name": "SET_PACKAGE_IDENTIFIER",
+              "description": "Set the package identifier. Parses scope and name from a string like '@scope/name-cli' or just 'name-cli'. Auto-adds '-cli' suffix if missing, stores scope with '@' prefix.",
+              "schema": "input SetPackageIdentifierInput {\n  identifier: String!\n}",
+              "template": "Set the package identifier. Parses scope and name from a string like '@scope/name-cli' or just 'name-cli'.",
+              "reducer": "const trimmed = action.input.identifier.trim();\nif (!trimmed) {\n  throw new InvalidPackageIdentifierError('Package identifier must not be empty');\n}\nlet scopePart = null;\nlet namePart = trimmed;\nif (trimmed.includes('/')) {\n  const parts = trimmed.split('/');\n  if (parts.length !== 2 || !parts[0] || !parts[1]) {\n    throw new InvalidPackageIdentifierError(`Invalid package identifier: ${trimmed}`);\n  }\n  scopePart = parts[0].replace(/^@/, '');\n  namePart = parts[1];\n}\nif (scopePart !== null) {\n  if (!/^[a-z][a-z0-9-]*$/.test(scopePart)) {\n    throw new InvalidPackageIdentifierError(`Invalid scope: ${scopePart}`);\n  }\n}\nif (!namePart.endsWith('-cli')) {\n  namePart = namePart + '-cli';\n}\nif (!/^[a-z][a-z0-9-]*$/.test(namePart)) {\n  throw new InvalidPackageIdentifierError(`Invalid package name: ${namePart}`);\n}\nstate.scope = scopePart ? `@${scopePart}` : null;\nstate.name = namePart;",
               "errors": [
                 {
-                  "id": "e-set-scope-invalid",
-                  "name": "InvalidScopeError",
-                  "code": "INVALID_SCOPE",
-                  "description": "The scope must match /^[a-z][a-z0-9-]*$/ and must not include the '@' prefix (it is stored without it).",
-                  "template": "Invalid scope: {{scope}}"
+                  "id": "e-invalid-package-identifier",
+                  "name": "InvalidPackageIdentifierError",
+                  "code": "INVALID_PACKAGE_IDENTIFIER",
+                  "description": "The package identifier is invalid. Must be a valid npm package name with optional scope.",
+                  "template": ""
                 }
               ],
               "examples": [],
@@ -149,7 +89,7 @@
               "description": "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
               "schema": "input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n  skipAutoProxy: Boolean\n}",
               "template": "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
-              "reducer": "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const appName = `${state.name}-app`;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}\n// Auto-enable proxy when reaching Switchboard or above\nif (next >= 2 && !action.input.skipAutoProxy) {\n  state.deployment.proxyEnabled = true;\n}",
+              "reducer": "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError('Cannot lower Powerhouse level below Reactor once enabled');\n}\nstate.features.powerhouse = action.input.level;\n// Auto-create app package when transitioning from Disabled to any higher level\nif (current === 0 && next >= 1 && state.name) {\n  const baseName = state.name.replace(/-cli$/, '-app');\n  const appName = state.scope ? `${state.scope}/${baseName}` : baseName;\n  const exists = state.packages.find(p => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: [],\n    });\n  }\n}\n// Auto-enable proxy when reaching Switchboard or above\nif (next >= 2 && !action.input.skipAutoProxy) {\n  state.deployment.proxyEnabled = true;\n}",
               "errors": [
                 {
                   "id": "e-cannot-lower-powerhouse",
@@ -560,7 +500,7 @@
               "description": "Remove a reactor package. Cannot remove the auto-managed app package.",
               "schema": "input RemovePowerhousePackageInput {\n  id: OID!\n}",
               "template": "Remove a reactor package. Cannot remove the auto-managed app package.",
-              "reducer": "const idx = state.packages.findIndex(p => p.id === action.input.id);\nif (idx === -1) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.id}`);\n}\nconst pkg = state.packages[idx];\nif (pkg.packageName === `${state.name}-app`) {\n  throw new CannotRemoveAppPackageError('Cannot remove the auto-managed app package');\n}\nstate.packages.splice(idx, 1);",
+              "reducer": "const idx = state.packages.findIndex(p => p.id === action.input.id);\nif (idx === -1) {\n  throw new PackageNotFoundError(`Package not found: ${action.input.id}`);\n}\nconst pkg = state.packages[idx];\nconst appName = state.name ? state.name.replace(/-cli$/, '-app') : null;\nconst fullAppName = appName && state.scope ? `${state.scope}/${appName}` : appName;\nif (pkg.packageName === fullAppName) {\n  throw new CannotRemoveAppPackageError('Cannot remove the auto-managed app package');\n}\nstate.packages.splice(idx, 1);",
               "errors": [
                 {
                   "id": "e-package-not-found-remove",
@@ -832,9 +772,9 @@
               "id": "o-import-spec",
               "name": "IMPORT_SPEC",
               "description": "Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.",
-              "schema": "input ImportSpecInput {\n  name: String!\n  scope: String\n  version: String!\n  description: String!\n  bin: String\n  powerhouse: PowerhouseLevel!\n  mastraEnabled: Boolean!\n  routineEnabled: Boolean!\n  packages: [ImportPackageInput!]!\n  externalSkills: [ImportSkillInput!]!\n  agentId: String\n  agentName: String\n  models: [ImportModelInput!]\n  profiles: [ImportProfileInput!]\n}\n\ninput ImportPackageInput {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ninput ImportSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\ninput ImportModelInput {\n  id: String!\n  isDefault: Boolean!\n}\n\ninput ImportProfileInput {\n  id: String!\n  title: String!\n  content: String!\n}",
+              "schema": "input ImportSpecInput {\n  name: String!\n  scope: String\n  version: String!\n  description: String!\n  powerhouse: PowerhouseLevel!\n  mastraEnabled: Boolean!\n  routineEnabled: Boolean!\n  packages: [ImportPackageInput!]!\n  externalSkills: [ImportSkillInput!]!\n  agentId: String\n  agentName: String\n  models: [ImportModelInput!]\n  profiles: [ImportProfileInput!]\n}\n\ninput ImportPackageInput {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n}\n\ninput ImportSkillInput {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\ninput ImportModelInput {\n  id: String!\n  isDefault: Boolean!\n}\n\ninput ImportProfileInput {\n  id: String!\n  title: String!\n  content: String!\n}",
               "template": "Bulk-import a full project spec into the document. Sets all identity fields, features, packages, and skills. Used by the multi-project boot sync.",
-              "reducer": "state.name = action.input.name;\nstate.scope = action.input.scope || null;\nstate.version = action.input.version;\nstate.description = action.input.description;\nstate.bin = action.input.bin || null;\nstate.features.powerhouse = action.input.powerhouse;\nstate.features.mastra.enabled = action.input.mastraEnabled;\nstate.features.routine.enabled = action.input.routineEnabled;\nstate.packages = action.input.packages.map(p => ({\n  id: p.id,\n  packageName: p.packageName,\n  documentTypes: [...p.documentTypes],\n}));\nstate.externalSkills = action.input.externalSkills.map(s => ({\n  id: s.id,\n  name: s.name,\n  githubUrl: s.githubUrl,\n}));\nstate.features.mastra.agentId = action.input.agentId || null;\nstate.features.mastra.agentName = action.input.agentName || null;\nstate.features.mastra.models = action.input.models ? action.input.models.map(m => ({\n  id: m.id,\n  isDefault: m.isDefault,\n})) : [];\nstate.features.mastra.profiles = action.input.profiles ? action.input.profiles.map(p => ({\n  id: p.id,\n  title: p.title,\n  content: p.content,\n})) : [];",
+              "reducer": "state.name = action.input.name;\nstate.scope = action.input.scope || null;\nstate.version = action.input.version;\nstate.description = action.input.description;\nstate.features.powerhouse = action.input.powerhouse;\nstate.features.mastra.enabled = action.input.mastraEnabled;\nstate.features.routine.enabled = action.input.routineEnabled;\nstate.packages = action.input.packages.map(p => ({\n  id: p.id,\n  packageName: p.packageName,\n  documentTypes: [...p.documentTypes],\n}));\nstate.externalSkills = action.input.externalSkills.map(s => ({\n  id: s.id,\n  name: s.name,\n  githubUrl: s.githubUrl,\n}));\nstate.features.mastra.agentId = action.input.agentId || null;\nstate.features.mastra.agentName = action.input.agentName || null;\nstate.features.mastra.models = action.input.models ? action.input.models.map(m => ({\n  id: m.id,\n  isDefault: m.isDefault,\n})) : [];\nstate.features.mastra.profiles = action.input.profiles ? action.input.profiles.map(p => ({\n  id: p.id,\n  title: p.title,\n  content: p.content,\n})) : [];",
               "errors": [],
               "examples": [],
               "scope": "global"

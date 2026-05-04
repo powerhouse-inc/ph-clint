@@ -52,17 +52,9 @@ export default function Editor() {
   const [activeTab, setActiveTab] = useState<Tab>('spec');
 
   // identity dispatchers
-  const setPackageName = (name: string) => dispatch(actions.setPackageName({ name }));
-  const setScope = (scope: string) => {
-    if (scope === '') dispatch(actions.clearScope({ _: true }));
-    else dispatch(actions.setScope({ scope }));
-  };
+  const setPackageIdentifier = (identifier: string) => dispatch(actions.setPackageIdentifier({ identifier }));
   const setVersion = (version: string) => dispatch(actions.setVersion({ version }));
   const setDescription = (description: string) => dispatch(actions.setDescription({ description }));
-  const setBin = (bin: string) => {
-    if (bin === '') dispatch(actions.clearBin({ _: true }));
-    else dispatch(actions.setBin({ bin }));
-  };
 
   // feature dispatchers
   const setPowerhouseLevel = (level: PowerhouseLevel) => dispatch(actions.setPowerhouseLevel({ level }));
@@ -128,7 +120,7 @@ export default function Editor() {
 
         <nav className="my-4 flex border-b border-gray-200">
           <button className={tabClasses('spec')} onClick={() => setActiveTab('spec')}>
-            Spec
+            CLI
           </button>
           <button className={tabClasses('agent')} onClick={() => setActiveTab('agent')}>
             Agent
@@ -151,11 +143,9 @@ export default function Editor() {
             mastra={mastra}
             routine={routine}
             isAboveDisabled={isAboveDisabled}
-            setPackageName={setPackageName}
-            setScope={setScope}
+            setPackageIdentifier={setPackageIdentifier}
             setVersion={setVersion}
             setDescription={setDescription}
-            setBin={setBin}
             setPowerhouseLevel={setPowerhouseLevel}
             toggleMastra={toggleMastra}
             toggleRoutine={toggleRoutine}
@@ -183,7 +173,7 @@ export default function Editor() {
           <PowerhouseTab
             packages={state.packages}
             isAboveDisabled={isAboveDisabled}
-            appPackageName={state.name ? `${state.name}-app` : null}
+            appPackageName={state.name ? state.name.replace(/-cli$/, '-app') : null}
             addPackage={addPackage}
             removePackage={removePackage}
             addDocType={addDocType}
@@ -221,27 +211,26 @@ function SpecTab(props: {
   mastra: PhClintMastraFeature;
   routine: { enabled: boolean };
   isAboveDisabled: boolean;
-  setPackageName: (name: string) => void;
-  setScope: (scope: string) => void;
+  setPackageIdentifier: (identifier: string) => void;
   setVersion: (version: string) => void;
   setDescription: (description: string) => void;
-  setBin: (bin: string) => void;
   setPowerhouseLevel: (level: PowerhouseLevel) => void;
   toggleMastra: (enabled: boolean) => void;
   toggleRoutine: (enabled: boolean) => void;
 }) {
   const { state } = props;
+  const packageIdentifier = `${state.scope ? state.scope + '/' : ''}${state.name ?? ''}`;
 
   return (
     <>
       {/* Identity */}
       <section className="my-6">
         <h3 className="text-lg font-semibold">Identity</h3>
-        <TextField label="Package name" value={state.name ?? ''} placeholder="my-clint-cli" onCommit={props.setPackageName} />
-        <TextField label="Scope (optional)" value={state.scope ?? ''} placeholder="e.g. my-org (leave empty for unscoped)" onCommit={props.setScope} />
-        <TextField label="Version" value={state.version} placeholder="0.1.0" onCommit={props.setVersion} />
+        <div className="grid grid-cols-[3fr_1fr] gap-4">
+          <TextField label="Package name" value={packageIdentifier} placeholder="@scope/my-tool-cli" onCommit={props.setPackageIdentifier} />
+          <TextField label="Version" value={state.version} placeholder="0.1.0" onCommit={props.setVersion} />
+        </div>
         <TextField label="Description" value={state.description} placeholder="What this CLI does" onCommit={props.setDescription} />
-        <TextField label="Bin name (optional)" value={state.bin ?? ''} placeholder="defaults to package name" onCommit={props.setBin} />
       </section>
 
       <hr />

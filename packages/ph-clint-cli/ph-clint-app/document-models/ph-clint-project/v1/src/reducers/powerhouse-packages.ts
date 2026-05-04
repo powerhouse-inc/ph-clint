@@ -33,7 +33,10 @@ export const phClintProjectPowerhousePackagesOperations: PhClintProjectPowerhous
         throw new PackageNotFoundError(`Package not found: ${action.input.id}`);
       }
       const pkg = state.packages[idx];
-      if (pkg.packageName === `${state.name}-app`) {
+      const appName = state.name ? state.name.replace(/-cli$/, "-app") : null;
+      const fullAppName =
+        appName && state.scope ? `${state.scope}/${appName}` : appName;
+      if (pkg.packageName === fullAppName) {
         throw new CannotRemoveAppPackageError(
           "Cannot remove the auto-managed app package",
         );

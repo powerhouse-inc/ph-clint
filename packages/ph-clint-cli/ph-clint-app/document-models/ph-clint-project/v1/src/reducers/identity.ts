@@ -1,33 +1,15 @@
 import {
-  InvalidNameError,
-  InvalidScopeError,
   InvalidVersionError,
+  InvalidPackageIdentifierError,
 } from "../../gen/identity/error.js";
 import type { PhClintProjectIdentityOperations } from "document-models/ph-clint-project/v1";
 
-const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 const SEMVER_PATTERN =
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 export const phClintProjectIdentityOperations: PhClintProjectIdentityOperations =
   {
-    setPackageNameOperation(state, action) {
-      if (!NAME_PATTERN.test(action.input.name)) {
-        throw new InvalidNameError(
-          `Invalid package name: ${action.input.name}`,
-        );
-      }
-      state.name = action.input.name;
-    },
-    setScopeOperation(state, action) {
-      if (!NAME_PATTERN.test(action.input.scope)) {
-        throw new InvalidScopeError(`Invalid scope: ${action.input.scope}`);
-      }
-      state.scope = action.input.scope;
-    },
-    clearScopeOperation(state) {
-      state.scope = null;
-    },
     setVersionOperation(state, action) {
       if (!SEMVER_PATTERN.test(action.input.version)) {
         throw new InvalidVersionError(
@@ -39,13 +21,41 @@ export const phClintProjectIdentityOperations: PhClintProjectIdentityOperations 
     setDescriptionOperation(state, action) {
       state.description = action.input.description;
     },
-    setBinOperation(state, action) {
-      if (!NAME_PATTERN.test(action.input.bin)) {
-        throw new InvalidNameError(`Invalid bin name: ${action.input.bin}`);
+    setPackageIdentifierOperation(state, action) {
+      const trimmed = action.input.identifier.trim();
+      if (!trimmed) {
+        throw new InvalidPackageIdentifierError(
+          "Package identifier must not be empty",
+        );
       }
-      state.bin = action.input.bin;
-    },
-    clearBinOperation(state) {
-      state.bin = null;
+      let scopePart: string | null = null;
+      let namePart = trimmed;
+      if (trimmed.includes("/")) {
+        const parts = trimmed.split("/");
+        if (parts.length !== 2 || !parts[0] || !parts[1]) {
+          throw new InvalidPackageIdentifierError(
+            `Invalid package identifier: ${trimmed}`,
+          );
+        }
+        scopePart = parts[0].replace(/^@/, "");
+        namePart = parts[1];
+      }
+      if (scopePart !== null) {
+        if (!NAME_PATTERN.test(scopePart)) {
+          throw new InvalidPackageIdentifierError(
+            `Invalid scope: ${scopePart}`,
+          );
+        }
+      }
+      if (!namePart.endsWith("-cli")) {
+        namePart = namePart + "-cli";
+      }
+      if (!NAME_PATTERN.test(namePart)) {
+        throw new InvalidPackageIdentifierError(
+          `Invalid package name: ${namePart}`,
+        );
+      }
+      state.scope = scopePart ? `@${scopePart}` : null;
+      state.name = namePart;
     },
   };
