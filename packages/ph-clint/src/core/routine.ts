@@ -7,6 +7,7 @@ import type {
   ProcessManager,
   Routine,
   RoutineStatus,
+  StreamChunk,
   Trigger,
   TriggerContext,
   WorkItem,
@@ -193,6 +194,7 @@ export function createRoutine(options: RoutineOptions): Routine {
 
   const routine: Routine = {
     onOutput: undefined,
+    onChunk: undefined,
     get status() {
       return status;
     },
@@ -224,12 +226,50 @@ export function createRoutine(options: RoutineOptions): Routine {
     },
     setContext(newCtx: CommandContext) {
       ctx = newCtx;
+      // Ensure onOutput is always set so the stdout rewire never falls
+      // through to raw terminal output in interactive mode.  When a
+      // RoutineServiceAdapter exists it will have already set onOutput
+      // (and chained onto this default); when it doesn't, we still need
+      // a sink to prevent raw writes over the Ink UI.
+      if (!routine.onOutput) {
+        const buf: string[] = [];
+        routine.onOutput = (text: string) => {
+          buf.push(text);
+          while (buf.length > 500) buf.shift();
+        };
+      }
       // Rewire ctx.stdout so all output (including runProcess lines) flows
-      // through routine.onOutput → RoutineServiceAdapter log buffer.
-      const originalStdout = ctx.stdout;
+      // through routine.onOutput → log buffer.
       ctx.stdout = (text: string) => {
-        if (routine.onOutput) routine.onOutput(text);
-        else originalStdout(text);
+        routine.onOutput!(text);
+      };
+      // Rewire ctx.runProcess to emit structured StreamChunks so the Repl
+      // can render background process output in rolling window segments.
+      ctx.runProcess = (cmd, opts) => {
+        const toolName = cmd;
+        let segmentOpened = false;
+        return pm.run(cmd, {
+          ...opts,
+          onOutput: (line: string) => {
+            if (!segmentOpened) {
+              segmentOpened = true;
+              routine.onChunk?.({ type: 'tool-call', toolName, args: {} });
+            }
+            routine.onChunk?.({ type: 'tool-output', toolName, text: line });
+            routine.onOutput?.(line);
+          },
+        }).then((result) => {
+          if (segmentOpened) {
+            const chunk: StreamChunk = {
+              type: 'tool-result',
+              toolName,
+              result: { text: `exit ${result.success ? 0 : 1}` },
+              isError: !result.success,
+            };
+            routine.onChunk?.(chunk);
+          }
+          return result;
+        });
       };
     },
     setCapabilities(caps) {

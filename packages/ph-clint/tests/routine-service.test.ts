@@ -333,6 +333,10 @@ describe('createCompositeServiceManager', () => {
         if (id !== serviceId) throw new Error(`Unknown service: ${id}`);
         return () => {};
       },
+      watchChunks(id, _iid, _cb) {
+        if (id !== serviceId) throw new Error(`Unknown service: ${id}`);
+        return () => {};
+      },
       scanProjects(id) {
         if (id !== serviceId) throw new Error(`Unknown service: ${id}`);
         return [];

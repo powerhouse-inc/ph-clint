@@ -254,6 +254,53 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
   const nextId = useRef(0);
   const interruptedRef = useRef(false);
 
+  // Subscribe to background service chunks — renders as rolling window segments.
+  // Completed segments are flushed to history so they scroll up.
+  // We do NOT subscribe to watchLogs here to avoid duplicating runProcess output
+  // (runProcess lines go through both onChunk and onOutput for log buffer capture).
+  useEffect(() => {
+    if (!services) return;
+    const cleanups: (() => void)[] = [];
+    for (const inst of services.list()) {
+      cleanups.push(
+        services.watchChunks(inst.serviceId, inst.instanceId, (chunk) => {
+          setSegments(prev => {
+            const next = updateSegments(prev, chunk);
+            // When a tool-result arrives, check if all segments are complete.
+            // Flush completed segments to history and clear them.
+            if (chunk.type === 'tool-result') {
+              const allComplete = next.every(s => s.type === 'text' || s.complete);
+              if (allComplete && next.length > 0) {
+                const windowSize = session.outputWindow ?? DEFAULT_OUTPUT_WINDOW;
+                const DIM = '\x1b[2m';
+                const RESET = '\x1b[0m';
+                const historyText = next.map(seg => {
+                  if (seg.type === 'text') return DIM + seg.lines.join('\n') + RESET;
+                  const header = seg.lines.slice(0, seg.headerLines);
+                  const body = seg.lines.slice(seg.headerLines);
+                  const visibleBody = body.slice(-windowSize);
+                  const hiddenCount = body.length - visibleBody.length;
+                  const bodyParts: string[] = [];
+                  if (hiddenCount > 0) bodyParts.push(`${INDENT_FIRST}... (${hiddenCount} more lines)`);
+                  bodyParts.push(...visibleBody.map((l, i) => (i === 0 && hiddenCount === 0 ? INDENT_FIRST : INDENT_REST) + l));
+                  return '\n' + header.join('\n') + (bodyParts.length > 0 ? '\n' + DIM + bodyParts.join('\n') + RESET : '');
+                }).join('\n');
+                setHistory(prev => [
+                  ...prev,
+                  { id: -(prev.length + 1), input: '', output: historyText, type: 'result' },
+                ]);
+                return [];
+              }
+            }
+            return next;
+          });
+        }),
+      );
+    }
+    return () => { for (const fn of cleanups) fn(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [services]);
+
   // Interaction mode tracking
   const [mode, setMode] = useState<InteractionMode>('typing');
 
@@ -700,6 +747,35 @@ export function Repl({ session, services, workdir, onStart }: ReplProps) {
           )}
         </Box>
       ) : null}
+
+      {/* Background activity segments — visible during idle when background processes are running */}
+      {phase === 'idle' && segments.length > 0 && (
+        <Box flexDirection="column">
+          {segments.map((seg, i) => {
+            const windowSize = session.outputWindow ?? DEFAULT_OUTPUT_WINDOW;
+            if (seg.type === 'text') {
+              return <Text key={i} dimColor>{seg.lines.join('\n')}</Text>;
+            }
+            const header = seg.lines.slice(0, seg.headerLines);
+            const body = seg.lines.slice(seg.headerLines);
+            const visibleBody = body.slice(-windowSize);
+            const hiddenCount = body.length - visibleBody.length;
+            const bodyParts: string[] = [];
+            if (hiddenCount > 0) {
+              bodyParts.push(INDENT_FIRST + `... (${hiddenCount} more lines)`);
+              bodyParts.push(...visibleBody.map(l => INDENT_REST + l));
+            } else {
+              bodyParts.push(...formatToolLines(visibleBody, columns));
+            }
+            return (
+              <Box key={i} flexDirection="column">
+                <Text>{'\n'}{header.join('\n')}</Text>
+                {bodyParts.length > 0 && <Text dimColor>{bodyParts.join('\n')}</Text>}
+              </Box>
+            );
+          })}
+        </Box>
+      )}
 
       {/* Input field — visible during idle and executing (deactivated while executing) */}
       {(phase === 'idle' || phase === 'executing') && (

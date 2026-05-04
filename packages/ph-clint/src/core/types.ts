@@ -359,6 +359,8 @@ export interface Routine {
   stop(): Promise<void>;
   /** Optional callback for work item output. Set before start() to capture results. */
   onOutput?: (text: string) => void;
+  /** Optional callback for structured stream chunks (tool-call, tool-output, tool-result). */
+  onChunk?: (chunk: StreamChunk) => void;
   /** Update the context used for command execution within the routine. */
   setContext(context: CommandContext): void;
   /** Set lazy capability accessors (reactor, agent) for trigger contexts. */
@@ -594,6 +596,8 @@ export interface ServiceManager {
   logs(id: string, instanceId?: string, lines?: number): string;
   /** Watch a service's log file for new lines. Returns cleanup function. */
   watchLogs(id: string, instanceId: string, onLine: (line: string) => void): () => void;
+  /** Watch a service for structured stream chunks. Returns cleanup function. */
+  watchChunks(id: string, instanceId: string, onChunk: (chunk: StreamChunk) => void): () => void;
   /** Scan for projects using the service's projectScanner. */
   scanProjects(id: string, rootDir: string): import('./project-scanner.js').ProjectScanResult[];
   /** Remove all stopped instance state files (and their log files) for a service. */

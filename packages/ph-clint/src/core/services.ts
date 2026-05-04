@@ -815,5 +815,12 @@ export function createServiceManager(
     }
   }
 
-  return { start, stop, list, getDefinition, logs, watchLogs, scanProjects: scanProjectsForService, purgeStoppedInstances };
+  // Process-based services don't emit structured chunks — no-op subscriber.
+  function watchChunks(_id: string, _instanceId: string, _onChunk: (chunk: import('./types.js').StreamChunk) => void): () => void {
+    const def = defMap.get(_id);
+    if (!def) throw new Error(`Unknown service: ${_id}`);
+    return () => {};
+  }
+
+  return { start, stop, list, getDefinition, logs, watchLogs, watchChunks, scanProjects: scanProjectsForService, purgeStoppedInstances };
 }

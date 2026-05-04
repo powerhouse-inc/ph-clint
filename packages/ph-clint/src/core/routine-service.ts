@@ -6,6 +6,7 @@ import type {
   ServiceInstanceStatus,
   ServiceManager,
   ServiceStartOptions,
+  StreamChunk,
 } from './types.js';
 import { scanProjects as scanProjectsImpl } from './project-scanner.js';
 import { slugToTitle } from './schema.js';
@@ -115,6 +116,18 @@ export function createRoutineServiceAdapter(
     };
   }
 
+  function watchChunks(_id: string, _instanceId: string, onChunk: (chunk: StreamChunk) => void): () => void {
+    if (_id !== id) throw new Error(`Unknown service: ${_id}`);
+    const prevOnChunk = routine.onChunk;
+    routine.onChunk = (chunk: StreamChunk) => {
+      prevOnChunk?.(chunk);
+      onChunk(chunk);
+    };
+    return () => {
+      routine.onChunk = prevOnChunk ?? undefined;
+    };
+  }
+
   function scanProjects(_id: string, rootDir: string) {
     if (_id !== id) throw new Error(`Unknown service: ${_id}`);
     if (!config.projectScanner) return [];
@@ -126,7 +139,7 @@ export function createRoutineServiceAdapter(
     logBuffer.length = 0;
   }
 
-  return { start, stop, list, getDefinition, logs, watchLogs, scanProjects, purgeStoppedInstances };
+  return { start, stop, list, getDefinition, logs, watchLogs, watchChunks, scanProjects, purgeStoppedInstances };
 }
 
 /**
@@ -176,6 +189,10 @@ export function createCompositeServiceManager(
     return getManager(id).watchLogs(id, instanceId, onLine);
   }
 
+  function watchChunks(id: string, instanceId: string, onChunk: (chunk: StreamChunk) => void): () => void {
+    return getManager(id).watchChunks(id, instanceId, onChunk);
+  }
+
   function scanProjects(id: string, rootDir: string) {
     return getManager(id).scanProjects(id, rootDir);
   }
@@ -184,5 +201,5 @@ export function createCompositeServiceManager(
     return getManager(id).purgeStoppedInstances(id);
   }
 
-  return { start, stop, list, getDefinition, logs, watchLogs, scanProjects, purgeStoppedInstances };
+  return { start, stop, list, getDefinition, logs, watchLogs, watchChunks, scanProjects, purgeStoppedInstances };
 }
