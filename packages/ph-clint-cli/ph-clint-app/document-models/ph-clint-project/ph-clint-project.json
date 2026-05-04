@@ -16,7 +16,7 @@
           "initialValue": ""
         },
         "global": {
-          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: URL\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n  version: String\n  managed: Boolean!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}",
+          "schema": "type PhClintProjectState {\n  name: String\n  scope: String\n  version: String!\n  description: String!\n  features: PhClintFeatures!\n  packages: [PowerhousePackage!]!\n  externalSkills: [ExternalSkill!]!\n  publishHistory: [PublishRecord!]!\n  deployment: PhClintDeployment!\n}\n\ntype PhClintFeatures {\n  powerhouse: PowerhouseLevel!\n  mastra: PhClintMastraFeature!\n  routine: PhClintRoutineFeature!\n}\n\nenum PowerhouseLevel {\n  Disabled\n  Reactor\n  Switchboard\n  Connect\n}\n\ntype PhClintMastraFeature {\n  enabled: Boolean!\n  agentId: String\n  agentName: String\n  agentDescription: String\n  agentImage: String\n  models: [PhClintAgentModel!]!\n  profiles: [PhClintAgentProfile!]!\n}\n\ntype PhClintAgentModel {\n  id: String!\n  isDefault: Boolean!\n}\n\ntype PhClintAgentProfile {\n  id: String!\n  title: String!\n  content: String!\n}\n\ntype PhClintRoutineFeature {\n  enabled: Boolean!\n}\n\ntype PowerhousePackage {\n  id: OID!\n  packageName: String!\n  documentTypes: [String!]!\n  version: String\n  managed: Boolean!\n}\n\ntype ExternalSkill {\n  id: OID!\n  name: String!\n  githubUrl: URL!\n}\n\nenum PublishTag {\n  Dev\n  Staging\n  Production\n}\n\nenum PublishStatus {\n  Pending\n  InProgress\n  Succeeded\n  Failed\n}\n\ntype PublishRecord {\n  id: OID!\n  tag: PublishTag!\n  version: String!\n  timestamp: DateTime!\n  status: PublishStatus!\n}\n\ntype PhClintDeployment {\n  proxyEnabled: Boolean!\n  supportedResources: [String!]!\n}",
           "examples": [],
           "initialValue": "{\n  \"name\": null,\n  \"scope\": null,\n  \"version\": \"0.1.0\",\n  \"description\": \"\",\n  \"features\": {\n    \"powerhouse\": \"Disabled\",\n    \"mastra\": {\n      \"enabled\": false,\n      \"agentId\": null,\n      \"agentName\": null,\n      \"agentDescription\": null,\n      \"agentImage\": null,\n      \"models\": [],\n      \"profiles\": []\n    },\n    \"routine\": { \"enabled\": false }\n  },\n  \"packages\": [],\n  \"externalSkills\": [],\n  \"publishHistory\": [],\n  \"deployment\": {\n    \"proxyEnabled\": false,\n    \"supportedResources\": [\n      \"vetra-agent-s\",\n      \"vetra-agent-m\",\n      \"vetra-agent-l\",\n      \"vetra-agent-xl\",\n      \"vetra-agent-xxl\"\n    ]\n  }\n}"
         }
@@ -63,7 +63,7 @@
               "description": "Set the package identifier. Parses scope and name from a string like '@scope/name-cli' or just 'name-cli'. Auto-adds '-cli' suffix if missing, stores scope with '@' prefix.",
               "schema": "input SetPackageIdentifierInput {\n  identifier: String!\n}",
               "template": "Set the package identifier. Parses scope and name from a string like '@scope/name-cli' or just 'name-cli'.",
-              "reducer": "const trimmed = action.input.identifier.trim();\nif (!trimmed) {\n  throw new InvalidPackageIdentifierError('Package identifier must not be empty');\n}\nlet scopePart = null;\nlet namePart = trimmed;\nif (trimmed.includes('/')) {\n  const parts = trimmed.split('/');\n  if (parts.length !== 2 || !parts[0] || !parts[1]) {\n    throw new InvalidPackageIdentifierError(`Invalid package identifier: ${trimmed}`);\n  }\n  scopePart = parts[0].replace(/^@/, '');\n  namePart = parts[1];\n}\nif (scopePart !== null) {\n  if (!/^[a-z][a-z0-9-]*$/.test(scopePart)) {\n    throw new InvalidPackageIdentifierError(`Invalid scope: ${scopePart}`);\n  }\n}\nif (!namePart.endsWith('-cli')) {\n  namePart = namePart + '-cli';\n}\nif (!/^[a-z][a-z0-9-]*$/.test(namePart)) {\n  throw new InvalidPackageIdentifierError(`Invalid package name: ${namePart}`);\n}\nstate.scope = scopePart ? `@${scopePart}` : null;\nstate.name = namePart;",
+              "reducer": "const trimmed = action.input.identifier.trim();\nif (!trimmed) {\n  throw new InvalidPackageIdentifierError('Package identifier must not be empty');\n}\nlet scopePart = null;\nlet namePart = trimmed;\nif (trimmed.includes('/')) {\n  const parts = trimmed.split('/');\n  if (parts.length !== 2 || !parts[0] || !parts[1]) {\n    throw new InvalidPackageIdentifierError(`Invalid package identifier: ${trimmed}`);\n  }\n  scopePart = parts[0].replace(/^@/, '');\n  namePart = parts[1];\n}\nif (scopePart !== null) {\n  if (!/^[a-z][a-z0-9-]*$/.test(scopePart)) {\n    throw new InvalidPackageIdentifierError(`Invalid scope: ${scopePart}`);\n  }\n}\nif (!namePart.endsWith('-cli')) {\n  namePart = namePart + '-cli';\n}\nif (!/^[a-z][a-z0-9-]*$/.test(namePart)) {\n  throw new InvalidPackageIdentifierError(`Invalid package name: ${namePart}`);\n}\nstate.scope = scopePart ? `@${scopePart}` : null;\nstate.name = namePart;\nconst managed = state.packages.find((p) => p.managed);\nif (managed) {\n  const appBase = namePart.replace(/-cli$/, '-app');\n  managed.packageName = scopePart ? `@${scopePart}/${appBase}` : appBase;\n  managed.id = `app-${namePart}`;\n}",
               "errors": [
                 {
                   "id": "e-invalid-package-identifier",
@@ -89,7 +89,7 @@
               "description": "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
               "schema": "input SetPowerhouseLevelInput {\n  level: PowerhouseLevel!\n  skipAutoProxy: Boolean\n}",
               "template": "Set the Powerhouse integration level. Ordered: Disabled < Reactor < Switchboard < Connect. Lowering below Reactor once above Disabled is not allowed (irreversible migration).",
-              "reducer": "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerLevelError(\n    'Cannot lower Powerhouse level below Reactor once enabled',\n  );\n}\nstate.features.powerhouse = action.input.level;\nif (next >= 2 && !action.input.skipAutoProxy) {\n  state.deployment.proxyEnabled = true;\n}\nif (current === 0 && next >= 1 && state.name) {\n  const baseName = state.name.replace(/-cli$/, '-app');\n  const appName = state.scope ? `${state.scope}/${baseName}` : baseName;\n  const exists = state.packages.find((p) => p.packageName === appName);\n  if (!exists) {\n    state.packages.push({\n      id: `app-${state.name}`,\n      packageName: appName,\n      documentTypes: ['*/*'],\n      version: null,\n      managed: true,\n    });\n  }\n}",
+              "reducer": "const LEVELS = ['Disabled', 'Reactor', 'Switchboard', 'Connect'];\nconst current = LEVELS.indexOf(state.features.powerhouse);\nconst next = LEVELS.indexOf(action.input.level);\nif (current >= 1 && next < 1) {\n  throw new CannotLowerPowerhouseError(\n    'Cannot lower Powerhouse level below Reactor once enabled',\n  );\n}\nstate.features.powerhouse = action.input.level;\nif (current === 0 && next >= 1) {\n  const hasManaged = state.packages.some((p) => p.managed);\n  if (!hasManaged) {\n    const baseName = state.name\n      ? state.name.replace(/-cli$/, '-app')\n      : 'app';\n    const appName =\n      state.scope && state.name\n        ? `${state.scope}/${baseName}`\n        : baseName;\n    state.packages.push({\n      id: `app-${state.name || 'managed'}`,\n      packageName: appName,\n      documentTypes: ['*/*'],\n      version: null,\n      managed: true,\n    });\n  }\n}\nif (next >= 2 && !action.input.skipAutoProxy) {\n  state.deployment.proxyEnabled = true;\n}",
               "errors": [
                 {
                   "id": "e-cannot-lower-powerhouse",
@@ -115,7 +115,7 @@
               "description": "Enable the Mastra agent feature. Mastra and Routine are orthogonal — enable Routine separately if needed. Idempotent.",
               "schema": "input EnableMastraInput {\n  agentId: String!\n  agentName: String!\n}",
               "template": "Enable the Mastra agent feature. Mastra and Routine are orthogonal — enable Routine separately if needed. Idempotent.",
-              "reducer": "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(`Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`);\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nstate.features.mastra.agentId = action.input.agentId;\nstate.features.mastra.agentName = trimmedName;",
+              "reducer": "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(\n    `Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`,\n  );\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nstate.features.mastra.agentId = action.input.agentId;\nstate.features.mastra.agentName = trimmedName;\n// Auto-add default model and profile\nif (state.features.mastra.models.length === 0) {\n  state.features.mastra.models.push({ id: 'clint/demo-agent', isDefault: true });\n}\nif (state.features.mastra.profiles.length === 0) {\n  state.features.mastra.profiles.push({ id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' });\n}",
               "errors": [
                 {
                   "id": "e-enable-mastra-invalid-id",
@@ -424,15 +424,41 @@
               "id": "o-set-agent-image",
               "name": "SET_AGENT_IMAGE",
               "description": "Set the agent image URL (avatar). Only valid when mastra is enabled.",
-              "schema": "input SetAgentImageInput {\n  image: URL!\n}",
+              "schema": "input SetAgentImageInput {\n  image: String!\n}",
               "template": "Set the agent image URL (avatar). Only valid when mastra is enabled.",
-              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent image when Mastra is disabled.');\n}\nstate.features.mastra.agentImage = action.input.image;",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError(\n    'Cannot set agent image when Mastra is disabled.',\n  );\n}\nif (!/^data:[a-z]+\\/[a-z0-9.+-]+;base64,/.test(action.input.image)) {\n  throw new InvalidAgentImageError(\n    'Agent image must be a data URL (data:image/...;base64,...)',\n  );\n}\nstate.features.mastra.agentImage = action.input.image;",
               "errors": [
                 {
                   "id": "e-set-agent-image-not-enabled",
                   "name": "MastraNotEnabledError",
                   "code": "MASTRA_NOT_ENABLED",
                   "description": "Mastra must be enabled before setting agent image.",
+                  "template": ""
+                },
+                {
+                  "id": "e-invalid-agent-image",
+                  "name": "InvalidAgentImageError",
+                  "code": "INVALID_AGENT_IMAGE",
+                  "description": "Agent image must be a data URL",
+                  "template": ""
+                }
+              ],
+              "examples": [],
+              "scope": "global"
+            },
+            {
+              "id": "o-clear-agent-image",
+              "name": "CLEAR_AGENT_IMAGE",
+              "description": "",
+              "schema": "input ClearAgentImageInput {\n  _: Boolean\n}",
+              "template": "",
+              "reducer": "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError(\n    'Cannot clear agent image when Mastra is disabled.',\n  );\n}\nstate.features.mastra.agentImage = null;",
+              "errors": [
+                {
+                  "id": "e-mastra-not-enabled-clear-img",
+                  "name": "MastraNotEnabledError",
+                  "code": "MASTRA_NOT_ENABLED",
+                  "description": "Mastra must be enabled",
                   "template": ""
                 }
               ],
