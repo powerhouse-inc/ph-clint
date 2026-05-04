@@ -59,9 +59,7 @@ function getPowerhouseVersion(): string {
 
 export function buildCliPackageJson(spec: ClintProjectSpec): string {
   const { mastra, powerhouse } = spec.features;
-  const pkgName = phAtLeast(powerhouse, 'Reactor')
-    ? `${getPackageName(spec)}-cli`
-    : getPackageName(spec);
+  const pkgName = getPackageName(spec);
   const bin = getBinName(spec);
 
   const dependencies: Record<string, string> = {

@@ -39,12 +39,12 @@ function makeResult(
 }
 
 function flatSpec() {
-  return clintProjectSpecSchema.parse({ name: 'foo' });
+  return clintProjectSpecSchema.parse({ name: 'foo-cli' });
 }
 
 function splitSpec() {
   return clintProjectSpecSchema.parse({
-    name: 'foo',
+    name: 'foo-cli',
     features: { powerhouse: 'Connect' },
   });
 }
@@ -291,7 +291,7 @@ describe('collectPostGenActions', () => {
     const proj = await createInstalledProject('flat');
     try {
       const spec = clintProjectSpecSchema.parse({
-        name: 'foo',
+        name: 'foo-cli',
         externalSkills: [
           { id: 'sk1', name: 'my-skill', githubUrl: 'https://github.com/x/y' },
         ],
@@ -495,7 +495,7 @@ describe('runPostGenActions', () => {
     };
 
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       externalSkills: [
         { id: 'sk1', name: 'my-skill', githubUrl: 'https://github.com/x/y' },
       ],

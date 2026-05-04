@@ -148,7 +148,7 @@ export async function patchAppPackageName(
 ): Promise<boolean> {
   const appFolder = path.basename(appDir);
   const scopedName = spec.scope
-    ? `@${spec.scope}/${appFolder}`
+    ? `${spec.scope}/${appFolder}`
     : appFolder;
   const appPkgJsonPath = path.join(appDir, 'package.json');
   try {

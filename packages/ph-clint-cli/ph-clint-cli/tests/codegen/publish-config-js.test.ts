@@ -5,7 +5,7 @@ import { clintProjectSpecSchema } from '../../src/spec/types.js';
 describe('buildPublishConfigJs', () => {
   it('emits a publish config with app and cli packages', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       version: '0.1.0',
       features: { powerhouse: 'Connect' },
     });
@@ -20,7 +20,7 @@ describe('buildPublishConfigJs', () => {
 
   it('strips prerelease suffix from version', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'bar',
+      name: 'bar-cli',
       version: '2.3.4-dev.5',
       features: { powerhouse: 'Connect' },
     });
@@ -32,7 +32,7 @@ describe('buildPublishConfigJs', () => {
 
   it('single layout — emits a single package at "."', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'baz',
+      name: 'baz-cli',
       version: '1.0.0',
     });
     const content = buildPublishConfigJs(spec);

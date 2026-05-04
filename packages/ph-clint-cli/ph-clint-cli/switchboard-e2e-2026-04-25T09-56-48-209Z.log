@@ -1,0 +1,179 @@
+=== E2E switchboard test started at 2026-04-25T09:56:48.211Z ===
+[2026-04-25T09:56:48.211Z] [setup] Creating temp workdir and starting ph-clint-cli...
+[2026-04-25T09:56:48.223Z] [setup] Log file: /home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/switchboard-e2e-2026-04-25T09-56-48-209Z.log
+[2026-04-25T09:56:48.225Z] [setup] Workdir: /tmp/ph-clint-e2e-BAStKR
+  cli> [DEBUG] Starting Reactor...
+  cli> [DEBUG] Reactor storage: /tmp/ph-clint-e2e-BAStKR/.ph/ph-clint/reactor-storage
+  cli> Reactor ready (drive: 5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c)
+  cli> [DEBUG] Starting Switchboard...
+  cli> [DEBUG] Starting Switchboard on localhost:59260, dbPath: /tmp/ph-clint-e2e-BAStKR/.ph/ph-clint/read-model.db
+  cli> [11:56:52.11] [reactor-api][package-manager] Loading packages: null
+  cli> [11:56:52.11] [reactor-api][server] WebSocket server available at /graphql/subscriptions
+  cli> [11:56:52.11] [reactor-api][server][graphql-manager] Registered REST endpoint: GET /d/:drive
+  cli> [11:56:52.11] [reactor-api][server][graphql-manager] Registered /graphql/analytics subgraph.
+  cli> [11:56:52.11] [reactor-api][server][graphql-manager] Registered /graphql/r subgraph.
+  cli> [11:56:52.16] [reactor-api][server][graphql-manager] Failed to setup websocket for subgraph r at path /graphql/r: {}
+  cli> [11:56:52.28] [reactor-api][server][graphql-manager] Registered /graphql supergraph
+  cli> [11:56:54.38] [reactor-api][server] MCP server available at http://localhost:59260/mcp
+  cli> Switchboard 'ph-clint-api' ready at http://localhost:59260/graphql
+[2026-04-25T09:56:54.387Z] [setup] Switchboard ready at http://localhost:59260/graphql
+  cli> [DEBUG]   drive: http://localhost:59260/d/5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c
+  cli> [DEBUG]   mcp:   http://localhost:59260/mcp
+  cli> [spec-change] setup: on=true, initialReconcile=true
+  cli> [publish-trigger] setup: on=true, initialReconcile=false
+  cli> [spec-change] poll: pending=1, draining
+  cli> [spec-change] finding docs for types=["powerhouse/ph-clint-project"]
+  cli> [WARN] [routine] trigger spec-change poll error: No search criteria provided
+  cli> [DEBUG] [routine] trigger spec-change stack: Error: No search criteria provided
+  cli> at Reactor.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/core/reactor.ts:437:13)
+  cli> at ReactorClient.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/client/reactor-client.ts:375:25)
+  cli> at Object.poll (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/integrations/powerhouse/change-trigger.js:89:57)
+  cli> at async loop (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/core/routine.js:94:34)
+  cli> Connect 'ph-clint-studio' already running at http://localhost:43990/
+  cli> You may need to add the drive: http://localhost:59260/d/5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c
+  cli> Routine running
+  cli> Serving — press Ctrl+C to stop.
+[2026-04-25T09:56:54.537Z] [setup] @powerhousedao/ph-e2e-test-cli npm state: dev=0.0.1-dev.5, all versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5]
+[2026-04-25T09:56:54.538Z] [setup] Expected next version: 0.0.1-dev.6
+[2026-04-25T09:56:54.540Z] [step 1] Querying Switchboard for document drives...
+[2026-04-25T09:56:54.587Z] [step 1] Found 1 drive(s): Clint (5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c)
+[2026-04-25T09:56:54.588Z] [step 1] Using drive: 5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c
+[2026-04-25T09:56:54.589Z] [step 2] Creating powerhouse/ph-clint-project document in drive 5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c...
+  cli> [spec-change] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/document-drive
+  cli> [spec-change] no type match, ignoring
+  cli> [publish-trigger] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/document-drive
+  cli> [publish-trigger] no type match, ignoring
+[2026-04-25T09:56:54.652Z] [step 2] Created document: 3ca77f4e-0f0a-4d49-9eae-0796a98a356a (type=powerhouse/ph-clint-project)
+[2026-04-25T09:56:54.653Z] [step 3] Dispatching identity + feature actions to 3ca77f4e-0f0a-4d49-9eae-0796a98a356a...
+  cli> [spec-change] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/ph-clint-project
+  cli> [spec-change] queued change (pending=1)
+  cli> [publish-trigger] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/ph-clint-project
+  cli> [publish-trigger] queued change (pending=1)
+[2026-04-25T09:56:54.694Z] [step 3] Mutation result: {"mutateDocument":{"id":"3ca77f4e-0f0a-4d49-9eae-0796a98a356a","revisionsList":[{"scope":"document","revision":2},{"scope":"global","revision":4}]}}
+[2026-04-25T09:56:54.708Z] [step 3] Spec populated: @powerhousedao/ph-e2e-test, features={"mastra":{"enabled":false},"routine":{"enabled":false},"powerhouse":"Reactor"}
+[2026-04-25T09:56:54.709Z] [step 4] Waiting for codegen + ph init...
+[2026-04-25T09:56:54.710Z] [step 4]   cli dir: /tmp/ph-clint-e2e-BAStKR/ph-e2e-test/ph-e2e-test-cli
+[2026-04-25T09:56:54.710Z] [step 4]   app dir: /tmp/ph-clint-e2e-BAStKR/ph-e2e-test/ph-e2e-test-app
+  cli> [spec-change] poll: pending=1, draining
+  cli> [spec-change] finding docs for types=["powerhouse/ph-clint-project"]
+  cli> [WARN] [routine] trigger spec-change poll error: No search criteria provided
+  cli> [DEBUG] [routine] trigger spec-change stack: Error: No search criteria provided
+  cli> at Reactor.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/core/reactor.ts:437:13)
+  cli> at ReactorClient.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/client/reactor-client.ts:375:25)
+  cli> at Object.poll (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/integrations/powerhouse/change-trigger.js:89:57)
+  cli> at async loop (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/core/routine.js:94:34)
+  cli> [publish-trigger] poll: pending=1, draining
+  cli> [publish-trigger] finding docs for types=["powerhouse/ph-clint-project"]
+  cli> [WARN] [routine] trigger publish-trigger poll error: No search criteria provided
+  cli> [DEBUG] [routine] trigger publish-trigger stack: Error: No search criteria provided
+  cli> at Reactor.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/core/reactor.ts:437:13)
+  cli> at ReactorClient.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/client/reactor-client.ts:375:25)
+  cli> at Object.poll (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/integrations/powerhouse/change-trigger.js:89:57)
+  cli> at async loop (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/core/routine.js:94:34)
+[2026-04-25T09:57:02.718Z] [step 4] Poll #5: cli/package.json=false, app/package.json=false
+[2026-04-25T09:57:12.730Z] [step 4] Poll #10: cli/package.json=false, app/package.json=false
+[2026-04-25T09:57:22.745Z] [step 4] Poll #15: cli/package.json=false, app/package.json=false
+[2026-04-25T09:57:32.758Z] [step 4] Poll #20: cli/package.json=false, app/package.json=false
+[2026-04-25T09:57:42.771Z] [step 4] Poll #25: cli/package.json=false, app/package.json=false
+  cli> ph-clint-studio still active [2m`/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-app`[0m
+  cli> [2mRun `ph-clint ph-clint-studio-stop` to shut it down[0m
+  cli> [DEBUG] Stopping routine...
+  cli> [DEBUG] Stopping Switchboard...
+  cli> [DEBUG] Stopping Reactor...
+[2026-04-25T09:57:52.779Z] [step 4] Poll #30: cli/package.json=false, app/package.json=false
+[2026-04-25T09:58:02.792Z] [step 4] Poll #35: cli/package.json=false, app/package.json=false
+[2026-04-25T09:58:12.805Z] [step 4] Poll #40: cli/package.json=false, app/package.json=false
+[2026-04-25T09:58:22.817Z] [step 4] Poll #45: cli/package.json=false, app/package.json=false
+[2026-04-25T09:58:32.833Z] [step 4] Poll #50: cli/package.json=false, app/package.json=false
+[2026-04-25T09:58:42.845Z] [step 4] Poll #55: cli/package.json=false, app/package.json=false
+[2026-04-25T09:58:52.857Z] [step 4] Poll #60: cli/package.json=false, app/package.json=false
+[2026-04-25T09:59:02.871Z] [step 4] Poll #65: cli/package.json=false, app/package.json=false
+[2026-04-25T09:59:12.883Z] [step 4] Poll #70: cli/package.json=false, app/package.json=false
+[2026-04-25T09:59:22.897Z] [step 4] Poll #75: cli/package.json=false, app/package.json=false
+[2026-04-25T09:59:32.912Z] [step 4] Poll #80: cli/package.json=false, app/package.json=false
+[2026-04-25T09:59:42.926Z] [step 4] Poll #85: cli/package.json=false, app/package.json=false
+[2026-04-25T09:59:52.940Z] [step 4] Poll #90: cli/package.json=false, app/package.json=false
+[2026-04-25T10:00:02.953Z] [step 4] Poll #95: cli/package.json=false, app/package.json=false
+[2026-04-25T10:00:12.963Z] [step 4] Poll #100: cli/package.json=false, app/package.json=false
+[2026-04-25T10:00:22.978Z] [step 4] Poll #105: cli/package.json=false, app/package.json=false
+[2026-04-25T10:00:32.993Z] [step 4] Poll #110: cli/package.json=false, app/package.json=false
+[2026-04-25T10:00:43.008Z] [step 4] Poll #115: cli/package.json=false, app/package.json=false
+[2026-04-25T10:00:53.022Z] [step 4] Poll #120: cli/package.json=false, app/package.json=false
+[2026-04-25T10:01:03.038Z] [step 4] Poll #125: cli/package.json=false, app/package.json=false
+[2026-04-25T10:01:13.050Z] [step 4] Poll #130: cli/package.json=false, app/package.json=false
+[2026-04-25T10:01:23.063Z] [step 4] Poll #135: cli/package.json=false, app/package.json=false
+[2026-04-25T10:01:33.075Z] [step 4] Poll #140: cli/package.json=false, app/package.json=false
+[2026-04-25T10:01:43.090Z] [step 4] Poll #145: cli/package.json=false, app/package.json=false
+[2026-04-25T10:01:53.103Z] [step 4] Poll #150: cli/package.json=false, app/package.json=false
+[2026-04-25T10:01:54.722Z] [step 5] Dispatching BUMP_VERSION (0.0.1) + PUBLISH_DEV...
+[2026-04-25T10:01:54.729Z] [step 6] Waiting for publish trigger to complete...
+[2026-04-25T10:01:54.734Z] [step 7] Checking npm for @powerhousedao/ph-e2e-test-cli@0.0.1-dev.6...
+[2026-04-25T10:01:55.772Z] [step 7] Current npm versions:
+[2026-04-25T10:01:55.773Z] [step 7]   CLI: [0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6]
+[2026-04-25T10:01:55.773Z] [step 7]   App: [0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6]
+[2026-04-25T10:01:55.812Z] [npm] @powerhousedao/ph-e2e-test-cli@0.0.1-dev.6 found on attempt 1
+[2026-04-25T10:01:55.813Z] [step 7] @powerhousedao/ph-e2e-test-cli@0.0.1-dev.6 confirmed on npm
+[2026-04-25T10:01:55.852Z] [npm] @powerhousedao/ph-e2e-test-app@0.0.1-dev.6 found on attempt 1
+[2026-04-25T10:01:55.853Z] [step 7] @powerhousedao/ph-e2e-test-app@0.0.1-dev.6 confirmed on npm
+[2026-04-25T10:01:55.855Z] [step 8] Installing @powerhousedao/ph-e2e-test-cli@0.0.1-dev.6...
+[2026-04-25T10:01:55.859Z] [step 8] Install dir: /tmp/ph-clint-e2e-install-40f2qK
+[2026-04-25T10:01:55.861Z] [step 8] Running: npm install @powerhousedao/ph-e2e-test-cli@0.0.1-dev.6
+[2026-04-25T10:02:37.270Z] [step 8] npm install output:  | To address all issues (including breaking changes), run: |   npm audit fix --force |  | Run `npm audit` for details.
+[2026-04-25T10:02:37.273Z] [step 8] Installed version: 0.0.1-dev.6
+[2026-04-25T10:02:37.273Z] [step 8] Running: /tmp/ph-clint-e2e-install-40f2qK/node_modules/.bin/ph-e2e-test --version
+[2026-04-25T10:02:37.426Z] [step 8] CLI --version output: "0.0.1-dev.6"
+[2026-04-25T10:02:51.098Z] [teardown] Stopping CLI...
+[2026-04-25T10:02:51.099Z] --- final CLI output: last 50 CLI output lines ---
+[2026-04-25T10:02:51.100Z]   cli> [11:56:52.11] [reactor-api][server][graphql-manager] Registered /graphql/r subgraph.
+[2026-04-25T10:02:51.100Z]   cli> [11:56:52.16] [reactor-api][server][graphql-manager] Failed to setup websocket for subgraph r at path /graphql/r: {}
+[2026-04-25T10:02:51.100Z]   cli> [11:56:52.28] [reactor-api][server][graphql-manager] Registered /graphql supergraph
+[2026-04-25T10:02:51.101Z]   cli> [11:56:54.38] [reactor-api][server] MCP server available at http://localhost:59260/mcp
+[2026-04-25T10:02:51.101Z]   cli> Switchboard 'ph-clint-api' ready at http://localhost:59260/graphql
+[2026-04-25T10:02:51.101Z]   cli> [DEBUG]   drive: http://localhost:59260/d/5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c
+[2026-04-25T10:02:51.102Z]   cli> [DEBUG]   mcp:   http://localhost:59260/mcp
+[2026-04-25T10:02:51.102Z]   cli> [spec-change] setup: on=true, initialReconcile=true
+[2026-04-25T10:02:51.102Z]   cli> [publish-trigger] setup: on=true, initialReconcile=false
+[2026-04-25T10:02:51.103Z]   cli> [spec-change] poll: pending=1, draining
+[2026-04-25T10:02:51.103Z]   cli> [spec-change] finding docs for types=["powerhouse/ph-clint-project"]
+[2026-04-25T10:02:51.103Z]   cli> [WARN] [routine] trigger spec-change poll error: No search criteria provided
+[2026-04-25T10:02:51.104Z]   cli> [DEBUG] [routine] trigger spec-change stack: Error: No search criteria provided
+[2026-04-25T10:02:51.104Z]   cli> at Reactor.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/core/reactor.ts:437:13)
+[2026-04-25T10:02:51.104Z]   cli> at ReactorClient.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/client/reactor-client.ts:375:25)
+[2026-04-25T10:02:51.105Z]   cli> at Object.poll (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/integrations/powerhouse/change-trigger.js:89:57)
+[2026-04-25T10:02:51.105Z]   cli> at async loop (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/core/routine.js:94:34)
+[2026-04-25T10:02:51.105Z]   cli> Connect 'ph-clint-studio' already running at http://localhost:43990/
+[2026-04-25T10:02:51.106Z]   cli> You may need to add the drive: http://localhost:59260/d/5bf6fc9d-dab0-43e7-b4b7-e91a36e3421c
+[2026-04-25T10:02:51.106Z]   cli> Routine running
+[2026-04-25T10:02:51.107Z]   cli> Serving — press Ctrl+C to stop.
+[2026-04-25T10:02:51.107Z]   cli> [spec-change] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/document-drive
+[2026-04-25T10:02:51.107Z]   cli> [spec-change] no type match, ignoring
+[2026-04-25T10:02:51.107Z]   cli> [publish-trigger] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/document-drive
+[2026-04-25T10:02:51.108Z]   cli> [publish-trigger] no type match, ignoring
+[2026-04-25T10:02:51.108Z]   cli> [spec-change] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/ph-clint-project
+[2026-04-25T10:02:51.108Z]   cli> [spec-change] queued change (pending=1)
+[2026-04-25T10:02:51.109Z]   cli> [publish-trigger] event: powerhouse:document:changed, 1 doc(s), types=powerhouse/ph-clint-project
+[2026-04-25T10:02:51.109Z]   cli> [publish-trigger] queued change (pending=1)
+[2026-04-25T10:02:51.110Z]   cli> [spec-change] poll: pending=1, draining
+[2026-04-25T10:02:51.110Z]   cli> [spec-change] finding docs for types=["powerhouse/ph-clint-project"]
+[2026-04-25T10:02:51.110Z]   cli> [WARN] [routine] trigger spec-change poll error: No search criteria provided
+[2026-04-25T10:02:51.111Z]   cli> [DEBUG] [routine] trigger spec-change stack: Error: No search criteria provided
+[2026-04-25T10:02:51.111Z]   cli> at Reactor.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/core/reactor.ts:437:13)
+[2026-04-25T10:02:51.111Z]   cli> at ReactorClient.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/client/reactor-client.ts:375:25)
+[2026-04-25T10:02:51.112Z]   cli> at Object.poll (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/integrations/powerhouse/change-trigger.js:89:57)
+[2026-04-25T10:02:51.112Z]   cli> at async loop (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/core/routine.js:94:34)
+[2026-04-25T10:02:51.113Z]   cli> [publish-trigger] poll: pending=1, draining
+[2026-04-25T10:02:51.113Z]   cli> [publish-trigger] finding docs for types=["powerhouse/ph-clint-project"]
+[2026-04-25T10:02:51.113Z]   cli> [WARN] [routine] trigger publish-trigger poll error: No search criteria provided
+[2026-04-25T10:02:51.113Z]   cli> [DEBUG] [routine] trigger publish-trigger stack: Error: No search criteria provided
+[2026-04-25T10:02:51.114Z]   cli> at Reactor.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/core/reactor.ts:437:13)
+[2026-04-25T10:02:51.114Z]   cli> at ReactorClient.find (/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+reactor@6.0.0-dev.170_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_synckit@0.11.12_typescript@6.0.2/node_modules/@powerhousedao/reactor/src/client/reactor-client.ts:375:25)
+[2026-04-25T10:02:51.115Z]   cli> at Object.poll (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/integrations/powerhouse/change-trigger.js:89:57)
+[2026-04-25T10:02:51.115Z]   cli> at async loop (file:///home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/node_modules/.pnpm/@powerhousedao+ph-clint@file+..+..+ph-clint_331269d199628330780b69a393914c1f/node_modules/@powerhousedao/ph-clint/dist/core/routine.js:94:34)
+[2026-04-25T10:02:51.115Z]   cli> ph-clint-studio still active [2m`/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-app`[0m
+[2026-04-25T10:02:51.116Z]   cli> [2mRun `ph-clint ph-clint-studio-stop` to shut it down[0m
+[2026-04-25T10:02:51.116Z]   cli> [DEBUG] Stopping routine...
+[2026-04-25T10:02:51.116Z]   cli> [DEBUG] Stopping Switchboard...
+[2026-04-25T10:02:51.116Z]   cli> [DEBUG] Stopping Reactor...
+[2026-04-25T10:02:51.117Z] --- end final CLI output ---
+[2026-04-25T10:02:56.122Z] [teardown] Cleaning up workdir: /tmp/ph-clint-e2e-BAStKR
+[2026-04-25T10:02:56.321Z] [teardown] Done.

@@ -14,12 +14,12 @@ import { type ClintProjectSpecInput } from '../../src/spec/types.js';
 export const FIXTURES: Record<string, ClintProjectSpecInput> = {
   /** Absolute baseline — no features enabled. */
   minimal: {
-    name: 'test-minimal',
+    name: 'test-minimal-cli',
   },
 
   /** Mastra on but unconfigured — demo agent, no API key needed. */
   'mastra-demo': {
-    name: 'test-mastra-demo',
+    name: 'test-mastra-demo-cli',
     features: {
       mastra: { enabled: true },
     },
@@ -27,7 +27,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
 
   /** Real agent with agentId, one model, default profile (AgentBase). */
   'mastra-configured': {
-    name: 'test-mastra-cfg',
+    name: 'test-mastra-cfg-cli',
     features: {
       mastra: {
         enabled: true,
@@ -40,8 +40,8 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
 
   /** Multiple models from different providers + custom profiles + scoped. */
   'mastra-multi-model': {
-    name: 'test-multi',
-    scope: 'acme',
+    name: 'test-multi-cli',
+    scope: '@acme',
     features: {
       mastra: {
         enabled: true,
@@ -62,7 +62,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
 
   /** Simplest split layout — Reactor level, no agent, no document types. */
   'reactor-minimal': {
-    name: 'test-reactor',
+    name: 'test-reactor-cli',
     features: {
       powerhouse: 'Reactor',
     },
@@ -70,7 +70,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
 
   /** Mid-level Powerhouse + agent, no document types. */
   switchboard: {
-    name: 'test-switchboard',
+    name: 'test-switchboard-cli',
     features: {
       powerhouse: 'Switchboard',
       mastra: {
@@ -84,8 +84,8 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
 
   /** Everything on: Connect + agent + routine, no document types. */
   'connect-full': {
-    name: 'test-connect',
-    scope: 'ph',
+    name: 'test-connect-cli',
+    scope: '@ph',
     features: {
       powerhouse: 'Connect',
       mastra: {

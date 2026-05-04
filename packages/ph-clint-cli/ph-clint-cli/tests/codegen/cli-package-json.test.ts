@@ -8,9 +8,9 @@ function parseBuilt(spec: Parameters<typeof buildCliPackageJson>[0]): Record<str
 
 describe('buildCliPackageJson', () => {
   it('flat layout — bare name, no scope, no @-app dependency', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const pkg = parseBuilt(spec);
-    expect(pkg.name).toBe('foo');
+    expect(pkg.name).toBe('foo-cli');
     expect(pkg.type).toBe('module');
     expect(pkg.bin).toEqual({ foo: './dist/main.js' });
     const deps = pkg.dependencies as Record<string, string>;
@@ -24,12 +24,12 @@ describe('buildCliPackageJson', () => {
 
   it('scoped + mastra — adds @mastra/* deps and mastra scripts', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      scope: 'acme',
+      name: 'foo-cli',
+      scope: '@acme',
       features: { mastra: { enabled: true } },
     });
     const pkg = parseBuilt(spec);
-    expect(pkg.name).toBe('@acme/foo');
+    expect(pkg.name).toBe('@acme/foo-cli');
     const deps = pkg.dependencies as Record<string, string>;
     expect(deps['@mastra/core']).toBeDefined();
     expect(deps['@mastra/libsql']).toBeDefined();
@@ -40,7 +40,7 @@ describe('buildCliPackageJson', () => {
 
   it('powerhouse enabled — appends -cli suffix and app dep', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const pkg = parseBuilt(spec);
@@ -53,22 +53,16 @@ describe('buildCliPackageJson', () => {
 
   it('scoped + powerhouse — package name becomes @scope/name-cli', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      scope: 'acme',
+      name: 'foo-cli',
+      scope: '@acme',
       features: { powerhouse: 'Connect' },
     });
     const pkg = parseBuilt(spec);
     expect(pkg.name).toBe('@acme/foo-cli');
   });
 
-  it('custom bin name overrides project name in bin field', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo', bin: 'foobar' });
-    const pkg = parseBuilt(spec);
-    expect(pkg.bin).toEqual({ foobar: './dist/main.js' });
-  });
-
   it('single layout — includes publish scripts', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const pkg = parseBuilt(spec);
     const scripts = pkg.scripts as Record<string, string>;
     expect(scripts['publish:dev']).toBe('ph-publish dev -c ./publish.config.js');
@@ -78,7 +72,7 @@ describe('buildCliPackageJson', () => {
 
   it('split layout — omits publish scripts (root-package-json owns them)', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const pkg = parseBuilt(spec);
@@ -89,7 +83,7 @@ describe('buildCliPackageJson', () => {
   });
 
   it('includes build:manifest script and updated build script', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const pkg = parseBuilt(spec);
     const scripts = pkg.scripts as Record<string, string>;
     expect(scripts['build:manifest']).toBe('build-manifest');
@@ -97,14 +91,14 @@ describe('buildCliPackageJson', () => {
   });
 
   it('output always ends with a trailing newline', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     expect(buildCliPackageJson(spec).endsWith('\n')).toBe(true);
   });
 
   it('scoped spec does not duplicate app package as bare name', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'pirate',
-      scope: 'powerhousedao',
+      name: 'pirate-cli',
+      scope: '@powerhousedao',
       features: { powerhouse: 'Switchboard' },
       packages: [
         { id: 'app-pirate', packageName: 'pirate-app', documentTypes: [] },
@@ -120,8 +114,8 @@ describe('buildCliPackageJson', () => {
 
   it('external packages (not app) are included in deps', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'pirate',
-      scope: 'powerhousedao',
+      name: 'pirate-cli',
+      scope: '@powerhousedao',
       features: { powerhouse: 'Switchboard' },
       packages: [
         { id: 'app-pirate', packageName: 'pirate-app', documentTypes: [] },
@@ -135,7 +129,7 @@ describe('buildCliPackageJson', () => {
   });
 
   it('includes typescript-eslint in devDependencies', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const pkg = parseBuilt(spec);
     const devDeps = pkg.devDependencies as Record<string, string>;
     expect(devDeps['typescript-eslint']).toBeDefined();

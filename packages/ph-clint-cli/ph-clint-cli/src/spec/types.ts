@@ -96,14 +96,13 @@ export type ExternalSkill = z.infer<typeof externalSkillSchema>;
 export const clintProjectSpecSchema = z.object({
   name: z
     .string()
-    .regex(/^[a-z0-9][a-z0-9-]*$/, 'lowercase letters, digits, hyphens only'),
+    .regex(/^[a-z0-9][a-z0-9-]*-cli$/, 'must end with -cli, lowercase letters, digits, hyphens only'),
   scope: z
     .string()
-    .regex(/^[a-z0-9][a-z0-9-]*$/, 'lowercase letters, digits, hyphens only')
+    .regex(/^@[a-z0-9][a-z0-9-]*$/, 'must start with @, lowercase letters, digits, hyphens only')
     .optional(),
   version: z.string().default('0.0.1-dev.0'),
   description: z.string().default(''),
-  bin: z.string().optional(),
   features: z
     .object({
       powerhouse: powerhouseLevelSchema,
@@ -141,14 +140,14 @@ export const clintProjectSpecSchema = z.object({
 export type ClintProjectSpec = z.infer<typeof clintProjectSpecSchema>;
 export type ClintProjectSpecInput = z.input<typeof clintProjectSpecSchema>;
 
-/** npm package name (e.g. `@scope/foo` or `foo`). */
+/** npm package name (e.g. `@scope/my-tool-cli` or `my-tool-cli`). */
 export function getPackageName(spec: ClintProjectSpec): string {
-  return spec.scope ? `@${spec.scope}/${spec.name}` : spec.name;
+  return spec.scope ? `${spec.scope}/${spec.name}` : spec.name;
 }
 
-/** bin name (defaults to the bare project name). */
+/** bin name (strips -cli suffix, e.g. `my-tool-cli` → `my-tool`). */
 export function getBinName(spec: ClintProjectSpec): string {
-  return spec.bin ?? spec.name;
+  return spec.name.replace(/-cli$/, '');
 }
 
 /**
@@ -156,14 +155,14 @@ export function getBinName(spec: ClintProjectSpec): string {
  * For flat projects this is irrelevant — callers use the project root directly.
  */
 export function getCliFolderName(spec: ClintProjectSpec): string {
-  return `${spec.name}-cli`;
+  return spec.name;
 }
 
 /**
  * Name of the reactor-package sub-folder when the project is split.
  */
 export function getAppFolderName(spec: ClintProjectSpec): string {
-  return `${spec.name}-app`;
+  return spec.name.replace(/-cli$/, '-app');
 }
 
 /**
@@ -176,17 +175,17 @@ export function getAllDocumentTypes(spec: ClintProjectSpec): string[] {
 }
 
 /**
- * The app npm package name (`@scope/{name}-app` or `{name}-app`).
+ * The app npm package name (`@scope/my-tool-app` or `my-tool-app`).
  * Matches what the document model reducer stores in `packages[].packageName`.
  */
 export function getAppPackageName(spec: ClintProjectSpec): string {
-  const base = `${spec.name}-app`;
-  return spec.scope ? `@${spec.scope}/${base}` : base;
+  const base = getAppFolderName(spec);
+  return spec.scope ? `${spec.scope}/${base}` : base;
 }
 
-/** Directory name for the app package (`{name}-app`, no scope prefix). */
+/** Directory name for the app package (e.g. `my-tool-app`, no scope prefix). */
 export function getAppDirName(spec: ClintProjectSpec): string {
-  return `${spec.name}-app`;
+  return getAppFolderName(spec);
 }
 
 /**

@@ -44,7 +44,7 @@ describe('generateProject — update mode', () => {
   });
 
   it('create → re-run is a no-op: same spec, same files, no rewrites', async () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const first = await generateProject({ targetDir: tmp, spec });
     expect(first.mode).toBe('create');
     expect(first.files.length).toBeGreaterThan(0);
@@ -58,7 +58,7 @@ describe('generateProject — update mode', () => {
   });
 
   it('auto-detects update mode from the persisted spec', async () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec });
     // Second run without specifying mode.
     const result = await generateProject({ targetDir: tmp, spec });
@@ -66,7 +66,7 @@ describe('generateProject — update mode', () => {
   });
 
   it('patches src/cli.ts marker regions when the spec changes', async () => {
-    const initial = clintProjectSpecSchema.parse({ name: 'foo' });
+    const initial = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec: initial });
 
     // User adds something OUTSIDE the markers — must be preserved.
@@ -78,7 +78,7 @@ describe('generateProject — update mode', () => {
 
     // Flip a feature — should splice fresh content into markers, preserve epilogue.
     const updated = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
     const result = await generateProject({ targetDir: tmp, spec: updated });
@@ -93,18 +93,18 @@ describe('generateProject — update mode', () => {
   });
 
   it('skips a user-edited managed file unless --force', async () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec });
 
     const pkgPath = path.join(tmp, 'package.json');
     const original = await fs.readFile(pkgPath, 'utf8');
-    const edited = original.replace('"foo"', '"foo-user-renamed"');
+    const edited = original.replace('"foo-cli"', '"foo-user-renamed"');
     await fs.writeFile(pkgPath, edited, 'utf8');
 
     // Re-run with a spec change (description); default behaviour: skip.
     const warnings: string[] = [];
     const updated = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       description: 'updated',
     });
     const res = await generateProject({
@@ -131,7 +131,7 @@ describe('generateProject — update mode', () => {
   it('removes files the new spec no longer emits', async () => {
     // Start with Mastra on → agent.ts exists.
     const withMastra = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
     await generateProject({ targetDir: tmp, spec: withMastra });
@@ -139,7 +139,7 @@ describe('generateProject — update mode', () => {
     expect(await exists(agentTs)).toBe(true);
 
     // Flip Mastra off → agent.ts should disappear.
-    const withoutMastra = clintProjectSpecSchema.parse({ name: 'foo' });
+    const withoutMastra = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const result = await generateProject({
       targetDir: tmp,
       spec: withoutMastra,
@@ -152,7 +152,7 @@ describe('generateProject — update mode', () => {
 
   it('keeps a user-edited abandoned file instead of deleting', async () => {
     const withMastra = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
     await generateProject({ targetDir: tmp, spec: withMastra });
@@ -161,7 +161,7 @@ describe('generateProject — update mode', () => {
     await fs.writeFile(agentTs, '// user edited\n', 'utf8');
 
     const warnings: string[] = [];
-    const withoutMastra = clintProjectSpecSchema.parse({ name: 'foo' });
+    const withoutMastra = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const result = await generateProject({
       targetDir: tmp,
       spec: withoutMastra,
@@ -173,7 +173,7 @@ describe('generateProject — update mode', () => {
   });
 
   it('stores per-file hashes after each run', async () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec });
     const hashes = await readHashes(tmp);
     expect(Object.keys(hashes)).toContain('src/cli.ts');
@@ -185,13 +185,13 @@ describe('generateProject — update mode', () => {
 
   it('writes generated.json on create', async () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     await generateProject({ targetDir: tmp, spec });
     const gen = await readGeneratedState(tmp);
     expect(gen).not.toBeNull();
-    expect(gen!.name).toBe('foo');
+    expect(gen!.name).toBe('foo-cli');
     expect(gen!.cliFolderName).toBe('foo-cli');
     expect(gen!.appFolderName).toBe('foo-app');
     expect(gen!.appInitialized).toBe(false);
@@ -199,7 +199,7 @@ describe('generateProject — update mode', () => {
 
   it('renames folders when project name changes (split layout)', async () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     await generateProject({ targetDir: tmp, spec });
@@ -218,7 +218,7 @@ describe('generateProject — update mode', () => {
 
     // Rename: foo → bar
     const renamed = clintProjectSpecSchema.parse({
-      name: 'bar',
+      name: 'bar-cli',
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
@@ -241,7 +241,7 @@ describe('generateProject — update mode', () => {
 
     // generated.json should reflect new name
     const gen = await readGeneratedState(tmp);
-    expect(gen!.name).toBe('bar');
+    expect(gen!.name).toBe('bar-cli');
     expect(gen!.cliFolderName).toBe('bar-cli');
     expect(gen!.appFolderName).toBe('bar-app');
 
@@ -261,8 +261,8 @@ describe('generateProject — update mode', () => {
 
   it('patches app package.json when scope changes', async () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      scope: 'oldscope',
+      name: 'foo-cli',
+      scope: '@oldscope',
       features: { powerhouse: 'Connect' },
     });
     await generateProject({ targetDir: tmp, spec });
@@ -277,8 +277,8 @@ describe('generateProject — update mode', () => {
 
     // Change scope
     const newScope = clintProjectSpecSchema.parse({
-      name: 'foo',
-      scope: 'newscope',
+      name: 'foo-cli',
+      scope: '@newscope',
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
@@ -312,7 +312,7 @@ describe('generateProject — update mode', () => {
 
   it('name change triggers app-install through cli-build, not ph-init', async () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     await generateProject({ targetDir: tmp, spec });
@@ -327,7 +327,7 @@ describe('generateProject — update mode', () => {
 
     // Rename
     const renamed = clintProjectSpecSchema.parse({
-      name: 'bar',
+      name: 'bar-cli',
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
@@ -350,14 +350,14 @@ describe('generateProject — update mode', () => {
 
   it('scope change on flat layout triggers cli-install + cli-build', async () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      scope: 'oldscope',
+      name: 'foo-cli',
+      scope: '@oldscope',
     });
     await generateProject({ targetDir: tmp, spec });
 
     const newScope = clintProjectSpecSchema.parse({
-      name: 'foo',
-      scope: 'newscope',
+      name: 'foo-cli',
+      scope: '@newscope',
     });
     const result = await generateProject({
       targetDir: tmp,
@@ -370,10 +370,10 @@ describe('generateProject — update mode', () => {
   });
 
   it('name change on flat layout triggers cli-install + cli-build', async () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec });
 
-    const renamed = clintProjectSpecSchema.parse({ name: 'bar' });
+    const renamed = clintProjectSpecSchema.parse({ name: 'bar-cli' });
     const result = await generateProject({
       targetDir: tmp,
       spec: renamed,

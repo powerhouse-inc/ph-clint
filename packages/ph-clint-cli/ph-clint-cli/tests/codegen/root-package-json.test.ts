@@ -5,7 +5,7 @@ import { clintProjectSpecSchema } from '../../src/spec/types.js';
 describe('buildRootPackageJson', () => {
   it('emits pnpm --prefix scripts for app and cli', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const pkg = JSON.parse(buildRootPackageJson(spec)) as {
@@ -37,7 +37,7 @@ describe('buildRootPackageJson', () => {
 
   it('includes publish scripts using pnpm --prefix exec', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const pkg = JSON.parse(buildRootPackageJson(spec)) as {
@@ -56,8 +56,8 @@ describe('buildRootPackageJson', () => {
 
   it('preserves a scoped package name at the root', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
-      scope: 'acme',
+      name: 'foo-cli',
+      scope: '@acme',
       features: { powerhouse: 'Connect' },
     });
     const pkg = JSON.parse(buildRootPackageJson(spec)) as { name: string };

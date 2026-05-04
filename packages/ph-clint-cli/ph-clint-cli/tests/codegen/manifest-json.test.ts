@@ -8,13 +8,13 @@ function parseManifest(spec: Parameters<typeof clintProjectSpecSchema.parse>[0])
 
 describe('buildManifestJson', () => {
   it('sets features.agent to false when mastra is disabled', () => {
-    const m = parseManifest({ name: 'foo' });
+    const m = parseManifest({ name: 'foo-cli' });
     expect(m.features.agent).toBe(false);
   });
 
   it('populates agent section when mastra is enabled', () => {
     const m = parseManifest({
-      name: 'foo',
+      name: 'foo-cli',
       features: {
         mastra: {
           enabled: true,
@@ -43,7 +43,7 @@ describe('buildManifestJson', () => {
 
   it('handles null agent description and image', () => {
     const m = parseManifest({
-      name: 'foo',
+      name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
     expect(m.features.agent.description).toBeNull();
@@ -51,38 +51,33 @@ describe('buildManifestJson', () => {
   });
 
   it('sets features.powerhouse to false when Disabled', () => {
-    const m = parseManifest({ name: 'foo' });
+    const m = parseManifest({ name: 'foo-cli' });
     expect(m.features.powerhouse).toBe(false);
   });
 
   it('populates powerhouse for Reactor level', () => {
-    const m = parseManifest({ name: 'foo', features: { powerhouse: 'Reactor' } });
+    const m = parseManifest({ name: 'foo-cli', features: { powerhouse: 'Reactor' } });
     expect(m.features.powerhouse).toEqual({ support: 'Reactor', package: 'foo-app' });
   });
 
   it('populates powerhouse for Switchboard level', () => {
-    const m = parseManifest({ name: 'foo', features: { powerhouse: 'Switchboard' } });
+    const m = parseManifest({ name: 'foo-cli', features: { powerhouse: 'Switchboard' } });
     expect(m.features.powerhouse).toEqual({ support: 'Switchboard', package: 'foo-app' });
   });
 
   it('populates powerhouse for Connect level with scope', () => {
-    const m = parseManifest({ name: 'foo', scope: 'bar', features: { powerhouse: 'Connect' } });
+    const m = parseManifest({ name: 'foo-cli', scope: '@bar', features: { powerhouse: 'Connect' } });
     expect(m.features.powerhouse).toEqual({ support: 'Connect', package: '@bar/foo-app' });
   });
 
-  it('uses getBinName for serviceCommand', () => {
-    const m = parseManifest({ name: 'foo', bin: 'my-bin' });
-    expect(m.serviceCommand).toBe('my-bin');
-  });
-
-  it('defaults serviceCommand to project name', () => {
-    const m = parseManifest({ name: 'foo' });
+  it('derives serviceCommand from name by stripping -cli', () => {
+    const m = parseManifest({ name: 'foo-cli' });
     expect(m.serviceCommand).toBe('foo');
   });
 
   it('passes through supportedResources', () => {
     const m = parseManifest({
-      name: 'foo',
+      name: 'foo-cli',
       deployment: { supportedResources: ['vetra-agent-s', 'vetra-agent-m'] },
     });
     expect(m.supportedResources).toEqual(['vetra-agent-s', 'vetra-agent-m']);
@@ -90,25 +85,25 @@ describe('buildManifestJson', () => {
 
   it('passes through proxyEnabled boolean', () => {
     const m = parseManifest({
-      name: 'foo',
+      name: 'foo-cli',
       deployment: { proxyEnabled: true },
     });
     expect(m.proxyEnabled).toBe(true);
   });
 
   it('defaults deployment fields', () => {
-    const m = parseManifest({ name: 'foo' });
+    const m = parseManifest({ name: 'foo-cli' });
     expect(m.proxyEnabled).toBe(false);
     expect(m.supportedResources).toEqual([]);
   });
 
   it('sets type to clint-project', () => {
-    const m = parseManifest({ name: 'foo' });
+    const m = parseManifest({ name: 'foo-cli' });
     expect(m.type).toBe('clint-project');
   });
 
   it('outputs valid JSON with trailing newline', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const output = buildManifestJson(spec);
     expect(output.endsWith('\n')).toBe(true);
     expect(() => JSON.parse(output)).not.toThrow();

@@ -16,7 +16,7 @@ import { hashSpec, specChangeTrigger } from '../../src/triggers/spec-change.js';
 // ── Helpers ──────────────────────────────────────────────────────
 
 function makeSpec(overrides: Record<string, unknown> = {}) {
-  return clintProjectSpecSchema.parse({ name: 'test-project', ...overrides });
+  return clintProjectSpecSchema.parse({ name: 'test-project-cli', ...overrides });
 }
 
 // ── hashSpec ─────────────────────────────────────────────────────
@@ -65,8 +65,8 @@ describe('hashSpec', () => {
   });
 
   it('is order-independent for object keys', () => {
-    const a = clintProjectSpecSchema.parse({ name: 'foo', description: 'bar', version: '1.0.0' });
-    const b = clintProjectSpecSchema.parse({ version: '1.0.0', name: 'foo', description: 'bar' });
+    const a = clintProjectSpecSchema.parse({ name: 'foo-cli', description: 'bar', version: '1.0.0' });
+    const b = clintProjectSpecSchema.parse({ version: '1.0.0', name: 'foo-cli', description: 'bar' });
     expect(hashSpec(a)).toBe(hashSpec(b));
   });
 });

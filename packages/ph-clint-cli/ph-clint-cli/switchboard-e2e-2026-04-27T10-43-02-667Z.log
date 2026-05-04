@@ -1,0 +1,10 @@
+=== E2E switchboard test started at 2026-04-27T10:43:02.669Z ===
+[2026-04-27T10:43:02.669Z] [setup] Creating temp workdir and starting ph-clint-cli...
+[2026-04-27T10:43:02.674Z] [setup] Log file: /home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/switchboard-e2e-2026-04-27T10-43-02-667Z.log
+[2026-04-27T10:43:02.675Z] [setup] Workdir: /tmp/ph-clint-e2e-M5RDAF
+  cli> Reactor ready (drive: 91fe4dbe-5ada-462c-8de5-99602a463ff0)
+  cli> ph-clint-api port 59260 is already in use
+  cli> Hint: Stop the process using port 59260, or use a different port
+[2026-04-27T10:43:05.512Z] [teardown] Stopping CLI...
+[2026-04-27T10:43:05.513Z] [teardown] Cleaning up workdir: /tmp/ph-clint-e2e-M5RDAF
+[2026-04-27T10:43:05.664Z] [teardown] Done.

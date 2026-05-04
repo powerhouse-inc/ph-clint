@@ -1,0 +1,781 @@
+=== E2E switchboard test loaded at 2026-05-02T13:21:59.868Z ===
+[2026-05-02T13:21:59.870Z] [setup] Creating temp workdir and starting ph-clint-cli...
+[2026-05-02T13:21:59.876Z] [setup] Log file: /home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/switchboard-e2e-2026-05-02T13-21-59-868Z.log
+[2026-05-02T13:21:59.878Z] [setup] Workdir: /tmp/ph-clint-e2e-PZq9RX
+  cli> Reactor ready (drive: 42c4a317-ea17-40a4-a177-78e80a137995)
+  cli> [15:22:04.95] [reactor-api][package-manager] Loading packages: null
+  cli> [15:22:04.95] [reactor-api][server] WebSocket server available at /graphql/subscriptions
+  cli> [15:22:04.96] [reactor-api][server][graphql-manager] Registered REST endpoint: GET /d/:drive
+  cli> [15:22:04.96] [reactor-api][server][graphql-manager] Registered /graphql/analytics subgraph.
+  cli> [15:22:04.96] [reactor-api][server][graphql-manager] Registered /graphql/r subgraph.
+  cli> [15:22:05.00] [reactor-api][server][graphql-manager] Failed to setup websocket for subgraph r at path /graphql/r: {}
+  cli> [15:22:05.13] [reactor-api][server][graphql-manager] Registered /graphql supergraph
+  cli> [15:22:07.24] [reactor-api][server] MCP server available at http://localhost:59260/mcp
+  cli> Switchboard 'ph-clint-api' ready at http://localhost:59260/graphql
+[2026-05-02T13:22:07.249Z] [setup] Switchboard ready at http://localhost:59260/graphql
+  cli> Connect 'ph-clint-studio' ready at http://localhost:43990/
+  cli> Drives:
+  cli> Clint Folders (personal): http://localhost:59260/d/42c4a317-ea17-40a4-a177-78e80a137995
+  cli> Routine running
+  cli> Serving — press Ctrl+C to stop.
+[2026-05-02T13:22:08.517Z] [setup] @powerhousedao/ph-e2e-test-cli npm state: dev=0.0.1-dev.11, all versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10, 0.0.1-dev.11]
+[2026-05-02T13:22:08.517Z] [setup] Expected next version: 0.0.1-dev.12
+[2026-05-02T13:22:08.518Z] [step 1] Querying Switchboard for document drives...
+[2026-05-02T13:22:08.572Z] [step 1] Found 1 drive(s): Clint Folders (42c4a317-ea17-40a4-a177-78e80a137995)
+[2026-05-02T13:22:08.573Z] [step 1] Using drive: 42c4a317-ea17-40a4-a177-78e80a137995
+[2026-05-02T13:22:08.574Z] [step 2] Creating powerhouse/ph-clint-project document in drive 42c4a317-ea17-40a4-a177-78e80a137995...
+[2026-05-02T13:22:08.633Z] [step 2] Created document: 4743b751-f481-4431-8041-8fca23d21e63 (type=powerhouse/ph-clint-project)
+[2026-05-02T13:22:08.634Z] [step 3] Dispatching identity + feature actions to 4743b751-f481-4431-8041-8fca23d21e63...
+[2026-05-02T13:22:08.672Z] [step 3] Mutation result: {"mutateDocument":{"id":"4743b751-f481-4431-8041-8fca23d21e63","revisionsList":[{"scope":"document","revision":2},{"scope":"global","revision":4}]}}
+[2026-05-02T13:22:08.688Z] [step 3] Spec populated: @powerhousedao/ph-e2e-test, features={"mastra":{"models":[],"agentId":null,"enabled":false,"profiles":[],"agentName":null,"agentImage":null,"agentDescription":null},"routine":{"enabled":false},"powerhouse":"Reactor"}
+[2026-05-02T13:22:08.689Z] [step 4] Waiting for codegen + ph init...
+[2026-05-02T13:22:08.689Z] [step 4]   cli dir: /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+[2026-05-02T13:22:08.689Z] [step 4]   app dir: /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-app
+  cli> [spec-change] regenerating ph-e2e-test at /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test (doc=4743b751-f481-4431-8041-8fca23d21e63)
+  cli> [spec-change] regenerated ph-e2e-test in 821ms: 26 written, 0 skipped, 0 deleted
+  cli> [spec-change]
+  cli> Post-generation steps (5):
+  cli> [spec-change]   1. Initialize reactor package (ph-e2e-test-app)
+  cli> [spec-change]   2. Install dependencies (ph-e2e-test-app)
+  cli> [spec-change]   3. Build (ph-e2e-test-app)
+  cli> [spec-change]   4. Install dependencies (ph-e2e-test-cli)
+  cli> [spec-change]   5. Build (ph-e2e-test-cli)
+  cli> [spec-change]
+  cli> [spec-change] [1/5] Initialize reactor package (ph-e2e-test-app)...
+  cli> [spec-change]       Running `ph init ph-e2e-test-app` (version: 6.0.0-dev.211) in /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test …
+  cli> 🚀 Initializing a new project...
+  cli> ▶️ Creating directory for project "ph-e2e-test-app"...
+  cli> ✅ Project directory created
+  cli> ▶️ Initializing git repository...
+  cli> hint: Using 'master' as the name for the initial branch. This default branch name
+  cli> hint: is subject to change. To configure the initial branch name to use in all
+  cli> hint: of your new repositories, which will suppress this warning, call:
+  cli> hint:
+  cli> hint: 	git config --global init.defaultBranch <name>
+  cli> hint:
+  cli> hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+  cli> hint: 'development'. The just-created branch can be renamed via this command:
+  cli> hint:
+  cli> hint: 	git branch -m <name>
+  cli> Initialized empty Git repository in /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-app/.git/
+  cli> ✅ Git repository initialized
+  cli> ▶️ Creating project boilerplate files...
+  cli> ✅ Project boilerplate files created
+  cli> ▶️ Installing project dependencies with pnpm...
+  cli> Progress: resolved 1, reused 0, downloaded 0, added 0
+  cli> Progress: resolved 75, reused 74, downloaded 0, added 0
+  cli> Progress: resolved 328, reused 284, downloaded 0, added 0
+  cli> Progress: resolved 622, reused 578, downloaded 0, added 0
+[2026-05-02T13:22:16.699Z] [step 4] Poll #5: cli/package.json exists, app name="ph-e2e-test-app" (want "@powerhousedao/ph-e2e-test-app")
+  cli> Progress: resolved 927, reused 870, downloaded 0, added 0
+  cli> Progress: resolved 1300, reused 1198, downloaded 0, added 0
+  cli> Progress: resolved 1731, reused 1592, downloaded 0, added 0
+  cli> Progress: resolved 1847, reused 1707, downloaded 0, added 0
+  cli> Progress: resolved 1896, reused 1757, downloaded 0, added 0
+  cli> WARN  12 deprecated subdependencies found: @apollo/server-gateway-interface@1.1.1, @types/minimatch@6.0.0, glob@10.5.0, glob@7.2.3, inflight@1.0.6, lodash.isequal@4.5.0, multibase@4.0.6, multicodec@3.2.1, node-domexception@1.0.0, rimraf@2.7.1, sudo-prompt@8.2.5, uuid@9.0.1
+  cli> Packages: +1830
+  cli> ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  cli> Progress: resolved 1902, reused 1763, downloaded 0, added 794
+  cli> Progress: resolved 1902, reused 1763, downloaded 0, added 1830, done
+  cli> WARN  Issues with peer dependencies found
+  cli> .
+  cli> ├─┬ @mastra/core 1.31.0
+  cli> │ ├─┬ @ai-sdk/ui-utils 1.2.11
+  cli> │ │ ├── ✕ unmet peer zod@^3.23.8: found 4.4.2
+  cli> │ │ └─┬ @ai-sdk/provider-utils 2.2.8
+  cli> │ │   └── ✕ unmet peer zod@^3.23.8: found 4.4.2
+  cli> │ └─┬ @a2a-js/sdk 0.3.13
+  cli> │   └── ✕ unmet peer express@"^4.21.2 || ^5.1.0": found 4.21.1
+  cli> ├─┬ @powerhousedao/ph-cli 6.0.0-dev.211
+  cli> │ ├─┬ @mastra/core 1.31.0
+  cli> │ │ └─┬ @ai-sdk/ui-utils 1.2.11
+  cli> │ │   ├── ✕ unmet peer zod@^3.23.8: found 4.3.6 in @powerhousedao/ph-cli
+  cli> │ │   └─┬ @ai-sdk/provider-utils 2.2.8
+  cli> │ │     └── ✕ unmet peer zod@^3.23.8: found 4.3.6 in @powerhousedao/ph-cli
+  cli> │ └─┬ @powerhousedao/ph-clint 0.1.0-dev.45
+  cli> │   ├── ✕ unmet peer kysely@^0.27.0: found 0.28.16
+  cli> │   └── ✕ unmet peer @electric-sql/pglite@^0.2.0: found 0.3.15
+  cli> └─┬ @standard-community/standard-json 0.3.5
+  cli> └── ✕ unmet peer quansync@^0.2.11: found 1.0.0
+  cli> dependencies:
+  cli> + @powerhousedao/analytics-engine-core 6.0.0-dev.211
+  cli> + @powerhousedao/connect 6.0.0-dev.211
+  cli> + @powerhousedao/design-system 6.0.0-dev.211
+  cli> + @powerhousedao/document-engineering 1.40.1 (1.40.2 is available)
+  cli> + @powerhousedao/reactor-api 6.0.0-dev.211
+  cli> + @powerhousedao/reactor-browser 6.0.0-dev.211
+  cli> + @powerhousedao/shared 6.0.0-dev.211
+  cli> + document-model 6.0.0-dev.211
+  cli> + graphql 16.12.0 (16.13.2 is available)
+  cli> + graphql-tag 2.12.6
+  cli> + react 19.2.5
+  cli> + react-dom 19.2.5
+  cli> + zod 4.4.2
+  cli> devDependencies:
+  cli> + @electric-sql/pglite 0.3.15 (0.4.5 is available)
+  cli> + @electric-sql/pglite-tools 0.2.20
+  cli> + @eslint/js 9.39.4 (10.0.1 is available)
+  cli> + @powerhousedao/ph-cli 6.0.0-dev.211
+  cli> + @powerhousedao/reactor 6.0.0-dev.211
+  cli> + @tailwindcss/cli 4.2.4
+  cli> + @types/node 24.12.2 (25.6.0 is available)
+  cli> + @types/react 19.2.14
+  cli> + @vitejs/plugin-react 6.0.1
+  cli> + eslint 9.39.4 (10.3.0 is available)
+  cli> + eslint-config-prettier 10.1.8
+  cli> + eslint-plugin-prettier 5.5.5
+  cli> + eslint-plugin-react 7.37.5
+  cli> + eslint-plugin-react-hooks 7.1.1
+  cli> + globals 16.5.0 (17.6.0 is available)
+  cli> + tailwindcss 4.2.4
+  cli> + typescript 5.9.3 (6.0.3 is available)
+  cli> + typescript-eslint 8.59.1
+  cli> + vite 8.0.8 (8.0.10 is available)
+  cli> + vite-tsconfig-paths 6.1.1
+  cli> + vitest 4.1.1
+  cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+  cli> │                                                                              │
+  cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @datadog/pprof@5.13.3,    │
+  cli> │   @parcel/watcher@2.5.6, @sentry/cli@2.58.5, esbuild@0.14.54,                │
+  cli> │   esbuild@0.27.7, protobufjs@7.5.6.                                          │
+  cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+  cli> │   to run scripts.                                                            │
+  cli> │                                                                              │
+  cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+  cli> Done in 10.1s using pnpm v10.26.0
+  cli> ✅ Project dependencies installed
+  cli> ▶️ Formatting boilerplate project files...
+  cli> ✅ Boilerplate files formatted
+  cli> 🎉 Successfully created project "ph-e2e-test-app" 🎉
+  cli> [spec-change]       Patched app package name to @powerhousedao/ph-e2e-test-app
+  cli> [spec-change]       done (14.4s)
+  cli> [spec-change] [2/5] Install dependencies (ph-e2e-test-app)...
+[2026-05-02T13:22:24.713Z] [step 4] Project generated at /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test: cli=@powerhousedao/ph-e2e-test-cli, app=@powerhousedao/ph-e2e-test-app
+[2026-05-02T13:22:24.713Z] [step 4] publish.config.js exists and references all packages
+[2026-05-02T13:22:24.713Z] [step 4] project-spec.json written with documentId=4743b751-f481-4431-8041-8fca23d21e63
+[2026-05-02T13:22:24.714Z] [step 4] Workdir contents: .ph, ph-e2e-test
+[2026-05-02T13:22:24.714Z] [step 4] Project contents: .ph, README.md, package.json, ph-e2e-test-app, ph-e2e-test-cli, publish.config.js
+[2026-05-02T13:22:24.716Z] [step 5] Dispatching BUMP_VERSION (0.0.1) + PUBLISH_DEV...
+[2026-05-02T13:22:24.767Z] [step 5] Document version: 0.0.1
+[2026-05-02T13:22:24.767Z] [step 5] Publish history (1 records):
+[2026-05-02T13:22:24.767Z] [step 5]   id=e2e-publish-1 tag=Dev status=Pending version=0.0.1
+[2026-05-02T13:22:24.769Z] [step 6] Waiting for publish trigger to complete...
+  cli> Lockfile is up to date, resolution step is skipped
+[2026-05-02T13:22:24.783Z] [step 6] Publish status changed: Pending (poll #1)
+  cli> Already up to date
+  cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+  cli> │                                                                              │
+  cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @datadog/pprof@5.13.3,    │
+  cli> │   @parcel/watcher@2.5.6, @sentry/cli@2.58.5, esbuild@0.14.54,                │
+  cli> │   esbuild@0.27.7, protobufjs@7.5.6.                                          │
+  cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+  cli> │   to run scripts.                                                            │
+  cli> │                                                                              │
+  cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+  cli> Done in 945ms using pnpm v10.26.0
+  cli> [spec-change]       done (1.0s)
+  cli> [spec-change] [3/5] Build (ph-e2e-test-app)...
+  cli> > @powerhousedao/ph-e2e-test-app@1.0.0 build /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-app
+  cli> > ph-cli build
+  cli> [34mℹ[39m entry: [34mindex.ts, document-models/index.ts, editors/index.ts, processors/index.ts, subgraphs/index.ts[39m
+  cli> [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+  cli> [34mℹ[39m Build start
+  cli> [34mℹ[39m Hint: consider adding [34mdeps.onlyAllowBundle[39m option to avoid unintended bundling of dependencies, or set [34mdeps.onlyAllowBundle: false[39m to disable this hint.
+  cli> See more at [4mhttps://tsdown.dev/options/dependencies#deps-onlyallowbundle[24m
+  cli> Detected dependencies in bundle:
+  cli> - [34m@powerhousedao/shared[39m
+  cli> - [34mzod[39m
+  cli> - [34mkysely[39m
+  cli> - [34mdocument-model[39m
+  cli> - [34m@powerhousedao/analytics-engine-core[39m
+  cli> - [34m@electric-sql/pglite[39m
+  cli> - [34m@powerhousedao/analytics-engine-browser[39m
+  cli> - [34m@powerhousedao/reactor-browser[39m
+  cli> - [34m@renown/sdk[39m
+  cli> - [34m@powerhousedao/reactor[39m
+  cli> [34mℹ[39m [2mdist/browser/[22m[1mindex.js[22m                      [2m  0.77 kB[22m [2m│ gzip:   0.35 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[1mdocument-models/index.js[22m      [2m  0.17 kB[22m [2m│ gzip:   0.16 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[1msubgraphs/index.js[22m            [2m  0.16 kB[22m [2m│ gzip:   0.15 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[1meditors/index.js[22m              [2m  0.16 kB[22m [2m│ gzip:   0.15 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[1mprocessors/index.js[22m           [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mfactory-Bpi1wUX4.d.ts.map     [2m563.90 kB[22m [2m│ gzip: 122.02 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mfactory-CCc1Pucu.js.map       [2m  1.57 kB[22m [2m│ gzip:   0.78 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mindex.js.map                  [2m  1.56 kB[22m [2m│ gzip:   0.50 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mfactory-CCc1Pucu.js           [2m  0.69 kB[22m [2m│ gzip:   0.36 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mswitchboard-BLGYDyN8.js.map   [2m  0.40 kB[22m [2m│ gzip:   0.29 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mconnect-CCJL1Msc.js.map       [2m  0.39 kB[22m [2m│ gzip:   0.28 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mindex.d.ts.map                [2m  0.30 kB[22m [2m│ gzip:   0.19 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mdocument-models/index.js.map  [2m  0.22 kB[22m [2m│ gzip:   0.18 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22msubgraphs/index.js.map        [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22meditors/index.js.map          [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mswitchboard-BLGYDyN8.js       [2m  0.17 kB[22m [2m│ gzip:   0.14 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22mconnect-CCJL1Msc.js           [2m  0.16 kB[22m [2m│ gzip:   0.14 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[32m[1mindex.d.ts[22m[39m                    [2m  0.66 kB[22m [2m│ gzip:   0.29 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[32m[1mprocessors/index.d.ts[22m[39m         [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[32m[1mdocument-models/index.d.ts[22m[39m    [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[32m[1meditors/index.d.ts[22m[39m            [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[32m[1msubgraphs/index.d.ts[22m[39m          [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+  cli> [34mℹ[39m [2mdist/browser/[22m[32mfactory-Bpi1wUX4.d.ts[39m         [2m917.20 kB[22m [2m│ gzip: 159.41 kB[22m
+  cli> [34mℹ[39m 23 files, total: 1.49 MB
+  cli> [32m✔[39m Build complete in [32m1930ms[39m
+  cli> [34mℹ[39m entry: [34mindex.ts, document-models/index.ts, editors/index.ts, processors/index.ts, subgraphs/index.ts[39m
+  cli> [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+  cli> [34mℹ[39m Build start
+  cli> [34mℹ[39m Hint: consider adding [34mdeps.onlyAllowBundle[39m option to avoid unintended bundling of dependencies, or set [34mdeps.onlyAllowBundle: false[39m to disable this hint.
+  cli> See more at [4mhttps://tsdown.dev/options/dependencies#deps-onlyallowbundle[24m
+  cli> Detected dependencies in bundle:
+  cli> - [34m@powerhousedao/shared[39m
+  cli> - [34mzod[39m
+  cli> - [34mkysely[39m
+  cli> - [34mdocument-model[39m
+  cli> - [34m@powerhousedao/analytics-engine-core[39m
+  cli> - [34m@electric-sql/pglite[39m
+  cli> - [34m@powerhousedao/analytics-engine-browser[39m
+  cli> - [34m@powerhousedao/reactor-browser[39m
+  cli> - [34m@renown/sdk[39m
+  cli> - [34m@powerhousedao/reactor[39m
+  cli> [34mℹ[39m [2mdist/node/[22m[1mindex.mjs[22m                      [2m  0.78 kB[22m [2m│ gzip:   0.36 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[1mdocument-models/index.mjs[22m      [2m  0.18 kB[22m [2m│ gzip:   0.17 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[1msubgraphs/index.mjs[22m            [2m  0.17 kB[22m [2m│ gzip:   0.16 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[1meditors/index.mjs[22m              [2m  0.17 kB[22m [2m│ gzip:   0.16 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[1mprocessors/index.mjs[22m           [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mfactory-oPhwJ79W.d.mts.map     [2m563.90 kB[22m [2m│ gzip: 122.02 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mfactory-BA99WTid.mjs.map       [2m  1.57 kB[22m [2m│ gzip:   0.78 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mindex.mjs.map                  [2m  1.56 kB[22m [2m│ gzip:   0.50 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mfactory-BA99WTid.mjs           [2m  0.70 kB[22m [2m│ gzip:   0.36 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mswitchboard-iqy7uAzd.mjs.map   [2m  0.40 kB[22m [2m│ gzip:   0.29 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mconnect-dSGS1SgX.mjs.map       [2m  0.39 kB[22m [2m│ gzip:   0.28 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mindex.d.mts.map                [2m  0.30 kB[22m [2m│ gzip:   0.19 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mdocument-models/index.mjs.map  [2m  0.22 kB[22m [2m│ gzip:   0.19 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22msubgraphs/index.mjs.map        [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22meditors/index.mjs.map          [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mswitchboard-iqy7uAzd.mjs       [2m  0.17 kB[22m [2m│ gzip:   0.14 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22mconnect-dSGS1SgX.mjs           [2m  0.17 kB[22m [2m│ gzip:   0.14 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[32m[1mindex.d.mts[22m[39m                    [2m  0.67 kB[22m [2m│ gzip:   0.30 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[32m[1mprocessors/index.d.mts[22m[39m         [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[32m[1mdocument-models/index.d.mts[22m[39m    [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[32m[1meditors/index.d.mts[22m[39m            [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[32m[1msubgraphs/index.d.mts[22m[39m          [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+  cli> [34mℹ[39m [2mdist/node/[22m[32mfactory-oPhwJ79W.d.mts[39m         [2m917.20 kB[22m [2m│ gzip: 159.41 kB[22m
+  cli> [34mℹ[39m 23 files, total: 1.49 MB
+  cli> [32m✔[39m Build complete in [32m813ms[39m
+  cli> ≈ tailwindcss v4.2.4
+  cli> Done in 88ms
+  cli> [spec-change]       done (4.0s)
+  cli> [spec-change] [4/5] Install dependencies (ph-e2e-test-cli)...
+  cli> Progress: resolved 1, reused 0, downloaded 0, added 0
+  cli> Progress: resolved 110, reused 110, downloaded 0, added 0
+  cli> Progress: resolved 398, reused 367, downloaded 0, added 0
+  cli> Progress: resolved 879, reused 790, downloaded 0, added 0
+  cli> Progress: resolved 1214, reused 1103, downloaded 0, added 0
+  cli> Progress: resolved 1470, reused 1358, downloaded 0, added 0
+  cli> Progress: resolved 1692, reused 1564, downloaded 0, added 0
+  cli> Progress: resolved 1770, reused 1642, downloaded 0, added 0
+  cli> Progress: resolved 1837, reused 1708, downloaded 0, added 0
+  cli> WARN  12 deprecated subdependencies found: @apollo/server-gateway-interface@1.1.1, @types/minimatch@6.0.0, glob@10.5.0, glob@7.2.3, inflight@1.0.6, lodash.isequal@4.5.0, multibase@4.0.6, multicodec@3.2.1, node-domexception@1.0.0, rimraf@2.7.1, sudo-prompt@8.2.5, uuid@9.0.1
+  cli> Packages: +1776
+  cli> ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  cli> Progress: resolved 1840, reused 1712, downloaded 0, added 905
+  cli> Progress: resolved 1840, reused 1712, downloaded 0, added 1776, done
+  cli> WARN  Issues with peer dependencies found
+  cli> .
+  cli> ├─┬ @powerhousedao/reactor 6.0.0-dev.211
+  cli> │ └─┬ document-model 6.0.0-dev.211
+  cli> │   └─┬ tsdown 0.21.1
+  cli> │     └── ✕ unmet peer typescript@^5.0.0: found 6.0.3
+  cli> ├─┬ @powerhousedao/ph-e2e-test-app 1.0.0
+  cli> │ └─┬ @powerhousedao/connect 6.0.0-dev.211
+  cli> │   └─┬ @powerhousedao/powerhouse-vetra-packages 6.0.0-dev.211
+  cli> │     └─┬ react-i18next 16.5.4
+  cli> │       └── ✕ unmet peer typescript@^5: found 6.0.3
+  cli> └─┬ @powerhousedao/ph-clint-dev 0.1.0-dev.45
+  cli> └─┬ @powerhousedao/ph-clint 0.1.0-dev.45
+  cli> ├── ✕ unmet peer kysely@^0.27.0: found 0.28.16
+  cli> └── ✕ unmet peer @electric-sql/pglite@^0.2.0: found 0.3.15
+  cli> dependencies:
+  cli> + @powerhousedao/ph-clint 0.1.0-dev.45
+  cli> + @powerhousedao/ph-e2e-test-app 1.0.0
+  cli> + @powerhousedao/reactor 6.0.0-dev.211
+  cli> + @powerhousedao/reactor-api 6.0.0-dev.211
+  cli> + @powerhousedao/shared 6.0.0-dev.211
+  cli> + document-model 6.0.0-dev.211
+  cli> + zod 4.4.2
+  cli> devDependencies:
+  cli> + @jest/globals 30.3.0
+  cli> + @powerhousedao/ph-clint-dev 0.1.0-dev.45
+  cli> + @types/node 25.6.0
+  cli> + jest 30.3.0
+  cli> + ts-jest 29.4.9
+  cli> + tsx 4.21.0
+  cli> + typescript 6.0.3
+  cli> + typescript-eslint 8.59.1
+  cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+  cli> │                                                                              │
+  cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @sentry/cli@2.58.5,       │
+  cli> │   esbuild@0.14.54, esbuild@0.27.7, protobufjs@7.5.6, unrs-resolver@1.11.1.   │
+  cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+  cli> │   to run scripts.                                                            │
+  cli> │                                                                              │
+  cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+  cli> Done in 10s using pnpm v10.26.0
+  cli> [spec-change]       done (10.2s)
+  cli> [spec-change] [5/5] Build (ph-e2e-test-cli)...
+  cli> > @powerhousedao/ph-e2e-test-cli@0.1.0 build /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+  cli> > pnpm build:skills && tsc && pnpm build:manifest
+  cli> > @powerhousedao/ph-e2e-test-cli@0.1.0 build:skills /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+  cli> > tsx scripts/build-skills.ts
+  cli> Building skills from /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli/prompts
+  cli> --- Building SKILL.md files (templates) ---
+  cli> --- Copying external skills ---
+  cli> Done.
+  cli> > @powerhousedao/ph-e2e-test-cli@0.1.0 build:manifest /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+  cli> > build-manifest
+  cli> [spec-change]       done (1.6s)
+  cli> [spec-change]
+  cli> [spec-change] Post-generation: 5 steps completed successfully.
+  cli> [spec-change] Ready — run `pnpm dev` to start.
+  cli> [publish] found pending Dev publish for doc 4743b751-f481-4431-8041-8fca23d21e63 (id=e2e-publish-1, version=0.0.1)
+  cli> [publish] marking record e2e-publish-1 as InProgress
+  cli> [publish] running pnpm install in /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test
+[2026-05-02T13:22:42.916Z] [step 6] Publish status changed: InProgress (poll #10)
+  cli> [publish] invoking clint-project-publish --tag dev
+  cli> [publish] Loading config...
+  cli> [publish] Group: ph-e2e-test
+  cli> [publish] Pre-flight checks...
+  cli> [publish] Version: 0.1.0-dev.0
+  cli> [publish] Publish plan:
+  cli> Group:    ph-e2e-test
+  cli> Version:  0.1.0-dev.0
+  cli> Tag:      dev
+  cli> Registry: https://registry.npmjs.org
+  cli> Packages:
+  cli> - @powerhousedao/ph-e2e-test-app
+  cli> - @powerhousedao/ph-e2e-test-cli
+  cli> [publish] Building...
+  cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+  cli> [publish]   Building Connect assets for @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:22:52.986Z] [step 6] Poll #15: 15 publish-related CLI lines since step start:
+[2026-05-02T13:22:52.986Z] [step 6]   cli> Building skills from /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli/prompts
+[2026-05-02T13:22:52.986Z] [step 6]   cli> --- Building SKILL.md files (templates) ---
+[2026-05-02T13:22:52.986Z] [step 6]   cli> [publish] found pending Dev publish for doc 4743b751-f481-4431-8041-8fca23d21e63 (id=e2e-publish-1, version=0.0.1)
+[2026-05-02T13:22:52.986Z] [step 6]   cli> [publish] marking record e2e-publish-1 as InProgress
+[2026-05-02T13:22:52.986Z] [step 6]   cli> [publish] running pnpm install in /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test
+[2026-05-02T13:22:52.986Z] [step 6]   cli> [publish] invoking clint-project-publish --tag dev
+[2026-05-02T13:22:52.986Z] [step 6]   cli> [publish] Loading config...
+[2026-05-02T13:22:52.986Z] [step 6]   cli> [publish] Group: ph-e2e-test
+[2026-05-02T13:22:52.987Z] [step 6]   cli> [publish] Pre-flight checks...
+[2026-05-02T13:22:52.987Z] [step 6]   cli> [publish] Version: 0.1.0-dev.0
+[2026-05-02T13:22:52.987Z] [step 6]   cli> [publish] Publish plan:
+[2026-05-02T13:22:52.987Z] [step 6]   cli> Version:  0.1.0-dev.0
+[2026-05-02T13:22:52.987Z] [step 6]   cli> [publish] Building...
+[2026-05-02T13:22:52.987Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:22:52.987Z] [step 6]   cli> [publish]   Building Connect assets for @powerhousedao/ph-e2e-test-app...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app (connect)
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+  cli> [publish]   Reinstalling @powerhousedao/ph-e2e-test-cli (file: deps were rebuilt)...
+  cli> [publish]   Building @powerhousedao/ph-e2e-test-cli...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+  cli> [publish] Preparing package.json files...
+  cli> [publish] Validating packages...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+  cli> [publish] Publishing...
+  cli> [publish]   (will also set "latest" dist-tag — no higher-stability release exists)
+  cli> [publish]   Publishing @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:23:23.183Z] [step 6] Poll #30: 27 publish-related CLI lines since step start:
+[2026-05-02T13:23:23.183Z] [step 6]   cli> [publish] Group: ph-e2e-test
+[2026-05-02T13:23:23.183Z] [step 6]   cli> [publish] Pre-flight checks...
+[2026-05-02T13:23:23.183Z] [step 6]   cli> [publish] Version: 0.1.0-dev.0
+[2026-05-02T13:23:23.183Z] [step 6]   cli> [publish] Publish plan:
+[2026-05-02T13:23:23.183Z] [step 6]   cli> Version:  0.1.0-dev.0
+[2026-05-02T13:23:23.183Z] [step 6]   cli> [publish] Building...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   Building Connect assets for @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app (connect)
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   Reinstalling @powerhousedao/ph-e2e-test-cli (file: deps were rebuilt)...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-cli...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish] Preparing package.json files...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish] Validating packages...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish] Publishing...
+[2026-05-02T13:23:23.184Z] [step 6]   cli> [publish]   (will also set "latest" dist-tag — no higher-stability release exists)
+[2026-05-02T13:23:23.185Z] [step 6]   cli> [publish]   Publishing @powerhousedao/ph-e2e-test-app...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+  cli> [publish]   Publishing @powerhousedao/ph-e2e-test-cli...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+  cli> [publish]   Setting latest dist-tag...
+  cli> [publish]
+  cli> [publish] ──────────────────────────────────────────────────
+  cli> [publish] PUBLISH SUMMARY
+  cli> [publish] ──────────────────────────────────────────────────
+  cli> [publish] Version:  0.1.0-dev.0
+  cli> [publish] Tag:      dev
+  cli> [publish] Registry: https://registry.npmjs.org
+  cli> [publish] Packages:
+  cli> [publish]   - @powerhousedao/ph-e2e-test-app@0.1.0-dev.0
+  cli> [publish]   - @powerhousedao/ph-e2e-test-cli@0.1.0-dev.0
+  cli> [publish] ──────────────────────────────────────────────────
+  cli> [publish] marking record e2e-publish-1 as Succeeded
+  cli> [spec-change] regenerating ph-e2e-test at /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test (doc=4743b751-f481-4431-8041-8fca23d21e63)
+  cli> [spec-change] regenerated ph-e2e-test in 13ms: 5 written, 0 skipped, 0 deleted
+  cli> [spec-change]
+  cli> Post-generation steps (2):
+  cli> [spec-change]   1. Install dependencies (ph-e2e-test-cli)
+  cli> [spec-change]   2. Build (ph-e2e-test-cli)
+  cli> [spec-change]
+  cli> [spec-change] [1/2] Install dependencies (ph-e2e-test-cli)...
+[2026-05-02T13:23:35.263Z] [step 6] Publish status changed: Succeeded (poll #36)
+[2026-05-02T13:23:35.274Z] [step 6] Final publish record: status=Succeeded, version=0.0.1
+[2026-05-02T13:23:35.274Z] [step 6] CLI output during publish (228 lines):
+[2026-05-02T13:23:35.274Z] [step 6]   cli> Lockfile is up to date, resolution step is skipped
+[2026-05-02T13:23:35.274Z] [step 6]   cli> Already up to date
+[2026-05-02T13:23:35.274Z] [step 6]   cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+[2026-05-02T13:23:35.274Z] [step 6]   cli> │                                                                              │
+[2026-05-02T13:23:35.274Z] [step 6]   cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @datadog/pprof@5.13.3,    │
+[2026-05-02T13:23:35.275Z] [step 6]   cli> │   @parcel/watcher@2.5.6, @sentry/cli@2.58.5, esbuild@0.14.54,                │
+[2026-05-02T13:23:35.275Z] [step 6]   cli> │   esbuild@0.27.7, protobufjs@7.5.6.                                          │
+[2026-05-02T13:23:35.275Z] [step 6]   cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+[2026-05-02T13:23:35.275Z] [step 6]   cli> │   to run scripts.                                                            │
+[2026-05-02T13:23:35.275Z] [step 6]   cli> │                                                                              │
+[2026-05-02T13:23:35.275Z] [step 6]   cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+[2026-05-02T13:23:35.275Z] [step 6]   cli> Done in 945ms using pnpm v10.26.0
+[2026-05-02T13:23:35.275Z] [step 6]   cli> [spec-change]       done (1.0s)
+[2026-05-02T13:23:35.275Z] [step 6]   cli> [spec-change] [3/5] Build (ph-e2e-test-app)...
+[2026-05-02T13:23:35.275Z] [step 6]   cli> > @powerhousedao/ph-e2e-test-app@1.0.0 build /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-app
+[2026-05-02T13:23:35.275Z] [step 6]   cli> > ph-cli build
+[2026-05-02T13:23:35.275Z] [step 6]   cli> [34mℹ[39m entry: [34mindex.ts, document-models/index.ts, editors/index.ts, processors/index.ts, subgraphs/index.ts[39m
+[2026-05-02T13:23:35.275Z] [step 6]   cli> [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[2026-05-02T13:23:35.275Z] [step 6]   cli> [34mℹ[39m Build start
+[2026-05-02T13:23:35.275Z] [step 6]   cli> [34mℹ[39m Hint: consider adding [34mdeps.onlyAllowBundle[39m option to avoid unintended bundling of dependencies, or set [34mdeps.onlyAllowBundle: false[39m to disable this hint.
+[2026-05-02T13:23:35.275Z] [step 6]   cli> See more at [4mhttps://tsdown.dev/options/dependencies#deps-onlyallowbundle[24m
+[2026-05-02T13:23:35.275Z] [step 6]   cli> Detected dependencies in bundle:
+[2026-05-02T13:23:35.275Z] [step 6]   cli> - [34m@powerhousedao/shared[39m
+[2026-05-02T13:23:35.275Z] [step 6]   cli> - [34mzod[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34mkysely[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34mdocument-model[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34m@powerhousedao/analytics-engine-core[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34m@electric-sql/pglite[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34m@powerhousedao/analytics-engine-browser[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34m@powerhousedao/reactor-browser[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34m@renown/sdk[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> - [34m@powerhousedao/reactor[39m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[1mindex.js[22m                      [2m  0.77 kB[22m [2m│ gzip:   0.35 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[1mdocument-models/index.js[22m      [2m  0.17 kB[22m [2m│ gzip:   0.16 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[1msubgraphs/index.js[22m            [2m  0.16 kB[22m [2m│ gzip:   0.15 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[1meditors/index.js[22m              [2m  0.16 kB[22m [2m│ gzip:   0.15 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[1mprocessors/index.js[22m           [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mfactory-Bpi1wUX4.d.ts.map     [2m563.90 kB[22m [2m│ gzip: 122.02 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mfactory-CCc1Pucu.js.map       [2m  1.57 kB[22m [2m│ gzip:   0.78 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mindex.js.map                  [2m  1.56 kB[22m [2m│ gzip:   0.50 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mfactory-CCc1Pucu.js           [2m  0.69 kB[22m [2m│ gzip:   0.36 kB[22m
+[2026-05-02T13:23:35.276Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mswitchboard-BLGYDyN8.js.map   [2m  0.40 kB[22m [2m│ gzip:   0.29 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mconnect-CCJL1Msc.js.map       [2m  0.39 kB[22m [2m│ gzip:   0.28 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mindex.d.ts.map                [2m  0.30 kB[22m [2m│ gzip:   0.19 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mdocument-models/index.js.map  [2m  0.22 kB[22m [2m│ gzip:   0.18 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22msubgraphs/index.js.map        [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22meditors/index.js.map          [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mswitchboard-BLGYDyN8.js       [2m  0.17 kB[22m [2m│ gzip:   0.14 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22mconnect-CCJL1Msc.js           [2m  0.16 kB[22m [2m│ gzip:   0.14 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[32m[1mindex.d.ts[22m[39m                    [2m  0.66 kB[22m [2m│ gzip:   0.29 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[32m[1mprocessors/index.d.ts[22m[39m         [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[32m[1mdocument-models/index.d.ts[22m[39m    [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[32m[1meditors/index.d.ts[22m[39m            [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[32m[1msubgraphs/index.d.ts[22m[39m          [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m [2mdist/browser/[22m[32mfactory-Bpi1wUX4.d.ts[39m         [2m917.20 kB[22m [2m│ gzip: 159.41 kB[22m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m 23 files, total: 1.49 MB
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [32m✔[39m Build complete in [32m1930ms[39m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m entry: [34mindex.ts, document-models/index.ts, editors/index.ts, processors/index.ts, subgraphs/index.ts[39m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[2026-05-02T13:23:35.277Z] [step 6]   cli> [34mℹ[39m Build start
+[2026-05-02T13:23:35.278Z] [step 6]   cli> [34mℹ[39m Hint: consider adding [34mdeps.onlyAllowBundle[39m option to avoid unintended bundling of dependencies, or set [34mdeps.onlyAllowBundle: false[39m to disable this hint.
+[2026-05-02T13:23:35.278Z] [step 6]   cli> See more at [4mhttps://tsdown.dev/options/dependencies#deps-onlyallowbundle[24m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> Detected dependencies in bundle:
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34m@powerhousedao/shared[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34mzod[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34mkysely[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34mdocument-model[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34m@powerhousedao/analytics-engine-core[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34m@electric-sql/pglite[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34m@powerhousedao/analytics-engine-browser[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34m@powerhousedao/reactor-browser[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34m@renown/sdk[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> - [34m@powerhousedao/reactor[39m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[1mindex.mjs[22m                      [2m  0.78 kB[22m [2m│ gzip:   0.36 kB[22m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[1mdocument-models/index.mjs[22m      [2m  0.18 kB[22m [2m│ gzip:   0.17 kB[22m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[1msubgraphs/index.mjs[22m            [2m  0.17 kB[22m [2m│ gzip:   0.16 kB[22m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[1meditors/index.mjs[22m              [2m  0.17 kB[22m [2m│ gzip:   0.16 kB[22m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[1mprocessors/index.mjs[22m           [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+[2026-05-02T13:23:35.278Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mfactory-oPhwJ79W.d.mts.map     [2m563.90 kB[22m [2m│ gzip: 122.02 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mfactory-BA99WTid.mjs.map       [2m  1.57 kB[22m [2m│ gzip:   0.78 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mindex.mjs.map                  [2m  1.56 kB[22m [2m│ gzip:   0.50 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mfactory-BA99WTid.mjs           [2m  0.70 kB[22m [2m│ gzip:   0.36 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mswitchboard-iqy7uAzd.mjs.map   [2m  0.40 kB[22m [2m│ gzip:   0.29 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mconnect-dSGS1SgX.mjs.map       [2m  0.39 kB[22m [2m│ gzip:   0.28 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mindex.d.mts.map                [2m  0.30 kB[22m [2m│ gzip:   0.19 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mdocument-models/index.mjs.map  [2m  0.22 kB[22m [2m│ gzip:   0.19 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22msubgraphs/index.mjs.map        [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22meditors/index.mjs.map          [2m  0.21 kB[22m [2m│ gzip:   0.18 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mswitchboard-iqy7uAzd.mjs       [2m  0.17 kB[22m [2m│ gzip:   0.14 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22mconnect-dSGS1SgX.mjs           [2m  0.17 kB[22m [2m│ gzip:   0.14 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[32m[1mindex.d.mts[22m[39m                    [2m  0.67 kB[22m [2m│ gzip:   0.30 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[32m[1mprocessors/index.d.mts[22m[39m         [2m  0.09 kB[22m [2m│ gzip:   0.09 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[32m[1mdocument-models/index.d.mts[22m[39m    [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[32m[1meditors/index.d.mts[22m[39m            [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[32m[1msubgraphs/index.d.mts[22m[39m          [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m [2mdist/node/[22m[32mfactory-oPhwJ79W.d.mts[39m         [2m917.20 kB[22m [2m│ gzip: 159.41 kB[22m
+[2026-05-02T13:23:35.279Z] [step 6]   cli> [34mℹ[39m 23 files, total: 1.49 MB
+[2026-05-02T13:23:35.280Z] [step 6]   cli> [32m✔[39m Build complete in [32m813ms[39m
+[2026-05-02T13:23:35.280Z] [step 6]   cli> ≈ tailwindcss v4.2.4
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Done in 88ms
+[2026-05-02T13:23:35.280Z] [step 6]   cli> [spec-change]       done (4.0s)
+[2026-05-02T13:23:35.280Z] [step 6]   cli> [spec-change] [4/5] Install dependencies (ph-e2e-test-cli)...
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1, reused 0, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 110, reused 110, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 398, reused 367, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 879, reused 790, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1214, reused 1103, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1470, reused 1358, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1692, reused 1564, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1770, reused 1642, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1837, reused 1708, downloaded 0, added 0
+[2026-05-02T13:23:35.280Z] [step 6]   cli> WARN  12 deprecated subdependencies found: @apollo/server-gateway-interface@1.1.1, @types/minimatch@6.0.0, glob@10.5.0, glob@7.2.3, inflight@1.0.6, lodash.isequal@4.5.0, multibase@4.0.6, multicodec@3.2.1, node-domexception@1.0.0, rimraf@2.7.1, sudo-prompt@8.2.5, uuid@9.0.1
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Packages: +1776
+[2026-05-02T13:23:35.280Z] [step 6]   cli> ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1840, reused 1712, downloaded 0, added 905
+[2026-05-02T13:23:35.280Z] [step 6]   cli> Progress: resolved 1840, reused 1712, downloaded 0, added 1776, done
+[2026-05-02T13:23:35.281Z] [step 6]   cli> WARN  Issues with peer dependencies found
+[2026-05-02T13:23:35.281Z] [step 6]   cli> .
+[2026-05-02T13:23:35.281Z] [step 6]   cli> ├─┬ @powerhousedao/reactor 6.0.0-dev.211
+[2026-05-02T13:23:35.281Z] [step 6]   cli> │ └─┬ document-model 6.0.0-dev.211
+[2026-05-02T13:23:35.281Z] [step 6]   cli> │   └─┬ tsdown 0.21.1
+[2026-05-02T13:23:35.281Z] [step 6]   cli> │     └── ✕ unmet peer typescript@^5.0.0: found 6.0.3
+[2026-05-02T13:23:35.281Z] [step 6]   cli> ├─┬ @powerhousedao/ph-e2e-test-app 1.0.0
+[2026-05-02T13:23:35.281Z] [step 6]   cli> │ └─┬ @powerhousedao/connect 6.0.0-dev.211
+[2026-05-02T13:23:35.281Z] [step 6]   cli> │   └─┬ @powerhousedao/powerhouse-vetra-packages 6.0.0-dev.211
+[2026-05-02T13:23:35.281Z] [step 6]   cli> │     └─┬ react-i18next 16.5.4
+[2026-05-02T13:23:35.281Z] [step 6]   cli> │       └── ✕ unmet peer typescript@^5: found 6.0.3
+[2026-05-02T13:23:35.281Z] [step 6]   cli> └─┬ @powerhousedao/ph-clint-dev 0.1.0-dev.45
+[2026-05-02T13:23:35.281Z] [step 6]   cli> └─┬ @powerhousedao/ph-clint 0.1.0-dev.45
+[2026-05-02T13:23:35.281Z] [step 6]   cli> ├── ✕ unmet peer kysely@^0.27.0: found 0.28.16
+[2026-05-02T13:23:35.281Z] [step 6]   cli> └── ✕ unmet peer @electric-sql/pglite@^0.2.0: found 0.3.15
+[2026-05-02T13:23:35.281Z] [step 6]   cli> dependencies:
+[2026-05-02T13:23:35.281Z] [step 6]   cli> + @powerhousedao/ph-clint 0.1.0-dev.45
+[2026-05-02T13:23:35.281Z] [step 6]   cli> + @powerhousedao/ph-e2e-test-app 1.0.0
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + @powerhousedao/reactor 6.0.0-dev.211
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + @powerhousedao/reactor-api 6.0.0-dev.211
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + @powerhousedao/shared 6.0.0-dev.211
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + document-model 6.0.0-dev.211
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + zod 4.4.2
+[2026-05-02T13:23:35.282Z] [step 6]   cli> devDependencies:
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + @jest/globals 30.3.0
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + @powerhousedao/ph-clint-dev 0.1.0-dev.45
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + @types/node 25.6.0
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + jest 30.3.0
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + ts-jest 29.4.9
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + tsx 4.21.0
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + typescript 6.0.3
+[2026-05-02T13:23:35.282Z] [step 6]   cli> + typescript-eslint 8.59.1
+[2026-05-02T13:23:35.282Z] [step 6]   cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+[2026-05-02T13:23:35.282Z] [step 6]   cli> │                                                                              │
+[2026-05-02T13:23:35.282Z] [step 6]   cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @sentry/cli@2.58.5,       │
+[2026-05-02T13:23:35.282Z] [step 6]   cli> │   esbuild@0.14.54, esbuild@0.27.7, protobufjs@7.5.6, unrs-resolver@1.11.1.   │
+[2026-05-02T13:23:35.283Z] [step 6]   cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+[2026-05-02T13:23:35.283Z] [step 6]   cli> │   to run scripts.                                                            │
+[2026-05-02T13:23:35.283Z] [step 6]   cli> │                                                                              │
+[2026-05-02T13:23:35.283Z] [step 6]   cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+[2026-05-02T13:23:35.283Z] [step 6]   cli> Done in 10s using pnpm v10.26.0
+[2026-05-02T13:23:35.283Z] [step 6]   cli> [spec-change]       done (10.2s)
+[2026-05-02T13:23:35.283Z] [step 6]   cli> [spec-change] [5/5] Build (ph-e2e-test-cli)...
+[2026-05-02T13:23:35.283Z] [step 6]   cli> > @powerhousedao/ph-e2e-test-cli@0.1.0 build /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+[2026-05-02T13:23:35.283Z] [step 6]   cli> > pnpm build:skills && tsc && pnpm build:manifest
+[2026-05-02T13:23:35.283Z] [step 6]   cli> > @powerhousedao/ph-e2e-test-cli@0.1.0 build:skills /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+[2026-05-02T13:23:35.283Z] [step 6]   cli> > tsx scripts/build-skills.ts
+[2026-05-02T13:23:35.283Z] [step 6]   cli> Building skills from /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli/prompts
+[2026-05-02T13:23:35.283Z] [step 6]   cli> --- Building SKILL.md files (templates) ---
+[2026-05-02T13:23:35.283Z] [step 6]   cli> --- Copying external skills ---
+[2026-05-02T13:23:35.283Z] [step 6]   cli> Done.
+[2026-05-02T13:23:35.283Z] [step 6]   cli> > @powerhousedao/ph-e2e-test-cli@0.1.0 build:manifest /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+[2026-05-02T13:23:35.283Z] [step 6]   cli> > build-manifest
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [spec-change]       done (1.6s)
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [spec-change]
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [spec-change] Post-generation: 5 steps completed successfully.
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [spec-change] Ready — run `pnpm dev` to start.
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] found pending Dev publish for doc 4743b751-f481-4431-8041-8fca23d21e63 (id=e2e-publish-1, version=0.0.1)
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] marking record e2e-publish-1 as InProgress
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] running pnpm install in /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] invoking clint-project-publish --tag dev
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] Loading config...
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] Group: ph-e2e-test
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] Pre-flight checks...
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] Version: 0.1.0-dev.0
+[2026-05-02T13:23:35.284Z] [step 6]   cli> [publish] Publish plan:
+[2026-05-02T13:23:35.284Z] [step 6]   cli> Group:    ph-e2e-test
+[2026-05-02T13:23:35.284Z] [step 6]   cli> Version:  0.1.0-dev.0
+[2026-05-02T13:23:35.284Z] [step 6]   cli> Tag:      dev
+[2026-05-02T13:23:35.284Z] [step 6]   cli> Registry: https://registry.npmjs.org
+[2026-05-02T13:23:35.284Z] [step 6]   cli> Packages:
+[2026-05-02T13:23:35.285Z] [step 6]   cli> - @powerhousedao/ph-e2e-test-app
+[2026-05-02T13:23:35.285Z] [step 6]   cli> - @powerhousedao/ph-e2e-test-cli
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish] Building...
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   Building Connect assets for @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app (connect)
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   Reinstalling @powerhousedao/ph-e2e-test-cli (file: deps were rebuilt)...
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-cli...
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish] Preparing package.json files...
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish] Validating packages...
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-05-02T13:23:35.285Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish] Publishing...
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish]   (will also set "latest" dist-tag — no higher-stability release exists)
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish]   Publishing @powerhousedao/ph-e2e-test-app...
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish]   Publishing @powerhousedao/ph-e2e-test-cli...
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish]   Setting latest dist-tag...
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish]
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish] ──────────────────────────────────────────────────
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish] PUBLISH SUMMARY
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish] ──────────────────────────────────────────────────
+[2026-05-02T13:23:35.286Z] [step 6]   cli> [publish] Version:  0.1.0-dev.0
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [publish] Tag:      dev
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [publish] Registry: https://registry.npmjs.org
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [publish] Packages:
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [publish]   - @powerhousedao/ph-e2e-test-app@0.1.0-dev.0
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [publish]   - @powerhousedao/ph-e2e-test-cli@0.1.0-dev.0
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [publish] ──────────────────────────────────────────────────
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [publish] marking record e2e-publish-1 as Succeeded
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [spec-change] regenerating ph-e2e-test at /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test (doc=4743b751-f481-4431-8041-8fca23d21e63)
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [spec-change] regenerated ph-e2e-test in 13ms: 5 written, 0 skipped, 0 deleted
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [spec-change]
+[2026-05-02T13:23:35.287Z] [step 6]   cli> Post-generation steps (2):
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [spec-change]   1. Install dependencies (ph-e2e-test-cli)
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [spec-change]   2. Build (ph-e2e-test-cli)
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [spec-change]
+[2026-05-02T13:23:35.287Z] [step 6]   cli> [spec-change] [1/2] Install dependencies (ph-e2e-test-cli)...
+  cli> Progress: resolved 1, reused 0, downloaded 0, added 0
+[2026-05-02T13:23:35.677Z] [step 6] npm state after publish:
+[2026-05-02T13:23:35.678Z] [step 6]   @powerhousedao/ph-e2e-test-cli: versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10, 0.0.1-dev.11], dev=0.0.1-dev.11
+[2026-05-02T13:23:35.678Z] [step 6]   @powerhousedao/ph-e2e-test-app: versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10, 0.0.1-dev.11, 0.1.0-dev.0], dev=0.1.0-dev.0
+[2026-05-02T13:23:35.678Z] [step 6]   Expected version: 0.0.1-dev.12
+[2026-05-02T13:23:35.679Z] [step 7] Checking npm for @powerhousedao/ph-e2e-test-cli@0.0.1-dev.12...
+[2026-05-02T13:23:35.758Z] [step 7] Current npm versions:
+[2026-05-02T13:23:35.758Z] [step 7]   CLI: [0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10, 0.0.1-dev.11]
+[2026-05-02T13:23:35.759Z] [step 7]   App: [0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10, 0.0.1-dev.11, 0.1.0-dev.0]
+[2026-05-02T13:23:35.759Z] [step 7] 0.0.1-dev.12 not yet visible, waiting...
+  cli> Progress: resolved 1246, reused 1143, downloaded 0, added 0
+  cli> Progress: resolved 1836, reused 1708, downloaded 0, added 0
+  cli> WARN  12 deprecated subdependencies found: @apollo/server-gateway-interface@1.1.1, @types/minimatch@6.0.0, glob@10.5.0, glob@7.2.3, inflight@1.0.6, lodash.isequal@4.5.0, multibase@4.0.6, multicodec@3.2.1, node-domexception@1.0.0, rimraf@2.7.1, sudo-prompt@8.2.5, uuid@9.0.1
+  cli> Packages: +1
+  cli> +
+  cli> Progress: resolved 1840, reused 1712, downloaded 0, added 1, done
+  cli> WARN  Issues with peer dependencies found
+  cli> .
+  cli> ├─┬ @powerhousedao/reactor 6.0.0-dev.211
+  cli> │ └─┬ document-model 6.0.0-dev.211
+  cli> │   └─┬ tsdown 0.21.1
+  cli> │     └── ✕ unmet peer typescript@^5.0.0: found 6.0.3
+  cli> ├─┬ @powerhousedao/ph-e2e-test-app 0.1.0-dev.0
+  cli> │ └─┬ @powerhousedao/connect 6.0.0-dev.211
+  cli> │   └─┬ @powerhousedao/powerhouse-vetra-packages 6.0.0-dev.211
+  cli> │     └─┬ react-i18next 16.5.4
+  cli> │       └── ✕ unmet peer typescript@^5: found 6.0.3
+  cli> └─┬ @powerhousedao/ph-clint-dev 0.1.0-dev.45
+  cli> └─┬ @powerhousedao/ph-clint 0.1.0-dev.45
+  cli> ├── ✕ unmet peer @electric-sql/pglite@^0.2.0: found 0.3.15
+  cli> └── ✕ unmet peer kysely@^0.27.0: found 0.28.16
+  cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+  cli> │                                                                              │
+  cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @sentry/cli@2.58.5,       │
+  cli> │   esbuild@0.14.54, esbuild@0.27.7, protobufjs@7.5.6, unrs-resolver@1.11.1.   │
+  cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+  cli> │   to run scripts.                                                            │
+  cli> │                                                                              │
+  cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+  cli> Done in 3.3s using pnpm v10.26.0
+  cli> [spec-change]       done (3.4s)
+  cli> [spec-change] [2/2] Build (ph-e2e-test-cli)...
+  cli> > @powerhousedao/ph-e2e-test-cli@0.0.1 build /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+  cli> > pnpm build:skills && tsc && pnpm build:manifest
+  cli> > @powerhousedao/ph-e2e-test-cli@0.0.1 build:skills /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+  cli> > tsx scripts/build-skills.ts
+  cli> Building skills from /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli/prompts
+  cli> --- Building SKILL.md files (templates) ---
+  cli> --- Copying external skills ---
+  cli> Done.
+  cli> > @powerhousedao/ph-e2e-test-cli@0.0.1 build:manifest /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+  cli> > build-manifest
+  cli> [spec-change]       done (1.5s)
+  cli> [spec-change]
+  cli> [spec-change] Post-generation: 2 steps completed successfully.
+  cli> [spec-change] Ready — run `pnpm dev` to start.
+[2026-05-02T13:24:02.857Z] [npm] attempt 6: @powerhousedao/ph-e2e-test-cli has 13 versions (latest: 0.1.0-dev.0, dev tag: 0.1.0-dev.0), waiting for 0.0.1-dev.12
+[2026-05-02T13:24:33.700Z] [npm] attempt 12: @powerhousedao/ph-e2e-test-cli has 13 versions (latest: 0.1.0-dev.0, dev tag: 0.1.0-dev.0), waiting for 0.0.1-dev.12
+[2026-05-02T13:25:04.348Z] [npm] attempt 18: @powerhousedao/ph-e2e-test-cli has 13 versions (latest: 0.1.0-dev.0, dev tag: 0.1.0-dev.0), waiting for 0.0.1-dev.12
+[2026-05-02T13:25:35.039Z] [npm] attempt 24: @powerhousedao/ph-e2e-test-cli has 13 versions (latest: 0.1.0-dev.0, dev tag: 0.1.0-dev.0), waiting for 0.0.1-dev.12
+[2026-05-02T13:26:05.693Z] [npm] attempt 30: @powerhousedao/ph-e2e-test-cli has 13 versions (latest: 0.1.0-dev.0, dev tag: 0.1.0-dev.0), waiting for 0.0.1-dev.12
+[2026-05-02T13:26:36.217Z] [step 8] Installing @powerhousedao/ph-e2e-test-cli@undefined...
+[2026-05-02T13:26:36.217Z] [step 8] Install dir: /tmp/ph-clint-e2e-install-rqdBgX
+[2026-05-02T13:26:36.218Z] [step 8] Running: npm install @powerhousedao/ph-e2e-test-cli@undefined
+[2026-05-02T13:26:36.975Z] [teardown] Stopping CLI...
+[2026-05-02T13:26:36.975Z] --- final CLI output: last 50 CLI output lines ---
+[2026-05-02T13:26:36.975Z]   cli> [spec-change]   2. Build (ph-e2e-test-cli)
+[2026-05-02T13:26:36.976Z]   cli> [spec-change]
+[2026-05-02T13:26:36.976Z]   cli> [spec-change] [1/2] Install dependencies (ph-e2e-test-cli)...
+[2026-05-02T13:26:36.976Z]   cli> Progress: resolved 1, reused 0, downloaded 0, added 0
+[2026-05-02T13:26:36.976Z]   cli> Progress: resolved 1246, reused 1143, downloaded 0, added 0
+[2026-05-02T13:26:36.976Z]   cli> Progress: resolved 1836, reused 1708, downloaded 0, added 0
+[2026-05-02T13:26:36.976Z]   cli> WARN  12 deprecated subdependencies found: @apollo/server-gateway-interface@1.1.1, @types/minimatch@6.0.0, glob@10.5.0, glob@7.2.3, inflight@1.0.6, lodash.isequal@4.5.0, multibase@4.0.6, multicodec@3.2.1, node-domexception@1.0.0, rimraf@2.7.1, sudo-prompt@8.2.5, uuid@9.0.1
+[2026-05-02T13:26:36.976Z]   cli> Packages: +1
+[2026-05-02T13:26:36.976Z]   cli> +
+[2026-05-02T13:26:36.976Z]   cli> Progress: resolved 1840, reused 1712, downloaded 0, added 1, done
+[2026-05-02T13:26:36.976Z]   cli> WARN  Issues with peer dependencies found
+[2026-05-02T13:26:36.977Z]   cli> .
+[2026-05-02T13:26:36.977Z]   cli> ├─┬ @powerhousedao/reactor 6.0.0-dev.211
+[2026-05-02T13:26:36.977Z]   cli> │ └─┬ document-model 6.0.0-dev.211
+[2026-05-02T13:26:36.977Z]   cli> │   └─┬ tsdown 0.21.1
+[2026-05-02T13:26:36.977Z]   cli> │     └── ✕ unmet peer typescript@^5.0.0: found 6.0.3
+[2026-05-02T13:26:36.977Z]   cli> ├─┬ @powerhousedao/ph-e2e-test-app 0.1.0-dev.0
+[2026-05-02T13:26:36.977Z]   cli> │ └─┬ @powerhousedao/connect 6.0.0-dev.211
+[2026-05-02T13:26:36.977Z]   cli> │   └─┬ @powerhousedao/powerhouse-vetra-packages 6.0.0-dev.211
+[2026-05-02T13:26:36.977Z]   cli> │     └─┬ react-i18next 16.5.4
+[2026-05-02T13:26:36.977Z]   cli> │       └── ✕ unmet peer typescript@^5: found 6.0.3
+[2026-05-02T13:26:36.977Z]   cli> └─┬ @powerhousedao/ph-clint-dev 0.1.0-dev.45
+[2026-05-02T13:26:36.978Z]   cli> └─┬ @powerhousedao/ph-clint 0.1.0-dev.45
+[2026-05-02T13:26:36.978Z]   cli> ├── ✕ unmet peer @electric-sql/pglite@^0.2.0: found 0.3.15
+[2026-05-02T13:26:36.978Z]   cli> └── ✕ unmet peer kysely@^0.27.0: found 0.28.16
+[2026-05-02T13:26:36.978Z]   cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+[2026-05-02T13:26:36.978Z]   cli> │                                                                              │
+[2026-05-02T13:26:36.978Z]   cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @sentry/cli@2.58.5,       │
+[2026-05-02T13:26:36.978Z]   cli> │   esbuild@0.14.54, esbuild@0.27.7, protobufjs@7.5.6, unrs-resolver@1.11.1.   │
+[2026-05-02T13:26:36.978Z]   cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+[2026-05-02T13:26:36.978Z]   cli> │   to run scripts.                                                            │
+[2026-05-02T13:26:36.978Z]   cli> │                                                                              │
+[2026-05-02T13:26:36.979Z]   cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+[2026-05-02T13:26:36.979Z]   cli> Done in 3.3s using pnpm v10.26.0
+[2026-05-02T13:26:36.979Z]   cli> [spec-change]       done (3.4s)
+[2026-05-02T13:26:36.979Z]   cli> [spec-change] [2/2] Build (ph-e2e-test-cli)...
+[2026-05-02T13:26:36.979Z]   cli> > @powerhousedao/ph-e2e-test-cli@0.0.1 build /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+[2026-05-02T13:26:36.979Z]   cli> > pnpm build:skills && tsc && pnpm build:manifest
+[2026-05-02T13:26:36.979Z]   cli> > @powerhousedao/ph-e2e-test-cli@0.0.1 build:skills /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+[2026-05-02T13:26:36.979Z]   cli> > tsx scripts/build-skills.ts
+[2026-05-02T13:26:36.979Z]   cli> Building skills from /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli/prompts
+[2026-05-02T13:26:36.979Z]   cli> --- Building SKILL.md files (templates) ---
+[2026-05-02T13:26:36.979Z]   cli> --- Copying external skills ---
+[2026-05-02T13:26:36.980Z]   cli> Done.
+[2026-05-02T13:26:36.980Z]   cli> > @powerhousedao/ph-e2e-test-cli@0.0.1 build:manifest /tmp/ph-clint-e2e-PZq9RX/ph-e2e-test/ph-e2e-test-cli
+[2026-05-02T13:26:36.980Z]   cli> > build-manifest
+[2026-05-02T13:26:36.980Z]   cli> [spec-change]       done (1.5s)
+[2026-05-02T13:26:36.980Z]   cli> [spec-change]
+[2026-05-02T13:26:36.980Z]   cli> [spec-change] Post-generation: 2 steps completed successfully.
+[2026-05-02T13:26:36.980Z]   cli> [spec-change] Ready — run `pnpm dev` to start.
+[2026-05-02T13:26:36.980Z] --- end final CLI output ---
+  cli> ph-clint-studio still active [2m`/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-app`[0m
+  cli> [2mRun `ph-clint ph-clint-studio-stop` to shut it down[0m
+[2026-05-02T13:26:38.999Z] [teardown] Cleaning up workdir: /tmp/ph-clint-e2e-PZq9RX
+[2026-05-02T13:27:02.894Z] [teardown] Done.

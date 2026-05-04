@@ -12,31 +12,31 @@ import { buildSpec, init } from '../../src/commands/clint-project-init.js';
 describe('buildSpec', () => {
   it('splits a scoped name into { scope, name }', () => {
     const spec = buildSpec({
-      name: '@acme/foo',
+      name: '@acme/foo-cli',
       enablePowerhouse: false,
       enableMastra: false,
       enableRoutine: false,
       force: false,
     });
-    expect(spec.name).toBe('foo');
-    expect(spec.scope).toBe('acme');
+    expect(spec.name).toBe('foo-cli');
+    expect(spec.scope).toBe('@acme');
   });
 
   it('passes a bare name through unchanged', () => {
     const spec = buildSpec({
-      name: 'foo',
+      name: 'foo-cli',
       enablePowerhouse: false,
       enableMastra: false,
       enableRoutine: false,
       force: false,
     });
-    expect(spec.name).toBe('foo');
+    expect(spec.name).toBe('foo-cli');
     expect(spec.scope).toBeUndefined();
   });
 
   it('forces routine on when mastra is enabled', () => {
     const spec = buildSpec({
-      name: 'foo',
+      name: 'foo-cli',
       enablePowerhouse: false,
       enableMastra: true,
       enableRoutine: false,
@@ -48,14 +48,14 @@ describe('buildSpec', () => {
 
   it('populates agent defaults when mastra is enabled', () => {
     const spec = buildSpec({
-      name: 'foo',
+      name: 'foo-cli',
       enablePowerhouse: false,
       enableMastra: true,
       enableRoutine: false,
       force: false,
     });
-    expect(spec.features.mastra.agentId).toBe('foo-agent');
-    expect(spec.features.mastra.agentName).toBe('Foo Agent');
+    expect(spec.features.mastra.agentId).toBe('foo-cli-agent');
+    expect(spec.features.mastra.agentName).toBe('Foo Cli Agent');
     expect(spec.features.mastra.models).toEqual([
       { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
     ]);
@@ -66,7 +66,7 @@ describe('buildSpec', () => {
 
   it('leaves agent fields null/empty when mastra is disabled', () => {
     const spec = buildSpec({
-      name: 'foo',
+      name: 'foo-cli',
       enablePowerhouse: false,
       enableMastra: false,
       enableRoutine: false,
@@ -80,7 +80,7 @@ describe('buildSpec', () => {
 
   it('preserves routine off when mastra is off', () => {
     const spec = buildSpec({
-      name: 'foo',
+      name: 'foo-cli',
       enablePowerhouse: false,
       enableMastra: false,
       enableRoutine: false,
@@ -115,7 +115,7 @@ describe('buildSpec', () => {
 
   it('stores description when provided', () => {
     const spec = buildSpec({
-      name: 'foo',
+      name: 'foo-cli',
       description: 'a test project',
       enablePowerhouse: false,
       enableMastra: false,
@@ -166,7 +166,7 @@ describe('init.execute', () => {
     const result = await init.execute(
       {
         dir: '.',
-        name: 'foo',
+        name: 'foo-cli',
         description: '',
         enablePowerhouse: false,
         enableMastra: false,
@@ -191,7 +191,7 @@ describe('init.execute', () => {
     const result = await init.execute(
       {
         dir: '.',
-        name: 'foo',
+        name: 'foo-cli',
         description: '',
         enablePowerhouse: false,
         enableMastra: false,

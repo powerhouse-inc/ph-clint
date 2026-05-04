@@ -43,14 +43,14 @@ describe('generateProject — create mode', () => {
 
   it('refuses to write into a non-empty directory', async () => {
     await fs.writeFile(path.join(tmp, 'existing.txt'), 'x');
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await expect(
       generateProject({ targetDir: tmp, spec }),
     ).rejects.toThrow(/not empty/);
   });
 
   it('writes a no-features flat project with the expected files', async () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const result = await generateProject({ targetDir: tmp, spec });
 
     expect(await exists(path.join(tmp, 'package.json'))).toBe(true);
@@ -69,12 +69,12 @@ describe('generateProject — create mode', () => {
 
     // Spec persisted.
     const loaded = await readProjectSpec(tmp);
-    expect(loaded?.name).toBe('foo');
+    expect(loaded?.name).toBe('foo-cli');
   });
 
   it('writes a split-layout project when Powerhouse is enabled', async () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({ targetDir: tmp, spec });
@@ -93,7 +93,7 @@ describe('generateProject — create mode', () => {
 
   it('emits an agent file when Mastra is enabled', async () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
     await generateProject({ targetDir: tmp, spec });
@@ -113,7 +113,7 @@ describe('generateProject — create mode', () => {
       for (const m of [false, true]) {
         for (const r of [false, true]) {
           combos.push({
-            name: 'proj',
+            name: 'proj-cli',
             features: {
               powerhouse: p,
               mastra: { enabled: m },

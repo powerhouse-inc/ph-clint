@@ -9,8 +9,8 @@ import {
 
 describe('clintProjectSpecSchema', () => {
   it('accepts a minimal spec and applies defaults', () => {
-    const parsed = clintProjectSpecSchema.parse({ name: 'myproj' });
-    expect(parsed.name).toBe('myproj');
+    const parsed = clintProjectSpecSchema.parse({ name: 'myproj-cli' });
+    expect(parsed.name).toBe('myproj-cli');
     expect(parsed.version).toBe('0.0.1-dev.0');
     expect(parsed.description).toBe('');
     expect(parsed.features.powerhouse).toBe('Disabled');
@@ -22,15 +22,16 @@ describe('clintProjectSpecSchema', () => {
     expect(parsed.features.routine.enabled).toBe(false);
   });
 
-  it('rejects invalid names (uppercase, leading dash)', () => {
+  it('rejects invalid names (uppercase, leading dash, no -cli suffix)', () => {
     expect(() => clintProjectSpecSchema.parse({ name: 'MyProj' })).toThrow();
-    expect(() => clintProjectSpecSchema.parse({ name: '-myproj' })).toThrow();
+    expect(() => clintProjectSpecSchema.parse({ name: '-myproj-cli' })).toThrow();
     expect(() => clintProjectSpecSchema.parse({ name: '' })).toThrow();
+    expect(() => clintProjectSpecSchema.parse({ name: 'myproj' })).toThrow();
   });
 
   it('preserves explicit feature toggles', () => {
     const parsed = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: {
         powerhouse: 'Connect',
         mastra: { enabled: true },
@@ -44,27 +45,22 @@ describe('clintProjectSpecSchema', () => {
 
 describe('spec name helpers', () => {
   it('composes a scoped package name', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo', scope: 'acme' });
-    expect(getPackageName(spec)).toBe('@acme/foo');
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli', scope: '@acme' });
+    expect(getPackageName(spec)).toBe('@acme/foo-cli');
   });
 
   it('composes an unscoped package name', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
-    expect(getPackageName(spec)).toBe('foo');
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
+    expect(getPackageName(spec)).toBe('foo-cli');
   });
 
-  it('defaults bin name to the project name when unset', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+  it('derives bin name by stripping -cli suffix', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     expect(getBinName(spec)).toBe('foo');
   });
 
-  it('honours an explicit bin name', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo', bin: 'foobar' });
-    expect(getBinName(spec)).toBe('foobar');
-  });
-
   it('derives split-layout folder names', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     expect(getCliFolderName(spec)).toBe('foo-cli');
     expect(getAppFolderName(spec)).toBe('foo-app');
   });

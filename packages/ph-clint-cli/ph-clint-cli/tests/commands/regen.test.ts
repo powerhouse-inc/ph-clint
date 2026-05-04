@@ -43,7 +43,7 @@ describe('regen command', () => {
     await init.execute(
       {
         dir: '.',
-        name: 'foo',
+        name: 'foo-cli',
         description: '',
         enablePowerhouse: false,
         enableMastra: false,
@@ -91,7 +91,7 @@ describe('regen command', () => {
     // Edit the managed package.json.
     const pkgPath = path.join(tmp, 'package.json');
     const original = await fs.readFile(pkgPath, 'utf8');
-    await fs.writeFile(pkgPath, original.replace('foo', 'tampered'), 'utf8');
+    await fs.writeFile(pkgPath, original.replace('foo-cli', 'tampered'), 'utf8');
 
     // Tweak the spec to trigger a rewrite attempt.
     const specPath = path.join(tmp, '.ph/ph-clint-cli/project-spec.json');

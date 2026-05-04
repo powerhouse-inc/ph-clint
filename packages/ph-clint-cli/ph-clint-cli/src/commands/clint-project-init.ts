@@ -61,7 +61,7 @@ type InitInput = z.output<typeof inputSchema>;
 /** Parse `@scope/name` into { scope, name }. */
 function splitPackageName(raw: string): { scope?: string; name: string } {
   const match = /^@([a-z0-9][a-z0-9-]*)\/([a-z0-9][a-z0-9-]*)$/.exec(raw);
-  if (match) return { scope: match[1], name: match[2] };
+  if (match) return { scope: `@${match[1]}`, name: match[2] };
   if (raw.startsWith('@')) {
     throw new Error(
       `invalid package name "${raw}" — expected "@scope/name" with lowercase letters, digits, hyphens`,

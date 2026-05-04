@@ -8,13 +8,15 @@
  */
 import {
   type ClintProjectSpec,
-  getPackageName,
+  getAppFolderName,
+  getBinName,
+  getCliFolderName,
   phAtLeast,
 } from '../../spec/types.js';
 
 export function buildRootPackageJson(spec: ClintProjectSpec): string {
-  const cli = `${spec.name}-cli`;
-  const app = `${spec.name}-app`;
+  const cli = getCliFolderName(spec);
+  const app = getAppFolderName(spec);
 
   const prefix = (dir: string, cmd: string) => `pnpm --prefix ${dir} ${cmd}`;
   const both = (cmd: string) => `${prefix(app, cmd)} && ${prefix(cli, cmd)}`;
@@ -38,7 +40,7 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
   };
 
   const pkg = {
-    name: getPackageName(spec),
+    name: spec.scope ? `${spec.scope}/${getBinName(spec)}` : getBinName(spec),
     version: spec.version,
     private: true,
     type: 'module',

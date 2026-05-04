@@ -30,7 +30,6 @@ export function specFromDocumentState(
     scope: state.scope ?? undefined,
     version: state.version,
     description: state.description,
-    bin: state.bin ?? undefined,
     features: {
       powerhouse: state.features.powerhouse,
       mastra: { ...state.features.mastra },

@@ -48,7 +48,7 @@ describe('runPhInit', () => {
     await fs.writeFile(path.join(appDir, '.gitkeep'), '', 'utf8');
 
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const logs: string[] = [];

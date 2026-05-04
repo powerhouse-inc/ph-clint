@@ -77,14 +77,14 @@ describe('buildBuildSkillsScript', () => {
 
 describe('buildMastraIndexTs', () => {
   it('mastra off — emits a no-op placeholder', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const out = buildMastraIndexTs(spec);
     expect(out).toContain('export {};');
   });
 
   it('mastra on without agent config — placeholder', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
     const out = buildMastraIndexTs(spec);
@@ -94,7 +94,7 @@ describe('buildMastraIndexTs', () => {
 
   it('mastra on with full agent config — real Mastra instance', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: {
         mastra: {
           enabled: true,
@@ -114,25 +114,25 @@ describe('buildMastraIndexTs', () => {
 
 describe('buildAgentBaseMd', () => {
   it('mentions the package name', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo', scope: 'acme' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli', scope: '@acme' });
     const out = buildAgentBaseMd(spec);
-    expect(out).toContain('@acme/foo');
+    expect(out).toContain('@acme/foo-cli');
     expect(out).toContain('{{agentName}}');
   });
 });
 
 describe('buildAgentTs', () => {
   it('emits a demo agent when no agent config', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const out = buildAgentTs(spec);
     expect(out).toContain('export async function createAgent');
-    expect(out).toContain("id: 'foo'");
+    expect(out).toContain("id: 'foo-cli'");
     expect(out).toContain('createDemoAgent');
   });
 
   it('emits a real Mastra agent when full config is present', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: {
         mastra: {
           enabled: true,
@@ -154,7 +154,7 @@ describe('buildAgentTs', () => {
 
 describe('buildSmokeTestTs', () => {
   it('emits a Jest test that imports cli.ts', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const out = buildSmokeTestTs(spec);
     expect(out).toContain("import { describe, it, expect } from '@jest/globals'");
     expect(out).toContain("describe('foo'");
@@ -162,8 +162,8 @@ describe('buildSmokeTestTs', () => {
     expect(out).toContain('expect(cli).toBeDefined()');
   });
 
-  it('uses custom bin name when set', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo', bin: 'bar' });
+  it('derives describe label from name by stripping -cli', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'bar-cli' });
     const out = buildSmokeTestTs(spec);
     expect(out).toContain("describe('bar'");
   });
@@ -171,7 +171,7 @@ describe('buildSmokeTestTs', () => {
 
 describe('buildReadme', () => {
   it('flat project — no split-layout section', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const out = buildReadme(spec);
     expect(out).toContain('# foo');
     expect(out).not.toContain('## Split layout');
@@ -179,12 +179,12 @@ describe('buildReadme', () => {
 
   it('powerhouse on — mentions the split-layout `ph init` step', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const out = buildReadme(spec);
     expect(out).toContain('## Split layout');
-    expect(out).toContain('foo-app');
+    expect(out).toContain('foo-cli-app');
     expect(out).toContain('ph init');
   });
 });

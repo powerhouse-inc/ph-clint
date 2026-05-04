@@ -43,14 +43,14 @@ describe('generateProject — flat → split migration', () => {
 
   it('moves flat files into {name}-cli/ when powerhouse flips on', async () => {
     // Create flat.
-    const flat = clintProjectSpecSchema.parse({ name: 'foo' });
+    const flat = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec: flat });
     expect(await exists(path.join(tmp, 'src/cli.ts'))).toBe(true);
     expect(await exists(path.join(tmp, 'foo-cli'))).toBe(false);
 
     // Flip Powerhouse on.
     const split = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
@@ -70,13 +70,13 @@ describe('generateProject — flat → split migration', () => {
   });
 
   it('rekeys stored hashes under {name}-cli/ after migration', async () => {
-    const flat = clintProjectSpecSchema.parse({ name: 'foo' });
+    const flat = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec: flat });
     const before = await readHashes(tmp);
     expect(Object.keys(before)).toContain('src/cli.ts');
 
     const split = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     await generateProject({ targetDir: tmp, spec: split, force: true });
@@ -93,7 +93,7 @@ describe('generateProject — flat → split migration', () => {
     spawnSync('git', ['config', 'user.name', 'test'], { cwd: tmp });
     spawnSync('git', ['config', 'commit.gpgsign', 'false'], { cwd: tmp });
 
-    const flat = clintProjectSpecSchema.parse({ name: 'foo' });
+    const flat = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await generateProject({ targetDir: tmp, spec: flat });
 
     // Commit the generated tree.
@@ -104,7 +104,7 @@ describe('generateProject — flat → split migration', () => {
     await fs.writeFile(path.join(tmp, 'src/cli.ts'), '// dirty\n', 'utf8');
 
     const split = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     await expect(
@@ -125,7 +125,7 @@ describe('generateProject — flat → split migration', () => {
     );
 
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const warnings: string[] = [];

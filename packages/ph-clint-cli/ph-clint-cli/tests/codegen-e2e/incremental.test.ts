@@ -136,7 +136,7 @@ describe.each(TRANSITIONS)(
         // Mastra flips off → agent.ts deleted.
         if (fromSpec.features.mastra.enabled && !toSpec.features.mastra.enabled) {
           const agentRelPath = toIsSplit
-            ? `${toSpec.name}-cli/src/agents/agent.ts`
+            ? `${toSpec.name}/src/agents/agent.ts`
             : 'src/agents/agent.ts';
           expect(tree).not.toContain(agentRelPath);
           expect(updateResult.deleted.map((f) => f.relativePath)).toContain(
@@ -147,7 +147,7 @@ describe.each(TRANSITIONS)(
         // Mastra flips on → agent.ts appears.
         if (!fromSpec.features.mastra.enabled && toSpec.features.mastra.enabled) {
           const agentRelPath = toIsSplit
-            ? `${toSpec.name}-cli/src/agents/agent.ts`
+            ? `${toSpec.name}/src/agents/agent.ts`
             : 'src/agents/agent.ts';
           expect(tree).toContain(agentRelPath);
         }
@@ -157,7 +157,7 @@ describe.each(TRANSITIONS)(
           toSpec.features.mastra.enabled &&
           toSpec.features.mastra.profiles.length > 0
         ) {
-          const prefix = toIsSplit ? `${toSpec.name}-cli/` : '';
+          const prefix = toIsSplit ? `${toSpec.name}/` : '';
           expect(tree).not.toContain(
             `${prefix}prompts/agent-profiles/AgentBase.md`,
           );
@@ -171,7 +171,7 @@ describe.each(TRANSITIONS)(
         // Migration produced split layout.
         if (migrates) {
           expect(
-            tree.some((f) => f.startsWith(`${toSpec.name}-cli/`)),
+            tree.some((f) => f.startsWith(`${toSpec.name}/`)),
           ).toBe(true);
           expect(tree).not.toContain('src/cli.ts');
         }

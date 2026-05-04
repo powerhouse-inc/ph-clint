@@ -1,0 +1,52 @@
+=== E2E switchboard test started at 2026-04-25T09:25:17.576Z ===
+[2026-04-25T09:25:17.576Z] [setup] Creating temp workdir and starting ph-clint-cli...
+[2026-04-25T09:25:17.586Z] [setup] Log file: /home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/switchboard-e2e-2026-04-25T09-25-17-573Z.log
+[2026-04-25T09:25:17.587Z] [setup] Workdir: /tmp/ph-clint-e2e-mINWPo
+  cli> Reactor ready (drive: 077a2c91-7072-4d07-a047-0d82f2f1021a)
+  cli> [11:25:22.68] [reactor-api][package-manager] Loading packages: null
+  cli> [11:25:22.68] [reactor-api][server] WebSocket server available at /graphql/subscriptions
+  cli> [11:25:22.68] [reactor-api][server][graphql-manager] Registered REST endpoint: GET /d/:drive
+  cli> [11:25:22.69] [reactor-api][server][graphql-manager] Registered /graphql/analytics subgraph.
+  cli> [11:25:22.69] [reactor-api][server][graphql-manager] Registered /graphql/r subgraph.
+  cli> [11:25:22.73] [reactor-api][server][graphql-manager] Failed to setup websocket for subgraph r at path /graphql/r: {}
+  cli> [11:25:22.85] [reactor-api][server][graphql-manager] Registered /graphql supergraph
+  cli> [11:25:24.96] [reactor-api][server] MCP server available at http://localhost:59260/mcp
+  cli> Switchboard 'ph-clint-api' ready at http://localhost:59260/graphql
+[2026-04-25T09:25:24.962Z] [setup] Switchboard ready at http://localhost:59260/graphql
+  cli> Connect 'ph-clint-studio' already running at http://localhost:43990/
+  cli> You may need to add the drive: http://localhost:59260/d/077a2c91-7072-4d07-a047-0d82f2f1021a
+  cli> Routine running
+  cli> Serving — press Ctrl+C to stop.
+[2026-04-25T09:25:26.114Z] [setup] @powerhousedao/ph-e2e-test-cli npm state: dev=0.0.1-dev.5, all versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5]
+[2026-04-25T09:25:26.115Z] [setup] Expected next version: 0.0.1-dev.6
+[2026-04-25T09:25:26.117Z] [step 1] Querying Switchboard for document drives...
+[2026-04-25T09:25:26.172Z] [step 1] Found 1 drive(s): Clint (077a2c91-7072-4d07-a047-0d82f2f1021a)
+[2026-04-25T09:25:26.173Z] [step 1] Using drive: 077a2c91-7072-4d07-a047-0d82f2f1021a
+[2026-04-25T09:25:26.174Z] [step 2] Creating powerhouse/ph-clint-project document in drive 077a2c91-7072-4d07-a047-0d82f2f1021a...
+[2026-04-25T09:25:26.234Z] [step 2] Created document: ff972a3a-2c7b-4a19-91df-5f168ff2e8b2 (type=powerhouse/ph-clint-project)
+[2026-04-25T09:25:26.235Z] [step 3] Dispatching identity + feature actions to ff972a3a-2c7b-4a19-91df-5f168ff2e8b2...
+[2026-04-25T09:25:26.280Z] [step 3] Mutation result: {"mutateDocument":{"id":"ff972a3a-2c7b-4a19-91df-5f168ff2e8b2","revisionsList":[{"scope":"document","revision":2},{"scope":"global","revision":4}]}}
+[2026-04-25T09:25:26.296Z] [step 3] Spec populated: @powerhousedao/ph-e2e-test, features={"mastra":{"enabled":false},"routine":{"enabled":false},"powerhouse":"Reactor"}
+[2026-04-25T09:25:26.298Z] [step 4] Waiting for codegen + ph init...
+[2026-04-25T09:25:26.298Z] [step 4]   cli dir: /tmp/ph-clint-e2e-mINWPo/ph-e2e-test/ph-e2e-test-cli
+[2026-04-25T09:25:26.300Z] [step 4]   app dir: /tmp/ph-clint-e2e-mINWPo/ph-e2e-test/ph-e2e-test-app
+[2026-04-25T09:25:34.309Z] [step 4] Poll #5: cli/package.json=false, app/package.json=false
+[2026-04-25T09:25:44.323Z] [step 4] Poll #10: cli/package.json=false, app/package.json=false
+[2026-04-25T09:25:54.337Z] [step 4] Poll #15: cli/package.json=false, app/package.json=false
+[2026-04-25T09:26:04.350Z] [step 4] Poll #20: cli/package.json=false, app/package.json=false
+[2026-04-25T09:26:14.365Z] [step 4] Poll #25: cli/package.json=false, app/package.json=false
+[2026-04-25T09:26:24.378Z] [step 4] Poll #30: cli/package.json=false, app/package.json=false
+[2026-04-25T09:26:34.391Z] [step 4] Poll #35: cli/package.json=false, app/package.json=false
+[2026-04-25T09:26:44.405Z] [step 4] Poll #40: cli/package.json=false, app/package.json=false
+[2026-04-25T09:26:54.420Z] [step 4] Poll #45: cli/package.json=false, app/package.json=false
+[2026-04-25T09:27:04.434Z] [step 4] Poll #50: cli/package.json=false, app/package.json=false
+[2026-04-25T09:27:14.447Z] [step 4] Poll #55: cli/package.json=false, app/package.json=false
+[2026-04-25T09:27:24.460Z] [step 4] Poll #60: cli/package.json=false, app/package.json=false
+[2026-04-25T09:27:34.473Z] [step 4] Poll #65: cli/package.json=false, app/package.json=false
+[2026-04-25T09:27:44.488Z] [step 4] Poll #70: cli/package.json=false, app/package.json=false
+[2026-04-25T09:27:54.502Z] [step 4] Poll #75: cli/package.json=false, app/package.json=false
+[2026-04-25T09:28:04.516Z] [step 4] Poll #80: cli/package.json=false, app/package.json=false
+[2026-04-25T09:28:14.530Z] [step 4] Poll #85: cli/package.json=false, app/package.json=false
+[2026-04-25T09:28:24.545Z] [step 4] Poll #90: cli/package.json=false, app/package.json=false
+[2026-04-25T09:28:34.562Z] [step 4] Poll #95: cli/package.json=false, app/package.json=false
+[2026-04-25T09:28:44.576Z] [step 4] Poll #100: cli/package.json=false, app/package.json=false

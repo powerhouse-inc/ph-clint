@@ -79,7 +79,7 @@ export async function rewriteLocalDeps(
   const isSplit = spec.features.powerhouse !== 'Disabled';
 
   const cliPkgPath = isSplit
-    ? path.join(projectDir, `${spec.name}-cli`, 'package.json')
+    ? path.join(projectDir, spec.name, 'package.json')
     : path.join(projectDir, 'package.json');
 
   await rewritePkgJson(cliPkgPath);
@@ -115,7 +115,7 @@ export async function scaffoldAppPackage(
 ): Promise<void> {
   if (spec.features.powerhouse === 'Disabled') return;
 
-  const appDir = path.join(projectDir, `${spec.name}-app`);
+  const appDir = path.join(projectDir, spec.name.replace(/-cli$/, '-app'));
   await runPhInit({
     targetDir: projectDir,
     appDir,

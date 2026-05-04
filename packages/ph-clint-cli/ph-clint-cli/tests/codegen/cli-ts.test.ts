@@ -4,7 +4,7 @@ import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 describe('buildCliTs', () => {
   it('emits a minimal defineCli call for the no-features case', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const code = buildCliTs(spec);
     expect(code).toContain("import { defineCli } from '@powerhousedao/ph-clint'");
     expect(code).toContain('export const cli = defineCli({');
@@ -24,7 +24,7 @@ describe('buildCliTs', () => {
 
   it('wires Mastra when mastra.enabled', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
     const code = buildCliTs(spec);
@@ -37,7 +37,7 @@ describe('buildCliTs', () => {
 
   it('wires Powerhouse when powerhouse is enabled', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     const code = buildCliTs(spec);
@@ -57,7 +57,7 @@ describe('buildCliTs', () => {
 
   it('honours powerhouse level — Reactor only omits switchboard/connect', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: {
         powerhouse: 'Reactor',
       },
@@ -71,7 +71,7 @@ describe('buildCliTs', () => {
 
   it('all features on — emits both reactor and agent wiring', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: {
         powerhouse: 'Connect',
         mastra: { enabled: true },
@@ -86,7 +86,7 @@ describe('buildCliTs', () => {
 
   it('populates prompts.agents from spec profiles', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       features: {
         mastra: {
           enabled: true,
@@ -108,7 +108,7 @@ describe('buildCliTs', () => {
 
   it('emits proxyEnabled: true when deployment.proxyEnabled is true', () => {
     const spec = clintProjectSpecSchema.parse({
-      name: 'foo',
+      name: 'foo-cli',
       deployment: { proxyEnabled: true },
     });
     const code = buildCliTs(spec);
@@ -120,7 +120,7 @@ describe('buildCliTs', () => {
   });
 
   it('omits proxyEnabled when deployment.proxyEnabled is false', () => {
-    const spec = clintProjectSpecSchema.parse({ name: 'foo' });
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const code = buildCliTs(spec);
     expect(code).not.toContain('proxyEnabled');
     expect(code).not.toContain('jsonPostAnnounce');

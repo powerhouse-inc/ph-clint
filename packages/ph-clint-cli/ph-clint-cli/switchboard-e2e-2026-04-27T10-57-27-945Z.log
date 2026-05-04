@@ -1,0 +1,322 @@
+=== E2E switchboard test loaded at 2026-04-27T10:57:27.946Z ===
+[2026-04-27T10:57:27.948Z] [setup] Creating temp workdir and starting ph-clint-cli...
+[2026-04-27T10:57:27.957Z] [setup] Log file: /home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/switchboard-e2e-2026-04-27T10-57-27-945Z.log
+[2026-04-27T10:57:27.980Z] [setup] Workdir: /tmp/ph-clint-e2e-txMuEO
+  cli> Reactor ready (drive: 78b3e50d-c235-4a41-9590-740e61891b9e)
+  cli> [12:57:32.71] [reactor-api][package-manager] Loading packages: null
+  cli> [12:57:32.71] [reactor-api][server] WebSocket server available at /graphql/subscriptions
+  cli> [12:57:32.72] [reactor-api][server][graphql-manager] Registered REST endpoint: GET /d/:drive
+  cli> [12:57:32.72] [reactor-api][server][graphql-manager] Registered /graphql/analytics subgraph.
+  cli> [12:57:32.72] [reactor-api][server][graphql-manager] Registered /graphql/r subgraph.
+  cli> [12:57:32.76] [reactor-api][server][graphql-manager] Failed to setup websocket for subgraph r at path /graphql/r: {}
+  cli> [12:57:32.88] [reactor-api][server][graphql-manager] Registered /graphql supergraph
+  cli> [12:57:34.99] [reactor-api][server] MCP server available at http://localhost:59260/mcp
+  cli> Switchboard 'ph-clint-api' ready at http://localhost:59260/graphql
+[2026-04-27T10:57:34.997Z] [setup] Switchboard ready at http://localhost:59260/graphql
+  cli> Stopping Connect (wrong workdir: /home/wouter/.local/share/pnpm/global/5/.pnpm/@powerhousedao+ph-clint-cli@0.1.0-dev.25_6781d988b1caf55ee5613e65f8465760/node_modules/@powerhousedao/ph-clint-app)
+  cli> Connect 'ph-clint-studio' ready at http://localhost:43990/
+  cli> Drives:
+  cli> Clint Folders (personal): http://localhost:59260/d/78b3e50d-c235-4a41-9590-740e61891b9e
+  cli> Routine running
+  cli> Serving — press Ctrl+C to stop.
+[2026-04-27T10:57:35.596Z] [setup] @powerhousedao/ph-e2e-test-cli npm state: dev=0.0.1-dev.10, all versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10]
+[2026-04-27T10:57:35.597Z] [setup] Expected next version: 0.0.1-dev.11
+[2026-04-27T10:57:35.598Z] [step 1] Querying Switchboard for document drives...
+[2026-04-27T10:57:35.651Z] [step 1] Found 1 drive(s): Clint Folders (78b3e50d-c235-4a41-9590-740e61891b9e)
+[2026-04-27T10:57:35.652Z] [step 1] Using drive: 78b3e50d-c235-4a41-9590-740e61891b9e
+[2026-04-27T10:57:35.654Z] [step 2] Creating powerhouse/ph-clint-project document in drive 78b3e50d-c235-4a41-9590-740e61891b9e...
+[2026-04-27T10:57:35.717Z] [step 2] Created document: bdfda8d0-129b-43b6-817e-de92eed8ce58 (type=powerhouse/ph-clint-project)
+[2026-04-27T10:57:35.718Z] [step 3] Dispatching identity + feature actions to bdfda8d0-129b-43b6-817e-de92eed8ce58...
+[2026-04-27T10:57:35.760Z] [step 3] Mutation result: {"mutateDocument":{"id":"bdfda8d0-129b-43b6-817e-de92eed8ce58","revisionsList":[{"scope":"document","revision":2},{"scope":"global","revision":4}]}}
+[2026-04-27T10:57:35.773Z] [step 3] Spec populated: @powerhousedao/ph-e2e-test, features={"mastra":{"models":[],"agentId":null,"enabled":false,"profiles":[],"agentName":null},"routine":{"enabled":false},"powerhouse":"Reactor"}
+[2026-04-27T10:57:35.775Z] [step 4] Waiting for codegen + ph init...
+[2026-04-27T10:57:35.775Z] [step 4]   cli dir: /tmp/ph-clint-e2e-txMuEO/ph-e2e-test/ph-e2e-test-cli
+[2026-04-27T10:57:35.776Z] [step 4]   app dir: /tmp/ph-clint-e2e-txMuEO/ph-e2e-test/ph-e2e-test-app
+  cli> [spec-change] regenerating ph-e2e-test at /tmp/ph-clint-e2e-txMuEO/ph-e2e-test (doc=bdfda8d0-129b-43b6-817e-de92eed8ce58)
+  cli> [spec-change] regenerated ph-e2e-test in 12ms: 25 written, 0 skipped, 0 deleted
+  cli> [spec-change] initializing reactor package at /tmp/ph-clint-e2e-txMuEO/ph-e2e-test/ph-e2e-test-app
+  cli> [spec-change] Running `ph init ph-e2e-test-app` (version: 6.0.0-dev.184) in /tmp/ph-clint-e2e-txMuEO/ph-e2e-test …
+  cli> 🚀 Initializing a new project...
+  cli> ▶️ Creating directory for project "ph-e2e-test-app"...
+  cli> ✅ Project directory created
+  cli> ▶️ Initializing git repository...
+  cli> hint: Using 'master' as the name for the initial branch. This default branch name
+  cli> hint: is subject to change. To configure the initial branch name to use in all
+  cli> hint: of your new repositories, which will suppress this warning, call:
+  cli> hint:
+  cli> hint: 	git config --global init.defaultBranch <name>
+  cli> hint:
+  cli> hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+  cli> hint: 'development'. The just-created branch can be renamed via this command:
+  cli> hint:
+  cli> hint: 	git branch -m <name>
+  cli> Initialized empty Git repository in /tmp/ph-clint-e2e-txMuEO/ph-e2e-test/ph-e2e-test-app/.git/
+  cli> ✅ Git repository initialized
+  cli> ▶️ Creating project boilerplate files...
+  cli> ✅ Project boilerplate files created
+  cli> ▶️ Installing project dependencies with pnpm...
+  cli> Progress: resolved 1, reused 0, downloaded 0, added 0
+  cli> Progress: resolved 98, reused 98, downloaded 0, added 0
+  cli> Progress: resolved 297, reused 296, downloaded 0, added 0
+  cli> Progress: resolved 567, reused 510, downloaded 0, added 0
+  cli> Progress: resolved 752, reused 695, downloaded 0, added 0
+[2026-04-27T10:57:43.785Z] [step 4] Poll #5: cli/package.json exists, app name="ph-e2e-test-app" (want "@powerhousedao/ph-e2e-test-app")
+  cli> Progress: resolved 1135, reused 1038, downloaded 0, added 0
+  cli> Progress: resolved 1421, reused 1283, downloaded 0, added 0
+  cli> Progress: resolved 1692, reused 1547, downloaded 0, added 0
+  cli> Progress: resolved 1767, reused 1622, downloaded 0, added 0
+  cli> Progress: resolved 1772, reused 1627, downloaded 0, added 0
+  cli> WARN  11 deprecated subdependencies found: @apollo/server-gateway-interface@1.1.1, @types/minimatch@6.0.0, glob@10.5.0, glob@7.2.3, inflight@1.0.6, lodash.isequal@4.5.0, multibase@4.0.6, multicodec@3.2.1, node-domexception@1.0.0, rimraf@2.7.1, sudo-prompt@8.2.5
+  cli> Packages: +1703
+  cli> ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  cli> Progress: resolved 1774, reused 1629, downloaded 0, added 1076
+  cli> Progress: resolved 1774, reused 1629, downloaded 0, added 1703, done
+  cli> dependencies:
+  cli> + @powerhousedao/analytics-engine-core 6.0.0-dev.184
+  cli> + @powerhousedao/connect 6.0.0-dev.184
+  cli> + @powerhousedao/design-system 6.0.0-dev.184
+  cli> + @powerhousedao/document-engineering 1.40.1
+  cli> + @powerhousedao/reactor-api 6.0.0-dev.184
+  cli> + @powerhousedao/reactor-browser 6.0.0-dev.184
+  cli> + document-model 6.0.0-dev.184
+  cli> + graphql 16.13.2
+  cli> + graphql-tag 2.12.6
+  cli> + react 19.2.5
+  cli> + react-dom 19.2.5
+  cli> + zod 4.3.6
+  cli> devDependencies:
+  cli> + @electric-sql/pglite 0.3.15 (0.4.4 is available)
+  cli> + @electric-sql/pglite-tools 0.2.20
+  cli> + @eslint/js 9.39.4 (10.0.1 is available)
+  cli> + @powerhousedao/ph-cli 6.0.0-dev.184
+  cli> + @powerhousedao/reactor 6.0.0-dev.184
+  cli> + @tailwindcss/cli 4.2.4
+  cli> + @types/node 24.12.2 (25.6.0 is available)
+  cli> + @types/react 19.2.14
+  cli> + @vitejs/plugin-react 6.0.1
+  cli> + eslint 9.39.4 (10.2.1 is available)
+  cli> + eslint-config-prettier 10.1.8
+  cli> + eslint-plugin-prettier 5.5.5
+  cli> + eslint-plugin-react 7.37.5
+  cli> + eslint-plugin-react-hooks 7.1.1
+  cli> + globals 16.5.0 (17.5.0 is available)
+  cli> + tailwindcss 4.2.4
+  cli> + typescript 5.9.3 (6.0.3 is available)
+  cli> + typescript-eslint 8.59.0
+  cli> + vite 8.0.2 (8.0.9 is available)
+  cli> + vite-tsconfig-paths 6.1.1
+  cli> + vitest 4.1.1
+  cli> ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+  cli> │                                                                              │
+  cli> │   Ignored build scripts: @apollo/protobufjs@1.2.7, @datadog/pprof@5.13.3,    │
+  cli> │   @parcel/watcher@2.5.6, @sentry/cli@2.58.5, esbuild@0.14.54,                │
+  cli> │   esbuild@0.27.7, protobufjs@7.5.5.                                          │
+  cli> │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+  cli> │   to run scripts.                                                            │
+  cli> │                                                                              │
+  cli> ╰──────────────────────────────────────────────────────────────────────────────╯
+  cli> Done in 10.9s using pnpm v10.26.0
+  cli> ✅ Project dependencies installed
+  cli> ▶️ Formatting boilerplate project files...
+  cli> ✅ Boilerplate files formatted
+  cli> 🎉 Successfully created project "ph-e2e-test-app" 🎉
+  cli> [spec-change] Patched app package name to @powerhousedao/ph-e2e-test-app
+[2026-04-27T10:57:53.797Z] [step 4] Poll #10: cli/package.json exists, app name="@powerhousedao/ph-e2e-test-app" (want "@powerhousedao/ph-e2e-test-app")
+[2026-04-27T10:57:53.803Z] [step 4] Project generated at /tmp/ph-clint-e2e-txMuEO/ph-e2e-test: cli=@powerhousedao/ph-e2e-test-cli, app=@powerhousedao/ph-e2e-test-app
+[2026-04-27T10:57:53.804Z] [step 4] publish.config.ts exists and references all packages
+[2026-04-27T10:57:53.804Z] [step 4] project-spec.json written with documentId=bdfda8d0-129b-43b6-817e-de92eed8ce58
+[2026-04-27T10:57:53.805Z] [step 4] Workdir contents: .ph, ph-e2e-test
+[2026-04-27T10:57:53.805Z] [step 4] Project contents: .ph, README.md, package.json, ph-e2e-test-app, ph-e2e-test-cli, publish.config.ts
+[2026-04-27T10:57:53.806Z] [step 5] Dispatching BUMP_VERSION (0.0.1) + PUBLISH_DEV...
+[2026-04-27T10:57:53.861Z] [step 5] Document version: 0.0.1
+[2026-04-27T10:57:53.861Z] [step 5] Publish history (1 records):
+[2026-04-27T10:57:53.861Z] [step 5]   id=e2e-publish-1 tag=Dev status=Pending version=0.0.1
+[2026-04-27T10:57:53.863Z] [step 6] Waiting for publish trigger to complete...
+[2026-04-27T10:57:53.879Z] [step 6] Publish status changed: Pending (poll #1)
+  cli> [spec-change] regenerating ph-e2e-test at /tmp/ph-clint-e2e-txMuEO/ph-e2e-test (doc=bdfda8d0-129b-43b6-817e-de92eed8ce58)
+  cli> [spec-change] regenerated ph-e2e-test in 10ms: 5 written, 0 skipped, 0 deleted
+  cli> [publish] found pending Dev publish for doc bdfda8d0-129b-43b6-817e-de92eed8ce58 (id=e2e-publish-1, version=0.0.1)
+  cli> [publish] marking record e2e-publish-1 as InProgress
+  cli> [publish] running pnpm install in /tmp/ph-clint-e2e-txMuEO/ph-e2e-test
+[2026-04-27T10:57:55.897Z] [step 6] Publish status changed: InProgress (poll #2)
+  cli> [publish] invoking clint-project-publish --tag dev
+  cli> [publish] Loading config...
+  cli> [publish] Group: ph-e2e-test
+  cli> [publish] Pre-flight checks...
+  cli> [publish] Version: 0.0.1-dev.11
+  cli> [publish] Publish plan:
+  cli> Group:    ph-e2e-test
+  cli> Version:  0.0.1-dev.11
+  cli> Tag:      dev
+  cli> Registry: https://registry.npmjs.org
+  cli> Packages:
+  cli> - @powerhousedao/ph-e2e-test-app
+  cli> - @powerhousedao/ph-e2e-test-cli
+  cli> [publish] Building...
+  cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+  cli> [publish]   Reinstalling @powerhousedao/ph-e2e-test-cli (file: deps were rebuilt)...
+  cli> [publish]   Building @powerhousedao/ph-e2e-test-cli...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+  cli> [publish] Preparing package.json files...
+  cli> [publish] Validating packages...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T10:58:22.097Z] [step 6] Poll #15: 19 publish-related CLI lines since step start:
+[2026-04-27T10:58:22.097Z] [step 6]   cli> [publish] found pending Dev publish for doc bdfda8d0-129b-43b6-817e-de92eed8ce58 (id=e2e-publish-1, version=0.0.1)
+[2026-04-27T10:58:22.098Z] [step 6]   cli> [publish] marking record e2e-publish-1 as InProgress
+[2026-04-27T10:58:22.098Z] [step 6]   cli> [publish] running pnpm install in /tmp/ph-clint-e2e-txMuEO/ph-e2e-test
+[2026-04-27T10:58:22.098Z] [step 6]   cli> [publish] invoking clint-project-publish --tag dev
+[2026-04-27T10:58:22.098Z] [step 6]   cli> [publish] Loading config...
+[2026-04-27T10:58:22.098Z] [step 6]   cli> [publish] Group: ph-e2e-test
+[2026-04-27T10:58:22.099Z] [step 6]   cli> [publish] Pre-flight checks...
+[2026-04-27T10:58:22.099Z] [step 6]   cli> [publish] Version: 0.0.1-dev.11
+[2026-04-27T10:58:22.099Z] [step 6]   cli> [publish] Publish plan:
+[2026-04-27T10:58:22.099Z] [step 6]   cli> Version:  0.0.1-dev.11
+[2026-04-27T10:58:22.100Z] [step 6]   cli> [publish] Building...
+[2026-04-27T10:58:22.100Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+[2026-04-27T10:58:22.100Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T10:58:22.100Z] [step 6]   cli> [publish]   Reinstalling @powerhousedao/ph-e2e-test-cli (file: deps were rebuilt)...
+[2026-04-27T10:58:22.101Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-cli...
+[2026-04-27T10:58:22.101Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-04-27T10:58:22.101Z] [step 6]   cli> [publish] Preparing package.json files...
+[2026-04-27T10:58:22.101Z] [step 6]   cli> [publish] Validating packages...
+[2026-04-27T10:58:22.102Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+  cli> [publish] Publishing...
+  cli> [publish]   Publishing @powerhousedao/ph-e2e-test-app...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+  cli> [publish]   Publishing @powerhousedao/ph-e2e-test-cli...
+  cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+  cli> [publish]
+  cli> [publish] ──────────────────────────────────────────────────
+  cli> [publish] PUBLISH SUMMARY
+  cli> [publish] ──────────────────────────────────────────────────
+  cli> [publish] Version:  0.0.1-dev.11
+  cli> [publish] Tag:      dev
+  cli> [publish] Registry: https://registry.npmjs.org
+  cli> [publish] Packages:
+  cli> [publish]   - @powerhousedao/ph-e2e-test-app@0.0.1-dev.11
+  cli> [publish]   - @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11
+  cli> [publish] ──────────────────────────────────────────────────
+  cli> [publish] marking record e2e-publish-1 as Succeeded
+[2026-04-27T10:58:36.193Z] [step 6] Publish status changed: Succeeded (poll #22)
+[2026-04-27T10:58:36.205Z] [step 6] Final publish record: status=Succeeded, version=0.0.1
+[2026-04-27T10:58:36.206Z] [step 6] CLI output during publish (45 lines):
+[2026-04-27T10:58:36.206Z] [step 6]   cli> [spec-change] regenerating ph-e2e-test at /tmp/ph-clint-e2e-txMuEO/ph-e2e-test (doc=bdfda8d0-129b-43b6-817e-de92eed8ce58)
+[2026-04-27T10:58:36.206Z] [step 6]   cli> [spec-change] regenerated ph-e2e-test in 10ms: 5 written, 0 skipped, 0 deleted
+[2026-04-27T10:58:36.206Z] [step 6]   cli> [publish] found pending Dev publish for doc bdfda8d0-129b-43b6-817e-de92eed8ce58 (id=e2e-publish-1, version=0.0.1)
+[2026-04-27T10:58:36.206Z] [step 6]   cli> [publish] marking record e2e-publish-1 as InProgress
+[2026-04-27T10:58:36.207Z] [step 6]   cli> [publish] running pnpm install in /tmp/ph-clint-e2e-txMuEO/ph-e2e-test
+[2026-04-27T10:58:36.207Z] [step 6]   cli> [publish] invoking clint-project-publish --tag dev
+[2026-04-27T10:58:36.207Z] [step 6]   cli> [publish] Loading config...
+[2026-04-27T10:58:36.207Z] [step 6]   cli> [publish] Group: ph-e2e-test
+[2026-04-27T10:58:36.208Z] [step 6]   cli> [publish] Pre-flight checks...
+[2026-04-27T10:58:36.208Z] [step 6]   cli> [publish] Version: 0.0.1-dev.11
+[2026-04-27T10:58:36.208Z] [step 6]   cli> [publish] Publish plan:
+[2026-04-27T10:58:36.208Z] [step 6]   cli> Group:    ph-e2e-test
+[2026-04-27T10:58:36.208Z] [step 6]   cli> Version:  0.0.1-dev.11
+[2026-04-27T10:58:36.209Z] [step 6]   cli> Tag:      dev
+[2026-04-27T10:58:36.209Z] [step 6]   cli> Registry: https://registry.npmjs.org
+[2026-04-27T10:58:36.209Z] [step 6]   cli> Packages:
+[2026-04-27T10:58:36.209Z] [step 6]   cli> - @powerhousedao/ph-e2e-test-app
+[2026-04-27T10:58:36.209Z] [step 6]   cli> - @powerhousedao/ph-e2e-test-cli
+[2026-04-27T10:58:36.209Z] [step 6]   cli> [publish] Building...
+[2026-04-27T10:58:36.210Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+[2026-04-27T10:58:36.210Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T10:58:36.210Z] [step 6]   cli> [publish]   Reinstalling @powerhousedao/ph-e2e-test-cli (file: deps were rebuilt)...
+[2026-04-27T10:58:36.210Z] [step 6]   cli> [publish]   Building @powerhousedao/ph-e2e-test-cli...
+[2026-04-27T10:58:36.210Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-04-27T10:58:36.211Z] [step 6]   cli> [publish] Preparing package.json files...
+[2026-04-27T10:58:36.211Z] [step 6]   cli> [publish] Validating packages...
+[2026-04-27T10:58:36.211Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T10:58:36.211Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-04-27T10:58:36.211Z] [step 6]   cli> [publish] Publishing...
+[2026-04-27T10:58:36.212Z] [step 6]   cli> [publish]   Publishing @powerhousedao/ph-e2e-test-app...
+[2026-04-27T10:58:36.212Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T10:58:36.212Z] [step 6]   cli> [publish]   Publishing @powerhousedao/ph-e2e-test-cli...
+[2026-04-27T10:58:36.212Z] [step 6]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-04-27T10:58:36.212Z] [step 6]   cli> [publish]
+[2026-04-27T10:58:36.213Z] [step 6]   cli> [publish] ──────────────────────────────────────────────────
+[2026-04-27T10:58:36.213Z] [step 6]   cli> [publish] PUBLISH SUMMARY
+[2026-04-27T10:58:36.213Z] [step 6]   cli> [publish] ──────────────────────────────────────────────────
+[2026-04-27T10:58:36.213Z] [step 6]   cli> [publish] Version:  0.0.1-dev.11
+[2026-04-27T10:58:36.213Z] [step 6]   cli> [publish] Tag:      dev
+[2026-04-27T10:58:36.213Z] [step 6]   cli> [publish] Registry: https://registry.npmjs.org
+[2026-04-27T10:58:36.214Z] [step 6]   cli> [publish] Packages:
+[2026-04-27T10:58:36.214Z] [step 6]   cli> [publish]   - @powerhousedao/ph-e2e-test-app@0.0.1-dev.11
+[2026-04-27T10:58:36.214Z] [step 6]   cli> [publish]   - @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11
+[2026-04-27T10:58:36.214Z] [step 6]   cli> [publish] ──────────────────────────────────────────────────
+[2026-04-27T10:58:36.215Z] [step 6]   cli> [publish] marking record e2e-publish-1 as Succeeded
+[2026-04-27T10:58:36.592Z] [step 6] npm state after publish:
+[2026-04-27T10:58:36.593Z] [step 6]   @powerhousedao/ph-e2e-test-cli: versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10], dev=0.0.1-dev.10
+[2026-04-27T10:58:36.593Z] [step 6]   @powerhousedao/ph-e2e-test-app: versions=[0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10, 0.0.1-dev.11], dev=0.0.1-dev.11
+[2026-04-27T10:58:36.593Z] [step 6]   Expected version: 0.0.1-dev.11
+[2026-04-27T10:58:36.594Z] [step 7] Checking npm for @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11...
+[2026-04-27T10:58:36.660Z] [step 7] Current npm versions:
+[2026-04-27T10:58:36.661Z] [step 7]   CLI: [0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10]
+[2026-04-27T10:58:36.661Z] [step 7]   App: [0.0.1-dev.0, 0.0.1-dev.1, 0.0.1-dev.2, 0.0.1-dev.3, 0.0.1-dev.4, 0.0.1-dev.5, 0.0.1-dev.6, 0.0.1-dev.7, 0.0.1-dev.8, 0.0.1-dev.9, 0.0.1-dev.10, 0.0.1-dev.11]
+[2026-04-27T10:58:36.661Z] [step 7] 0.0.1-dev.11 not yet visible, waiting...
+[2026-04-27T10:58:52.817Z] [npm] @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11 found on attempt 4
+[2026-04-27T10:58:52.817Z] [step 7] @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11 confirmed on npm
+[2026-04-27T10:58:52.863Z] [npm] @powerhousedao/ph-e2e-test-app@0.0.1-dev.11 found on attempt 1
+[2026-04-27T10:58:52.863Z] [step 7] @powerhousedao/ph-e2e-test-app@0.0.1-dev.11 confirmed on npm
+[2026-04-27T10:58:52.865Z] [step 8] Installing @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11...
+[2026-04-27T10:58:52.866Z] [step 8] Install dir: /tmp/ph-clint-e2e-install-S1wY0c
+[2026-04-27T10:58:52.866Z] [step 8] Running: npm install @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11
+[2026-04-27T11:00:52.973Z] [teardown] Stopping CLI...
+[2026-04-27T11:00:52.974Z] --- final CLI output: last 50 CLI output lines ---
+[2026-04-27T11:00:52.974Z]   cli> ✅ Project dependencies installed
+[2026-04-27T11:00:52.975Z]   cli> ▶️ Formatting boilerplate project files...
+[2026-04-27T11:00:52.975Z]   cli> ✅ Boilerplate files formatted
+[2026-04-27T11:00:52.975Z]   cli> 🎉 Successfully created project "ph-e2e-test-app" 🎉
+[2026-04-27T11:00:52.976Z]   cli> [spec-change] Patched app package name to @powerhousedao/ph-e2e-test-app
+[2026-04-27T11:00:52.976Z]   cli> [spec-change] regenerating ph-e2e-test at /tmp/ph-clint-e2e-txMuEO/ph-e2e-test (doc=bdfda8d0-129b-43b6-817e-de92eed8ce58)
+[2026-04-27T11:00:52.976Z]   cli> [spec-change] regenerated ph-e2e-test in 10ms: 5 written, 0 skipped, 0 deleted
+[2026-04-27T11:00:52.977Z]   cli> [publish] found pending Dev publish for doc bdfda8d0-129b-43b6-817e-de92eed8ce58 (id=e2e-publish-1, version=0.0.1)
+[2026-04-27T11:00:52.977Z]   cli> [publish] marking record e2e-publish-1 as InProgress
+[2026-04-27T11:00:52.978Z]   cli> [publish] running pnpm install in /tmp/ph-clint-e2e-txMuEO/ph-e2e-test
+[2026-04-27T11:00:52.978Z]   cli> [publish] invoking clint-project-publish --tag dev
+[2026-04-27T11:00:52.978Z]   cli> [publish] Loading config...
+[2026-04-27T11:00:52.979Z]   cli> [publish] Group: ph-e2e-test
+[2026-04-27T11:00:52.979Z]   cli> [publish] Pre-flight checks...
+[2026-04-27T11:00:52.979Z]   cli> [publish] Version: 0.0.1-dev.11
+[2026-04-27T11:00:52.980Z]   cli> [publish] Publish plan:
+[2026-04-27T11:00:52.980Z]   cli> Group:    ph-e2e-test
+[2026-04-27T11:00:52.980Z]   cli> Version:  0.0.1-dev.11
+[2026-04-27T11:00:52.981Z]   cli> Tag:      dev
+[2026-04-27T11:00:52.981Z]   cli> Registry: https://registry.npmjs.org
+[2026-04-27T11:00:52.981Z]   cli> Packages:
+[2026-04-27T11:00:52.982Z]   cli> - @powerhousedao/ph-e2e-test-app
+[2026-04-27T11:00:52.982Z]   cli> - @powerhousedao/ph-e2e-test-cli
+[2026-04-27T11:00:52.982Z]   cli> [publish] Building...
+[2026-04-27T11:00:52.983Z]   cli> [publish]   Building @powerhousedao/ph-e2e-test-app...
+[2026-04-27T11:00:52.983Z]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T11:00:52.984Z]   cli> [publish]   Reinstalling @powerhousedao/ph-e2e-test-cli (file: deps were rebuilt)...
+[2026-04-27T11:00:52.984Z]   cli> [publish]   Building @powerhousedao/ph-e2e-test-cli...
+[2026-04-27T11:00:52.984Z]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-04-27T11:00:52.985Z]   cli> [publish] Preparing package.json files...
+[2026-04-27T11:00:52.985Z]   cli> [publish] Validating packages...
+[2026-04-27T11:00:52.986Z]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T11:00:52.986Z]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-04-27T11:00:52.987Z]   cli> [publish] Publishing...
+[2026-04-27T11:00:52.987Z]   cli> [publish]   Publishing @powerhousedao/ph-e2e-test-app...
+[2026-04-27T11:00:52.988Z]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-app
+[2026-04-27T11:00:52.988Z]   cli> [publish]   Publishing @powerhousedao/ph-e2e-test-cli...
+[2026-04-27T11:00:52.989Z]   cli> [publish]   ✓ @powerhousedao/ph-e2e-test-cli
+[2026-04-27T11:00:52.989Z]   cli> [publish]
+[2026-04-27T11:00:52.989Z]   cli> [publish] ──────────────────────────────────────────────────
+[2026-04-27T11:00:52.990Z]   cli> [publish] PUBLISH SUMMARY
+[2026-04-27T11:00:52.990Z]   cli> [publish] ──────────────────────────────────────────────────
+[2026-04-27T11:00:52.990Z]   cli> [publish] Version:  0.0.1-dev.11
+[2026-04-27T11:00:52.991Z]   cli> [publish] Tag:      dev
+[2026-04-27T11:00:52.991Z]   cli> [publish] Registry: https://registry.npmjs.org
+[2026-04-27T11:00:52.991Z]   cli> [publish] Packages:
+[2026-04-27T11:00:52.992Z]   cli> [publish]   - @powerhousedao/ph-e2e-test-app@0.0.1-dev.11
+[2026-04-27T11:00:52.992Z]   cli> [publish]   - @powerhousedao/ph-e2e-test-cli@0.0.1-dev.11
+[2026-04-27T11:00:52.992Z]   cli> [publish] ──────────────────────────────────────────────────
+[2026-04-27T11:00:52.993Z]   cli> [publish] marking record e2e-publish-1 as Succeeded
+[2026-04-27T11:00:52.993Z] --- end final CLI output ---
+  cli> ph-clint-studio still active [2m`/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-app`[0m
+  cli> [2mRun `ph-clint ph-clint-studio-stop` to shut it down[0m
+[2026-04-27T11:00:55.020Z] [teardown] Cleaning up workdir: /tmp/ph-clint-e2e-txMuEO
+[2026-04-27T11:01:18.230Z] [teardown] Done.
