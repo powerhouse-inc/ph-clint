@@ -120,7 +120,20 @@ export async function scaffoldAppPackage(
     targetDir: projectDir,
     appDir,
     spec,
-    stdio: 'ignore',
+    runProcess: async (command, opts) => {
+      try {
+        const output = execSync(command, {
+          cwd: opts?.cwd,
+          encoding: 'utf8',
+          timeout: opts?.timeout ?? 300_000,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        return { success: true, output };
+      } catch (err: unknown) {
+        const e = err as { stdout?: string; stderr?: string };
+        return { success: false, output: (e.stdout ?? '') + (e.stderr ?? '') };
+      }
+    },
   });
   // ph init runs pnpm install internally, so deps are already there.
   // Build the app so dist/ exists for the CLI's file: dep copy.

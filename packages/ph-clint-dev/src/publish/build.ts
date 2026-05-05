@@ -16,15 +16,14 @@ function runInPackage(
   return new Promise((resolve, reject) => {
     const proc = spawn(cmd, args, {
       cwd: pkg.absPath,
-      stdio: verbose ? 'inherit' : ['ignore', 'ignore', 'pipe'],
+      stdio: verbose ? 'inherit' : ['ignore', 'pipe', 'pipe'],
       shell: false,
     });
 
-    let stderr = '';
-    if (!verbose && proc.stderr) {
-      proc.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
-      });
+    let output = '';
+    if (!verbose) {
+      proc.stdout?.on('data', (data: Buffer) => { output += data.toString(); });
+      proc.stderr?.on('data', (data: Buffer) => { output += data.toString(); });
     }
 
     proc.on('close', (code) => {
@@ -33,7 +32,7 @@ function runInPackage(
       } else {
         reject(
           new Error(
-            `${cmd} ${args.join(' ')} failed for ${pkg.name} (exit code ${code})${stderr ? `:\n${stderr}` : ''}`,
+            `${cmd} ${args.join(' ')} failed for ${pkg.name} (exit code ${code})${output ? `:\n${output}` : ''}`,
           ),
         );
       }

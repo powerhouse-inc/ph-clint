@@ -1,0 +1,77 @@
+=== E2E spec-roundtrip test loaded at 2026-05-05T07:11:36.200Z ===
+[2026-05-05T07:11:36.201Z] [setup] Creating temp workdir and starting ph-clint-cli...
+[2026-05-05T07:11:36.210Z] [setup] Log file: /home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-cli/spec-roundtrip-e2e-2026-05-05T07-11-36-200Z.log
+[2026-05-05T07:11:36.236Z] [setup] Workdir: /tmp/ph-clint-roundtrip-6qPXKz
+  cli> Reactor ready (drive: f20d164c-efd7-499b-914f-ce20d5930c2a)
+  cli> [09:11:40.19] [reactor-api][package-manager] Loading packages: null
+  cli> [09:11:40.19] [reactor-api][server] WebSocket server available at /graphql/subscriptions
+  cli> [09:11:40.19] [reactor-api][server][graphql-manager] Registered REST endpoint: GET /d/:drive
+  cli> [09:11:40.20] [reactor-api][server][graphql-manager] Registered /graphql/analytics subgraph.
+  cli> [09:11:40.20] [reactor-api][server][graphql-manager] Registered /graphql/r subgraph.
+  cli> [09:11:40.24] [reactor-api][server][graphql-manager] Failed to setup websocket for subgraph r at path /graphql/r: {}
+  cli> [09:11:40.37] [reactor-api][server][graphql-manager] Registered /graphql supergraph
+  cli> [09:11:42.48] [reactor-api][server] MCP server available at http://localhost:59260/mcp
+  cli> Switchboard 'ph-clint-api' ready at http://localhost:59260/graphql
+[2026-05-05T07:11:42.483Z] [setup] Switchboard ready at http://localhost:59260/graphql
+[2026-05-05T07:11:42.484Z] [step 1] Finding drive...
+[2026-05-05T07:11:42.545Z] [step 1] Found 1 drive(s): Clint Folders (f20d164c-efd7-499b-914f-ce20d5930c2a)
+[2026-05-05T07:11:42.546Z] [step 1] Drive ID: f20d164c-efd7-499b-914f-ce20d5930c2a
+[2026-05-05T07:11:42.546Z] [step 1] Creating document in drive f20d164c-efd7-499b-914f-ce20d5930c2a...
+  cli> Connect 'ph-clint-studio' ready at http://localhost:43990/
+  cli> Drives:
+  cli> Clint Folders (personal): http://localhost:59260/d/f20d164c-efd7-499b-914f-ce20d5930c2a
+  cli> Routine running
+  cli> Serving — press Ctrl+C to stop.
+[2026-05-05T07:11:42.610Z] [step 1] Created document: ac429b7b-0b1d-4e74-90a9-fb858a886737
+[2026-05-05T07:11:42.612Z] [step 2] Dispatching IMPORT_SPEC to ac429b7b-0b1d-4e74-90a9-fb858a886737...
+[2026-05-05T07:11:42.659Z] [step 2] Document state name=ph-roundtrip-test-cli, version=0.5.0
+[2026-05-05T07:11:42.660Z] [step 3] Waiting for spec-change trigger to write /tmp/ph-clint-roundtrip-6qPXKz/ph-roundtrip-test-cli/.ph/ph-clint-cli/project-spec.json...
+  cli> [spec-change] regenerating ph-roundtrip-test-cli at /tmp/ph-clint-roundtrip-6qPXKz/ph-roundtrip-test-cli (doc=ac429b7b-0b1d-4e74-90a9-fb858a886737)
+  cli> [spec-change] regenerated ph-roundtrip-test-cli in 807ms: 29 written, 0 skipped, 0 deleted
+[2026-05-05T07:11:46.664Z] [step 3] Poll #3: spec JSON found
+[2026-05-05T07:11:46.664Z] [step 3] Spec JSON exists at /tmp/ph-clint-roundtrip-6qPXKz/ph-roundtrip-test-cli/.ph/ph-clint-cli/project-spec.json
+[2026-05-05T07:11:46.666Z] [step 4] Spec JSON keys: name, scope, version, description, features, packages, externalSkills, deployment, documentId, documentType
+[2026-05-05T07:11:46.668Z] [step 4] All spec JSON fields verified
+[2026-05-05T07:11:46.669Z] [step 4] Exhaustive shape check passed (28 paths)
+[2026-05-05T07:11:46.670Z] [step 5] Stopping CLI...
+  cli> ph-clint-studio still active [2m`/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-app`[0m
+  cli> [2mRun `ph-clint ph-clint-studio-stop` to shut it down[0m
+  cli> Triggers still active
+  cli> [2mRun `ph-clint triggers-stop` to shut it down[0m
+[2026-05-05T07:11:49.694Z] [step 5] CLI stopped
+[2026-05-05T07:11:49.694Z] [step 5] Stopping Connect service...
+[2026-05-05T07:11:50.751Z] [step 5] ph-clint-studio-stop exited (0)
+[2026-05-05T07:11:50.752Z] [step 5] Deleting reactor state: /tmp/ph-clint-roundtrip-6qPXKz/.ph
+[2026-05-05T07:11:51.018Z] [step 5] Reactor state deleted, project spec JSON intact
+[2026-05-05T07:11:51.019Z] [step 6] Restarting CLI with same workdir...
+  cli> Reactor ready (drive: f20d164c-efd7-499b-914f-ce20d5930c2a)
+  cli> [09:11:55.09] [reactor-api][package-manager] Loading packages: null
+  cli> [09:11:55.09] [reactor-api][server] WebSocket server available at /graphql/subscriptions
+  cli> [09:11:55.10] [reactor-api][server][graphql-manager] Registered REST endpoint: GET /d/:drive
+  cli> [09:11:55.10] [reactor-api][server][graphql-manager] Registered /graphql/analytics subgraph.
+  cli> [09:11:55.10] [reactor-api][server][graphql-manager] Registered /graphql/r subgraph.
+  cli> [09:11:55.14] [reactor-api][server][graphql-manager] Failed to setup websocket for subgraph r at path /graphql/r: {}
+  cli> [09:11:55.27] [reactor-api][server][graphql-manager] Registered /graphql supergraph
+  cli> [09:11:57.38] [reactor-api][server] MCP server available at http://localhost:59260/mcp
+  cli> Switchboard 'ph-clint-api' ready at http://localhost:59260/graphql
+[2026-05-05T07:11:57.384Z] [step 6] CLI restarted, Switchboard at http://localhost:59260/graphql
+[2026-05-05T07:11:57.435Z] [step 7] Second run drive ID: f20d164c-efd7-499b-914f-ce20d5930c2a (first run: f20d164c-efd7-499b-914f-ce20d5930c2a)
+[2026-05-05T07:11:57.435Z] [step 7] Waiting for bootstrap to recreate the document...
+  cli> Connect 'ph-clint-studio' ready at http://localhost:43990/
+  cli> Drives:
+  cli> Clint Folders (personal): http://localhost:59260/d/f20d164c-efd7-499b-914f-ce20d5930c2a
+  cli> Routine running
+  cli> Serving — press Ctrl+C to stop.
+  cli> [spec-change] linked project ph-roundtrip-test-cli to document e0456d47-0c8c-45eb-b5f6-d2d80c8872fe
+[2026-05-05T07:11:59.477Z] [step 7] Document recreated: e0456d47-0c8c-45eb-b5f6-d2d80c8872fe
+[2026-05-05T07:11:59.488Z] [step 7] All document fields verified — round-trip complete!
+[2026-05-05T07:11:59.489Z] [step 7] Spec JSON updated with new documentId: e0456d47-0c8c-45eb-b5f6-d2d80c8872fe
+[2026-05-05T07:11:59.490Z] [teardown] Stopping CLI...
+  cli> ph-clint-studio still active [2m`/home/wouter/projects/demo-workspace/ph-clint/packages/ph-clint-cli/ph-clint-app`[0m
+  cli> [2mRun `ph-clint ph-clint-studio-stop` to shut it down[0m
+  cli> Triggers still active
+  cli> [2mRun `ph-clint triggers-stop` to shut it down[0m
+[2026-05-05T07:12:02.510Z] [teardown] Stopping Connect service...
+[2026-05-05T07:12:03.462Z] [teardown] ph-clint-studio-stop exited (0): 
+[2026-05-05T07:12:03.463Z] [teardown] Cleaning up workdir: /tmp/ph-clint-roundtrip-6qPXKz
+[2026-05-05T07:12:03.729Z] [teardown] Done.

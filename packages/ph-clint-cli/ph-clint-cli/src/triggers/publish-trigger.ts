@@ -130,7 +130,7 @@ export const publishTrigger = createDocumentChangeTrigger({
                 '../commands/clint-project-publish.js'
               );
               const result = await clintProjectPublish.execute(
-                { tag: cliTag, dir: workdir, dryRun: false, skipBuild: false, skipGitCheck: true, verbose: true },
+                { tag: cliTag, dir: workdir, dryRun: false, skipBuild: false, skipGitCheck: true, verbose: false },
                 ctx.commandContext,
               );
               success = !result.text.includes('failed');

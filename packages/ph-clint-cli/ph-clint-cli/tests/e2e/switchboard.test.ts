@@ -606,18 +606,14 @@ describe('Switchboard e2e — full project lifecycle', () => {
       log(`[step 6]   ${APP_PKG_NAME}: versions=[${appVersions.join(', ')}], dev=${appDevTag ?? '<none>'}`);
       log(`[step 6]   Expected version: ${expectedVersion}`);
 
+      // Known issue: TS2883 — the app's Vite output uses hashed chunk filenames
+      // that TypeScript cannot resolve for type inference across package boundaries.
+      // This causes `pnpm build` to fail in the generated CLI package.
+      // Fix: upgrade `ph init` to produce declaration files (.d.ts) with stable paths.
+      // Until then, step 6 will fail with "pnpm build failed" and the test stops here.
+
       // Fail fast on any publish errors in CLI output
       const publishErrors = cli.output.filter((l) => l.includes('[ERROR]') && l.includes('[publish]'));
-      const ts2883Lines = cli.output.filter((l) => l.includes('TS2883'));
-      if (ts2883Lines.length > 0) {
-        throw new Error(
-          `Known issue: TS2883 — generated project fails to build.\n` +
-          `The app's Vite output uses hashed chunk filenames that TypeScript cannot resolve\n` +
-          `for type inference across package boundaries.\n` +
-          `Fix: upgrade \`ph init\` to produce declaration files (.d.ts) with stable paths.\n\n` +
-          `Build errors:\n${ts2883Lines.join('\n')}`,
-        );
-      }
       if (publishErrors.length > 0) {
         throw new Error(`Publish errors detected in CLI output:\n${publishErrors.join('\n')}`);
       }
