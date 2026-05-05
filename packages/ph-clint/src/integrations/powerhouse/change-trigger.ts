@@ -74,6 +74,13 @@ export interface DocumentChangeTriggerOptions<
   ) => Promise<WorkItem | null>;
 
   /**
+   * Call `onChange` even when zero documents are found. Default: false.
+   * Useful for triggers that need to perform work (e.g. bootstrapping from
+   * disk) regardless of whether any documents exist yet.
+   */
+  callOnEmpty?: boolean;
+
+  /**
    * Optional initial state for the trigger's private slot. Defaults to
    * `{ pending: 0 }`. When supplied, the shape MUST include a `pending:
    * number` field — the helper bumps and drains it internally.
@@ -192,7 +199,7 @@ export function createDocumentChangeTrigger<
           allDocs.push(...(found as Array<R[T]['document']>));
         }
         docs = allDocs;
-        if (docs.length === 0) return null;
+        if (docs.length === 0 && !options.callOnEmpty) return null;
       }
 
       if (options.filter) {

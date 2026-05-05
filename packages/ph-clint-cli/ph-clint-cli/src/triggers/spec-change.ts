@@ -131,6 +131,7 @@ export const specChangeTrigger = createDocumentChangeTrigger({
   id: 'spec-change',
   documentType: DOCUMENT_TYPE,
   // No documentId → watches ALL ph-clint-project docs
+  callOnEmpty: true, // bootstrap from disk when no documents exist yet
 
   async onChange(docs, ctx) {
     const log = ctx.context.log;
