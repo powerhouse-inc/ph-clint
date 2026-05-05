@@ -7,7 +7,7 @@
  * Everything outside the markers is user-editable and preserved.
  */
 import path from 'node:path';
-import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint';
+import { defineCli, buildDefaultReactor, deterministicId } from '@powerhousedao/ph-clint';
 import { z } from 'zod';
 import { CLI_NAME, CLI_VERSION, CLI_ROOT } from './config.js';
 import { configSchema, secretsSchema } from './framework.js';
@@ -43,6 +43,7 @@ export const cli = defineCli({
 
   // @clint:begin triggers
   triggers: [specChangeTrigger, publishTrigger],
+  routine: { id: 'triggers', name: 'Triggers' },
   // @clint:end triggers
 
   // @clint:begin prompts
@@ -117,7 +118,7 @@ cli.configureReactor({
   create: (ctx) => buildDefaultReactor(ctx, {
     documentModels,
     drives: [
-      { name: 'Clint Folders', role: 'personal' },
+      { name: 'Clint Folders', role: 'personal', id: deterministicId(CLI_NAME, 'personal-drive') },
     ],
     subscriptions: { documentTypes: ['powerhouse/ph-clint-project'] },
   }),

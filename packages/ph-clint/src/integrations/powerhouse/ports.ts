@@ -25,6 +25,7 @@ export function defaultPort(cliName: string, salt: string): number {
   return Math.round(raw / 10) * 10;
 }
 
+
 /**
  * Scan [port, port+range-1] for the first free port.
  * Throws with a clear error if no port in the range is available.

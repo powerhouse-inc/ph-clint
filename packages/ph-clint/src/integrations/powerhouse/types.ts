@@ -315,6 +315,9 @@ export interface DriveConfig {
   name: string;
   /** Optional icon URL for the drive. */
   icon?: string;
+  /** Deterministic drive ID. When set, the drive is created with this ID
+   *  instead of a random UUID. Used for stable cross-session identity. */
+  id?: string;
 }
 
 /**

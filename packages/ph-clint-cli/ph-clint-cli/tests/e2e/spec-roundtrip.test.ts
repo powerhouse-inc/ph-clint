@@ -235,6 +235,26 @@ async function killCli(cli: CliInstance): Promise<void> {
   });
 }
 
+/** Run a one-shot CLI command (e.g. ph-clint-studio-stop) and wait for exit. */
+async function runCliCommand(workdirArg: string, ...args: string[]): Promise<{ code: number | null; output: string }> {
+  return new Promise((resolve) => {
+    const proc = spawn(
+      'node',
+      ['--import', 'tsx', 'src/main.ts', '--workdir', workdirArg, ...args],
+      {
+        cwd: CLI_DIR,
+        env: { ...process.env, PH_CLINT_API_KEY: '', NODE_OPTIONS: '' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
+    const chunks: string[] = [];
+    proc.stdout?.on('data', (d: Buffer) => chunks.push(d.toString()));
+    proc.stderr?.on('data', (d: Buffer) => chunks.push(d.toString()));
+    proc.on('exit', (code) => resolve({ code, output: chunks.join('') }));
+    setTimeout(() => { proc.kill('SIGKILL'); resolve({ code: null, output: chunks.join('') }); }, 15_000);
+  });
+}
+
 // ── Exhaustive shape check ───────────────────────────────────────────────
 
 /**
@@ -318,10 +338,22 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
   let workdir: string;
   let url: string;
   let docId: string;
+  let firstRunDriveId: string;
 
   // The project dir where codegen writes files
   const projectName = 'ph-roundtrip-test-cli';
   const specRelPath = path.join('.ph', 'ph-clint-cli', 'project-spec.json');
+
+  function assertNoStaleServices(instance: CliInstance): void {
+    const stale = instance.output.find((line) => line.includes('already running'));
+    if (stale) {
+      throw new Error(
+        `Stale service detected — a previous test run left a service running.\n` +
+        `  Output: ${stale}\n` +
+        `  Fix: run \`ph-clint ph-clint-studio-stop\` manually, or ensure test teardown shuts down services.`,
+      );
+    }
+  }
 
   function projectDir(): string {
     return path.join(workdir, projectName);
@@ -341,12 +373,21 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
 
     cli = await startCli(workdir);
     url = cli.switchboardUrl;
+    assertNoStaleServices(cli);
     log(`[setup] Switchboard ready at ${url}`);
   }, STARTUP_TIMEOUT);
 
   afterAll(async () => {
     log('[teardown] Stopping CLI...');
     if (cli) await killCli(cli);
+
+    // Stop the persistent Connect service (it survives CLI exit)
+    if (workdir) {
+      log('[teardown] Stopping Connect service...');
+      const result = await runCliCommand(workdir, 'ph-clint-studio-stop');
+      log(`[teardown] ph-clint-studio-stop exited (${result.code}): ${result.output.trim().slice(0, 200)}`);
+    }
+
     if (workdir) {
       log(`[teardown] Cleaning up workdir: ${workdir}`);
       await fs.rm(workdir, { recursive: true, force: true }).catch(() => {});
@@ -356,7 +397,7 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
       fsSync.closeSync(logFd);
       logFd = null;
     }
-  }, 30_000);
+  }, 45_000);
 
   // ── Phase 1: Document → spec JSON ──────────────────────────────────────
 
@@ -372,6 +413,8 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
     const drives = driveData.findDocuments.items;
     log(`[step 1] Found ${drives.length} drive(s): ${drives.map((d) => `${d.name} (${d.id})`).join(', ')}`);
     const driveId = (drives.find((d) => d.name === 'Clint') ?? drives[0]).id;
+    firstRunDriveId = driveId;
+    log(`[step 1] Drive ID: ${driveId}`);
 
     log(`[step 1] Creating document in drive ${driveId}...`);
     const createData = await gql<{
@@ -506,6 +549,11 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
     await killCli(cli);
     log(`[step 5] CLI stopped`);
 
+    // Stop the persistent Connect service before restart
+    log(`[step 5] Stopping Connect service...`);
+    const stopResult = await runCliCommand(workdir, 'ph-clint-studio-stop');
+    log(`[step 5] ph-clint-studio-stop exited (${stopResult.code})`);
+
     // Delete the CLI's reactor state — NOT the project's .ph/ folder
     const reactorState = path.join(workdir, '.ph');
     log(`[step 5] Deleting reactor state: ${reactorState}`);
@@ -525,10 +573,23 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
     log(`[step 6] Restarting CLI with same workdir...`);
     cli = await startCli(workdir);
     url = cli.switchboardUrl;
+    assertNoStaleServices(cli);
     log(`[step 6] CLI restarted, Switchboard at ${url}`);
   }, STARTUP_TIMEOUT);
 
   it('the spec document is fully restored from the spec JSON', async () => {
+    // Verify drive ID is the same as the first run (deterministic)
+    const driveData = await gql<{
+      findDocuments: { items: Array<{ id: string; name: string }> };
+    }>(url, `{
+      findDocuments(search: { type: "powerhouse/document-drive" }) {
+        items { id name }
+      }
+    }`);
+    const secondRunDriveId = driveData.findDocuments.items[0]?.id;
+    log(`[step 7] Second run drive ID: ${secondRunDriveId} (first run: ${firstRunDriveId})`);
+    expect(secondRunDriveId).toBe(firstRunDriveId);
+
     log(`[step 7] Waiting for bootstrap to recreate the document...`);
 
     let newDocId: string | undefined;

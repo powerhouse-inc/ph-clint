@@ -35,6 +35,7 @@ export { defineRegistry } from './registry.js';
 
 export { connectServiceDefinition } from './connect.js';
 export { defaultPort, resolvePort, resolveReactorDefaults } from './ports.js';
+export { deterministicId } from './identity.js';
 export { bridgeSubscriptions } from './subscriptions.js';
 export { ensureDrive, ensureRemoteDrive } from './drive.js';
 export { buildReactor } from './reactor.js';

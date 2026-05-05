@@ -22,10 +22,17 @@ export async function ensureDrive(
 ): Promise<{ id: string; name: string }> {
   const { client, reactor } = reactorModule;
   const driveName = driveConfig?.name ?? 'default';
+  const wantedId = driveConfig?.id;
 
   // Find existing document-drive documents
   const existing = await reactor.findByType('powerhouse/document-drive');
   if (existing?.results?.length) {
+    // If a deterministic ID was requested, check if it already exists
+    if (wantedId) {
+      const match = existing.results.find((r) => r.header.id === wantedId);
+      if (match) return { id: wantedId, name: driveName };
+    }
+
     // Match by name — load each to check
     for (const result of existing.results) {
       const doc = await client.get(result.header.id) as any;
@@ -40,9 +47,18 @@ export async function ensureDrive(
     }
   }
 
-  // Create a new drive document
-  const drive = await client.createEmpty('powerhouse/document-drive');
-  const driveId = drive.header.id;
+  // Create a new drive document — use deterministic ID if provided
+  let driveId: string;
+  if (wantedId) {
+    const module = await client.getDocumentModelModule('powerhouse/document-drive');
+    const doc = module.utils.createDocument() as any;
+    doc.header.id = wantedId;
+    const created = await client.create(doc);
+    driveId = (created as any).header.id;
+  } else {
+    const drive = await client.createEmpty('powerhouse/document-drive');
+    driveId = drive.header.id;
+  }
 
   await client.rename(driveId, driveName);
   return { id: driveId, name: driveName };
