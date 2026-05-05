@@ -161,9 +161,43 @@ Services managed by `ServiceManager` capture stdout/stderr into circular log buf
 
 - `services.logs(id, instanceId, lines)` — returns captured log lines as string
 - `services.watchLogs(id, instanceId, onLine)` — streaming callback for live tailing
+- `services.watchChunks(id, instanceId, onChunk)` — streaming callback for structured `StreamChunk` objects
 - Service status formatted by `formatStatus()` (`service-command.ts:10-29`) — icon + name + pid + endpoints
 
 In the REPL, service events flow through `onMessage` callback → `setStatusLines()` for persistent status bar display.
+
+### Background Process Output (Routine → Repl)
+
+Background processes spawned by triggers via `ctx.runProcess()` are surfaced in the REPL as rolling window segments — the same visual treatment as agent tool calls.
+
+**Chunk emission** (`routine.ts` `setContext()`): When the routine receives a new context, it rewires `ctx.runProcess` to emit structured `StreamChunk` objects through `routine.onChunk`:
+
+```
+Trigger calls ctx.runProcess("pnpm build", { cwd })
+  → routine.setContext-rewired runProcess
+    → first output line:  routine.onChunk({ type: 'tool-call', toolName: 'pnpm build', args: {} })
+    → each output line:   routine.onChunk({ type: 'tool-output', toolName, text: line })
+    → on completion:      routine.onChunk({ type: 'tool-result', toolName, result, isError })
+  → routine.onOutput(line) also called for log buffer capture
+```
+
+Output goes through **two channels**: `onChunk` for structured rendering, `onOutput` for the log buffer. The Repl subscribes only to `watchChunks` (not `watchLogs`) to avoid duplicating process lines that flow through both.
+
+**Subscription** (`repl.tsx`): On mount, the Repl calls `services.watchChunks()` for each listed service instance. Chunks feed into the same `updateSegments()` reducer used for agent streaming.
+
+**Rendering**: Background segments render in two phases:
+
+1. **While running** (idle phase) — displayed above the input bar as a live rolling window. The `▶ command({})` header is normal brightness; the `⎿` body lines are dimmed.
+2. **On completion** — when all segments are complete, they flush to `<Static>` history. The header stays normal; body lines are wrapped in ANSI dim codes (`\x1b[2m...\x1b[0m`).
+
+**Two service types**:
+
+| Service type | `watchChunks` | `watchLogs` |
+|---|---|---|
+| Routine (in-process triggers) | Emits tool-call/output/result via `routine.onChunk` chain | Emits flat text via `routine.onOutput` chain |
+| Process-based (reactor, connect) | No-op (returns empty unsubscribe) | Tails log file for new lines |
+
+Plain `ctx.stdout()` calls from triggers (status messages like `[spec-change] watching...`) flow through `routine.onOutput` only — they appear in the log buffer and `watchLogs` but not as structured segments.
 
 ## Conversation Logging
 
@@ -184,5 +218,6 @@ When streaming completes and the display transitions from dynamic segments to st
 | Agent tool-result | `writeRaw(✓ ...)` | segment → crop → `⎿` indent → `stdout` | segment → crop → `⎿` indent + rolling window |
 | Command result | `stdout(text)` | `renderMarkdown` → `stdout` | `renderMarkdown` → history entry |
 | Command stdout | `writeRaw(text)` | `tool-output` chunk → rolling window | `tool-output` chunk → rolling window |
+| Background runProcess | N/A | N/A | `onChunk` → segment → rolling window (dimmed) → history |
 | Service status | N/A | `stdout(status)` | status bar line |
 | Errors | `stderr(msg)` | `log.error(msg)` → stderr | red text in history |
