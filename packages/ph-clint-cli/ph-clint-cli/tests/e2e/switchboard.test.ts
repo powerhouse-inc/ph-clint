@@ -3,7 +3,7 @@
  *
  * 1. Start ph-clint-cli (Reactor + Switchboard + routine loop).
  * 2. Create a `powerhouse/ph-clint-project` document.
- * 3. Populate it with identity + features for `@powerhousedao/ph-e2e-test`.
+ * 3. Populate it with identity + features for `@powerhousedao/ph-e2e-test-cli`.
  * 4. Wait for the spec-change trigger to generate the split-layout project.
  * 5. Dispatch BUMP_VERSION + PUBLISH_DEV actions.
  * 6. Wait for the publish trigger to install deps, build, and publish.
@@ -61,10 +61,12 @@ const NPM_PROPAGATION_TIMEOUT = 180_000; // 3 min for npm CDN propagation
 
 // ── Project constants ────────────────────────────────────────────────────
 
-const PROJECT_NAME = 'ph-e2e-test';
-const PROJECT_SCOPE = 'powerhousedao';
-const CLI_PKG_NAME = `@${PROJECT_SCOPE}/${PROJECT_NAME}-cli`;
-const APP_PKG_NAME = `@${PROJECT_SCOPE}/${PROJECT_NAME}-app`;
+const PROJECT_IDENTIFIER = '@powerhousedao/ph-e2e-test'; // input to SET_PACKAGE_IDENTIFIER
+const PROJECT_NAME = 'ph-e2e-test-cli'; // state.name (auto-appends -cli)
+const PROJECT_SCOPE = '@powerhousedao'; // state.scope (stored with @ prefix)
+const BIN_NAME = 'ph-e2e-test'; // strips -cli suffix
+const CLI_PKG_NAME = `${PROJECT_SCOPE}/${PROJECT_NAME}`;
+const APP_PKG_NAME = `${PROJECT_SCOPE}/ph-e2e-test-app`;
 const BASE_VERSION = '0.0.1';
 
 // ── GraphQL helpers ──────────────────────────────────────────────────────
@@ -377,8 +379,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
       const mutResult = await gql(url, MUTATE, {
         id: docId,
         actions: [
-          action('SET_PACKAGE_NAME', { name: PROJECT_NAME }),
-          action('SET_SCOPE', { scope: PROJECT_SCOPE }),
+          action('SET_PACKAGE_IDENTIFIER', { identifier: PROJECT_IDENTIFIER }),
           action('SET_DESCRIPTION', { description: 'E2E test project' }),
           action('SET_POWERHOUSE_LEVEL', { level: 'Reactor' }),
         ],
@@ -388,7 +389,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
       const state = await getDocState(url, docId);
       expect(state.name).toBe(PROJECT_NAME);
       expect(state.scope).toBe(PROJECT_SCOPE);
-      log(`[step 3] Spec populated: @${state.scope}/${state.name}, features=${JSON.stringify(state.features)}`);
+      log(`[step 3] Spec populated: ${state.scope}/${state.name}, features=${JSON.stringify(state.features)}`);
     },
     ACTION_TIMEOUT,
   );
@@ -399,8 +400,8 @@ describe('Switchboard e2e — full project lifecycle', () => {
     'spec-change trigger generates the project and initializes the app',
     async () => {
       const projectDir = path.join(workdir, PROJECT_NAME);
-      const cliDir = path.join(projectDir, `${PROJECT_NAME}-cli`);
-      const appDir = path.join(projectDir, `${PROJECT_NAME}-app`);
+      const cliDir = path.join(projectDir, PROJECT_NAME);
+      const appDir = path.join(projectDir, 'ph-e2e-test-app');
 
       log(`[step 4] Waiting for codegen + ph init...`);
       log(`[step 4]   cli dir: ${cliDir}`);
@@ -455,7 +456,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
           'utf8',
         ),
       ) as { documentId?: string; documentType?: string; name: string };
-      expect(specJson.name).toBe(PROJECT_NAME);
+      expect(specJson.name).toBe(PROJECT_NAME); // 'ph-e2e-test-cli'
       expect(specJson.documentId).toBe(docId);
       expect(specJson.documentType).toBe('powerhouse/ph-clint-project');
 
@@ -464,9 +465,9 @@ describe('Switchboard e2e — full project lifecycle', () => {
         path.join(projectDir, 'publish.config.js'),
         'utf8',
       );
-      expect(publishConfig).toContain(`'${PROJECT_NAME}'`);
-      expect(publishConfig).toContain(`'${PROJECT_NAME}-app'`);
-      expect(publishConfig).toContain(`'${PROJECT_NAME}-cli'`);
+      expect(publishConfig).toContain(`'${BIN_NAME}'`); // group name = bin name
+      expect(publishConfig).toContain(`'ph-e2e-test-app'`); // app folder
+      expect(publishConfig).toContain(`'${PROJECT_NAME}'`); // cli folder = project name
 
       log(`[step 4] Project generated at ${projectDir}: cli=${cliPkg.name}, app=${appPkg.name}`);
       log(`[step 4] publish.config.js exists and references all packages`);
@@ -605,6 +606,22 @@ describe('Switchboard e2e — full project lifecycle', () => {
       log(`[step 6]   ${APP_PKG_NAME}: versions=[${appVersions.join(', ')}], dev=${appDevTag ?? '<none>'}`);
       log(`[step 6]   Expected version: ${expectedVersion}`);
 
+      // Fail fast on any publish errors in CLI output
+      const publishErrors = cli.output.filter((l) => l.includes('[ERROR]') && l.includes('[publish]'));
+      const ts2883Lines = cli.output.filter((l) => l.includes('TS2883'));
+      if (ts2883Lines.length > 0) {
+        throw new Error(
+          `Known issue: TS2883 — generated project fails to build.\n` +
+          `The app's Vite output uses hashed chunk filenames that TypeScript cannot resolve\n` +
+          `for type inference across package boundaries.\n` +
+          `Fix: upgrade \`ph init\` to produce declaration files (.d.ts) with stable paths.\n\n` +
+          `Build errors:\n${ts2883Lines.join('\n')}`,
+        );
+      }
+      if (publishErrors.length > 0) {
+        throw new Error(`Publish errors detected in CLI output:\n${publishErrors.join('\n')}`);
+      }
+
       expect(record?.status).toBe('Succeeded');
     },
     PUBLISH_TIMEOUT,
@@ -671,7 +688,7 @@ describe('Switchboard e2e — full project lifecycle', () => {
         expect(installedPkg.version).toBe(publishedVersion);
         log(`[step 8] Installed version: ${installedPkg.version}`);
 
-        const binPath = path.join(installDir, 'node_modules', '.bin', PROJECT_NAME);
+        const binPath = path.join(installDir, 'node_modules', '.bin', BIN_NAME);
         log(`[step 8] Running: ${binPath} --version`);
         const versionOutput = execSync(
           `${binPath} --version`,
