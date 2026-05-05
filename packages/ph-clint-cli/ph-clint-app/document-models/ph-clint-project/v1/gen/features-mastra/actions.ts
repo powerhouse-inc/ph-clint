@@ -1,4 +1,4 @@
-import type { Action } from "document-model";
+import type { Action } from 'document-model';
 import type {
   EnableMastraInput,
   DisableMastraInput,
@@ -15,66 +15,66 @@ import type {
   SetAgentImageInput,
   ClearAgentImageInput,
   SetEnableChatInput,
-} from "../types.js";
+} from '../types.js';
 
 export type EnableMastraAction = Action & {
-  type: "ENABLE_MASTRA";
+  type: 'ENABLE_MASTRA';
   input: EnableMastraInput;
 };
 export type DisableMastraAction = Action & {
-  type: "DISABLE_MASTRA";
+  type: 'DISABLE_MASTRA';
   input: DisableMastraInput;
 };
 export type SetAgentIdAction = Action & {
-  type: "SET_AGENT_ID";
+  type: 'SET_AGENT_ID';
   input: SetAgentIdInput;
 };
 export type SetAgentNameAction = Action & {
-  type: "SET_AGENT_NAME";
+  type: 'SET_AGENT_NAME';
   input: SetAgentNameInput;
 };
 export type AddModelAction = Action & {
-  type: "ADD_MODEL";
+  type: 'ADD_MODEL';
   input: AddModelInput;
 };
 export type RemoveModelAction = Action & {
-  type: "REMOVE_MODEL";
+  type: 'REMOVE_MODEL';
   input: RemoveModelInput;
 };
 export type SetDefaultModelAction = Action & {
-  type: "SET_DEFAULT_MODEL";
+  type: 'SET_DEFAULT_MODEL';
   input: SetDefaultModelInput;
 };
 export type AddProfileAction = Action & {
-  type: "ADD_PROFILE";
+  type: 'ADD_PROFILE';
   input: AddProfileInput;
 };
 export type UpdateProfileAction = Action & {
-  type: "UPDATE_PROFILE";
+  type: 'UPDATE_PROFILE';
   input: UpdateProfileInput;
 };
 export type RemoveProfileAction = Action & {
-  type: "REMOVE_PROFILE";
+  type: 'REMOVE_PROFILE';
   input: RemoveProfileInput;
 };
 export type ReorderProfilesAction = Action & {
-  type: "REORDER_PROFILES";
+  type: 'REORDER_PROFILES';
   input: ReorderProfilesInput;
 };
 export type SetAgentDescriptionAction = Action & {
-  type: "SET_AGENT_DESCRIPTION";
+  type: 'SET_AGENT_DESCRIPTION';
   input: SetAgentDescriptionInput;
 };
 export type SetAgentImageAction = Action & {
-  type: "SET_AGENT_IMAGE";
+  type: 'SET_AGENT_IMAGE';
   input: SetAgentImageInput;
 };
 export type ClearAgentImageAction = Action & {
-  type: "CLEAR_AGENT_IMAGE";
+  type: 'CLEAR_AGENT_IMAGE';
   input: ClearAgentImageInput;
 };
 export type SetEnableChatAction = Action & {
-  type: "SET_ENABLE_CHAT";
+  type: 'SET_ENABLE_CHAT';
   input: SetEnableChatInput;
 };
 

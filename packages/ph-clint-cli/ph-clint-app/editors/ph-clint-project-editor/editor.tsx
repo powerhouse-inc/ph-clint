@@ -969,31 +969,33 @@ function PackageCard(props: { pkg: PowerhousePackage; addDocType: (packageId: st
         </ul>
       )}
 
-      {!hasWildcard && <div className="mt-2 flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="org/document-type"
-          value={newDocType}
-          onChange={(e) => setNewDocType(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && newDocType.trim()) {
+      {!hasWildcard && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="org/document-type"
+            value={newDocType}
+            onChange={(e) => setNewDocType(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newDocType.trim()) {
+                props.addDocType(pkg.id, newDocType.trim());
+                setNewDocType('');
+              }
+            }}
+            className="flex-1 rounded border p-1 font-mono text-sm"
+          />
+          <button
+            className="text-sm text-blue-500 hover:text-blue-700 disabled:opacity-50"
+            disabled={!newDocType.trim()}
+            onClick={() => {
               props.addDocType(pkg.id, newDocType.trim());
               setNewDocType('');
-            }
-          }}
-          className="flex-1 rounded border p-1 font-mono text-sm"
-        />
-        <button
-          className="text-sm text-blue-500 hover:text-blue-700 disabled:opacity-50"
-          disabled={!newDocType.trim()}
-          onClick={() => {
-            props.addDocType(pkg.id, newDocType.trim());
-            setNewDocType('');
-          }}
-        >
-          + doc type
-        </button>
-      </div>}
+            }}
+          >
+            + doc type
+          </button>
+        </div>
+      )}
     </div>
   );
 }

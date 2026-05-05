@@ -305,6 +305,11 @@ input ImportSpecInput {
   agentName: String
   models: [ImportModelInput!]
   profiles: [ImportProfileInput!]
+  agentDescription: String
+  agentImage: String
+  enableChat: Boolean
+  proxyEnabled: Boolean
+  supportedResources: [String!]
 }
 
 input ImportPackageInput {

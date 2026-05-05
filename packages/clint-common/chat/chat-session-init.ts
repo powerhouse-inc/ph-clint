@@ -30,6 +30,7 @@ export async function ensureSessionInitialized<R extends ChatSessionRegistry>(
   const now = new Date().toISOString();
 
   log?.info(`${TAG} initializing session ${documentId} with threadId ${threadId}`);
+  log?.info(`${TAG} agent.description=${agent.description ? 'set' : 'unset'}, agent.image=${agent.image ? `set (${agent.image.length} chars)` : 'unset'}`);
 
   const actions: Parameters<typeof reactor.client.execute<'powerhouse/chat-session'>>[2] = [
     startSession({

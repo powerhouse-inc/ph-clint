@@ -119,6 +119,11 @@ export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
       name: s.name,
       githubUrl: s.githubUrl,
     })),
+    agentDescription: spec.features.mastra.agentDescription ?? null,
+    agentImage: spec.features.mastra.agentImage ?? null,
+    enableChat: spec.features.mastra.common.enableChat,
+    proxyEnabled: spec.deployment.proxyEnabled,
+    supportedResources: spec.deployment.supportedResources,
   };
 }
 
