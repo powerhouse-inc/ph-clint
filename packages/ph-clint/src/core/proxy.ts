@@ -34,7 +34,9 @@ export async function createProxyServer(
   const { host, logger } = options;
   let routes: ProxyRoute[] = [];
 
-  const proxy = httpProxy.createProxyServer({});
+  const proxy = httpProxy.createProxyServer({
+    xfwd: true,
+  });
 
   proxy.on('error', (err, req, res) => {
     logger.warn(`Proxy error for ${req.url}: ${err.message}`);
