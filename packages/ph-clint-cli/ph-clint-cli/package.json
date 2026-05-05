@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-cli",
-  "version": "0.1.0-dev.52",
+  "version": "0.1.0-dev.53",
   "publishConfig": {
     "access": "public"
   },
