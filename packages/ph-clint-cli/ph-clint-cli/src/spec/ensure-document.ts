@@ -44,28 +44,30 @@ export async function ensureSpecDocument<R extends DocumentRegistry = DocumentRe
     if (inDrive) return { docId: spec.documentId, created: false };
   }
 
-  // Reuse existing document if it's still in the reactor, otherwise create new
   let docId: string;
   if (spec.documentId) {
     try {
-      const existing = await reactor.client.get(spec.documentId);
-      if (existing) {
-        docId = spec.documentId;
-      } else {
-        const newDoc = await reactor.client.createEmpty(DOCUMENT_TYPE);
-        docId = (newDoc as any).header.id;
-      }
+      await reactor.client.get(spec.documentId);
+      docId = spec.documentId;
+      // Orphan recovery: doc exists in reactor but not in drive. Re-attach via
+      // addDocument; we can't retrofit CREATE/UPGRADE into the drive's stream.
+      await folders.addDocument(docId, `specs/${spec.name}`, spec.name);
     } catch {
-      const newDoc = await reactor.client.createEmpty(DOCUMENT_TYPE);
-      docId = (newDoc as any).header.id;
+      const created = await folders.createDocument(
+        DOCUMENT_TYPE,
+        `specs/${spec.name}`,
+        spec.name,
+      );
+      docId = created.documentId;
     }
   } else {
-    const newDoc = await reactor.client.createEmpty(DOCUMENT_TYPE);
-    docId = (newDoc as any).header.id;
+    const created = await folders.createDocument(
+      DOCUMENT_TYPE,
+      `specs/${spec.name}`,
+      spec.name,
+    );
+    docId = created.documentId;
   }
-
-  // Add to the drive's folder tree
-  await folders.addDocument(docId, `specs/${spec.name}`, spec.name);
 
   const importInput = specToImportInput(spec);
   await reactor.client.execute(docId, 'main', [importSpec(importInput)]);

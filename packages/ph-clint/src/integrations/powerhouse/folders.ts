@@ -4,7 +4,7 @@
  *
  * Folders and file references are stored as nodes in the drive document's
  * `state.global.nodes` array, managed via ADD_FOLDER and ADD_FILE operations.
- * This is distinct from the parent-child document graph (addChildren/getChildren).
+ * This is distinct from the parent-child document graph (addRelationship/getOutgoingRelationships).
  *
  * Also exports `createFolderCommands()` to auto-generate CLI commands
  * that wrap the folder operations.
@@ -175,7 +175,7 @@ export function createFolderOperations(
     ]);
 
     // Also establish the parent-child relationship in the document graph
-    await client.addChildren(personalDriveId, [documentId]);
+    await client.addRelationship(personalDriveId, documentId, 'child');
 
     if (name) {
       await client.rename(documentId, name);
@@ -184,6 +184,30 @@ export function createFolderOperations(
     log?.debug(
       `${TAG} addDocument ${documentId.slice(0, 8)}… added as "${displayName}" in folder ${folderId.slice(0, 8)}…`,
     );
+  }
+
+  async function createDocument(
+    documentType: string,
+    folderPath: string,
+    name?: string,
+  ): Promise<{ documentId: string }> {
+    log?.debug(
+      `${TAG} createDocument type=${documentType} folder="${folderPath}" name=${name ?? '(none)'}`,
+    );
+    const parentFolderId = await ensureFolder(folderPath);
+
+    const module = await client.getDocumentModelModule(documentType);
+    const doc = module.utils.createDocument();
+    if (name) {
+      doc.header.name = name;
+    }
+
+    await client.drives.addFile(personalDriveId, doc, parentFolderId);
+
+    log?.debug(
+      `${TAG} createDocument ${doc.header.id.slice(0, 8)}… created in folder ${parentFolderId.slice(0, 8)}…`,
+    );
+    return { documentId: doc.header.id };
   }
 
   async function removeDocument(
@@ -197,7 +221,7 @@ export function createFolderOperations(
     ]);
 
     // Also remove the parent-child relationship
-    await client.removeChildren(personalDriveId, [documentId]);
+    await client.removeRelationship(personalDriveId, documentId, 'child');
   }
 
   async function resolveFolder(folderPath: string): Promise<string | undefined> {
@@ -256,6 +280,7 @@ export function createFolderOperations(
 
   return {
     addDocument,
+    createDocument,
     removeDocument,
     getDocument,
     listFolder,

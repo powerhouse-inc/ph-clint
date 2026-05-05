@@ -78,8 +78,8 @@ export interface TypedReactorClient<R extends DocumentRegistry>
   extends Omit<
     IReactorClient,
     | 'get'
-    | 'getChildren'
-    | 'getParents'
+    | 'getOutgoingRelationships'
+    | 'getIncomingRelationships'
     | 'find'
     | 'getDocumentModelModule'
     | 'create'
@@ -88,9 +88,9 @@ export interface TypedReactorClient<R extends DocumentRegistry>
     | 'execute'
     | 'executeAsync'
     | 'rename'
-    | 'addChildren'
-    | 'removeChildren'
-    | 'moveChildren'
+    | 'addRelationship'
+    | 'removeRelationship'
+    | 'moveRelationship'
     | 'subscribe'
   > {
   get<T extends keyof R & string = keyof R & string>(
@@ -99,15 +99,17 @@ export interface TypedReactorClient<R extends DocumentRegistry>
     signal?: AbortSignal,
   ): Promise<R[T]['document']>;
 
-  getChildren<T extends keyof R & string = keyof R & string>(
-    parentIdentifier: string,
+  getOutgoingRelationships<T extends keyof R & string = keyof R & string>(
+    sourceIdentifier: string,
+    relationshipType: string,
     view?: ViewFilter,
     paging?: PagingOptions,
     signal?: AbortSignal,
   ): Promise<PagedResults<R[T]['document']>>;
 
-  getParents<T extends keyof R & string = keyof R & string>(
-    childIdentifier: string,
+  getIncomingRelationships<T extends keyof R & string = keyof R & string>(
+    targetIdentifier: string,
+    relationshipType: string,
     view?: ViewFilter,
     paging?: PagingOptions,
     signal?: AbortSignal,
@@ -164,24 +166,27 @@ export interface TypedReactorClient<R extends DocumentRegistry>
     signal?: AbortSignal,
   ): Promise<R[T]['document']>;
 
-  addChildren<T extends keyof R & string = keyof R & string>(
-    parentIdentifier: string,
-    documentIdentifiers: string[],
+  addRelationship<T extends keyof R & string = keyof R & string>(
+    sourceIdentifier: string,
+    targetIdentifier: string,
+    relationshipType: string,
     branch?: string,
     signal?: AbortSignal,
   ): Promise<R[T]['document']>;
 
-  removeChildren<T extends keyof R & string = keyof R & string>(
-    parentIdentifier: string,
-    documentIdentifiers: string[],
+  removeRelationship<T extends keyof R & string = keyof R & string>(
+    sourceIdentifier: string,
+    targetIdentifier: string,
+    relationshipType: string,
     branch?: string,
     signal?: AbortSignal,
   ): Promise<R[T]['document']>;
 
-  moveChildren<T extends keyof R & string = keyof R & string>(
+  moveRelationship<T extends keyof R & string = keyof R & string>(
     sourceParentIdentifier: string,
     targetParentIdentifier: string,
-    documentIdentifiers: string[],
+    targetIdentifier: string,
+    relationshipType: string,
     branch?: string,
     signal?: AbortSignal,
   ): Promise<{ source: R[T]['document']; target: R[T]['document'] }>;
@@ -266,6 +271,12 @@ export interface FolderEntry {
 export interface FolderOperations {
   /** Add/link a document to the personal drive at the given folder path. Creates folders as needed. */
   addDocument(documentId: string, folderPath: string, name?: string): Promise<void>;
+  /** Create a new document bound to the personal drive at the given folder path. */
+  createDocument(
+    documentType: string,
+    folderPath: string,
+    name?: string,
+  ): Promise<{ documentId: string }>;
   /** Remove a document from the personal drive (unlink, not delete the document itself). */
   removeDocument(documentId: string, folderPath?: string): Promise<void>;
   /** Get a document by ID from the personal drive. */

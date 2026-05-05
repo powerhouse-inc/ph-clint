@@ -138,6 +138,16 @@ const FIND_DOCS = `query ($type: String!) {
   }
 }`;
 
+const GET_OPS = `query ($id: String!) {
+  document(identifier: $id) {
+    document {
+      operations {
+        items { action { type scope } }
+      }
+    }
+  }
+}`;
+
 let actionCounter = 0;
 function action(type: string, input: Record<string, unknown>, scope = 'global') {
   return {
@@ -682,5 +692,20 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
     const updatedSpec = JSON.parse(await fs.readFile(specJsonPath(), 'utf8')) as { documentId?: string };
     expect(updatedSpec.documentId).toBe(newDocId);
     log(`[step 7] Spec JSON updated with new documentId: ${updatedSpec.documentId}`);
+
+    const opsData = await gql<{
+      document: {
+        document: {
+          operations: { items: Array<{ action: { type: string; scope: string } }> };
+        };
+      };
+    }>(url, GET_OPS, { id: newDocId });
+    const opItems = opsData.document.document.operations.items;
+    const docScopeTypes = opItems
+      .filter((o) => o.action.scope === 'document')
+      .map((o) => o.action.type);
+    log(`[step 7] document-scope op types: ${docScopeTypes.join(', ')}`);
+    expect(docScopeTypes).toContain('CREATE_DOCUMENT');
+    expect(docScopeTypes).toContain('UPGRADE_DOCUMENT');
   }, TRIGGER_TIMEOUT + 10_000);
 });

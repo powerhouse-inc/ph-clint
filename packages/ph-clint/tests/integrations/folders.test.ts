@@ -94,9 +94,35 @@ describe('createFolderOperations', () => {
     expect(fileNode.name).toBe('My Spec Doc');
 
     // Verify parent-child relationship (separate from drive nodes)
-    const children = await client.getChildren(driveId);
+    const children = await client.getOutgoingRelationships(driveId, 'child');
     const childIds = (children.results ?? children).map((c: any) => c.header?.id ?? c.id);
     expect(childIds).toContain(docId);
+  });
+
+  it('createDocument emits CREATE_DOCUMENT and UPGRADE_DOCUMENT in the document scope', async () => {
+    const client = reactorModule.client as any;
+    const ops = createFolderOperations(client, driveId);
+
+    const { documentId } = await ops.createDocument(
+      'powerhouse/document-model',
+      'specs/created-via-folders',
+      'Spec via createDocument',
+    );
+
+    const drive = await client.get(driveId);
+    const nodes = (drive as any).state.global.nodes;
+    const fileNode = nodes.find(
+      (n: any) => n.kind === 'file' && n.id === documentId,
+    );
+    expect(fileNode).toBeDefined();
+    expect(fileNode.name).toBe('Spec via createDocument');
+
+    const opsPage = await client.getOperations(documentId);
+    const opTypes = (opsPage.results ?? opsPage).map(
+      (op: any) => op.action?.type ?? op.type,
+    );
+    expect(opTypes).toContain('CREATE_DOCUMENT');
+    expect(opTypes).toContain('UPGRADE_DOCUMENT');
   });
 
   it('addDocument skips duplicate file nodes', async () => {
@@ -143,7 +169,7 @@ describe('createFolderOperations', () => {
     expect(fileNode).toBeUndefined();
 
     // Verify parent-child relationship removed
-    const children = await client.getChildren(driveId);
+    const children = await client.getOutgoingRelationships(driveId, 'child');
     const childIds = (children.results ?? children).map((c: any) => c.header?.id ?? c.id);
     expect(childIds).not.toContain(docId);
   });

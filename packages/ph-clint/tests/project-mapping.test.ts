@@ -6,6 +6,7 @@ import type { FolderOperations, FolderEntry } from '../src/integrations/powerhou
 function makeFolders(entries: FolderEntry[]): FolderOperations {
   return {
     addDocument: async () => {},
+    createDocument: async () => ({ documentId: 'stub-doc-id' }),
     removeDocument: async () => {},
     getDocument: async () => ({}),
     listFolder: async (folderPath?: string) => {
@@ -99,6 +100,7 @@ describe('getProjectMapping', () => {
     const scans: ProjectScanResult[] = [];
     const folders: FolderOperations = {
       addDocument: async () => {},
+      createDocument: async () => ({ documentId: 'stub-doc-id' }),
       removeDocument: async () => {},
       getDocument: async () => ({}),
       listFolder: async (folderPath?: string) => {
