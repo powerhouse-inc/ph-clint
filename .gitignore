@@ -11,15 +11,14 @@ pnpm-lock.yaml
 .eslintcache
 /.agents
 
-/specs/enterprise
-/specs/ph-mara
+# Specs: only track design-principles/, issues/, and root .md files
+/specs/*
+!/specs/*.md
+!/specs/design-principles/
+!/specs/issues/
 
 # Playwright CLI artifacts
 .playwright-cli/
-
-/specs/powerhouse
-
-/specs/archive/gtm-agent-experiment/ph-mara/gen/
-/specs/archive/gtm-agent-experiment/ph-mara/mara-test/
 cli-test/
+clis/
 packages/tmp/

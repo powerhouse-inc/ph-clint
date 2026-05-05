@@ -1,6 +1,0 @@
-- 20260402 - Powerhouse promo video.pdf
-- https://powerhouse.io
-- https://vetra.io/
-- https://bai.powerhouse.io/ 
-- https://staging.achra.com/
-- https://powerhouse.inc/
