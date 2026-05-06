@@ -334,6 +334,48 @@ describe('AgentOperations', () => {
     expect(doc.state.global.usage).toBeNull();
   });
 
+  it('preserves empty strings (not coerced to null)', () => {
+    let doc = reducer(
+      utils.createDocument(),
+      startSession({
+        threadId: 't',
+        resourceId: 'r',
+        startedAt: '2025-01-01T00:00:00Z',
+        agent: { id: '', name: '', model: '' },
+      }),
+    );
+
+    // Empty string fields on assistant message content parts
+    doc = reducer(
+      doc,
+      addAssistantMessage({
+        id: 'msg-a',
+        content: [
+          {
+            id: 'p1',
+            type: 'TOOL_CALL',
+            toolCallId: 'tc-1',
+            toolName: 'search',
+            args: '',
+            data: '',
+            filename: '',
+          },
+        ],
+        createdAt: '2025-01-01T00:00:01Z',
+      }),
+    );
+
+    const part = doc.state.global.messages[0].content[0];
+    expect(part.args).toBe('');
+    expect(part.data).toBe('');
+    expect(part.filename).toBe('');
+
+    // Agent info with empty strings
+    expect(doc.state.global.agent?.id).toBe('');
+    expect(doc.state.global.agent?.name).toBe('');
+    expect(doc.state.global.agent?.model).toBe('');
+  });
+
   it('preserves falsy values (0, false) via nullish coalescing', () => {
     let doc = reducer(
       utils.createDocument(),

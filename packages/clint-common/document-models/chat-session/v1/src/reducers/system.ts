@@ -5,10 +5,10 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
     state.threadId = action.input.threadId;
     state.resourceId = action.input.resourceId;
     state.agent = {
-      id: action.input.agent.id || null,
-      name: action.input.agent.name || null,
-      model: action.input.agent.model || null,
-      description: action.input.agent.description || null,
+      id: action.input.agent.id ?? null,
+      name: action.input.agent.name ?? null,
+      model: action.input.agent.model ?? null,
+      description: action.input.agent.description ?? null,
       image: null,
       imageMediaType: null,
       imageUrl: null,
@@ -86,9 +86,9 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
     if (!state.agent) {
       state.agent = { id: null, name: null, model: null, description: null, image: null, imageMediaType: null, imageUrl: null };
     }
-    state.agent.image = action.input.data || null;
-    state.agent.imageMediaType = action.input.mediaType || null;
-    state.agent.imageUrl = action.input.url || null;
+    state.agent.image = action.input.data ?? null;
+    state.agent.imageMediaType = action.input.mediaType ?? null;
+    state.agent.imageUrl = action.input.url ?? null;
   },
   setAgentDescriptionOperation(state, action) {
     if (!state.agent) {

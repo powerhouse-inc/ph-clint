@@ -11,16 +11,16 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
     const parts = action.input.content.map((p) => ({
       id: p.id,
       type: p.type,
-      text: p.text || null,
+      text: p.text ?? null,
       toolCallId: null,
       toolName: null,
       args: null,
       result: null,
       isError: null,
-      mediaType: p.mediaType || null,
-      url: p.url || null,
-      data: p.data || null,
-      filename: p.filename || null,
+      mediaType: p.mediaType ?? null,
+      url: p.url ?? null,
+      data: p.data ?? null,
+      filename: p.filename ?? null,
       error: null,
     }));
     state.messages.push({
