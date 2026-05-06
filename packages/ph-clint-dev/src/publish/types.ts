@@ -59,6 +59,7 @@ export interface BumpOptions {
   group?: string;
   configPath?: string;
   force?: boolean;
+  log?: (msg: string) => void;
 }
 
 /** Resolved info about a file: dependency. */

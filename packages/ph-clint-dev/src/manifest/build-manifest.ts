@@ -7,6 +7,8 @@ export interface BuildManifestOptions {
   srcDir?: string;
   /** Output directory. Default: {srcDir}/dist */
   outDir?: string;
+  /** Warning logger. Default: console.warn */
+  warn?: (msg: string) => void;
 }
 
 export interface BuildManifestResult {
@@ -23,6 +25,7 @@ export interface BuildManifestResult {
 export async function buildManifest(
   options?: BuildManifestOptions,
 ): Promise<BuildManifestResult> {
+  const warn = options?.warn ?? console.warn;
   const srcDir = path.resolve(options?.srcDir ?? process.cwd());
   const outDir = path.resolve(options?.outDir ?? path.join(srcDir, 'dist'));
 
@@ -44,7 +47,7 @@ export async function buildManifest(
       manifest.features.agent.image = `./${filename}`;
       imageDownloaded = true;
     } catch (err) {
-      console.warn(
+      warn(
         `Warning: failed to download agent image: ${err instanceof Error ? err.message : err}`,
       );
       // Keep original URL

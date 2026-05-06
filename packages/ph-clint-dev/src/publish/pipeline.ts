@@ -347,7 +347,7 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
  * Bump command: update the base version in config without publishing.
  */
 export async function bump(options: BumpOptions): Promise<void> {
-  const log = (msg: string) => console.log(msg);
+  const log = options.log ?? ((msg: string) => console.log(msg));
 
   const configPath =
     options.configPath ?? discoverConfigPath(process.cwd());

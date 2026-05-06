@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, afterEach } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -114,12 +114,12 @@ describe('buildManifest', () => {
       JSON.stringify(manifest),
     );
 
-    // Suppress warning output
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const result = await buildManifest({ srcDir: src, outDir: out });
-    warnSpy.mockRestore();
+    const warnings: string[] = [];
+    const result = await buildManifest({ srcDir: src, outDir: out, warn: (msg) => warnings.push(msg) });
 
     expect(result.imageDownloaded).toBe(false);
+    expect(warnings.length).toBe(1);
+    expect(warnings[0]).toContain('failed to download agent image');
     const written = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
     expect(written.features.agent.image).toBe('http://localhost:1/nope.png');
   });
