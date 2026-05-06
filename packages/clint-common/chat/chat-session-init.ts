@@ -48,7 +48,8 @@ export async function ensureSessionInitialized<R extends ChatSessionRegistry>(
   if (agent.image) {
     const dataUriMatch = agent.image.match(/^data:([^;]+);base64,/);
     if (dataUriMatch) {
-      actions.push(setAgentImage({ data: agent.image, mediaType: dataUriMatch[1] }));
+      const base64Data = agent.image.slice(dataUriMatch[0].length);
+      actions.push(setAgentImage({ data: base64Data, mediaType: dataUriMatch[1] }));
     } else {
       actions.push(setAgentImage({ url: agent.image }));
     }

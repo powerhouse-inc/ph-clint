@@ -85,7 +85,8 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     for (const pkg of spec.packages) {
       const pkgBare = pkg.packageName.replace(/^@[^/]+\//, '');
       if (pkgBare === appBare) continue;
-      dependencies[pkg.packageName] = 'latest';
+      dependencies[pkg.packageName] = pkg.version
+        ?? (pkg.packageName === '@powerhousedao/clint-common' ? PH_CLINT_VERSION : 'latest');
     }
   }
 

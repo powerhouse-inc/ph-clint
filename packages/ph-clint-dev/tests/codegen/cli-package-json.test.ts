@@ -132,6 +132,37 @@ describe('buildCliPackageJson', () => {
     expect(deps['pirate-app']).toBeUndefined();
   });
 
+  it('uses package version for external deps when specified', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'pirate-cli',
+      scope: '@powerhousedao',
+      features: { powerhouse: 'Switchboard' },
+      packages: [
+        { id: 'app-pirate', packageName: 'pirate-app', documentTypes: [] },
+        { id: 'ext-models', packageName: '@other/models', documentTypes: ['other/model'], version: '0.1.0-dev.55' },
+      ],
+    });
+    const pkg = parseBuilt(spec);
+    const deps = pkg.dependencies as Record<string, string>;
+    expect(deps['@other/models']).toBe('0.1.0-dev.55');
+  });
+
+  it('uses ph-clint version range for clint-common when version is null', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'pirate-cli',
+      scope: '@powerhousedao',
+      features: { powerhouse: 'Switchboard' },
+      packages: [
+        { id: 'app-pirate', packageName: 'pirate-app', documentTypes: [] },
+        { id: 'pkg-clint-common', packageName: '@powerhousedao/clint-common', documentTypes: ['powerhouse/chat-session'] },
+      ],
+    });
+    const ctx: CodegenContext = { toolVersion: '0.1.0-dev.55' };
+    const pkg = JSON.parse(buildCliPackageJson(spec, ctx));
+    const deps = pkg.dependencies as Record<string, string>;
+    expect(deps['@powerhousedao/clint-common']).toBe('0.1.0-dev.55');
+  });
+
   it('includes typescript-eslint in devDependencies', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const pkg = parseBuilt(spec);

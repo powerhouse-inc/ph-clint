@@ -61,6 +61,8 @@ After tests pass, verify the project works as a real CLI — not just in test ha
 - `pnpm dev` (or equivalent) starts without errors.
 - Manual smoke test: run a representative command and confirm the output matches expected behavior.
 
+**For codegen changes**, run the actual codegen command (e.g. `clint-project-regen`) against a sandbox project and inspect the generated files. Do not mentally trace the code path to predict what would be generated — run it and check.
+
 Do not consider a feature complete until it builds, starts, and runs correctly outside of the test suite.
 
 ### 9. Commit
