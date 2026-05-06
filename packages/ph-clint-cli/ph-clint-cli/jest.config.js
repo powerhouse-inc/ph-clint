@@ -29,7 +29,7 @@ export default {
     '!src/main.ts',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov'],
+  coverageReporters: ['text', 'lcov', 'json'],
   coverageThreshold: {
     global: {
       statements: 35,

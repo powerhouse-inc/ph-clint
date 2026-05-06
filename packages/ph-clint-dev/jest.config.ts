@@ -15,7 +15,7 @@ const config: Config = {
     '!src/publish-cli.ts',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov'],
+  coverageReporters: ['text', 'lcov', 'json'],
   coverageThreshold: {
     global: {
       statements: 73,

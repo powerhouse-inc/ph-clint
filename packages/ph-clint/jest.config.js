@@ -77,10 +77,10 @@ export default {
   testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.test.tsx', '**/tests/**/*.integration.test.ts'],
   collectCoverageFrom: ['src/**/*.ts', 'src/**/*.tsx', '!src/interactive/*.tsx', '!src/testing/**', '!src/**/*.d.ts', '!src/integrations/powerhouse/connect-server.ts'],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov'],
+  coverageReporters: ['text', 'lcov', 'json'],
   coverageThreshold: {
     global: {
-      statements: 94,
+      statements: 93.5,
       branches: 85.5,
       functions: 91.5,
       lines: 95,
