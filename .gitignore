@@ -17,6 +17,10 @@ pnpm-lock.yaml
 !/specs/design-principles/
 !/specs/issues/
 
+# Sandbox (keep .gitkeep only)
+/sandbox/*
+!/sandbox/.gitkeep
+
 # Playwright CLI artifacts
 .playwright-cli/
 cli-test/

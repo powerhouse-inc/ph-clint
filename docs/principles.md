@@ -36,7 +36,7 @@ Package identity (name, version, root) is read from `package.json` at runtime vi
 
 > Testability, Observability, Traceability, Reliability
 
-Every layer can be observed and validated independently. Injectable I/O, traceable config, actionable errors, and multi-level testing ensure intention matches reality.
+Every layer can be observed and validated independently. Injectable I/O, traceable config, actionable errors, and multi-level testing ensure intention matches reality. See [methodology.md](./methodology.md) for the development process that enforces these principles.
 
 ### Testability as Architecture
 
@@ -48,7 +48,7 @@ Unit tests call `command.execute()` directly — pure functions, no framework ov
 
 ### Don't Test Around Bad Types
 
-When a branch is untestable, the problem is the type, not a missing test. Categorize uncovered branches: wrong nullability (tighten the schema), missing validation (add explicit rejection), wrong operator (fix `||` to `??`), or legitimate optionality (add test cases). Fix the implementation so every branch is either reachable and meaningful, or eliminated entirely. Coverage follows naturally from correct types, proper validation, and realistic scenario tests.
+When a branch is untestable, the problem is the type, not a missing test. Categorize uncovered branches: wrong nullability (tighten the schema), missing validation (add explicit rejection), wrong operator (fix `||` to `??`), or legitimate optionality (add test cases). Fix the implementation so every branch is either reachable and meaningful, or eliminated entirely. Coverage follows naturally from correct types, proper validation, and realistic scenario tests. For optional parameters with defaults, use the [defaults wrapper technique](./methodology.md#coverage-technique-defaults-wrapper) — a thin public function resolves all defaults into a fully-typed object, and the implementation body has no fallback branches left.
 
 ### Three-Mode Output Architecture
 
