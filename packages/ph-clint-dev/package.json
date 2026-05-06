@@ -55,6 +55,22 @@
     "./codegen/types": {
       "types": "./dist/codegen/types.d.ts",
       "import": "./dist/codegen/types.js"
+    },
+    "./codegen": {
+      "types": "./dist/codegen/index.d.ts",
+      "import": "./dist/codegen/index.js"
+    },
+    "./codegen/actions": {
+      "types": "./dist/codegen/actions.d.ts",
+      "import": "./dist/codegen/actions.js"
+    },
+    "./codegen/scaffold": {
+      "types": "./dist/codegen/scaffold.d.ts",
+      "import": "./dist/codegen/scaffold.js"
+    },
+    "./skills/sync": {
+      "types": "./dist/skills/sync.d.ts",
+      "import": "./dist/skills/sync.js"
     }
   },
   "bin": {
@@ -73,7 +89,7 @@
   },
   "dependencies": {
     "handlebars": "^4.7.8",
-    "@powerhousedao/ph-clint": "^0.1.0-dev.15",
+    "@powerhousedao/ph-clint": "file:../ph-clint",
     "zod": "^4.3.6"
   },
   "devDependencies": {
