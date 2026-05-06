@@ -57,6 +57,7 @@ import {
   buildPublishConfigJs,
   buildAppIndexTs,
 } from './builders/index.js';
+import type { CodegenContext } from '@powerhousedao/ph-clint-dev/codegen/types';
 import {
   collectPostGenActions,
   type PostGenAction,
@@ -67,6 +68,7 @@ import {
   generatedStateFromSpec,
 } from './generated.js';
 import { patchAppPackageName } from './scaffold.js';
+import { CLI_VERSION } from '../config.js';
 
 export type GenerateMode = 'create' | 'update' | 'auto';
 
@@ -85,6 +87,8 @@ export interface GenerateProjectOptions {
   force?: boolean;
   /** Optional warning sink (diagnostics, not errors). */
   onWarn?: (msg: string) => void;
+  /** Codegen context; defaults to CLI_VERSION when omitted. */
+  context?: CodegenContext;
 }
 
 export interface GeneratedFile {
@@ -176,6 +180,7 @@ function resolveMode(
 function planFiles(
   spec: ClintProjectSpec,
   targetDir: string,
+  ctx: CodegenContext,
 ): { planned: PlannedFile[]; cliDir: string; appDir: string | null } {
   const split = spec.features.powerhouse !== 'Disabled';
   const cliDir = split ? path.join(targetDir, getCliFolderName(spec)) : targetDir;
@@ -184,7 +189,7 @@ function planFiles(
 
   const allBuilders = [...CLI_FILE_BUILDERS, ...getProfileFileBuilders(spec)];
   for (const builder of allBuilders) {
-    const content = builder.build(spec);
+    const content = builder.build(spec, ctx);
     if (content === null) continue;
     const abs = path.join(cliDir, builder.relativePath);
     planned.push({
@@ -370,6 +375,7 @@ async function runCreate(
   _warn: (msg: string) => void,
 ): Promise<GenerateProjectResult> {
   const { targetDir, spec } = options;
+  const ctx = options.context ?? { toolVersion: CLI_VERSION };
 
   if (!options.allowNonEmpty) {
     const empty = await isDirEmptyEnough(targetDir);
@@ -380,7 +386,7 @@ async function runCreate(
     }
   }
 
-  const { planned, cliDir, appDir } = planFiles(spec, targetDir);
+  const { planned, cliDir, appDir } = planFiles(spec, targetDir, ctx);
   const hashes: HashRecord = {};
   const files: GeneratedFile[] = [];
   for (const p of planned) {
@@ -419,6 +425,7 @@ async function runUpdate(
   migrated: boolean,
 ): Promise<GenerateProjectResult> {
   const { targetDir, spec } = options;
+  const ctx = options.context ?? { toolVersion: CLI_VERSION };
   const force = !!options.force;
 
   // --- Folder rename detection ---
@@ -430,7 +437,7 @@ async function runUpdate(
     warn,
   );
 
-  const { planned, cliDir, appDir } = planFiles(spec, targetDir);
+  const { planned, cliDir, appDir } = planFiles(spec, targetDir, ctx);
   const plannedByKey = new Map(planned.map((p) => [p.relativePath, p]));
   const previous = await readHashes(targetDir);
   const next: HashRecord = {};

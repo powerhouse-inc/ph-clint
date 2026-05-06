@@ -47,6 +47,14 @@
     "./codegen/generated": {
       "types": "./dist/codegen/generated.d.ts",
       "import": "./dist/codegen/generated.js"
+    },
+    "./codegen/builders": {
+      "types": "./dist/codegen/builders/index.d.ts",
+      "import": "./dist/codegen/builders/index.js"
+    },
+    "./codegen/types": {
+      "types": "./dist/codegen/types.d.ts",
+      "import": "./dist/codegen/types.js"
     }
   },
   "bin": {

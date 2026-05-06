@@ -1,7 +1,8 @@
 import { describe, it, expect } from '@jest/globals';
 import { buildCliPackageJson } from '../../src/codegen/builders/cli-package-json.js';
-import { clintProjectSpecSchema, type ClintProjectSpec } from '../../src/spec/types.js';
-import type { CodegenContext } from '@powerhousedao/ph-clint-dev/codegen/types';
+import { clintProjectSpecSchema } from '../../src/spec/types.js';
+import type { CodegenContext } from '../../src/codegen/types.js';
+import type { ClintProjectSpec } from '../../src/spec/types.js';
 
 const TEST_CTX: CodegenContext = { toolVersion: '0.1.0-test' };
 
@@ -136,5 +137,13 @@ describe('buildCliPackageJson', () => {
     const pkg = parseBuilt(spec);
     const devDeps = pkg.devDependencies as Record<string, string>;
     expect(devDeps['typescript-eslint']).toBeDefined();
+  });
+
+  it('uses ctx.toolVersion for ph-clint dependency range', () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
+    const ctx: CodegenContext = { toolVersion: '0.2.0-dev.5' };
+    const pkg = JSON.parse(buildCliPackageJson(spec, ctx));
+    const deps = pkg.dependencies as Record<string, string>;
+    expect(deps['@powerhousedao/ph-clint']).toBe('0.2.0-dev.5');
   });
 });
