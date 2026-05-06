@@ -27,6 +27,26 @@
     "./spec/file": {
       "types": "./dist/spec/file.d.ts",
       "import": "./dist/spec/file.js"
+    },
+    "./codegen/markers": {
+      "types": "./dist/codegen/markers.d.ts",
+      "import": "./dist/codegen/markers.js"
+    },
+    "./codegen/hashes": {
+      "types": "./dist/codegen/hashes.d.ts",
+      "import": "./dist/codegen/hashes.js"
+    },
+    "./codegen/write": {
+      "types": "./dist/codegen/write.d.ts",
+      "import": "./dist/codegen/write.js"
+    },
+    "./codegen/exec": {
+      "types": "./dist/codegen/exec.d.ts",
+      "import": "./dist/codegen/exec.js"
+    },
+    "./codegen/generated": {
+      "types": "./dist/codegen/generated.d.ts",
+      "import": "./dist/codegen/generated.js"
     }
   },
   "bin": {
