@@ -75,6 +75,14 @@ The `ph-clint` library (`packages/ph-clint/`) is production-grade code — treat
 
 **Coverage**: Maintain a minimum of 95% test coverage (statements, branches, functions, lines) across unit and integration tests combined.
 
+**Fix the implementation, don't test around it**: When coverage drops below threshold, triage each uncovered branch before writing tests. Classify it as one of:
+1. **Wrong nullability** — type allows null but the value is always initialized. Fix: tighten the type to eliminate the unreachable fallback.
+2. **Missing validation** — a silent fallback hides invalid input. Fix: add validation that throws a specific error, making the branch both reachable and meaningful.
+3. **Wrong operator** — `||` where `??` is needed (or vice versa), creating a bug not a coverage gap. Fix: correct the operator and add a test for the falsy-but-valid case.
+4. **Legitimate optionality** — both branches are reachable through valid inputs. Fix: add a test.
+
+Only category 4 warrants a new test. The others warrant implementation fixes that eliminate the untestable branch entirely. When a branch is untestable, the problem is almost never a missing test — it's a type that's too loose, a validation that's missing, or an operator that's wrong.
+
 **Real execution over mocks**: Prefer real execution over mocks. Unit tests should exercise logic directly, integration tests should spawn real processes and verify actual stdout/stderr/exit codes. Do not mock `process.exit`, `process.stdout`, child processes, filesystem, or other runtime internals — if you believe a mock is genuinely necessary, ask the user before introducing it.
 
 **Continuous cleanup**: Continuously review the library for code smells, duplication, and structural issues; clean these up as you encounter them rather than letting them accumulate. When you notice that implementation choices are leading to technical debt — unclear module boundaries, leaky abstractions, growing coupling between components — proactively raise the issue with the user and propose an architecture change before proceeding.
