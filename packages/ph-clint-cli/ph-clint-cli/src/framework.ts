@@ -26,7 +26,7 @@ export const configSchema = z.object({
     ),
   phVersion: z
     .string()
-    .default('6.0.0-dev.170')
+    .default('latest')
     .describe(
       'Pinned Powerhouse version used when emitting a new impl project',
     ),

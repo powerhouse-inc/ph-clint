@@ -4,6 +4,8 @@
 
 import type { DriveConfig, ReactorClientModule } from './types.js';
 
+const DRIVE_DOCUMENT_TYPE = 'powerhouse/document-drive' as const;
+
 /**
  * Ensure a drive exists, matching by name. On first run, creates a new drive.
  * On subsequent runs, finds the existing one by name.
@@ -25,7 +27,7 @@ export async function ensureDrive(
   const wantedId = driveConfig?.id;
 
   // Find existing document-drive documents
-  const existing = await reactor.findByType('powerhouse/document-drive');
+  const existing = await reactor.findByType(DRIVE_DOCUMENT_TYPE);
   if (existing?.results?.length) {
     // If a deterministic ID was requested, check if it already exists
     if (wantedId) {
@@ -50,13 +52,13 @@ export async function ensureDrive(
   // Create a new drive document — use deterministic ID if provided
   let driveId: string;
   if (wantedId) {
-    const module = await client.getDocumentModelModule('powerhouse/document-drive');
+    const module = await client.getDocumentModelModule(DRIVE_DOCUMENT_TYPE);
     const doc = module.utils.createDocument() as any;
     doc.header.id = wantedId;
     const created = await client.create(doc);
     driveId = (created as any).header.id;
   } else {
-    const drive = await client.createEmpty('powerhouse/document-drive');
+    const drive = await client.createEmpty(DRIVE_DOCUMENT_TYPE);
     driveId = drive.header.id;
   }
 

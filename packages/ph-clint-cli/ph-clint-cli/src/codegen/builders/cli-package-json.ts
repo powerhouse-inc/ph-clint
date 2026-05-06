@@ -48,7 +48,7 @@ function phClintRange(version: string): string {
 /** Version range for @powerhousedao/ph-clint{,-dev} deps in scaffolded projects. */
 const PH_CLINT_VERSION = phClintRange(CLI_VERSION);
 
-const POWERHOUSE_VERSION_FALLBACK = '6.0.0-dev.170';
+const POWERHOUSE_VERSION_FALLBACK = 'latest';
 let _powerhouseVersion: string | undefined;
 function getPowerhouseVersion(): string {
   if (_powerhouseVersion === undefined) {
