@@ -529,6 +529,21 @@ describe('createServiceManager', () => {
     });
   });
 
+  describe('watchChunks()', () => {
+    it('returns a no-op unsubscribe for process-based services', () => {
+      const mgr = createManager([readyDef]);
+      const unsubscribe = mgr.watchChunks('test-svc', 'test-svc', () => {});
+      expect(typeof unsubscribe).toBe('function');
+      // Calling unsubscribe should not throw
+      unsubscribe();
+    });
+
+    it('throws for unknown service', () => {
+      const mgr = createManager([readyDef]);
+      expect(() => mgr.watchChunks('nonexistent', 'inst', () => {})).toThrow(/Unknown service/);
+    });
+  });
+
   describe('restart on crash', () => {
     it('triggers restart when dead PID is found in list()', async () => {
       const events: any[] = [];

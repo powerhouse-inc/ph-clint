@@ -316,6 +316,67 @@ describe('createFolderCommands', () => {
     expect(result.text).toContain('[doc] readme (test/doc)');
   });
 
+  it('folders-add-document execute calls addDocument and returns confirmation', async () => {
+    let addedWith: { documentId: string; folderPath: string; name?: string } | undefined;
+    const ops: FolderOperations = {
+      addDocument: async (documentId, folderPath, name) => { addedWith = { documentId, folderPath, name }; },
+      createDocument: async () => ({ documentId: '' }),
+      removeDocument: async () => {},
+      getDocument: async () => ({}),
+      listFolder: async () => [],
+      ensureFolder: async () => '',
+      findByType: async () => [],
+    };
+
+    const cmds = createFolderCommands(ops);
+    const cmd = cmds.find((c) => c.id === 'folders-add-document')!;
+    const result = await cmd.execute(
+      { documentId: 'doc-1', folderPath: 'specs/project', name: 'My Doc' },
+      {} as any,
+    );
+    expect(result.text).toContain('doc-1');
+    expect(result.text).toContain('specs/project');
+    expect(addedWith).toEqual({ documentId: 'doc-1', folderPath: 'specs/project', name: 'My Doc' });
+  });
+
+  it('folders-remove-document execute calls removeDocument and returns confirmation', async () => {
+    let removedId: string | undefined;
+    const ops: FolderOperations = {
+      addDocument: async () => {},
+      createDocument: async () => ({ documentId: '' }),
+      removeDocument: async (id) => { removedId = id; },
+      getDocument: async () => ({}),
+      listFolder: async () => [],
+      ensureFolder: async () => '',
+      findByType: async () => [],
+    };
+
+    const cmds = createFolderCommands(ops);
+    const cmd = cmds.find((c) => c.id === 'folders-remove-document')!;
+    const result = await cmd.execute({ documentId: 'doc-99' }, {} as any);
+    expect(result.text).toContain('doc-99');
+    expect(removedId).toBe('doc-99');
+  });
+
+  it('folders-get-document execute returns document as JSON', async () => {
+    const fakeDoc = { header: { id: 'doc-42' }, state: { global: { title: 'Test' } } };
+    const ops: FolderOperations = {
+      addDocument: async () => {},
+      createDocument: async () => ({ documentId: '' }),
+      removeDocument: async () => {},
+      getDocument: async () => fakeDoc,
+      listFolder: async () => [],
+      ensureFolder: async () => '',
+      findByType: async () => [],
+    };
+
+    const cmds = createFolderCommands(ops);
+    const cmd = cmds.find((c) => c.id === 'folders-get-document')!;
+    const result = await cmd.execute({ documentId: 'doc-42' }, {} as any);
+    expect(result.data).toEqual(fakeDoc);
+    expect(result.text).toContain('doc-42');
+  });
+
   it('folders-ls returns empty message for empty folder', async () => {
     const ops: FolderOperations = {
       addDocument: async () => {},
