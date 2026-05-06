@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { buildManifestJson } from '../../src/codegen/builders/manifest-json.js';
+import { buildManifestJson } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 function parseManifest(spec: Parameters<typeof clintProjectSpecSchema.parse>[0]) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { buildPublishConfigJs } from '../../src/codegen/builders/publish-config-js.js';
+import { buildPublishConfigJs } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 describe('buildPublishConfigJs', () => {

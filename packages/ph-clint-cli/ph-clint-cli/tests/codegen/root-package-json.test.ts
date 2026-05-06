@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { buildRootPackageJson } from '../../src/codegen/builders/root-package-json.js';
+import { buildRootPackageJson } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 describe('buildRootPackageJson', () => {

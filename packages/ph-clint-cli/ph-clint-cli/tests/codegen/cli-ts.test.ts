@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { buildCliTs } from '../../src/codegen/builders/cli-ts.js';
+import { buildCliTs } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 describe('buildCliTs', () => {

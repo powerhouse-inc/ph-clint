@@ -4,17 +4,19 @@
  * are caught early.
  */
 import { describe, it, expect } from '@jest/globals';
-import { buildMainTs } from '../../src/codegen/builders/main-ts.js';
-import { buildTsconfigJson } from '../../src/codegen/builders/tsconfig-json.js';
-import { buildJestConfigJs } from '../../src/codegen/builders/jest-config-js.js';
-import { buildEslintConfigJs } from '../../src/codegen/builders/eslint-config-js.js';
-import { buildGitignore } from '../../src/codegen/builders/gitignore.js';
-import { buildBuildSkillsScript } from '../../src/codegen/builders/build-skills-ts.js';
-import { buildMastraIndexTs } from '../../src/codegen/builders/mastra-index-ts.js';
-import { buildAgentBaseMd } from '../../src/codegen/builders/agent-base-md.js';
-import { buildAgentTs } from '../../src/codegen/builders/agent-ts.js';
-import { buildReadme } from '../../src/codegen/builders/readme-md.js';
-import { buildSmokeTestTs } from '../../src/codegen/builders/smoke-test-ts.js';
+import {
+  buildMainTs,
+  buildTsconfigJson,
+  buildJestConfigJs,
+  buildEslintConfigJs,
+  buildGitignore,
+  buildBuildSkillsScript,
+  buildMastraIndexTs,
+  buildAgentBaseMd,
+  buildAgentTs,
+  buildReadme,
+  buildSmokeTestTs,
+} from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 describe('buildMainTs', () => {
