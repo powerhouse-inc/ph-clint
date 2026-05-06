@@ -3,9 +3,7 @@ import path from 'node:path';
 import { Command as Commander } from 'commander';
 import { z } from 'zod';
 import type {
-  AgentSetupContext,
   AgentLoader,
-  AgentProvider,
   BootstrapOptions,
   BootstrapResult,
   Cli,
@@ -22,13 +20,11 @@ import type {
 } from './types.js';
 import type {
   ReactorConfiguration,
-  ReactorContext,
-  SwitchboardInstance,
   DocumentRegistry,
   AnyRegistry,
 } from '../integrations/powerhouse/types.js';
 import { connectServiceDefinition } from '../integrations/powerhouse/connect.js';
-import { resolveReactorDefaults, resolvePort } from '../integrations/powerhouse/ports.js';
+import { resolveReactorDefaults } from '../integrations/powerhouse/ports.js';
 import { randomUUID } from 'node:crypto';
 import { formatStreamChunk } from './stream.js';
 import { getSchemaFields, slugToTitle, type FieldInfo } from './schema.js';
@@ -54,7 +50,8 @@ import { createReplSession } from '../interactive/session.js';
 import { formatZodError } from './errors.js';
 import { createLogger } from './logger.js';
 import { createProxyServer, type ProxyServerInstance } from './proxy.js';
-import { buildSwitchboardRoutes, buildServiceRoutes } from './proxy-routes.js';
+import { buildServiceRoutes } from './proxy-routes.js';
+import { createCliRuntime } from './runtime.js';
 
 /* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
 const defaultStdout = (text: string) => { process.stdout.write(text); };
@@ -900,35 +897,30 @@ export function defineCli<
 
     wireServices(context, config, log);
 
-    // Lazy agent provider
-    let cachedProvider: AgentProvider | undefined;
-    async function getAgent(): Promise<AgentProvider | undefined> {
-      if (cachedProvider) return cachedProvider;
-      if (!agentLoader) return undefined;
-      const agentCtx: AgentSetupContext = {
-        workdir,
-        config,
-        cliName: options.name,
-        cliVersion: options.version,
-        context,
-        commands: [...commandMap.values()].filter(c => !skillIds.has(c.id)),
-        skills: resolvedSkills,
-        prompts: options.prompts,
-      };
-      cachedProvider = await agentLoader(agentCtx);
-      return cachedProvider;
-    }
+    const runtime = createCliRuntime({
+      cliName: options.name,
+      cliVersion: options.version,
+      workdir,
+      workspace,
+      config,
+      context,
+      log,
+      commandMap,
+      agentLoader,
+      skillIds,
+      resolvedSkills,
+      prompts: options.prompts,
+    });
 
-    // Wire lazy accessors onto the context
-    context.agent = getAgent;
+    context.agent = runtime.getAgent;
 
     return {
       workdir,
       config,
       context,
-      getAgent,
+      getAgent: runtime.getAgent,
       get mastraAgent() {
-        return getAgent().then(p => p?.mastraAgent);
+        return runtime.getAgent().then(p => p?.mastraAgent);
       },
     };
   }
@@ -1071,244 +1063,31 @@ export function defineCli<
       ? resolveValue(options.interactive.welcome, resolvableCtx)
       : undefined;
 
-    // Lazy reactor — only created when first accessed via context.reactor()
-    let cachedReactor: ReactorContext | undefined;
-    async function getReactor(): Promise<ReactorContext | undefined> {
-      if (cachedReactor) return cachedReactor;
-      if (!reactorConfig) return undefined;
-      cachedReactor = await reactorConfig.create({
-        workdir,
-        config: typedConfig as Record<string, unknown>,
-        workspace,
-        emit: context.emit,
-        on: context.on,
-        switchboard: reactorConfig.switchboard,
-      });
-      return cachedReactor;
-    }
-
-    // Switchboard instance — started by startupSequence, shut down before reactor
-    let switchboardInstance: SwitchboardInstance | undefined;
-
-    async function startSwitchboardLayer(): Promise<void> {
-      if (!reactorConfig?.switchboard?.enabled || !cachedReactor?._module) return;
-      const switchboardHost = reactorConfig.switchboard.host ?? 'localhost';
-      const switchboardLabel = reactorConfig.switchboard.name ?? 'switchboard';
-      const switchboardPort = await resolvePort(
-        reactorConfig.switchboard.port!,
-        reactorConfig.switchboard.portRange ?? 1,
-        switchboardLabel,
-      );
-
-      const dbPath = workspace.getStoreFolder('read-model.db');
-      log.debug(`Starting Switchboard on ${switchboardHost}:${switchboardPort}, dbPath: ${dbPath}`);
-
-      const { startSwitchboard } = await import('../integrations/powerhouse/switchboard.js');
-      switchboardInstance = await startSwitchboard({
-        reactorModule: cachedReactor._module,
-        host: switchboardHost,
-        port: switchboardPort,
-        dbPath,
-        driveId: cachedReactor.driveId,
-      });
-
-      // Propagate URLs to the reactor context
-      cachedReactor.switchboardUrl = switchboardInstance.switchboardUrl;
-      cachedReactor.driveUrl = switchboardInstance.driveUrl;
-      cachedReactor.mcpUrl = switchboardInstance.mcpUrl;
-
-      context.emit?.('powerhouse:switchboard:ready', {
-        switchboardUrl: switchboardInstance.switchboardUrl,
-        driveUrl: switchboardInstance.driveUrl,
-        mcpUrl: switchboardInstance.mcpUrl,
-      });
-    }
-
-    /**
-     * Graceful shutdown of everything started so far.
-     */
-    async function teardown(): Promise<void> {
-      if (routine && routine.status === 'running') {
-        log.debug('Stopping routine...');
-        await routine.stop();
-      }
-      if (switchboardInstance) {
-        log.debug('Stopping Switchboard...');
-        await switchboardInstance.shutdown();
-      }
-      if (proxyInstance) {
-        log.debug('Stopping proxy...');
-        await proxyInstance.stop();
-      }
-      if (cachedReactor) {
-        log.debug('Stopping Reactor...');
-        await cachedReactor.shutdown();
-      }
-    }
-
-    /**
-     * Report detached services that survive CLI exit (e.g. Connect).
-     */
-    function reportActiveServices(output: (msg: string) => void): void {
-      if (!context.services) return;
-      const dim = '\x1b[2m';
-      const reset = '\x1b[0m';
-      const active = context.services.list().filter(
-        (s) => s.status === 'ready' || s.status === 'starting',
-      );
-      for (let i = 0; i < active.length; i++) {
-        const svc = active[i];
-        const where = svc.workdir ? ` ${dim}\`${svc.workdir}\`${reset}` : '';
-        output(`${i === 0 ? '\n\n' : ''}${svc.name} still active${where}\n  ${dim}Run \`${options.name} ${svc.serviceId}-stop\` to shut it down${reset}`);
-      }
-    }
-
-    /**
-     * Startup sequence — runs reactor, switchboard, connect, and routine
-     * in order, reporting status via the output callback.
-     *
-     * On error, shuts down everything started so far and re-throws.
-     */
-    async function startupSequence(output: (msg: string) => void): Promise<void> {
-      try {
-        // 0. Proxy (if enabled, already listening)
-        if (proxyInstance) {
-          output(`Proxy listening on ${proxyInstance.url}`);
-        }
-
-        // 1. Reactor (in-process document store + drive + subscriptions)
-        if (reactorConfig) {
-          log.debug('Starting Reactor...');
-          await getReactor();
-          log.debug(`Reactor storage: ${workspace.getStoreFolder('reactor-storage')}`);
-          output(`Reactor ready (drive: ${cachedReactor!.driveId})`);
-
-          // Inject folder operations when a personal drive is available
-          if (cachedReactor!.personalDriveId) {
-            const { createFolderOperations, createFolderCommands } = await import(
-              '../integrations/powerhouse/folders.js'
-            );
-            const folderOps = createFolderOperations(
-              cachedReactor!.client,
-              cachedReactor!.personalDriveId,
-              log,
-            );
-            context.folders = folderOps;
-            const folderCmds = createFolderCommands(folderOps);
-            for (const cmd of folderCmds) {
-              commandMap.set(cmd.id, cmd);
-            }
-          }
-        }
-
-        // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor) — skipped when --no-api
-        if (reactorConfig?.switchboard?.enabled && !noApiFlag && cachedReactor?._module) {
-          log.debug('Starting Switchboard...');
-          await startSwitchboardLayer();
-          const sb = switchboardInstance!;
-          output(`Switchboard '${reactorConfig.switchboard.name!}' ready at ${sb.switchboardUrl}`);
-          log.debug(`  drive: ${sb.driveUrl}`);
-          log.debug(`  mcp:   ${sb.mcpUrl}`);
-
-          // Add switchboard routes to proxy
-          if (proxyInstance) {
-            const sbRoutes = buildSwitchboardRoutes(sb.switchboardUrl, sb.mcpUrl);
-            for (const route of sbRoutes) {
-              proxyInstance.addRoute(route);
-              log.debug(`  proxy: ${route.prefix} → ${route.upstream.toString()}`);
-            }
-          }
-        }
-
-        // 3. Connect (web UI child process) — skipped when --no-studio
-        if (reactorConfig?.connect?.enabled && !noStudioFlag && context.services) {
-          const connectName = reactorConfig.connect.name!; // Always stamped by resolveReactorDefaults
-          const connectWorkdir = reactorConfig.connect.workdir ?? workdir;
-          const instances = context.services.list(connectName);
-          const running = instances.find(
-            (i) => i.status === 'ready' || i.status === 'starting',
-          );
-
-          if (running && running.workdir === connectWorkdir) {
-            const url = running.endpoints?.['connect-studio'] ?? 'unknown URL';
-            output(`Connect '${connectName}' already running at ${url}`);
-          } else {
-            // Stop instance running in wrong workdir
-            if (running) {
-              log.info(`Stopping Connect (wrong workdir: ${running.workdir})`);
-              await context.services.stop(connectName);
-            }
-            log.debug(`Starting Connect in ${connectWorkdir}`);
-            const connectParams: Record<string, unknown> = {};
-            if (reactorConfig.connect!.port) connectParams.port = reactorConfig.connect!.port;
-            if (cachedReactor?.driveUrl) connectParams.driveUrl = cachedReactor.driveUrl;
-            const instanceId = await context.services.start(connectName, {
-              workdir: connectWorkdir,
-              cwd: connectWorkdir,
-              params: Object.keys(connectParams).length > 0 ? connectParams : undefined,
-            });
-            // URL is captured from the service's readiness pattern
-            const status = context.services.list(connectName).find((i) => i.instanceId === instanceId);
-            const connectUrl = status?.endpoints?.['connect-studio'] ?? `http://localhost:${reactorConfig.connect!.port!}`;
-            output(`Connect '${connectName}' ready at ${connectUrl}`);
-          }
-
-          // List all drives (replaces the old single-drive "You may need to add" message)
-          const drives = cachedReactor?.drives;
-          const baseDriveUrl = cachedReactor?.driveUrl;
-          const baseDriveId = cachedReactor?.driveId;
-          if (drives?.length) {
-            const driveLines = drives.map(d => {
-              const url = baseDriveUrl && baseDriveId
-                ? baseDriveUrl.replace(baseDriveId, d.id)
-                : `(drive: ${d.id})`;
-              return `    ${d.name} (${d.role}): ${url}`;
-            });
-            output(`  Drives:\n${driveLines.join('\n')}`);
-          }
-        }
-
-        // 4. Routine (tick-based trigger loop) — skipped when --no-routine
-        if (effectiveRoutine) {
-          effectiveRoutine.setContext(context);
-          effectiveRoutine.start();
-          output('Routine running');
-        }
-      } catch (err) {
-        await teardown();
-        throw err;
-      }
-    }
-
-    // Lazy agent provider — only created when first accessed via context.agent()
-    let cachedProvider: AgentProvider | undefined;
-    async function getAgent(): Promise<AgentProvider | undefined> {
-      if (cachedProvider) return cachedProvider;
-      if (!agentLoader) return undefined;
-      // Reactor is initialized first — agent may need reactor tools
-      await getReactor();
-      const agentCtx: AgentSetupContext<TConfig> = {
-        workdir,
-        config: typedConfig,
-        cliName: options.name,
-        cliVersion: options.version,
-        context,
-        commands: [...commandMap.values()].filter(c => !skillIds.has(c.id)),
-        skills: resolvedSkills,
-        prompts: options.prompts,
-      };
-      cachedProvider = await agentLoader(agentCtx);
-      return cachedProvider;
-    }
+    // Create CLI runtime for lifecycle management (reactor, switchboard, agent, routine)
+    const runtime = createCliRuntime({
+      cliName: options.name,
+      cliVersion: options.version,
+      workdir,
+      workspace,
+      config,
+      context,
+      log,
+      commandMap,
+      reactorConfig,
+      agentLoader,
+      routine,
+      skipRoutineStart: noRoutineFlag,
+      proxyInstance,
+      enableSwitchboard: !noApiFlag,
+      enableConnect: !noStudioFlag,
+      skillIds,
+      resolvedSkills,
+      prompts: options.prompts,
+    });
 
     // Wire lazy accessors onto the context
-    context.reactor = getReactor;
-    context.agent = getAgent;
-
-    // Pass lazy accessors to the routine for TriggerContext
-    if (routine) {
-      routine.setCapabilities({ getReactor, getAgent });
-    }
+    if (reactorConfig) context.reactor = runtime.getReactor;
+    context.agent = runtime.getAgent;
 
     // Handle --meta: output metadata JSON and exit (ignoring all other args)
     if (metaFlag) {
@@ -1355,7 +1134,7 @@ export function defineCli<
 
     // Skill invocation handler for command mode — routes to agent with skill prefix
     async function handleSkillInvocation(invocation: SkillInvocation) {
-      const agentProvider = await getAgent();
+      const agentProvider = await runtime.getAgent();
       if (!agentProvider) {
         stderr('Agent not available — cannot invoke skill');
         exit(1);
@@ -1391,7 +1170,7 @@ export function defineCli<
     if (isBuiltinFlag || (!interactiveFlag && (isSubcommand || hasPrompt))) {
       // ── Command execution (any mode): subcommand or prompt without -i → execute, exit ──
       if (hasPrompt) {
-        const agentProvider = await getAgent();
+        const agentProvider = await runtime.getAgent();
         if (agentProvider) {
           const prompt = promptArgs.join(' ');
           const threadId = resumeId ?? randomUUID();
@@ -1400,7 +1179,7 @@ export function defineCli<
           }
           stdout('');
           stdout(`\x1b[2mThread: ${threadId}  (continue with: ${options.name} --resume ${threadId} "your message")\x1b[0m`);
-          await teardown();
+          await runtime.teardown();
           return;
         }
       }
@@ -1416,7 +1195,7 @@ export function defineCli<
         return;
       }
 
-      await teardown();
+      await runtime.teardown();
     } else if (interactiveFlag || hasKeepAlive) {
       // ── Interactive or keep-alive: -i OR hasKeepAlive ──────────────
 
@@ -1457,7 +1236,7 @@ export function defineCli<
           stopRoutine,
         };
 
-        const agentProvider = await getAgent();
+        const agentProvider = await runtime.getAgent();
         session = createReplSession({
           cli: cliRef,
           context,
@@ -1480,11 +1259,11 @@ export function defineCli<
             services: context.services,
             workdir: context.workdir,
             onStart: async (append) => {
-              await startupSequence(append);
+              await runtime.startupSequence(append);
             },
           });
           /* istanbul ignore next */
-          await teardown();
+          await runtime.teardown();
           /* istanbul ignore next */
           exit(0);
           break;
@@ -1493,7 +1272,7 @@ export function defineCli<
         case 'interactive-streaming': {
           // ── Line-based stdio interaction ──
           try {
-            await startupSequence(stdout);
+            await runtime.startupSequence(stdout);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             log.error(msg);
@@ -1530,7 +1309,7 @@ export function defineCli<
                 process.removeListener('SIGTERM', onSignal);
                 process.on('SIGINT', suppress);
                 process.on('SIGTERM', suppress);
-                await teardown();
+                await runtime.teardown();
                 process.removeListener('SIGINT', suppress);
                 process.removeListener('SIGTERM', suppress);
                 resolve();
@@ -1541,7 +1320,7 @@ export function defineCli<
             return; // teardown already called in signal handler
           }
 
-          await teardown();
+          await runtime.teardown();
           exit(0);
           break;
         }
@@ -1549,7 +1328,7 @@ export function defineCli<
         case 'headless': {
           // ── Headless with keep-alive: startup sequence, then block on signals ──
           try {
-            await startupSequence(stdout);
+            await runtime.startupSequence(stdout);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             stderr(msg);
@@ -1566,8 +1345,8 @@ export function defineCli<
               process.removeListener('SIGTERM', onSignal);
               process.on('SIGINT', suppress);
               process.on('SIGTERM', suppress);
-              reportActiveServices(stdout);
-              await teardown();
+              runtime.reportActiveServices(stdout);
+              await runtime.teardown();
               process.removeListener('SIGINT', suppress);
               process.removeListener('SIGTERM', suppress);
               resolve();
@@ -1582,7 +1361,7 @@ export function defineCli<
       // ── Nothing to do: no -i, no keep-alive, no subcommand/prompt → show help ──
       const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
       program.outputHelp();
-      await teardown();
+      await runtime.teardown();
     }
   }
 
