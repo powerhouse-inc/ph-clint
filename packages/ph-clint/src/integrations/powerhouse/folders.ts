@@ -18,30 +18,6 @@ import type { Logger } from '../../core/types.js';
 
 const TAG = '[folders]';
 
-/**
- * Lazy-load drive action creators from @powerhousedao/shared.
- * Kept lazy so that importing folders.ts doesn't pull in the entire
- * @powerhousedao/shared tree — which is an optional peer dependency
- * and won't be installed in non-Powerhouse projects.
- */
-let _driveActions: {
-  addFolder: (input: { id: string; name: string; parentFolder: string | null }) => unknown;
-  addFile: (input: { id: string; name: string; documentType: string; parentFolder: string | null }) => unknown;
-  deleteNode: (input: { id: string }) => unknown;
-} | null = null;
-
-async function getDriveActions() {
-  if (!_driveActions) {
-    const mod = await import('@powerhousedao/shared/document-drive') as any;
-    _driveActions = {
-      addFolder: mod.addFolder,
-      addFile: mod.addFile,
-      deleteNode: mod.deleteNode,
-    };
-  }
-  return _driveActions;
-}
-
 /** Node shape from drive state.global.nodes */
 interface DriveNode {
   id: string;
@@ -78,6 +54,30 @@ export function createFolderOperations(
   personalDriveId: string,
   log?: Logger,
 ): FolderOperations {
+
+  /**
+   * Lazy-load drive action creators from @powerhousedao/shared.
+   * Kept lazy so that importing folders.ts doesn't pull in the entire
+   * @powerhousedao/shared tree — which is an optional peer dependency
+   * and won't be installed in non-Powerhouse projects.
+   */
+  let _driveActions: {
+    addFolder: (input: { id: string; name: string; parentFolder: string | null }) => unknown;
+    addFile: (input: { id: string; name: string; documentType: string; parentFolder: string | null }) => unknown;
+    deleteNode: (input: { id: string }) => unknown;
+  } | null = null;
+
+  async function getDriveActions() {
+    if (!_driveActions) {
+      const mod = await import('@powerhousedao/shared/document-drive') as any;
+      _driveActions = {
+        addFolder: mod.addFolder,
+        addFile: mod.addFile,
+        deleteNode: mod.deleteNode,
+      };
+    }
+    return _driveActions;
+  }
 
   function splitPath(folderPath: string): string[] {
     return folderPath.split('/').filter(Boolean);
