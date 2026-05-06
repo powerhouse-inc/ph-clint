@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { connectServiceDefinition } from '../src/integrations/powerhouse/connect.js';
 import { bridgeSubscriptions } from '../src/integrations/powerhouse/subscriptions.js';
 import { ensureDrive, ensureRemoteDrive } from '../src/integrations/powerhouse/drive.js';
+import { deterministicId } from '../src/integrations/powerhouse/identity.js';
 import { buildDefaultReactor } from '../src/integrations/powerhouse/index.js';
 import { buildReactor } from '../src/integrations/powerhouse/reactor.js';
 import { startSwitchboard, buildSwitchboardInstance } from '../src/integrations/powerhouse/switchboard.js';
@@ -342,6 +343,38 @@ describe('ensureDrive', () => {
 
     const result = await ensureDrive(mod, { name: 'Clint' });
     expect(result).toEqual({ id: 'drive-x', name: 'Clint' });
+  });
+
+  it('returns existing drive when deterministic id matches', async () => {
+    const mod = mockModule({
+      findByType: async () => ({
+        results: [
+          { header: { id: 'drive-deterministic' } },
+          { header: { id: 'drive-other' } },
+        ],
+      }),
+    });
+
+    const result = await ensureDrive(mod, { id: 'drive-deterministic', name: 'Named' });
+    expect(result).toEqual({ id: 'drive-deterministic', name: 'Named' });
+  });
+});
+
+describe('deterministicId', () => {
+  it('produces a stable UUID-shaped string from (cliName, salt)', () => {
+    const id = deterministicId('my-cli', 'personal-drive');
+    // Deterministic: same inputs always produce the same output
+    expect(deterministicId('my-cli', 'personal-drive')).toBe(id);
+    // UUID v4 format: 8-4-4-4-12 hex chars
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  it('produces different IDs for different inputs', () => {
+    const a = deterministicId('cli-a', 'salt');
+    const b = deterministicId('cli-b', 'salt');
+    const c = deterministicId('cli-a', 'other');
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(c);
   });
 });
 
