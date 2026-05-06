@@ -11,7 +11,7 @@ import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { readProjectSpec } from '../spec/file.js';
 import { generateProject } from '../codegen/index.js';
-import { runPostGenActions } from '../codegen/actions.js';
+import { runPostGenActions } from '@powerhousedao/ph-clint-dev/codegen/actions';
 import { ensureSpecDocument } from '../spec/ensure-document.js';
 
 const inputSchema = z.object({

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execSync, spawnSync, spawn } from 'node:child_process';
 import { type ClintProjectSpec } from '../../src/spec/types.js';
-import { runPhInit } from '../../src/codegen/scaffold.js';
+import { runPhInit } from '@powerhousedao/ph-clint-dev/codegen/scaffold';
 
 /**
  * All test output goes under `packages/tmp/codegen-e2e/`. Sibling to the

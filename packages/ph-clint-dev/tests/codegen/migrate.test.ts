@@ -12,6 +12,9 @@ import { generateProject } from '../../src/codegen/index.js';
 import { migrateFlatToSplit } from '../../src/codegen/migrate/flat-to-split.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 import { readHashes } from '../../src/codegen/hashes.js';
+import type { CodegenContext } from '../../src/codegen/types.js';
+
+const TEST_CTX: CodegenContext = { toolVersion: '0.1.0-test' };
 
 async function mkTmpDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ph-clint-mig-'));
@@ -44,7 +47,7 @@ describe('generateProject — flat → split migration', () => {
   it('moves flat files into {name}-cli/ when powerhouse flips on', async () => {
     // Create flat.
     const flat = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec: flat });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: flat });
     expect(await exists(path.join(tmp, 'src/cli.ts'))).toBe(true);
     expect(await exists(path.join(tmp, 'foo-cli'))).toBe(false);
 
@@ -54,6 +57,7 @@ describe('generateProject — flat → split migration', () => {
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: split,
       force: true, // bypass git-dirty guard (tmp is not a git repo; force for safety)
@@ -71,7 +75,7 @@ describe('generateProject — flat → split migration', () => {
 
   it('rekeys stored hashes under {name}-cli/ after migration', async () => {
     const flat = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec: flat });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: flat });
     const before = await readHashes(tmp);
     expect(Object.keys(before)).toContain('src/cli.ts');
 
@@ -79,7 +83,7 @@ describe('generateProject — flat → split migration', () => {
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
-    await generateProject({ targetDir: tmp, spec: split, force: true });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: split, force: true });
 
     const after = await readHashes(tmp);
     expect(Object.keys(after)).toContain('foo-cli/src/cli.ts');
@@ -94,7 +98,7 @@ describe('generateProject — flat → split migration', () => {
     spawnSync('git', ['config', 'commit.gpgsign', 'false'], { cwd: tmp });
 
     const flat = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec: flat });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: flat });
 
     // Commit the generated tree.
     spawnSync('git', ['add', '-A'], { cwd: tmp });
@@ -108,7 +112,7 @@ describe('generateProject — flat → split migration', () => {
       features: { powerhouse: 'Connect' },
     });
     await expect(
-      generateProject({ targetDir: tmp, spec: split }),
+      generateProject({ context: TEST_CTX, targetDir: tmp, spec: split }),
     ).rejects.toThrow(/uncommitted/);
   });
 

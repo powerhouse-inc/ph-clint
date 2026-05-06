@@ -12,6 +12,9 @@ import {
   type ClintProjectSpecInput,
 } from '../../src/spec/types.js';
 import { readProjectSpec } from '../../src/spec/file.js';
+import type { CodegenContext } from '../../src/codegen/types.js';
+
+const TEST_CTX: CodegenContext = { toolVersion: '0.1.0-test' };
 
 async function mkTmpDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ph-clint-gen-'));
@@ -45,13 +48,13 @@ describe('generateProject — create mode', () => {
     await fs.writeFile(path.join(tmp, 'existing.txt'), 'x');
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     await expect(
-      generateProject({ targetDir: tmp, spec }),
+      generateProject({ context: TEST_CTX, targetDir: tmp, spec }),
     ).rejects.toThrow(/not empty/);
   });
 
   it('writes a no-features flat project with the expected files', async () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    const result = await generateProject({ targetDir: tmp, spec });
+    const result = await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     expect(await exists(path.join(tmp, 'package.json'))).toBe(true);
     expect(await exists(path.join(tmp, 'src/cli.ts'))).toBe(true);
@@ -77,7 +80,7 @@ describe('generateProject — create mode', () => {
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
-    const result = await generateProject({ targetDir: tmp, spec });
+    const result = await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     expect(await exists(path.join(tmp, 'package.json'))).toBe(true);
     expect(await exists(path.join(tmp, 'foo-cli/package.json'))).toBe(true);
@@ -96,7 +99,7 @@ describe('generateProject — create mode', () => {
       name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     expect(await exists(path.join(tmp, 'src/agents/agent.ts'))).toBe(true);
     const mastraIndex = await fs.readFile(
       path.join(tmp, 'src/mastra/index.ts'),
@@ -128,7 +131,7 @@ describe('generateProject — create mode', () => {
       const dir = await mkTmpDir();
       try {
         const spec = clintProjectSpecSchema.parse(input);
-        const result = await generateProject({ targetDir: dir, spec });
+        const result = await generateProject({ context: TEST_CTX, targetDir: dir, spec });
         // Every combo must produce at least a cli.ts and a package.json.
         const cliTs = path.join(result.cliDir, 'src/cli.ts');
         const pkgJson = path.join(result.cliDir, 'package.json');

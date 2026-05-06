@@ -15,7 +15,7 @@ import path from 'node:path';
 import { describe, it, expect, afterAll } from '@jest/globals';
 import { generateProject } from '../../src/codegen/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
-import type { PostGenActionKind } from '../../src/codegen/actions.js';
+import type { PostGenActionKind } from '@powerhousedao/ph-clint-dev/codegen/actions';
 import { FIXTURES } from './fixtures.js';
 import { getBinName } from '../../src/spec/types.js';
 import {

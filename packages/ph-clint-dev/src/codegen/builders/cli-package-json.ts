@@ -34,7 +34,7 @@ import { getPhVersion } from '../exec.js';
  * dev.N < staging.N < release. A caret range starting at dev.0 naturally
  * upgrades through staging to production.
  */
-export function phClintRange(version: string): string {
+function phClintRange(version: string): string {
   const match = /^(\d+\.\d+\.\d+)(?:-([a-z]+)\.\d+)?/.exec(version);
   if (!match) return `^${version}`;
   const base = match[1];

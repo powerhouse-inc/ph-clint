@@ -43,8 +43,6 @@ export interface PhInitResult {
   reason?: string;
 }
 
-export { getPhVersion };
-
 export async function runPhInit(
   options: PhInitOptions,
 ): Promise<PhInitResult> {

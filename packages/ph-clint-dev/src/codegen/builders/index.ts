@@ -5,7 +5,7 @@
  * Orchestrated by `codegen/index.ts` — it walks this registry, adjusts paths
  * for flat vs split layouts, and writes the files.
  */
-import { buildCliPackageJson, phClintRange } from './cli-package-json.js';
+import { buildCliPackageJson } from './cli-package-json.js';
 import { buildCliTs } from './cli-ts.js';
 import { buildConfigTs } from './config-ts.js';
 import { buildMainTs } from './main-ts.js';
@@ -101,7 +101,6 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
 
 export {
   buildCliPackageJson,
-  phClintRange,
   buildCliTs,
   buildConfigTs,
   buildMainTs,

@@ -20,7 +20,7 @@ import { scanProjects, getProjectMapping } from '@powerhousedao/ph-clint';
 import type { ImportSpecInput } from '@powerhousedao/ph-clint-app/document-models/ph-clint-project';
 import { createDocumentChangeTrigger } from '../framework.js';
 import { generateProject } from '../codegen/index.js';
-import { runPostGenActions } from '../codegen/actions.js';
+import { runPostGenActions } from '@powerhousedao/ph-clint-dev/codegen/actions';
 import { specFromDocumentState } from '../spec/from-document.js';
 import { readProjectSpec, writeProjectSpec } from '../spec/file.js';
 import { ensureSpecDocument } from '../spec/ensure-document.js';

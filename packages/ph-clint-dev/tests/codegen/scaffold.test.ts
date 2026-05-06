@@ -10,7 +10,8 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runPhInit, runPnpmInstall, getPhVersion } from '../../src/codegen/scaffold.js';
+import { runPhInit, runPnpmInstall } from '../../src/codegen/scaffold.js';
+import { getPhVersion } from '../../src/codegen/exec.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
 async function mkTmpDir(): Promise<string> {
@@ -58,7 +59,7 @@ describe('runPhInit', () => {
       spec,
       binName: BOGUS_BIN,
       log: (m) => logs.push(m),
-      stdio: 'ignore',
+      runProcess: async () => ({ success: true, output: '' }),
     });
 
     expect(result.ran).toBe(false);
@@ -91,7 +92,7 @@ describe('runPnpmInstall', () => {
       dirs: [tmp],
       binName: BOGUS_BIN,
       log: (m) => logs.push(m),
-      stdio: 'ignore',
+      runProcess: async () => ({ success: true, output: '' }),
     });
     expect(result.ran).toEqual([]);
     expect(result.skipped).toEqual([tmp]);

@@ -16,6 +16,9 @@ import {
   buildAppIndexTs,
 } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
+import type { CodegenContext } from '../../src/codegen/types.js';
+
+const TEST_CTX: CodegenContext = { toolVersion: '0.1.0-test' };
 
 /** Helper: create an app package entry with document types. */
 function appPkg(name: string, docTypes: string[]) {
@@ -294,7 +297,7 @@ describe('generateProject — framework files', () => {
 
   it('init emits framework.ts in every layout (Powerhouse on/off)', async () => {
     const off = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec: off });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: off });
     expect(await exists(path.join(tmp, 'src/framework.ts'))).toBe(true);
     expect(await exists(path.join(tmp, 'src/framework.gen.ts'))).toBe(false);
 
@@ -304,7 +307,7 @@ describe('generateProject — framework files', () => {
         name: 'bar-cli',
         features: { powerhouse: 'Connect' },
       });
-      await generateProject({ targetDir: tmp2, spec: on });
+      await generateProject({ context: TEST_CTX, targetDir: tmp2, spec: on });
       expect(await exists(path.join(tmp2, 'bar-cli/src/framework.ts'))).toBe(true);
       expect(await exists(path.join(tmp2, 'bar-cli/src/framework.gen.ts'))).toBe(true);
     } finally {
@@ -314,7 +317,7 @@ describe('generateProject — framework files', () => {
 
   it('framework.ts is init-only: user edits survive regen', async () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     const frameworkPath = path.join(tmp, 'src/framework.ts');
     const userEdited = (await fs.readFile(frameworkPath, 'utf8'))
@@ -326,7 +329,7 @@ describe('generateProject — framework files', () => {
       name: 'foo-cli',
       description: 'changed',
     });
-    const result = await generateProject({ targetDir: tmp, spec: next });
+    const result = await generateProject({ context: TEST_CTX, targetDir: tmp, spec: next });
     expect(result.mode).toBe('update');
     expect(result.files.map((f) => f.relativePath)).not.toContain(
       'src/framework.ts',
@@ -341,7 +344,7 @@ describe('generateProject — framework files', () => {
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
-    await generateProject({ targetDir: tmp, spec: initial });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: initial });
 
     const genPath = path.join(tmp, 'foo-cli/src/framework.gen.ts');
     const v1 = await fs.readFile(genPath, 'utf8');
@@ -352,7 +355,7 @@ describe('generateProject — framework files', () => {
       features: { powerhouse: 'Connect' },
       packages: [appPkg('foo', ['powerhouse/ph-clint-project'])],
     });
-    const result = await generateProject({ targetDir: tmp, spec: next });
+    const result = await generateProject({ context: TEST_CTX, targetDir: tmp, spec: next });
     expect(result.files.map((f) => f.relativePath)).toContain(
       'foo-cli/src/framework.gen.ts',
     );
@@ -367,7 +370,7 @@ describe('generateProject — framework files', () => {
       features: { powerhouse: 'Connect' },
       packages: [appPkg('foo', ['powerhouse/ph-clint-project'])],
     });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     const appIndex = path.join(tmp, 'foo-app/index.ts');
     expect(await exists(appIndex)).toBe(true);

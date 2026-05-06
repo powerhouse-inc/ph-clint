@@ -14,6 +14,9 @@ import {
   writeGeneratedState,
   generatedStateFromSpec,
 } from '../../src/codegen/generated.js';
+import type { CodegenContext } from '../../src/codegen/types.js';
+
+const TEST_CTX: CodegenContext = { toolVersion: '0.1.0-test' };
 
 async function mkTmpDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ph-clint-upd-'));
@@ -45,11 +48,11 @@ describe('generateProject — update mode', () => {
 
   it('create → re-run is a no-op: same spec, same files, no rewrites', async () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    const first = await generateProject({ targetDir: tmp, spec });
+    const first = await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     expect(first.mode).toBe('create');
     expect(first.files.length).toBeGreaterThan(0);
 
-    const second = await generateProject({ targetDir: tmp, spec });
+    const second = await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     expect(second.mode).toBe('update');
     expect(second.files).toEqual([]);
     expect(second.skipped).toEqual([]);
@@ -59,15 +62,15 @@ describe('generateProject — update mode', () => {
 
   it('auto-detects update mode from the persisted spec', async () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     // Second run without specifying mode.
-    const result = await generateProject({ targetDir: tmp, spec });
+    const result = await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     expect(result.mode).toBe('update');
   });
 
   it('patches src/cli.ts marker regions when the spec changes', async () => {
     const initial = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec: initial });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: initial });
 
     // User adds something OUTSIDE the markers — must be preserved.
     const cliPath = path.join(tmp, 'src/cli.ts');
@@ -81,7 +84,7 @@ describe('generateProject — update mode', () => {
       name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
-    const result = await generateProject({ targetDir: tmp, spec: updated });
+    const result = await generateProject({ context: TEST_CTX, targetDir: tmp, spec: updated });
     expect(result.mode).toBe('update');
 
     const after = await fs.readFile(cliPath, 'utf8');
@@ -94,7 +97,7 @@ describe('generateProject — update mode', () => {
 
   it('skips a user-edited managed file unless --force', async () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     const pkgPath = path.join(tmp, 'package.json');
     const original = await fs.readFile(pkgPath, 'utf8');
@@ -108,6 +111,7 @@ describe('generateProject — update mode', () => {
       description: 'updated',
     });
     const res = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: updated,
       onWarn: (m) => warnings.push(m),
@@ -119,6 +123,7 @@ describe('generateProject — update mode', () => {
 
     // Now with force — file gets overwritten.
     const forced = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: updated,
       force: true,
@@ -134,13 +139,14 @@ describe('generateProject — update mode', () => {
       name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
-    await generateProject({ targetDir: tmp, spec: withMastra });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: withMastra });
     const agentTs = path.join(tmp, 'src/agents/agent.ts');
     expect(await exists(agentTs)).toBe(true);
 
     // Flip Mastra off → agent.ts should disappear.
     const withoutMastra = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: withoutMastra,
     });
@@ -155,7 +161,7 @@ describe('generateProject — update mode', () => {
       name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
-    await generateProject({ targetDir: tmp, spec: withMastra });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec: withMastra });
 
     const agentTs = path.join(tmp, 'src/agents/agent.ts');
     await fs.writeFile(agentTs, '// user edited\n', 'utf8');
@@ -163,6 +169,7 @@ describe('generateProject — update mode', () => {
     const warnings: string[] = [];
     const withoutMastra = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: withoutMastra,
       onWarn: (m) => warnings.push(m),
@@ -174,7 +181,7 @@ describe('generateProject — update mode', () => {
 
   it('stores per-file hashes after each run', async () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     const hashes = await readHashes(tmp);
     expect(Object.keys(hashes)).toContain('src/cli.ts');
     expect(Object.keys(hashes)).toContain('package.json');
@@ -188,7 +195,7 @@ describe('generateProject — update mode', () => {
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     const gen = await readGeneratedState(tmp);
     expect(gen).not.toBeNull();
     expect(gen!.name).toBe('foo-cli');
@@ -202,7 +209,7 @@ describe('generateProject — update mode', () => {
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     // Simulate app initialization (create a package.json in the app dir)
     const appDir = path.join(tmp, 'foo-app');
@@ -222,6 +229,7 @@ describe('generateProject — update mode', () => {
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: renamed,
       force: true,
@@ -265,7 +273,7 @@ describe('generateProject — update mode', () => {
       scope: '@oldscope',
       features: { powerhouse: 'Connect' },
     });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     // Simulate app initialization
     const appDir = path.join(tmp, 'foo-app');
@@ -282,6 +290,7 @@ describe('generateProject — update mode', () => {
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: newScope,
       force: true,
@@ -303,6 +312,7 @@ describe('generateProject — update mode', () => {
 
     // Steady-state re-run → no actions
     const steady = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: newScope,
       force: true,
@@ -315,7 +325,7 @@ describe('generateProject — update mode', () => {
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     // Simulate initialized app
     const appDir = path.join(tmp, 'foo-app');
@@ -331,6 +341,7 @@ describe('generateProject — update mode', () => {
       features: { powerhouse: 'Connect' },
     });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: renamed,
       force: true,
@@ -353,13 +364,14 @@ describe('generateProject — update mode', () => {
       name: 'foo-cli',
       scope: '@oldscope',
     });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     const newScope = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       scope: '@newscope',
     });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: newScope,
       force: true,
@@ -371,10 +383,11 @@ describe('generateProject — update mode', () => {
 
   it('name change on flat layout triggers cli-install + cli-build', async () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
-    await generateProject({ targetDir: tmp, spec });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
 
     const renamed = clintProjectSpecSchema.parse({ name: 'bar-cli' });
     const result = await generateProject({
+      context: TEST_CTX,
       targetDir: tmp,
       spec: renamed,
       force: true,

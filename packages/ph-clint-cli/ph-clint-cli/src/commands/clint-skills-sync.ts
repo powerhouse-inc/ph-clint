@@ -7,7 +7,7 @@ import path from 'node:path';
 import { defineCommand } from '../framework.js';
 import { z } from 'zod';
 import { readProjectSpec } from '../spec/file.js';
-import { syncExternalSkills } from '../skills/sync.js';
+import { syncExternalSkills } from '@powerhousedao/ph-clint-dev/skills/sync';
 
 const inputSchema = z.object({
   dir: z

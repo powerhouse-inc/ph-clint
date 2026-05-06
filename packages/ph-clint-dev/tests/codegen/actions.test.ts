@@ -387,6 +387,7 @@ describe('runPostGenActions', () => {
     const logs: string[] = [];
     const results = await runPostGenActions([], {
       log: (m) => logs.push(m),
+      runProcess: async () => ({ success: true, output: '' }),
     });
     expect(results).toEqual([]);
     expect(logs).toEqual([]);
