@@ -25,6 +25,18 @@ export interface ProxyServerInstance {
   stop(): Promise<void>;
 }
 
+
+  /**
+   * Compute the X-Forwarded-Prefix value to send upstream.
+   */
+  function computeForwardedPrefix(route: ProxyRoute): string | undefined {
+    const strip = (s: string) => s.replace(/\/$/, '');
+    const prefix = strip(route.prefix);
+    const upstreamPath = strip(route.upstream.pathname);
+    const result = upstreamPath && prefix.endsWith(upstreamPath) ? prefix.slice(0, -upstreamPath.length) : prefix;
+    return result || undefined;
+  }
+
 /**
  * Create and start an embedded reverse proxy server.
  */
@@ -88,10 +100,10 @@ export async function createProxyServer(
     if (pathname === '/_proxy/routes') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(routes.map(r => ({
-        prefix: r.prefix,
-        upstream: r.upstream.toString(),
-        ws: r.ws,
-        source: r.source,
+            prefix: r.prefix,
+            upstream: r.upstream.toString(),
+            ws: r.ws,
+            source: r.source,
       }))));
       return;
     }
@@ -106,6 +118,12 @@ export async function createProxyServer(
     const targetPath = rewriteTarget(route, pathname);
     const target = `${route.upstream.protocol}//${route.upstream.host}`;
 
+    const forwardedPrefix = computeForwardedPrefix(route);
+    if (forwardedPrefix) {
+      req.headers['x-forwarded-prefix'] = forwardedPrefix;
+    } else {
+      delete req.headers['x-forwarded-prefix'];
+    }
     req.url = targetPath || '/';
     proxy.web(req, res, { target, changeOrigin: true });
   });
@@ -123,6 +141,12 @@ export async function createProxyServer(
     const targetPath = rewriteTarget(route, pathname);
     const target = `${route.upstream.protocol}//${route.upstream.host}`;
 
+    const forwardedPrefix = computeForwardedPrefix(route);
+    if (forwardedPrefix) {
+      req.headers['x-forwarded-prefix'] = forwardedPrefix;
+    } else {
+      delete req.headers['x-forwarded-prefix'];
+    }
     req.url = targetPath || '/';
     proxy.ws(req, socket, head, { target, changeOrigin: true });
   });
