@@ -17,7 +17,7 @@
     "build": "pnpm build:skills && tsc",
     "dev": "tsx src/main.ts",
     "start": "node dist/main.js",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles --coverage",
     "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles --testPathPatterns 'tests/(e2e|codegen-e2e)/' --testPathIgnorePatterns '/node_modules/'",
     "lint": "eslint src",
     "mastra:dev": "mastra dev",

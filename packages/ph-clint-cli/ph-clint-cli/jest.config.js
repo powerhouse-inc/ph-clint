@@ -19,4 +19,23 @@ export default {
   },
   testMatch: ['**/tests/**/*.test.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/tests/e2e/', '/tests/codegen-e2e/'],
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.d.ts',
+    // Generated / machine-owned files
+    '!src/framework.gen.ts',
+    '!src/mastra/**',
+    // main.ts is a thin entry point
+    '!src/main.ts',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov'],
+  coverageThreshold: {
+    global: {
+      statements: 35,
+      branches: 28,
+      functions: 29,
+      lines: 37,
+    },
+  },
 };
