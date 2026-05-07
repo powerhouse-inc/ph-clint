@@ -19,7 +19,10 @@ require CLINT_REGISTRY
 require SERVICE_COMMAND
 
 echo "==> clint-runtime: installing ${CLINT_PACKAGE}@${CLINT_VERSION} from ${CLINT_REGISTRY}"
-pnpm add -g "${CLINT_PACKAGE}@${CLINT_VERSION}" --registry "${CLINT_REGISTRY}"
+# --node-linker=hoisted: produce a flat npm-style node_modules so
+# transitive deps that under-declare (e.g. @mercuriusjs/federation
+# requiring fastify-plugin) can be resolved by Node's walk.
+pnpm add -g "${CLINT_PACKAGE}@${CLINT_VERSION}" --registry "${CLINT_REGISTRY}" --node-linker=hoisted
 
 # Surface key env so logs show the announce URL is wired (or that it
 # isn't, when serviceAnnouncement is off in the package manifest).
