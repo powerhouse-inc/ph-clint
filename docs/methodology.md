@@ -152,7 +152,7 @@ The `sandbox/` directory at the repository root is the workspace for manual end-
 ### Workflow
 
 1. **Build the dev version** of ph-clint-cli (or use `pnpm dev` in `packages/ph-clint-cli/ph-clint-cli/`).
-2. **Run the CLI** from `sandbox/` — read the help text, scaffold a new project with `clint-project-init`.
+2. **Run the CLI** from `sandbox/` with --help — read the help text FIRST, scaffold a new project with `clint-project-init`
 3. **Wire the generated project** to the dev build by setting `file:` dependencies in the generated `package.json` pointing to the local `packages/ph-clint/` and `packages/ph-clint-dev/` directories. Run `pnpm install` in the generated project.
 4. **Configure the spec** according to the feature you're testing — enable Powerhouse, Mastra, routines, etc. as needed.
 5. **Run the generated CLI** (`pnpm dev` or `pnpm start`) and exercise it: run commands, confirm the REPL works, verify agent responses, check service lifecycle.
