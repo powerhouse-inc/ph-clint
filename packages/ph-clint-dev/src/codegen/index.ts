@@ -56,7 +56,6 @@ import {
   buildRootPackageJson,
   buildPublishConfigJs,
   buildAppIndexTs,
-  buildPnpmWorkspaceYaml,
 } from './builders/index.js';
 import type { CodegenContext } from './types.js';
 import {
@@ -235,12 +234,6 @@ function planFiles(
       relativePath: path.relative(targetDir, appReadme),
       absolutePath: appReadme,
       content: buildAppReadmeContent(spec),
-    });
-    const appWorkspace = path.join(appDir, 'pnpm-workspace.yaml');
-    planned.push({
-      relativePath: path.relative(targetDir, appWorkspace),
-      absolutePath: appWorkspace,
-      content: buildPnpmWorkspaceYaml(),
     });
     // Top-level barrel for the reactor package — lets impl code import from
     // `{name}-app` instead of drilling into `document-models/<slug>/v1/gen`.

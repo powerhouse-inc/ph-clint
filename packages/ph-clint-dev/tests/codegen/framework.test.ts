@@ -422,13 +422,13 @@ describe('generateProject — framework files', () => {
     expect(content).toContain('allowBuilds:');
   });
 
-  it('emits pnpm-workspace.yaml in both CLI and app dirs for split layout', async () => {
+  it('emits pnpm-workspace.yaml in CLI dir only (app is owned by ph init)', async () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
     expect(await exists(path.join(tmp, 'foo-cli/pnpm-workspace.yaml'))).toBe(true);
-    expect(await exists(path.join(tmp, 'foo-app/pnpm-workspace.yaml'))).toBe(true);
+    expect(await exists(path.join(tmp, 'foo-app/pnpm-workspace.yaml'))).toBe(false);
   });
 });
