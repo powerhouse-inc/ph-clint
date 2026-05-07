@@ -32,7 +32,7 @@
 #     -e SERVICE_COMMAND="ph-rupert --stand-alone --mode one-shot" \
 #     clint-runtime:dev
 
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 
 # git + curl for tooling many clints depend on (tarball fetches, repo
 # bootstrapping); ca-certificates so HTTPS to the registry / announce
@@ -55,7 +55,7 @@ USER clint
 WORKDIR /home/clint
 
 ENV PNPM_HOME=/home/clint/.local/share/pnpm \
-    PATH=/home/clint/.local/share/pnpm:$PATH \
+    PATH=/home/clint/.local/share/pnpm/bin:$PATH \
     NODE_ENV=production
 
 COPY --chown=clint:clint entrypoint.sh /home/clint/entrypoint.sh
