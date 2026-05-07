@@ -16,6 +16,7 @@ import {
   buildAgentTs,
   buildReadme,
   buildSmokeTestTs,
+  buildPnpmWorkspaceYaml,
 } from '../../src/codegen/builders/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
 
@@ -250,5 +251,14 @@ describe('buildReadme', () => {
     expect(out).toContain('## Split layout');
     expect(out).toContain('foo-cli-app');
     expect(out).toContain('ph init');
+  });
+});
+
+describe('buildPnpmWorkspaceYaml', () => {
+  it('approves esbuild and unrs-resolver build scripts', () => {
+    const out = buildPnpmWorkspaceYaml();
+    expect(out).toContain('allowBuilds:');
+    expect(out).toContain('esbuild: true');
+    expect(out).toContain('unrs-resolver: true');
   });
 });

@@ -21,6 +21,7 @@ import { buildDemoAgentTs } from './demo-agent-ts.js';
 import { buildFrameworkGenTs } from './framework-gen-ts.js';
 import { buildFrameworkTs } from './framework-ts.js';
 import { buildManifestJson } from './manifest-json.js';
+import { buildPnpmWorkspaceYaml } from './pnpm-workspace-yaml.js';
 import { buildSmokeTestTs } from './smoke-test-ts.js';
 import { type ClintProjectSpec } from '../../spec/types.js';
 import type { CodegenContext } from '../types.js';
@@ -97,6 +98,7 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
   { relativePath: 'prompts/skills-tpl/.gitkeep', build: () => '' },
   { relativePath: 'prompts/skills-ext/.gitkeep', build: () => '' },
   { relativePath: 'tests/smoke.test.ts', build: buildSmokeTestTs, initOnly: true },
+  { relativePath: 'pnpm-workspace.yaml', build: () => buildPnpmWorkspaceYaml() },
 ];
 
 export {
@@ -117,6 +119,7 @@ export {
   buildFrameworkTs,
   buildManifestJson,
   buildSmokeTestTs,
+  buildPnpmWorkspaceYaml,
 };
 export { buildRootPackageJson } from './root-package-json.js';
 export { buildPublishConfigJs } from './publish-config-js.js';

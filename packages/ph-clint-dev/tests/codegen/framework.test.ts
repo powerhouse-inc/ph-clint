@@ -413,4 +413,22 @@ describe('generateProject — framework files', () => {
       "export * from './document-models/ph-clint-project/index.js';",
     );
   });
+
+  it('emits pnpm-workspace.yaml in flat layout', async () => {
+    const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
+    expect(await exists(path.join(tmp, 'pnpm-workspace.yaml'))).toBe(true);
+    const content = await fs.readFile(path.join(tmp, 'pnpm-workspace.yaml'), 'utf8');
+    expect(content).toContain('allowBuilds:');
+  });
+
+  it('emits pnpm-workspace.yaml in both CLI and app dirs for split layout', async () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+    });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
+    expect(await exists(path.join(tmp, 'foo-cli/pnpm-workspace.yaml'))).toBe(true);
+    expect(await exists(path.join(tmp, 'foo-app/pnpm-workspace.yaml'))).toBe(true);
+  });
 });
