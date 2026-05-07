@@ -109,6 +109,8 @@ export type {
   ToolResultChunk,
   ErrorChunk,
   AgentProvider,
+  AgentPromptInput,
+  AgentContentPart,
   AgentStreamOptions,
   AgentSetupContext,
   AgentLoader,

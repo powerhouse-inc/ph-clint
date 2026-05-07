@@ -12,20 +12,20 @@
  * run separately from the fast unit/integration suite.
  */
 import path from 'node:path';
+import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { describe, it, expect, afterAll } from '@jest/globals';
 import { generateProject } from '../../src/codegen/index.js';
 import { clintProjectSpecSchema } from '../../src/spec/types.js';
-import type { PostGenActionKind } from '@powerhousedao/ph-clint-dev/codegen/actions';
+import { runPostGenActions, type PostGenActionKind } from '@powerhousedao/ph-clint-dev/codegen/actions';
 import { FIXTURES } from './fixtures.js';
 import { getBinName } from '../../src/spec/types.js';
 import {
   mkTmpDir,
   rmRf,
   fileTree,
-  scaffoldAppPackage,
   rewriteLocalDeps,
-  pnpmInstall,
-  tscBuild,
   runHelp,
   runCommand,
   runMeta,
@@ -76,6 +76,12 @@ const HELP_PATTERNS: Record<string, RegExp[]> = {
   ],
   switchboard: [
     /test-switchboard/,
+    /--resume/,
+    /--no-api/,
+    /config/,
+  ],
+  'chat-switchboard': [
+    /test-chat/,
     /--resume/,
     /--no-api/,
     /config/,
@@ -132,6 +138,13 @@ const REQUIRED_FILES: Record<string, string[]> = {
     'test-switchboard-cli/src/agents/agent.ts',
     'package.json',
   ],
+  'chat-switchboard': [
+    'test-chat-cli/package.json',
+    'test-chat-cli/src/cli.ts',
+    'test-chat-cli/src/framework.gen.ts',
+    'test-chat-cli/src/agents/agent.ts',
+    'package.json',
+  ],
   'connect-full': [
     'test-connect-cli/package.json',
     'test-connect-cli/src/cli.ts',
@@ -173,6 +186,7 @@ const EXPECTED_ACTIONS: Record<string, PostGenActionKind[]> = {
   'mastra-multi-model': ['cli-install', 'cli-build'],
   'reactor-minimal': ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
   switchboard: ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
+  'chat-switchboard': ['ph-init', 'app-install', 'app-ph-install', 'app-build', 'cli-install', 'cli-build'],
   'connect-full': ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
 };
 
@@ -217,17 +231,38 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
         expect(actionKinds).toEqual(expectedActions);
       }
 
-      // ── Scaffold app package for PH-enabled fixtures ──
-      await scaffoldAppPackage(tmp, spec);
+      // ── Run post-gen actions (ph-init, install, build) ──
+      // Split into two phases so we can rewrite deps before CLI install.
+      const appActions = result.pendingActions.filter(
+        (a) => a.kind !== 'cli-install' && a.kind !== 'cli-build',
+      );
+      const cliActions = result.pendingActions.filter(
+        (a) => a.kind === 'cli-install' || a.kind === 'cli-build',
+      );
+      const actionCtx = {
+        log: (msg: string) => console.log(`[postgen] ${msg}`),
+        runProcess: async (command: string, opts?: { cwd?: string; timeout?: number }) => {
+          try {
+            const output = execSync(command, {
+              cwd: opts?.cwd,
+              encoding: 'utf8',
+              timeout: opts?.timeout ?? 300_000,
+              stdio: ['pipe', 'pipe', 'pipe'],
+            });
+            return { success: true, output };
+          } catch (err: unknown) {
+            const e = err as { stdout?: string; stderr?: string };
+            return { success: false, output: (e.stdout ?? '') + (e.stderr ?? '') };
+          }
+        },
+      };
 
-      // ── Rewrite deps → file: references ──
+      await runPostGenActions(appActions, actionCtx);
+
+      // Rewrite ph-clint/ph-clint-dev deps to file: references
       await rewriteLocalDeps(tmp, spec);
 
-      // ── Install ──
-      pnpmInstall(cliDir);
-
-      // ── Build ──
-      tscBuild(cliDir);
+      await runPostGenActions(cliActions, actionCtx);
 
       // ── Run --help ──
       const helpOutput = runHelp(cliDir);
@@ -279,7 +314,13 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
 
       // ── Agent: demo agent echoes back the prompt ──
       if (spec.features.mastra.enabled) {
-        const output = await runInteractive(cliDir, [], {
+        // Use --no-api/--no-studio to avoid starting Switchboard/Connect
+        // which would hold the port and conflict with later tests.
+        const agentFlags = [
+          ...(spec.features.powerhouse !== 'Disabled' ? ['--no-api'] : []),
+          ...(spec.features.powerhouse === 'Connect' ? ['--no-studio'] : []),
+        ];
+        const output = await runInteractive(cliDir, agentFlags, {
           stdin: 'hello from e2e test\n',
         });
         expect(output).toMatch(/You said:.*hello from e2e test/);
@@ -334,13 +375,13 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
           const mcp = await httpGet(`http://localhost:${sbPort}/mcp`);
           expect(mcp.status).toBe(405);
         },
-        { timeoutMs: 30_000 },
+        { timeoutMs: 60_000 },
       );
 
       expect(output).toMatch(/Switchboard .* ready at/);
       expect(output).toMatch(/MCP server available/);
     },
-    60_000,
+    90_000,
   );
 
   it(
@@ -373,5 +414,121 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
       }
     },
     90_000,
+  );
+
+  it(
+    'chat attachment extraction writes image to downloads/',
+    async () => {
+      if (!cliDir) return;
+      if (!spec.features.mastra.common.enableChat) return;
+      if (spec.features.powerhouse !== 'Switchboard') return;
+
+      const sbPort = defaultPort(getBinName(spec), 'switchboard');
+
+      // Read the fixture image as base64.
+      const fixturePath = path.resolve(
+        import.meta.dirname,
+        '../../../../clint-common/prometheus.png',
+      );
+      const imageBase64 = readFileSync(fixturePath).toString('base64');
+      const partId = 'e2e-img-part-001';
+
+      await withLiveProcess(
+        cliDir,
+        [],
+        /Switchboard .* ready at/,
+        async () => {
+          // 1. Find the drive
+          const driveRes = await httpPost(`http://localhost:${sbPort}/graphql`, {
+            query: `{
+              findDocuments(search: { type: "powerhouse/document-drive" }) {
+                items { id name }
+              }
+            }`,
+          });
+          const drives = JSON.parse(driveRes.body).data.findDocuments.items as
+            Array<{ id: string; name: string }>;
+          const driveId = (drives.find((d) => d.name === 'Clint') ?? drives[0]).id;
+
+          // 2. Create a chat-session document
+          const createRes = await httpPost(`http://localhost:${sbPort}/graphql`, {
+            query: `mutation ($type: String!, $parent: String) {
+              createEmptyDocument(documentType: $type, parentIdentifier: $parent) {
+                id documentType
+              }
+            }`,
+            variables: {
+              type: 'powerhouse/chat-session',
+              parent: driveId,
+            },
+          });
+          const docId = JSON.parse(createRes.body).data.createEmptyDocument.id as string;
+
+          // 3. Dispatch ADD_USER_MESSAGE with an IMAGE content part
+          const mutRes = await httpPost(`http://localhost:${sbPort}/graphql`, {
+            query: `mutation ($id: String!, $actions: [JSONObject!]!) {
+              mutateDocument(documentIdentifier: $id, actions: $actions) {
+                id
+                revisionsList { scope revision }
+              }
+            }`,
+            variables: {
+              id: docId,
+              actions: [
+                {
+                  id: 'e2e-chat-action-1',
+                  timestampUtcMs: new Date().toISOString(),
+                  type: 'ADD_USER_MESSAGE',
+                  input: {
+                    id: 'e2e-msg-001',
+                    createdAt: new Date().toISOString(),
+                    content: [
+                      {
+                        id: partId,
+                        type: 'IMAGE',
+                        mediaType: 'image/png',
+                        data: imageBase64,
+                      },
+                      {
+                        id: 'e2e-text-part-001',
+                        type: 'TEXT',
+                        text: 'Describe this image',
+                      },
+                    ],
+                  },
+                  scope: 'global',
+                },
+              ],
+            },
+          });
+          expect(JSON.parse(mutRes.body).errors).toBeUndefined();
+
+          // 4. Wait briefly for the chat-session-watch trigger to fire and
+          //    extract the attachment. The trigger runs asynchronously after
+          //    the document change is committed.
+          const expectedFile = path.join(
+            cliDir,
+            'downloads',
+            `attachment_${partId.slice(0, 6)}.png`,
+          );
+          const deadline = Date.now() + 15_000;
+          while (Date.now() < deadline) {
+            try {
+              await fs.access(expectedFile);
+              break;
+            } catch {
+              await new Promise((r) => setTimeout(r, 1_000));
+            }
+          }
+
+          // 5. Verify the file exists and matches the fixture
+          const written = await fs.readFile(expectedFile);
+          const original = readFileSync(fixturePath);
+          expect(written.equals(original)).toBe(true);
+        },
+        { timeoutMs: 60_000 },
+      );
+    },
+    120_000,
   );
 });

@@ -82,6 +82,28 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
     },
   },
 
+  /** Switchboard + agent + chat enabled, with clint-common package. */
+  'chat-switchboard': {
+    name: 'test-chat-cli',
+    features: {
+      powerhouse: 'Switchboard',
+      mastra: {
+        enabled: true,
+        agentId: 'chat-agent',
+        agentName: 'Chat Agent',
+        models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        common: { enableChat: true },
+      },
+    },
+    packages: [
+      {
+        id: 'pkg-clint-common',
+        packageName: '@powerhousedao/clint-common',
+        documentTypes: ['powerhouse/chat-session'],
+      },
+    ],
+  },
+
   /** Everything on: Connect + agent + routine, no document types. */
   'connect-full': {
     name: 'test-connect-cli',

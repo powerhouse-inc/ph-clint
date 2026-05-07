@@ -240,6 +240,20 @@ export type StreamChunk =
 // ── Agent Provider ───────────────────────────────────────────────
 
 /**
+ * A content part in a multimodal prompt. Mirrors the AI SDK's
+ * `TextPart | ImagePart` without importing the SDK types directly.
+ */
+export type AgentContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; image: string | Uint8Array | ArrayBuffer | URL; mediaType?: string };
+
+/**
+ * Input to `AgentProvider.stream()`. Either a plain text string
+ * or an array of content parts (text + images).
+ */
+export type AgentPromptInput = string | AgentContentPart[];
+
+/**
  * Options for streaming an agent prompt.
  */
 export interface AgentStreamOptions {
@@ -265,7 +279,7 @@ export interface AgentProvider {
   /** The underlying Mastra Agent instance, if one was used to create this provider. */
   mastraAgent?: unknown;
   stream(
-    prompt: string,
+    prompt: AgentPromptInput,
     opts?: AgentStreamOptions,
   ): AsyncGenerator<StreamChunk>;
 }

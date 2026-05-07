@@ -116,11 +116,14 @@ export async function scaffoldAppPackage(
   if (spec.features.powerhouse === 'Disabled') return;
 
   const appDir = path.join(projectDir, spec.name.replace(/-cli$/, '-app'));
-  await runPhInit({
+  console.log(`[scaffoldAppPackage] projectDir=${projectDir} appDir=${appDir}`);
+  const result = await runPhInit({
     targetDir: projectDir,
     appDir,
     spec,
+    log: (msg) => console.log(`[runPhInit] ${msg}`),
     runProcess: async (command, opts) => {
+      console.log(`[runProcess] command=${command} cwd=${opts?.cwd}`);
       try {
         const output = execSync(command, {
           cwd: opts?.cwd,
@@ -128,21 +131,36 @@ export async function scaffoldAppPackage(
           timeout: opts?.timeout ?? 300_000,
           stdio: ['pipe', 'pipe', 'pipe'],
         });
+        console.log(`[runProcess] success, output length=${output.length}`);
         return { success: true, output };
       } catch (err: unknown) {
         const e = err as { stdout?: string; stderr?: string };
-        return { success: false, output: (e.stdout ?? '') + (e.stderr ?? '') };
+        const output = (e.stdout ?? '') + (e.stderr ?? '');
+        console.log(`[runProcess] FAILED, output:\n${output.slice(0, 2000)}`);
+        return { success: false, output };
       }
     },
   });
+  console.log(`[scaffoldAppPackage] runPhInit result: ran=${result.ran} exitCode=${result.exitCode} reason=${result.reason}`);
+
+  // Check what's in appDir after ph init
+  try {
+    const entries = await fs.readdir(appDir);
+    console.log(`[scaffoldAppPackage] appDir contents after ph init: ${entries.join(', ')}`);
+  } catch (e) {
+    console.log(`[scaffoldAppPackage] appDir does not exist after ph init!`);
+  }
+
   // ph init runs pnpm install internally, so deps are already there.
   // Build the app so dist/ exists for the CLI's file: dep copy.
+  console.log(`[scaffoldAppPackage] running pnpm build in ${appDir}`);
   execSync('pnpm build', {
     cwd: appDir,
     encoding: 'utf8',
     timeout: 120_000,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
+  console.log(`[scaffoldAppPackage] pnpm build completed`);
 }
 
 /**

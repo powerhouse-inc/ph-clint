@@ -8,7 +8,7 @@
  * 4. Extract user text from the last message
  * 5. Stream agent response, writing each chunk back to the document
  */
-import { createDocumentChangeTrigger, type ReactorContext } from '@powerhousedao/ph-clint';
+import { createDocumentChangeTrigger, type AgentContentPart, type ReactorContext } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
 import { writeAgentStreamToDocument } from './chat-bridge.js';
 import { extractAttachments } from './extract-attachments.js';
@@ -89,15 +89,40 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
           log,
         });
 
-        let promptText = userText;
-        if (attachments.length > 0) {
+        // Build multimodal prompt: include images natively so the model
+        // can see them, plus file paths so agent tools can read them.
+        const imageParts = lastMessage.content.filter(
+          (p: ContentPart) => p.type === 'IMAGE' && p.data,
+        );
+
+        let prompt: string | AgentContentPart[];
+        if (imageParts.length > 0) {
+          const parts: AgentContentPart[] = [];
+          for (const p of imageParts) {
+            parts.push({
+              type: 'image',
+              image: Buffer.from(p.data!, 'base64'),
+              mediaType: p.mediaType ?? undefined,
+            });
+          }
+          let text = userText;
+          if (attachments.length > 0) {
+            log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
+            const pathList = attachments.map(a => `- ${a.filename}: ${a.localPath}`).join('\n');
+            text += `\n\n[Attached files saved to disk]\n${pathList}`;
+          }
+          parts.push({ type: 'text', text });
+          prompt = parts;
+        } else if (attachments.length > 0) {
           log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
           const pathList = attachments.map(a => `- ${a.filename}: ${a.localPath}`).join('\n');
-          promptText = `${userText}\n\n[Attached files saved to disk]\n${pathList}`;
+          prompt = `${userText}\n\n[Attached files saved to disk]\n${pathList}`;
+        } else {
+          prompt = userText;
         }
 
         // Stream agent response and write to document
-        const stream = agent.stream(promptText, { threadId });
+        const stream = agent.stream(prompt, { threadId });
         await writeAgentStreamToDocument(stream, {
           reactor,
           documentId,

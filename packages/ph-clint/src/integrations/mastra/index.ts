@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import type { AgentSetupContext, AgentProvider, StreamChunk } from '../../core/types.js';
+import type { AgentSetupContext, AgentProvider, AgentPromptInput, StreamChunk } from '../../core/types.js';
 import { createWorkdirStore } from '../../core/store.js';
 import { mapMastraStream } from './stream.js';
 import { commandsToMastraTools } from './tools.js';
@@ -137,7 +137,7 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
         description: options?.description,
         image: options?.image,
         mastraAgent: agent,
-        async *stream(prompt: string, opts?) {
+        async *stream(prompt: AgentPromptInput, opts?) {
           const streamOpts: Record<string, unknown> = { maxSteps };
           if (providerOptions) streamOpts.providerOptions = providerOptions;
 
@@ -155,6 +155,22 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
 
           const sessionId = opts?.threadId ?? agentId;
 
+          // Build the message input for Mastra. When prompt is an array of
+          // content parts (text + images), construct a UserModelMessage so the
+          // model receives the images natively via the AI SDK vision format.
+          let mastraInput: unknown;
+          if (typeof prompt === 'string') {
+            mastraInput = prompt;
+          } else {
+            mastraInput = {
+              role: 'user' as const,
+              content: prompt.map((part) => {
+                if (part.type === 'text') return { type: 'text' as const, text: part.text };
+                return { type: 'image' as const, image: part.image, mediaType: part.mediaType };
+              }),
+            };
+          }
+
           if (logger) {
             // Resolve instructions from the Mastra Agent if available
             let instructions: string | undefined;
@@ -166,10 +182,13 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
             if (typeof instructions !== 'string') instructions = undefined;
 
             logger.startSession(sessionId, agentId, agentName, instructions);
-            logger.logUserMessage(sessionId, prompt);
+            const logText = typeof prompt === 'string'
+              ? prompt
+              : prompt.filter(p => p.type === 'text').map(p => (p as { text: string }).text).join('\n');
+            logger.logUserMessage(sessionId, logText);
           }
 
-          const streamResult = await agent.stream(prompt, streamOpts);
+          const streamResult = await agent.stream(mastraInput, streamOpts);
 
           const rawStream = mapMastraStream(streamResult.fullStream as any);
 
