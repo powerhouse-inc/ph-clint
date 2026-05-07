@@ -8,6 +8,7 @@
  * the configured Mastra Agent via `cli.bootstrap()`.
  */
 import { type ClintProjectSpec } from '../../spec/types.js';
+import { DEMO_PROVIDER } from './provider-utils.js';
 
 /**
  * Derive the `{PROVIDER}_API_KEY` env var name from a provider prefix
@@ -33,8 +34,9 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
   }
 
   // Full agent config available — emit bootstrap-based Mastra instance
-  if (mastra.agentId && mastra.models.length > 0) {
-    const providers = [...new Set(mastra.models.map(m => m.id.split(/[:/]/)[0]))];
+  const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
+  if (mastra.agentId && realModels.length > 0) {
+    const providers = [...new Set(realModels.map(m => m.id.split(/[:/]/)[0]))];
 
     const lines: string[] = [
       '// @clint:begin mastra-index',

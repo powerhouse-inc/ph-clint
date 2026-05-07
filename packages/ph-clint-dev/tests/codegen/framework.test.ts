@@ -215,6 +215,40 @@ describe('buildFrameworkTs', () => {
     expect(code).toContain("model: z.string().default('anthropic/claude-sonnet-4-5')");
     expect(code).toContain('anthropicApiKey: z.string().optional()');
   });
+
+  it('only clint/demo-agent model — no API key fields in secretsSchema', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          models: [{ id: 'clint/demo-agent', isDefault: true }],
+        },
+      },
+    });
+    const code = buildFrameworkTs(spec);
+    expect(code).not.toContain('clintApiKey');
+    // secretsSchema should still exist but be empty
+    expect(code).toContain('export const secretsSchema = z.object({');
+  });
+
+  it('clint/demo-agent + real model — only real provider API key generated', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          models: [
+            { id: 'clint/demo-agent', isDefault: false },
+            { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
+          ],
+        },
+      },
+    });
+    const code = buildFrameworkTs(spec);
+    expect(code).toContain('anthropicApiKey: z.string().optional()');
+    expect(code).not.toContain('clintApiKey');
+  });
 });
 
 describe('buildAppIndexTs', () => {

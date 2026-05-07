@@ -3,8 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import http from 'node:http';
+import { z } from 'zod';
 import { buildManifest } from '../../src/manifest/build-manifest.js';
 import { downloadImage } from '../../src/manifest/image.js';
+import { defineCli, defineCommand } from '@powerhousedao/ph-clint';
 
 function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-test-'));
@@ -31,6 +33,35 @@ function serveImage(
   });
 }
 
+const noop = defineCommand({
+  id: 'noop',
+  description: 'No-op',
+  inputSchema: z.object({}),
+  execute: async () => {},
+});
+
+/** CLI with no config schema — getMetadata().config will be null. */
+const bareCli = defineCli({
+  name: 'bare-test',
+  version: '0.0.1',
+  description: 'Bare CLI',
+  commands: [noop],
+});
+
+/** CLI with config + secrets — getMetadata().config has env vars. */
+const configCli = defineCli({
+  name: 'my-cli',
+  version: '0.0.1',
+  description: 'Config CLI',
+  commands: [noop],
+  configSchema: z.object({
+    model: z.string().default('anthropic/claude-sonnet-4-5').describe('LLM model to use'),
+  }),
+  secretsSchema: z.object({
+    apiKey: z.string().optional().describe('API key'),
+  }),
+});
+
 const dirs: string[] = [];
 const servers: http.Server[] = [];
 
@@ -55,7 +86,7 @@ describe('buildManifest', () => {
       JSON.stringify(manifest),
     );
 
-    const result = await buildManifest({ srcDir: src, outDir: out });
+    const result = await buildManifest({ srcDir: src, outDir: out, cli: bareCli });
     expect(result.imageDownloaded).toBe(false);
     const written = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
     expect(written.name).toBe('test');
@@ -72,7 +103,7 @@ describe('buildManifest', () => {
       JSON.stringify(manifest),
     );
 
-    const result = await buildManifest({ srcDir: src, outDir: out });
+    const result = await buildManifest({ srcDir: src, outDir: out, cli: bareCli });
     expect(result.imageDownloaded).toBe(false);
     const written = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
     expect(written.features.agent.image).toBeNull();
@@ -94,7 +125,7 @@ describe('buildManifest', () => {
       JSON.stringify(manifest),
     );
 
-    const result = await buildManifest({ srcDir: src, outDir: out });
+    const result = await buildManifest({ srcDir: src, outDir: out, cli: bareCli });
     expect(result.imageDownloaded).toBe(true);
     const written = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
     expect(written.features.agent.image).toBe('./mybot.png');
@@ -115,7 +146,7 @@ describe('buildManifest', () => {
     );
 
     const warnings: string[] = [];
-    const result = await buildManifest({ srcDir: src, outDir: out, warn: (msg) => warnings.push(msg) });
+    const result = await buildManifest({ srcDir: src, outDir: out, cli: bareCli, warn: (msg) => warnings.push(msg) });
 
     expect(result.imageDownloaded).toBe(false);
     expect(warnings.length).toBe(1);
@@ -127,9 +158,44 @@ describe('buildManifest', () => {
   it('throws when no manifest found', async () => {
     const src = tmpDir();
     dirs.push(src);
-    await expect(buildManifest({ srcDir: src })).rejects.toThrow(
+    await expect(buildManifest({ srcDir: src, cli: bareCli })).rejects.toThrow(
       'No powerhouse.manifest.json',
     );
+  });
+
+  it('injects env map from cli config metadata', async () => {
+    const src = tmpDir();
+    const out = path.join(src, 'dist');
+    dirs.push(src);
+
+    const manifest = { type: 'clint-project', features: {} };
+    fs.writeFileSync(
+      path.join(src, 'powerhouse.manifest.json'),
+      JSON.stringify(manifest),
+    );
+
+    const result = await buildManifest({ srcDir: src, outDir: out, cli: configCli });
+    const written = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
+    expect(written.env).toEqual({
+      model: { env: 'MY_CLI_MODEL', type: 'string', description: 'LLM model to use' },
+      apiKey: { env: 'MY_CLI_API_KEY', type: 'string', description: 'API key' },
+    });
+  });
+
+  it('omits env when cli has no config schema', async () => {
+    const src = tmpDir();
+    const out = path.join(src, 'dist');
+    dirs.push(src);
+
+    const manifest = { type: 'clint-project', features: {} };
+    fs.writeFileSync(
+      path.join(src, 'powerhouse.manifest.json'),
+      JSON.stringify(manifest),
+    );
+
+    const result = await buildManifest({ srcDir: src, outDir: out, cli: bareCli });
+    const written = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
+    expect(written.env).toBeUndefined();
   });
 });
 

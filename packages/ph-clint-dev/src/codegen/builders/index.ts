@@ -14,7 +14,7 @@ import { buildJestConfigJs } from './jest-config-js.js';
 import { buildEslintConfigJs } from './eslint-config-js.js';
 import { buildGitignore } from './gitignore.js';
 import { buildMastraIndexTs } from './mastra-index-ts.js';
-import { buildBuildSkillsScript } from './build-skills-ts.js';
+import { buildBuildAssetsScript } from './build-assets-ts.js';
 import { buildAgentBaseMd } from './agent-base-md.js';
 import { buildAgentTs } from './agent-ts.js';
 import { buildDemoAgentTs } from './demo-agent-ts.js';
@@ -70,7 +70,7 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
   // Machine-owned; regenerated on every run. Null when no document types.
   { relativePath: 'src/framework.gen.ts', build: buildFrameworkGenTs },
   { relativePath: 'src/mastra/index.ts', build: buildMastraIndexTs },
-  { relativePath: 'scripts/build-skills.ts', build: () => buildBuildSkillsScript() },
+  { relativePath: 'scripts/build-assets.ts', build: () => buildBuildAssetsScript() },
   {
     relativePath: 'prompts/agent-profiles/AgentBase.md',
     build: (spec) => (spec.features.mastra.profiles.length > 0 ? null : buildAgentBaseMd(spec)),
@@ -109,7 +109,7 @@ export {
   buildEslintConfigJs,
   buildGitignore,
   buildMastraIndexTs,
-  buildBuildSkillsScript,
+  buildBuildAssetsScript,
   buildAgentBaseMd,
   buildAgentTs,
   buildDemoAgentTs,

@@ -91,9 +91,8 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
   }
 
   const scripts: Record<string, string> = {
-    'build:skills': 'tsx scripts/build-skills.ts',
-    'build:manifest': 'build-manifest',
-    build: 'pnpm build:skills && tsc && pnpm build:manifest',
+    'build:assets': 'tsx scripts/build-assets.ts',
+    build: 'pnpm build:assets && tsc',
     dev: 'tsx src/main.ts',
     start: 'node dist/main.js',
     test: "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles",

@@ -86,12 +86,12 @@ describe('buildCliPackageJson', () => {
     expect(scripts['publish:production']).toBeUndefined();
   });
 
-  it('includes build:manifest script and updated build script', () => {
+  it('includes build:assets script and updated build script', () => {
     const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
     const pkg = parseBuilt(spec);
     const scripts = pkg.scripts as Record<string, string>;
-    expect(scripts['build:manifest']).toBe('build-manifest');
-    expect(scripts.build).toBe('pnpm build:skills && tsc && pnpm build:manifest');
+    expect(scripts['build:assets']).toBe('tsx scripts/build-assets.ts');
+    expect(scripts.build).toBe('pnpm build:assets && tsc');
   });
 
   it('output always ends with a trailing newline', () => {

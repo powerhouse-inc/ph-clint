@@ -9,6 +9,8 @@ export interface BuildManifestOptions {
   outDir?: string;
   /** Warning logger. Default: console.warn */
   warn?: (msg: string) => void;
+  /** CLI instance — env map is derived from its config metadata. */
+  cli: { getMetadata(): { config?: Record<string, { env: string; type: string; description?: string }> | null } };
 }
 
 export interface BuildManifestResult {
@@ -20,14 +22,15 @@ export interface BuildManifestResult {
 
 /**
  * Copy powerhouse.manifest.json to outDir, downloading the agent image
- * if it's a URL (replacing with a relative local path).
+ * if it's a URL (replacing with a relative local path), and injecting
+ * the env map from CLI config metadata.
  */
 export async function buildManifest(
-  options?: BuildManifestOptions,
+  options: BuildManifestOptions,
 ): Promise<BuildManifestResult> {
-  const warn = options?.warn ?? console.warn;
-  const srcDir = path.resolve(options?.srcDir ?? process.cwd());
-  const outDir = path.resolve(options?.outDir ?? path.join(srcDir, 'dist'));
+  const warn = options.warn ?? console.warn;
+  const srcDir = path.resolve(options.srcDir ?? process.cwd());
+  const outDir = path.resolve(options.outDir ?? path.join(srcDir, 'dist'));
 
   const srcManifest = path.join(srcDir, 'powerhouse.manifest.json');
   if (!fs.existsSync(srcManifest)) {
@@ -54,6 +57,20 @@ export async function buildManifest(
     }
   }
 
+  // Derive env map from CLI config metadata
+  const meta = options.cli.getMetadata();
+  if (meta.config) {
+    const env: Record<string, { env: string; type: string; description: string }> = {};
+    for (const [key, field] of Object.entries(meta.config)) {
+      env[key] = {
+        env: field.env,
+        type: field.type,
+        description: field.description ?? '',
+      };
+    }
+    manifest.env = env;
+  }
+
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
@@ -62,17 +79,4 @@ export async function buildManifest(
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 
   return { manifestPath, imageDownloaded };
-}
-
-// CLI entrypoint
-// Resolve process.argv[1] via realpathSync so symlinked paths (pnpm .bin stubs)
-// match import.meta.filename which always resolves symlinks.
-if (
-  process.argv[1] &&
-  import.meta.filename === fs.realpathSync(path.resolve(process.argv[1]))
-) {
-  buildManifest().catch((err) => {
-    console.error(err instanceof Error ? err.message : err);
-    process.exit(1);
-  });
 }

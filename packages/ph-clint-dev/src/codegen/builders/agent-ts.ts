@@ -6,6 +6,7 @@
  * Otherwise falls back to a deterministic echo-style demo provider.
  */
 import { type ClintProjectSpec } from '../../spec/types.js';
+import { DEMO_PROVIDER } from './provider-utils.js';
 
 /** Map provider prefix to AI SDK package. */
 function providerImport(provider: string): { pkg: string; fn: string } {
@@ -63,7 +64,8 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   const mastra = spec.features.mastra;
   const agentId = mastra.agentId!;
   const agentName = mastra.agentName!;
-  const defaultModel = mastra.models.find(m => m.isDefault) ?? mastra.models[0];
+  const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
+  const defaultModel = realModels.find(m => m.isDefault) ?? realModels[0];
   const modelId = defaultModel?.id ?? 'anthropic/claude-sonnet-4-5';
   const [provider] = modelId.split(/[:/]/);
   const { pkg, fn } = providerImport(provider);
@@ -129,8 +131,9 @@ function buildRealAgent(spec: ClintProjectSpec): string {
 
 export function buildAgentTs(spec: ClintProjectSpec): string {
   const mastra = spec.features.mastra;
-  // Generate real agent when we have full config, demo otherwise
-  if (mastra.agentId && mastra.models.length > 0) {
+  const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
+  // Generate real agent when we have full config with real models, demo otherwise
+  if (mastra.agentId && realModels.length > 0) {
     return buildRealAgent(spec);
   }
   return buildDemoAgent(spec);

@@ -18,6 +18,7 @@
  *   exports the typed factories from here. No `framework.gen.ts` is emitted.
  */
 import { type ClintProjectSpec, phAtLeast } from '../../spec/types.js';
+import { DEMO_PROVIDER } from './provider-utils.js';
 
 export function buildFrameworkTs(spec: ClintProjectSpec): string {
   const { mastra, powerhouse } = spec.features;
@@ -58,7 +59,7 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
   lines.push('export const secretsSchema = z.object({');
   lines.push('  // @clint:begin framework-secrets');
   if (mastra.enabled) {
-    const providers = [...new Set(mastra.models.map(m => m.id.split(/[:/]/)[0]))];
+    const providers = [...new Set(mastra.models.map(m => m.id.split(/[:/]/)[0]))].filter(p => p !== DEMO_PROVIDER);
     for (const provider of providers) {
       const field = `${provider}ApiKey`;
       lines.push(`  ${field}: z.string().optional().describe('${provider} API key'),`);

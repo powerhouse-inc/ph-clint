@@ -10,7 +10,7 @@ import {
   buildJestConfigJs,
   buildEslintConfigJs,
   buildGitignore,
-  buildBuildSkillsScript,
+  buildBuildAssetsScript,
   buildMastraIndexTs,
   buildAgentBaseMd,
   buildAgentTs,
@@ -68,12 +68,14 @@ describe('buildGitignore', () => {
   });
 });
 
-describe('buildBuildSkillsScript', () => {
-  it('is a tsx script invoking ph-clint-dev buildSkills', () => {
-    const out = buildBuildSkillsScript();
+describe('buildBuildAssetsScript', () => {
+  it('is a tsx script invoking buildSkills and buildManifest', () => {
+    const out = buildBuildAssetsScript();
     expect(out).toContain('#!/usr/bin/env tsx');
     expect(out).toContain("import { buildSkills } from '@powerhousedao/ph-clint-dev'");
+    expect(out).toContain("import { buildManifest } from '@powerhousedao/ph-clint-dev/manifest'");
     expect(out).toContain('buildSkills({');
+    expect(out).toContain('await buildManifest({');
   });
 });
 
@@ -111,6 +113,25 @@ describe('buildMastraIndexTs', () => {
     expect(out).toContain("import { Mastra } from '@mastra/core/mastra'");
     expect(out).toContain('mastraAgent.id');
     expect(out).toContain('export const mastra');
+  });
+
+  it('only clint/demo-agent — placeholder (no env bridge)', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          agentId: 'foo-agent',
+          agentName: 'Foo Agent',
+          models: [{ id: 'clint/demo-agent', isDefault: true }],
+          profiles: [],
+        },
+      },
+    });
+    const out = buildMastraIndexTs(spec);
+    expect(out).toContain('export {};');
+    expect(out).not.toContain('process.env');
+    expect(out).not.toContain('CLINT_API_KEY');
   });
 });
 
@@ -151,6 +172,47 @@ describe('buildAgentTs', () => {
     expect(out).toContain("name: 'Foo Agent'");
     expect(out).toContain("import { createMastraHelpers }");
     expect(out).toContain("m.getAgentInstructions('foo-agent')");
+  });
+
+  it('only clint/demo-agent model — falls back to demo agent (no @ai-sdk import)', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          agentId: 'foo-agent',
+          agentName: 'Foo Agent',
+          models: [{ id: 'clint/demo-agent', isDefault: true }],
+          profiles: [],
+        },
+      },
+    });
+    const out = buildAgentTs(spec);
+    expect(out).toContain('createDemoAgent');
+    expect(out).not.toContain('@ai-sdk/');
+    expect(out).not.toContain("import { Agent }");
+  });
+
+  it('mixed models — picks first real model as default', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          agentId: 'foo-agent',
+          agentName: 'Foo Agent',
+          models: [
+            { id: 'clint/demo-agent', isDefault: false },
+            { id: 'openai/gpt-4o', isDefault: true },
+          ],
+          profiles: [],
+        },
+      },
+    });
+    const out = buildAgentTs(spec);
+    expect(out).toContain("import { Agent } from '@mastra/core/agent'");
+    expect(out).toContain('openaiApiKey');
+    expect(out).not.toContain('clintApiKey');
   });
 });
 

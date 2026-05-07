@@ -1,16 +1,20 @@
 /**
- * Builds `scripts/build-skills.ts` — the build-time skill compiler.
+ * Builds `scripts/build-assets.ts` — the build-time asset pipeline.
+ *
+ * Compiles skill templates (buildSkills) and finalizes the manifest
+ * (buildManifest) in a single script so `pnpm build:assets` covers both.
  */
-export function buildBuildSkillsScript(): string {
+export function buildBuildAssetsScript(): string {
   return [
     '#!/usr/bin/env tsx',
     '/**',
     ' * Build script — compiles Handlebars templates in `prompts/` into static',
-    ' * SKILL.md files and agent instruction strings under `gen/`, using',
-    " * ph-clint-dev's `buildSkills`.",
+    ' * SKILL.md files and agent instruction strings under `gen/`, then copies',
+    ' * and finalizes `powerhouse.manifest.json` into `dist/`.',
     ' */',
     "import path from 'node:path';",
     "import { buildSkills } from '@powerhousedao/ph-clint-dev';",
+    "import { buildManifest } from '@powerhousedao/ph-clint-dev/manifest';",
     "import { cli } from '../src/cli.js';",
     '',
     'const PROJECT_ROOT = path.resolve(import.meta.dirname, \'..\');',
@@ -30,6 +34,12 @@ export function buildBuildSkillsScript(): string {
     "    path.join(PROJECT_ROOT, 'gen'),",
     "    path.join(PROJECT_ROOT, 'dist', 'gen'),",
     '  ],',
+    '  cli,',
+    '});',
+    '',
+    'await buildManifest({',
+    '  srcDir: PROJECT_ROOT,',
+    "  outDir: path.join(PROJECT_ROOT, 'dist'),",
     '  cli,',
     '});',
     '',

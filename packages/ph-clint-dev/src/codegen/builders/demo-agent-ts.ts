@@ -5,11 +5,13 @@
  * agent factory can fall back to demo mode when no API key is configured.
  */
 import { type ClintProjectSpec } from '../../spec/types.js';
+import { DEMO_PROVIDER } from './provider-utils.js';
 
 export function buildDemoAgentTs(spec: ClintProjectSpec): string | null {
   const { mastra } = spec.features;
   // Only needed alongside the real agent (which imports it)
-  if (!mastra.enabled || !mastra.agentId || mastra.models.length === 0) return null;
+  const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
+  if (!mastra.enabled || !mastra.agentId || realModels.length === 0) return null;
 
   const agentId = mastra.agentId;
   const agentName = mastra.agentName ?? agentId;
