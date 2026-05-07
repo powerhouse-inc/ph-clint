@@ -11,6 +11,7 @@
 import { createDocumentChangeTrigger, type ReactorContext } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
 import { writeAgentStreamToDocument } from './chat-bridge.js';
+import { extractAttachments } from './extract-attachments.js';
 import type { ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
 
 const DOCUMENT_TYPE = 'powerhouse/chat-session' as const;
@@ -81,8 +82,22 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
           log,
         );
 
+        // Extract file/image attachments to disk
+        const attachments = await extractAttachments(lastMessage, {
+          workdir: ctx.context.workdir,
+          documentId,
+          log,
+        });
+
+        let promptText = userText;
+        if (attachments.length > 0) {
+          log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
+          const pathList = attachments.map(a => `- ${a.filename}: ${a.localPath}`).join('\n');
+          promptText = `${userText}\n\n[Attached files saved to disk]\n${pathList}`;
+        }
+
         // Stream agent response and write to document
-        const stream = agent.stream(userText, { threadId });
+        const stream = agent.stream(promptText, { threadId });
         await writeAgentStreamToDocument(stream, {
           reactor,
           documentId,
