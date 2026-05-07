@@ -23,7 +23,7 @@ No pnpm workspace — each package installs independently. Cross-package referen
 ## Key Conventions
 
 - **Package manager**: Always use `pnpm`, never `npm` or `yarn`
-- **Running tests**: Always use `pnpm test` (configures `--experimental-vm-modules`), never `npx jest` directly
+- **Running tests**: Always use `pnpm test` (unit/integration) and `pnpm test:e2e` (end-to-end) — never invoke jest directly
 - **Module system**: ESM only (`"type": "module"`)
 - **TypeScript**: Strict mode, Node16 module resolution
 

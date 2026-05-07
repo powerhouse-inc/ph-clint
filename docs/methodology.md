@@ -44,7 +44,7 @@ Write tests before implementing the feature:
 - Integration tests exercising the full CLI pipeline via `RunOptions`.
 - E2E tests spawning real subprocesses where appropriate.
 
-Run the tests and confirm they fail for the right reasons (missing library exports, unimplemented behavior — not syntax errors or broken imports).
+Run the tests and confirm they fail for the right reasons (missing library exports, unimplemented behavior — not syntax errors or broken imports). Always use `pnpm test` (unit/integration) and `pnpm test:e2e` (end-to-end) — never invoke jest directly.
 
 ### 7. Implement (Green)
 
