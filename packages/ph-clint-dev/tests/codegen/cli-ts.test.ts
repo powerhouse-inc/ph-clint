@@ -44,6 +44,10 @@ describe('buildCliTs', () => {
     expect(code).toContain("import { defineCli, buildDefaultReactor } from '@powerhousedao/ph-clint'");
     expect(code).toContain("import { documentModels } from 'foo-app'");
     expect(code).toContain('cli.configureReactor');
+    // Spread to materialize a mutable array — ph init now emits
+    // `documentModels = [] as const` (readonly), which trips TS4104 if
+    // passed bare to a `DocumentModelModule[]` parameter.
+    expect(code).toContain('documentModels: [...documentModels],');
     expect(code).toContain('switchboard: { enabled: true }');
     expect(code).toContain('connect: { enabled: true }');
     expect(code).toContain('root: CLI_ROOT');

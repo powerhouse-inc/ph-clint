@@ -150,8 +150,12 @@ export function buildCliTs(spec: ClintProjectSpec): string {
     lines.push('  create: (ctx) =>');
     lines.push('    buildDefaultReactor(ctx, {');
     const extPkgs = getExternalPackages(spec);
+    // Spread even when there are no external packages: ph init now emits
+    // `documentModels = [] as const` (readonly []), and passing that bare
+    // to a `DocumentModelModule[]` parameter trips TS4104. Spreading
+    // materializes a fresh mutable array.
     if (extPkgs.length === 0) {
-      lines.push('      documentModels,');
+      lines.push('      documentModels: [...documentModels],');
     } else {
       const aliases = extPkgs.map((_, i) => extPkgs.length === 1 ? 'extModels' : `extModels${i}`);
       lines.push(`      documentModels: [...documentModels, ${aliases.map(a => `...${a}`).join(', ')}],`);
