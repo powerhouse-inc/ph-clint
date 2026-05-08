@@ -277,7 +277,31 @@ if [ -d "$PNPM_HOME/bin" ]; then
   esac
 fi
 
-# ── 5. Install ──
+# ── 5. Remove conflicting pnpm global install ──
+
+# If ph-clint-cli was previously installed via pnpm, that shim will shadow
+# the npm global install (pnpm's bin comes before nvm's bin in PATH).
+if command -v pnpm >/dev/null 2>&1 && [ -f "$PNPM_HOME/bin/$BIN_NAME" ]; then
+  step "Removing existing pnpm global install"
+
+  PNPM_INSTALLED_VER=$(pnpm list -g "$PACKAGE" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+[-a-z0-9.]*' | head -1 || echo "unknown")
+  warn "Found $PACKAGE@${PNPM_INSTALLED_VER} installed via pnpm globally."
+  warn "The pnpm shim at \$PNPM_HOME/bin/$BIN_NAME would shadow the npm install."
+
+  if $DRY_RUN; then
+    echo ""
+    dry "Would run: pnpm remove -g $PACKAGE"
+  elif confirm "Remove the pnpm global install of $PACKAGE?"; then
+    pnpm remove -g "$PACKAGE" 2>&1 | tail -3
+    ok "Removed pnpm global install"
+  else
+    warn "Skipped. The pnpm shim may shadow the npm install."
+    warn "If the wrong version runs after install, remove it with:"
+    warn "  pnpm remove -g $PACKAGE"
+  fi
+fi
+
+# ── 6. Install ──
 
 step "Installing $PACKAGE"
 
@@ -298,7 +322,7 @@ else
   ok "npm install completed"
 fi
 
-# ── 6. Verify ──
+# ── 7. Verify ──
 
 step "Verifying installation"
 
