@@ -257,12 +257,11 @@ describe('generateProject — update mode', () => {
     expect(result.deleted).toEqual([]);
 
     // Post-gen actions: app package.json was patched →
-    // app-install + app-build + cli-install + cli-build
+    // workspace-install + app-build + cli-build
     const actionKinds = result.pendingActions.map((a) => a.kind);
     expect(actionKinds).toEqual([
-      'app-install',
+      'workspace-install',
       'app-build',
-      'cli-install',
       'cli-build',
     ]);
   });
@@ -301,12 +300,11 @@ describe('generateProject — update mode', () => {
     );
     expect(appPkg.name).toBe('@newscope/foo-app');
 
-    // App package.json patched → app-install through cli-build
+    // App package.json patched → workspace-install + app-build + cli-build
     const kinds = result.pendingActions.map((a) => a.kind);
     expect(kinds).toEqual([
-      'app-install',
+      'workspace-install',
       'app-build',
-      'cli-install',
       'cli-build',
     ]);
 
@@ -320,7 +318,7 @@ describe('generateProject — update mode', () => {
     expect(steady.pendingActions).toEqual([]);
   });
 
-  it('name change triggers app-install through cli-build, not ph-init', async () => {
+  it('name change triggers workspace-install + app-build + cli-build, not ph-init', async () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
@@ -350,11 +348,10 @@ describe('generateProject — update mode', () => {
     const kinds = result.pendingActions.map((a) => a.kind);
     // Must NOT include ph-init — app was already initialized and renamed
     expect(kinds).not.toContain('ph-init');
-    // App package.json was patched → full chain from app-install
+    // App package.json was patched → workspace-install + app-build + cli-build
     expect(kinds).toEqual([
-      'app-install',
+      'workspace-install',
       'app-build',
-      'cli-install',
       'cli-build',
     ]);
   });

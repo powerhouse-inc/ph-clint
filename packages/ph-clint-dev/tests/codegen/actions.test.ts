@@ -73,8 +73,10 @@ async function createInstalledProject(
   }
   const cliDir = path.join(tmpDir, layout.cliFolder);
   const appDir = path.join(tmpDir, layout.appFolder);
-  await fs.mkdir(path.join(cliDir, 'node_modules'), { recursive: true });
-  await fs.mkdir(path.join(appDir, 'node_modules'), { recursive: true });
+  // Workspace install creates node_modules at the project root, not per-member.
+  await fs.mkdir(path.join(tmpDir, 'node_modules'), { recursive: true });
+  await fs.mkdir(cliDir, { recursive: true });
+  await fs.mkdir(appDir, { recursive: true });
   return {
     tmpDir,
     cliDir,
@@ -151,7 +153,7 @@ describe('collectPostGenActions', () => {
     }
   });
 
-  it('split layout, app package.json changed → app-install + app-build + cli-install + cli-build', async () => {
+  it('split layout, app package.json changed → workspace-install + app-build + cli-build', async () => {
     const proj = await createInstalledProject({ cliFolder: 'foo-cli', appFolder: 'foo-app' });
     try {
       const spec = splitSpec();
@@ -162,9 +164,8 @@ describe('collectPostGenActions', () => {
       });
       const actions = await collectPostGenActions(result, spec);
       expect(kinds(actions)).toEqual([
-        'app-install',
+        'workspace-install',
         'app-build',
-        'cli-install',
         'cli-build',
       ]);
     } finally {
@@ -187,9 +188,8 @@ describe('collectPostGenActions', () => {
     const actions = await collectPostGenActions(result, spec);
     expect(kinds(actions)).toEqual([
       'ph-init',
-      'app-install',
+      'workspace-install',
       'app-build',
-      'cli-install',
       'cli-build',
     ]);
   });
@@ -211,14 +211,15 @@ describe('collectPostGenActions', () => {
         ],
       });
       const actions = await collectPostGenActions(result, spec);
-      // ph-init must NOT appear — app is already initialized
-      expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
+      // ph-init must NOT appear — app is already initialized.
+      // CLI pkg.json change → workspace-install + cli-build (no app-build).
+      expect(kinds(actions)).toEqual(['workspace-install', 'cli-build']);
     } finally {
       await proj.cleanup();
     }
   });
 
-  it('split layout, only framework.gen.ts changed → app-build + cli-install + cli-build', async () => {
+  it('split layout, only app .ts changed → app-build + cli-build (no install if node_modules present at root)', async () => {
     const proj = await createInstalledProject({ cliFolder: 'foo-cli', appFolder: 'foo-app' });
     try {
       const spec = splitSpec();
@@ -228,22 +229,18 @@ describe('collectPostGenActions', () => {
         files: [makeFile('foo-app/index.ts', proj.tmpDir)],
       });
       const actions = await collectPostGenActions(result, spec);
-      expect(kinds(actions)).toEqual([
-        'app-build',
-        'cli-install',
-        'cli-build',
-      ]);
+      expect(kinds(actions)).toEqual(['app-build', 'cli-build']);
     } finally {
       await proj.cleanup();
     }
   });
 
-  it('split layout, app .ts changed but app node_modules missing → app-install + app-build + cli-install + cli-build', async () => {
+  it('split layout, app .ts changed but root node_modules missing → workspace-install + app-build + cli-build', async () => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actions-test-'));
     const cliDir = path.join(tmpDir, 'foo-cli');
     const appDir = path.join(tmpDir, 'foo-app');
-    // Only create cli node_modules, not app
-    await fs.mkdir(path.join(cliDir, 'node_modules'), { recursive: true });
+    // No node_modules at the project root — workspace-install must fire.
+    await fs.mkdir(cliDir, { recursive: true });
     await fs.mkdir(appDir, { recursive: true });
 
     try {
@@ -255,9 +252,8 @@ describe('collectPostGenActions', () => {
       });
       const actions = await collectPostGenActions(result, spec);
       expect(kinds(actions)).toEqual([
-        'app-install',
+        'workspace-install',
         'app-build',
-        'cli-install',
         'cli-build',
       ]);
     } finally {
@@ -265,7 +261,7 @@ describe('collectPostGenActions', () => {
     }
   });
 
-  it('migration occurred → app-install through cli-build', async () => {
+  it('migration occurred → workspace-install + app-build + cli-build', async () => {
     const proj = await createInstalledProject({ cliFolder: 'foo-cli', appFolder: 'foo-app' });
     try {
       const spec = splitSpec();
@@ -277,9 +273,8 @@ describe('collectPostGenActions', () => {
       });
       const actions = await collectPostGenActions(result, spec);
       expect(kinds(actions)).toEqual([
-        'app-install',
+        'workspace-install',
         'app-build',
-        'cli-install',
         'cli-build',
       ]);
     } finally {
@@ -307,7 +302,7 @@ describe('collectPostGenActions', () => {
     }
   });
 
-  it('split layout, CLI package.json changed → cli-install + cli-build', async () => {
+  it('split layout, CLI package.json changed → workspace-install + cli-build (no app-build)', async () => {
     const proj = await createInstalledProject({ cliFolder: 'foo-cli', appFolder: 'foo-app' });
     try {
       const spec = splitSpec();
@@ -317,7 +312,7 @@ describe('collectPostGenActions', () => {
         files: [makeFile('foo-cli/package.json', proj.tmpDir)],
       });
       const actions = await collectPostGenActions(result, spec);
-      expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
+      expect(kinds(actions)).toEqual(['workspace-install', 'cli-build']);
     } finally {
       await proj.cleanup();
     }
@@ -355,13 +350,13 @@ describe('collectPostGenActions', () => {
     }
   });
 
-  it('split layout, CLI .ts changed but cli node_modules missing → cli-install + cli-build', async () => {
+  it('split layout, CLI .ts changed but root node_modules missing → workspace-install + cli-build', async () => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'actions-test-'));
     const cliDir = path.join(tmpDir, 'foo-cli');
     const appDir = path.join(tmpDir, 'foo-app');
-    // Only create app node_modules, not cli
+    // No project-root node_modules — workspace-install must fire.
     await fs.mkdir(cliDir, { recursive: true });
-    await fs.mkdir(path.join(appDir, 'node_modules'), { recursive: true });
+    await fs.mkdir(appDir, { recursive: true });
 
     try {
       const spec = splitSpec();
@@ -371,7 +366,7 @@ describe('collectPostGenActions', () => {
         files: [makeFile('foo-cli/src/framework.gen.ts', tmpDir)],
       });
       const actions = await collectPostGenActions(result, spec);
-      expect(kinds(actions)).toEqual(['cli-install', 'cli-build']);
+      expect(kinds(actions)).toEqual(['workspace-install', 'cli-build']);
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }
@@ -415,7 +410,7 @@ describe('runPostGenActions', () => {
     expect(results[0].status).toBe('success');
     expect(results[1].status).toBe('success');
     expect(calls).toEqual([
-      'pnpm install @ /project',
+      'pnpm install --no-frozen-lockfile @ /project',
       'pnpm build @ /project',
     ]);
     // Summary line should mention success
@@ -459,9 +454,8 @@ describe('runPostGenActions', () => {
     };
 
     const actions: PostGenAction[] = [
-      { kind: 'app-install', dir: '/project/foo-app' },
+      { kind: 'workspace-install', dir: '/project' },
       { kind: 'app-build', dir: '/project/foo-app' },
-      { kind: 'cli-install', dir: '/project/foo-cli' },
       { kind: 'cli-build', dir: '/project/foo-cli' },
     ];
 
@@ -471,14 +465,12 @@ describe('runPostGenActions', () => {
       runProcess: fakeRunProcess,
     });
 
-    expect(results).toHaveLength(4);
+    expect(results).toHaveLength(3);
     expect(results[0].status).toBe('failed');
     expect(results[1].status).toBe('skipped');
     expect(results[1].reason).toBe('dependency failed');
     expect(results[2].status).toBe('skipped');
     expect(results[2].reason).toBe('dependency failed');
-    expect(results[3].status).toBe('skipped');
-    expect(results[3].reason).toBe('dependency failed');
     // Only the install was actually called
     expect(callCount).toBe(1);
     // Summary mentions failure

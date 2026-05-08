@@ -177,20 +177,21 @@ const ABSENT_FILES: Record<string, string[]> = {
 /**
  * Expected pendingActions from generateProject() for each fixture.
  * Flat layouts get cli-install + cli-build.
- * Split layouts get the full chain: ph-init → app-install → app-build → cli-install → cli-build.
+ * Split layouts get the chain: ph-init → workspace-install → app-build → cli-build.
+ * (`workspace-install` runs once at the project root and covers both members.)
  */
 const EXPECTED_ACTIONS: Record<string, PostGenActionKind[]> = {
   minimal: ['cli-install', 'cli-build'],
   'mastra-demo': ['cli-install', 'cli-build'],
   'mastra-configured': ['cli-install', 'cli-build'],
   'mastra-multi-model': ['cli-install', 'cli-build'],
-  'reactor-minimal': ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
-  switchboard: ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
-  'chat-switchboard': ['ph-init', 'app-install', 'app-ph-install', 'app-build', 'cli-install', 'cli-build'],
-  'connect-full': ['ph-init', 'app-install', 'app-build', 'cli-install', 'cli-build'],
+  'reactor-minimal': ['ph-init', 'workspace-install', 'app-build', 'cli-build'],
+  switchboard: ['ph-init', 'workspace-install', 'app-build', 'cli-build'],
+  'chat-switchboard': ['ph-init', 'workspace-install', 'app-ph-install', 'app-build', 'cli-build'],
+  'connect-full': ['ph-init', 'workspace-install', 'app-build', 'cli-build'],
 };
 
-describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => {
+describe.each(Object.keys(FIXTURES))('initial codegen [%s]', (fixtureName) => {
   let cliDir: string;
   let tmp: string;
   let spec: ReturnType<typeof clintProjectSpecSchema.parse>;
@@ -232,12 +233,15 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
       }
 
       // ── Run post-gen actions (ph-init, install, build) ──
-      // Split into two phases so we can rewrite deps before CLI install.
-      const appActions = result.pendingActions.filter(
-        (a) => a.kind !== 'cli-install' && a.kind !== 'cli-build',
+      // Split into two phases so we can rewrite framework deps to local
+      // file: paths BEFORE the workspace install resolves them. With the
+      // workspace layout, a single install at the project root covers both
+      // members, so the rewrite has to happen before workspace-install.
+      const preInstallActions = result.pendingActions.filter(
+        (a) => a.kind === 'ph-init',
       );
-      const cliActions = result.pendingActions.filter(
-        (a) => a.kind === 'cli-install' || a.kind === 'cli-build',
+      const installAndBuildActions = result.pendingActions.filter(
+        (a) => a.kind !== 'ph-init',
       );
       const actionCtx = {
         log: (msg: string) => console.log(`[postgen] ${msg}`),
@@ -252,17 +256,19 @@ describe.each(Object.keys(FIXTURES))('initial codegen — %s', (fixtureName) => 
             return { success: true, output };
           } catch (err: unknown) {
             const e = err as { stdout?: string; stderr?: string };
-            return { success: false, output: (e.stdout ?? '') + (e.stderr ?? '') };
+            const output = (e.stdout ?? '') + (e.stderr ?? '');
+            console.error(`[postgen-fail] ${command} (cwd=${opts?.cwd ?? '?'}):\n${output}`);
+            return { success: false, output };
           }
         },
       };
 
-      await runPostGenActions(appActions, actionCtx);
+      await runPostGenActions(preInstallActions, actionCtx);
 
       // Rewrite ph-clint/ph-clint-dev deps to file: references
       await rewriteLocalDeps(tmp, spec);
 
-      await runPostGenActions(cliActions, actionCtx);
+      await runPostGenActions(installAndBuildActions, actionCtx);
 
       // ── Run --help ──
       const helpOutput = runHelp(cliDir);

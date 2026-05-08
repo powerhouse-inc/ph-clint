@@ -6,7 +6,6 @@
  */
 import {
   type ClintProjectSpec,
-  getAppDirName,
   getAppPackageName,
   getBinName,
   getPackageName,
@@ -72,8 +71,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
   }
   if (phAtLeast(powerhouse, 'Reactor')) {
     const appPkg = getAppPackageName(spec);
-    const appDir = getAppDirName(spec);
-    dependencies[appPkg] = `file:../${appDir}`;
+    dependencies[appPkg] = 'workspace:*';
     dependencies['@powerhousedao/reactor'] = getPowerhouseVersion();
     dependencies['@powerhousedao/reactor-api'] = getPowerhouseVersion();
     dependencies['@powerhousedao/shared'] = getPowerhouseVersion();

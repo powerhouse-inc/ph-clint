@@ -16,6 +16,17 @@ import {
 const GEN_DIR = path.join('.ph', 'ph-clint-cli');
 const GEN_FILE = 'generated.json';
 
+/**
+ * Bumped whenever the on-disk layout shape changes incompatibly. Old projects
+ * with `layoutVersion < CURRENT_LAYOUT_VERSION` are refused at regen with a
+ * manual-migration error.
+ *
+ *   1 — split layout glued by `pnpm --prefix` (each sub-dir its own lockfile).
+ *   2 — pnpm 11 workspace at the project root (single lockfile, workspace:*
+ *       intra-workspace deps, no inner pnpm-workspace.yaml).
+ */
+export const CURRENT_LAYOUT_VERSION = 2;
+
 export interface GeneratedState {
   name: string;
   scope: string | undefined;
@@ -23,6 +34,8 @@ export interface GeneratedState {
   appFolderName: string;
   /** True once `ph init` has run successfully in the app dir. */
   appInitialized: boolean;
+  /** See `CURRENT_LAYOUT_VERSION`. Absent on projects scaffolded before v2. */
+  layoutVersion?: number;
 }
 
 export function getGeneratedPath(targetDir: string): string {
@@ -72,5 +85,6 @@ export function generatedStateFromSpec(
     cliFolderName: split ? getCliFolderName(spec) : '',
     appFolderName: split ? getAppFolderName(spec) : '',
     appInitialized,
+    layoutVersion: CURRENT_LAYOUT_VERSION,
   };
 }

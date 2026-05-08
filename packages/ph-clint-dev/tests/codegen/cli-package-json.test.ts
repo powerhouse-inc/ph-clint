@@ -50,7 +50,7 @@ describe('buildCliPackageJson', () => {
     const pkg = parseBuilt(spec);
     expect(pkg.name).toBe('foo-cli');
     const deps = pkg.dependencies as Record<string, string>;
-    expect(deps['foo-app']).toBe('file:../foo-app');
+    expect(deps['foo-app']).toBe('workspace:*');
     expect(deps['@powerhousedao/reactor']).toBeDefined();
     expect(deps['document-model']).toBeDefined();
   });
@@ -110,8 +110,8 @@ describe('buildCliPackageJson', () => {
     });
     const pkg = parseBuilt(spec);
     const deps = pkg.dependencies as Record<string, string>;
-    // Should have the scoped file: dependency
-    expect(deps['@powerhousedao/pirate-app']).toBe('file:../pirate-app');
+    // Should have the scoped workspace dependency
+    expect(deps['@powerhousedao/pirate-app']).toBe('workspace:*');
     // Must NOT have the bare name as a separate entry
     expect(deps['pirate-app']).toBeUndefined();
   });

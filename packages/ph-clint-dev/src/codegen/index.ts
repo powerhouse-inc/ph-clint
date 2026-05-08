@@ -56,6 +56,8 @@ import {
   buildRootPackageJson,
   buildPublishConfigJs,
   buildAppIndexTs,
+  buildNpmrc,
+  buildPnpmWorkspaceYaml,
 } from './builders/index.js';
 import type { CodegenContext } from './types.js';
 import {
@@ -66,6 +68,7 @@ import {
   readGeneratedState,
   writeGeneratedState,
   generatedStateFromSpec,
+  CURRENT_LAYOUT_VERSION,
 } from './generated.js';
 import { patchAppPackageName } from './scaffold.js';
 
@@ -156,6 +159,22 @@ export async function generateProject(
         onWarn: warn,
       });
       migrated = true;
+    } else if (prev && (prev.layoutVersion ?? 1) < CURRENT_LAYOUT_VERSION) {
+      // Old split layout (per-package lockfiles, file:../ deps). The new
+      // workspace layout is incompatible enough that an in-place migration
+      // is brittle, so we hard-break with manual-migration instructions.
+      throw new Error(
+        [
+          `Project layout v${prev.layoutVersion ?? 1} is no longer supported (current: v${CURRENT_LAYOUT_VERSION}).`,
+          'This project was scaffolded before the pnpm 11 workspace migration.',
+          'To migrate manually, from the project root:',
+          `  rm ${prev.cliFolderName}/pnpm-workspace.yaml ${prev.cliFolderName}/pnpm-lock.yaml`,
+          `  rm -f ${prev.appFolderName}/pnpm-workspace.yaml ${prev.appFolderName}/.npmrc ${prev.appFolderName}/pnpm-lock.yaml`,
+          `  rm -rf ${prev.cliFolderName}/node_modules ${prev.appFolderName}/node_modules`,
+          'Then re-run regen — codegen will write the new root pnpm-workspace.yaml,',
+          '.npmrc, and a workspace:* dep in the cli package.json.',
+        ].join('\n'),
+      );
     }
   }
 
@@ -215,8 +234,27 @@ function planFiles(
     content: buildPublishConfigJs(spec),
   });
 
-  // Split-layout only: root package.json + app placeholder files.
+  // pnpm-workspace.yaml — always at the project root. Split layout adds
+  // `packages:` + Powerhouse `overrides:` block; flat keeps allowBuilds-only.
+  const workspaceYaml = path.join(targetDir, 'pnpm-workspace.yaml');
+  planned.push({
+    relativePath: 'pnpm-workspace.yaml',
+    absolutePath: workspaceYaml,
+    content: split
+      ? buildPnpmWorkspaceYaml({
+          members: [getAppFolderName(spec), getCliFolderName(spec)],
+        })
+      : buildPnpmWorkspaceYaml(),
+  });
+
+  // Split-layout only: root .npmrc + root package.json + app placeholder files.
   if (split && appDir) {
+    const rootNpmrc = path.join(targetDir, '.npmrc');
+    planned.push({
+      relativePath: '.npmrc',
+      absolutePath: rootNpmrc,
+      content: buildNpmrc(),
+    });
     const rootPkg = path.join(targetDir, 'package.json');
     planned.push({
       relativePath: 'package.json',

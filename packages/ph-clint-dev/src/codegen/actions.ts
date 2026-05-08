@@ -20,7 +20,7 @@ import type { ProcessRunOptions } from '@powerhousedao/ph-clint';
 
 export type PostGenAction =
   | { kind: 'ph-init'; targetDir: string; appDir: string; spec: ClintProjectSpec }
-  | { kind: 'app-install'; dir: string }
+  | { kind: 'workspace-install'; dir: string }
   | { kind: 'app-ph-install'; appDir: string; packages: string[] }
   | { kind: 'app-build'; dir: string }
   | { kind: 'cli-install'; dir: string }
@@ -51,7 +51,7 @@ export interface PostGenActionResult {
 
 const ACTION_ORDER: PostGenActionKind[] = [
   'ph-init',
-  'app-install',
+  'workspace-install',
   'app-ph-install',
   'app-build',
   'cli-install',
@@ -72,11 +72,12 @@ function dependsOn(
   downstream: PostGenActionKind,
   upstream: PostGenActionKind,
 ): boolean {
-  // ph-init → app-install → app-ph-install → app-build → cli-install → cli-build
+  // Split:  ph-init → workspace-install → app-ph-install → app-build → cli-build
+  // Flat:                                                              cli-install → cli-build
   // skills-sync is independent of the build chain
   const chain: PostGenActionKind[] = [
     'ph-init',
-    'app-install',
+    'workspace-install',
     'app-ph-install',
     'app-build',
     'cli-install',
@@ -176,12 +177,12 @@ export async function collectPostGenActions(
 
     // Migration always triggers full rebuild
     if (result.migrated) {
-      earliest = earliest ?? 'app-install';
+      earliest = earliest ?? 'workspace-install';
     }
 
     // App package.json changed
     if (!earliest && appPkgJsonChanged) {
-      earliest = 'app-install';
+      earliest = 'workspace-install';
     }
 
     // App source regenerated (framework.gen.ts, index.ts, etc.)
@@ -197,7 +198,9 @@ export async function collectPostGenActions(
       }
     }
 
-    // CLI package.json changed
+    // CLI package.json changed — install needed but app side is unchanged.
+    // Earliest stays at cli-install so app-build is skipped; emission below
+    // collapses the install into a single workspace-install at the root.
     if (!earliest) {
       if (relPaths.has(path.join(cliFolder, 'package.json'))) {
         earliest = 'cli-install';
@@ -246,17 +249,30 @@ export async function collectPostGenActions(
 
   if (earliest && split && result.appDir) {
     const ei = actionIndex(earliest);
+    const projectRoot = path.dirname(result.appDir);
+    let installEmitted = false;
+    const triggersWorkspaceInstall = (k: PostGenActionKind) =>
+      k === 'ph-init' ||
+      k === 'workspace-install' ||
+      k === 'app-ph-install' ||
+      k === 'cli-install';
 
     if (ei <= actionIndex('ph-init')) {
       actions.push({
         kind: 'ph-init',
-        targetDir: path.dirname(result.appDir),
+        targetDir: projectRoot,
         appDir: result.appDir,
         spec,
       });
     }
-    if (ei <= actionIndex('app-install')) {
-      actions.push({ kind: 'app-install', dir: result.appDir });
+    // workspace-install collapses what used to be separate app-install +
+    // cli-install. Emit when the earliest semantically implies a dep change
+    // (any of ph-init / workspace-install / app-ph-install / cli-install).
+    // For build-only earliests (app-build / cli-build), install is added
+    // below only if node_modules at the project root is missing.
+    if (triggersWorkspaceInstall(earliest)) {
+      actions.push({ kind: 'workspace-install', dir: projectRoot });
+      installEmitted = true;
     }
     if (ei <= actionIndex('app-ph-install') && extPkgs.length > 0) {
       const missing = await getMissingPhPackages(result.appDir, extPkgs);
@@ -265,21 +281,22 @@ export async function collectPostGenActions(
       }
     }
     if (ei <= actionIndex('app-build')) {
-      // Add install if not already in the list and node_modules is missing
-      if (!actions.some(a => a.kind === 'app-install') &&
-          !(await fileExists(path.join(result.appDir, 'node_modules')))) {
-        actions.push({ kind: 'app-install', dir: result.appDir });
+      if (
+        !installEmitted &&
+        !(await fileExists(path.join(projectRoot, 'node_modules')))
+      ) {
+        actions.push({ kind: 'workspace-install', dir: projectRoot });
+        installEmitted = true;
       }
       actions.push({ kind: 'app-build', dir: result.appDir });
     }
-    if (ei <= actionIndex('cli-install')) {
-      actions.push({ kind: 'cli-install', dir: result.cliDir });
-    }
     if (ei <= actionIndex('cli-build')) {
-      // Add install if not already in the list and node_modules is missing
-      if (!actions.some(a => a.kind === 'cli-install') &&
-          !(await fileExists(path.join(result.cliDir, 'node_modules')))) {
-        actions.push({ kind: 'cli-install', dir: result.cliDir });
+      if (
+        !installEmitted &&
+        !(await fileExists(path.join(projectRoot, 'node_modules')))
+      ) {
+        actions.push({ kind: 'workspace-install', dir: projectRoot });
+        installEmitted = true;
       }
       actions.push({ kind: 'cli-build', dir: result.cliDir });
     }
@@ -319,8 +336,8 @@ function actionLabel(action: PostGenAction): string {
   switch (action.kind) {
     case 'ph-init':
       return `Initialize reactor package (${path.basename(action.appDir)})`;
-    case 'app-install':
-      return `Install dependencies (${path.basename(action.dir)})`;
+    case 'workspace-install':
+      return `Install workspace dependencies (${path.basename(action.dir)})`;
     case 'app-ph-install':
       return `Register external packages (${action.packages.join(', ')})`;
     case 'app-build':
@@ -350,10 +367,11 @@ export async function runPostGenActions(
   // corresponding install is skipped (building without install is pointless).
   const effective = actions.filter((a) => {
     if (skip.has(a.kind)) return false;
-    // If app-install is skipped, also skip app-ph-install and app-build
-    if (a.kind === 'app-ph-install' && skip.has('app-install')) return false;
-    if (a.kind === 'app-build' && skip.has('app-install')) return false;
-    // If cli-install is skipped, also skip cli-build
+    // If workspace-install is skipped, also skip the app side of the chain.
+    if (a.kind === 'app-ph-install' && skip.has('workspace-install')) return false;
+    if (a.kind === 'app-build' && skip.has('workspace-install')) return false;
+    if (a.kind === 'cli-build' && skip.has('workspace-install')) return false;
+    // Flat-layout: if cli-install is skipped, skip cli-build.
     if (a.kind === 'cli-build' && skip.has('cli-install')) return false;
     return true;
   });
@@ -486,9 +504,12 @@ async function executeAction(
       });
     }
 
-    case 'app-install':
+    case 'workspace-install':
     case 'cli-install': {
-      const result = await ctx.runProcess('pnpm install', {
+      // CI=true suppresses pnpm 11's interactive build-script approval prompt.
+      // --no-frozen-lockfile overrides CI's default, so spec-change regens
+      // can update the lockfile when new dependencies are added.
+      const result = await ctx.runProcess('pnpm install --no-frozen-lockfile', {
         cwd: action.dir,
         timeout: 300_000,
         env: { CI: 'true' },

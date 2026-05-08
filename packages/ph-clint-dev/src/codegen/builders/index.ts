@@ -98,7 +98,6 @@ export const CLI_FILE_BUILDERS: FileBuilder[] = [
   { relativePath: 'prompts/skills-tpl/.gitkeep', build: () => '' },
   { relativePath: 'prompts/skills-ext/.gitkeep', build: () => '' },
   { relativePath: 'tests/smoke.test.ts', build: buildSmokeTestTs, initOnly: true },
-  { relativePath: 'pnpm-workspace.yaml', build: () => buildPnpmWorkspaceYaml() },
 ];
 
 export {
@@ -125,3 +124,4 @@ export { buildRootPackageJson } from './root-package-json.js';
 export { buildPublishConfigJs } from './publish-config-js.js';
 export { buildReadme } from './readme-md.js';
 export { buildAppIndexTs } from './app-index-ts.js';
+export { buildNpmrc } from './npmrc.js';

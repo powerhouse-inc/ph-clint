@@ -113,8 +113,11 @@ export const publishTrigger = createDocumentChangeTrigger({
             ]);
 
             // Install dependencies in the generated project before publishing.
+            // CI=true suppresses pnpm 11's interactive build-script approval
+            // prompt; --no-frozen-lockfile overrides CI's default so a regen
+            // that added new deps doesn't fail with ERR_PNPM_OUTDATED_LOCKFILE.
             stdout(`${TAG} running pnpm install in ${workdir}\n`);
-            const installResult = await runProcess('pnpm install', {
+            const installResult = await runProcess('pnpm install --no-frozen-lockfile', {
               cwd: workdir,
               timeout: 300_000,
               env: { CI: 'true' },

@@ -422,13 +422,37 @@ describe('generateProject — framework files', () => {
     expect(content).toContain('allowBuilds:');
   });
 
-  it('emits pnpm-workspace.yaml in CLI dir only (app is owned by ph init)', async () => {
+  it('emits pnpm-workspace.yaml at the project root for split layout (workspace covers both members)', async () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       features: { powerhouse: 'Connect' },
     });
     await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
-    expect(await exists(path.join(tmp, 'foo-cli/pnpm-workspace.yaml'))).toBe(true);
+    const rootWs = path.join(tmp, 'pnpm-workspace.yaml');
+    expect(await exists(rootWs)).toBe(true);
+    const content = await fs.readFile(rootWs, 'utf8');
+    // Lists app + cli as workspace members.
+    expect(content).toContain('packages:');
+    expect(content).toContain("- 'foo-app'");
+    expect(content).toContain("- 'foo-cli'");
+    // Carries the Powerhouse-stack overrides block.
+    expect(content).toContain('overrides:');
+    expect(content).toContain("'mastra>@mastra/deployer': '1.22.0'");
+    expect(content).toContain("zod: '4.3.6'");
+    // No nested pnpm-workspace.yaml inside members (would shadow the root).
+    expect(await exists(path.join(tmp, 'foo-cli/pnpm-workspace.yaml'))).toBe(false);
     expect(await exists(path.join(tmp, 'foo-app/pnpm-workspace.yaml'))).toBe(false);
+  });
+
+  it('emits .npmrc at the project root for split layout', async () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: { powerhouse: 'Connect' },
+    });
+    await generateProject({ context: TEST_CTX, targetDir: tmp, spec });
+    const rootNpmrc = path.join(tmp, '.npmrc');
+    expect(await exists(rootNpmrc)).toBe(true);
+    const content = await fs.readFile(rootNpmrc, 'utf8');
+    expect(content).toContain('@jsr:registry=https://npm.jsr.io');
   });
 });

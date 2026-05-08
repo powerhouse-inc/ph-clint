@@ -64,10 +64,17 @@ export async function fileTree(dir: string): Promise<string[]> {
 
 /**
  * Rewrite `@powerhousedao/ph-clint` and `@powerhousedao/ph-clint-dev`
- * dependency versions to `file:` references pointing at the local packages.
+ * dependency versions to `file:` references pointing at the local packages,
+ * AND add a matching `overrides:` block to the project root's
+ * `pnpm-workspace.yaml`.
  *
- * This lets the e2e tests install + build against the working-tree versions
- * of the framework instead of pulling from the npm registry.
+ * The override block is the load-bearing piece on pnpm 11: when pnpm
+ * resolves a `file:` linked package it walks into that package's own deps,
+ * including its `workspace:*` siblings (e.g. ph-clint-dev → ph-clint).
+ * Without an override, pnpm tries to resolve those siblings inside the test
+ * fixture's workspace and fails with ERR_PNPM_WORKSPACE_PKG_NOT_FOUND
+ * because the fixture only contains the generated CLI package. The
+ * override redirects those resolutions to the same local file: paths.
  *
  * Handles both flat layout (single package.json) and split layout
  * (root package.json + {name}-cli/package.json).
@@ -83,6 +90,7 @@ export async function rewriteLocalDeps(
     : path.join(projectDir, 'package.json');
 
   await rewritePkgJson(cliPkgPath);
+  await addLocalOverridesToWorkspaceYaml(projectDir);
 }
 
 async function rewritePkgJson(pkgJsonPath: string): Promise<void> {
@@ -100,6 +108,30 @@ async function rewritePkgJson(pkgJsonPath: string): Promise<void> {
   }
 
   await fs.writeFile(pkgJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+}
+
+async function addLocalOverridesToWorkspaceYaml(
+  projectDir: string,
+): Promise<void> {
+  const workspaceYaml = path.join(projectDir, 'pnpm-workspace.yaml');
+  let content = '';
+  try {
+    content = await fs.readFile(workspaceYaml, 'utf8');
+  } catch {
+    // File may not exist (shouldn't normally happen — codegen emits it).
+  }
+
+  const overrideLines = Object.entries(LOCAL_PACKAGES).map(
+    ([name, localPath]) => `  '${name}': 'file:${localPath}'`,
+  );
+  // Strip any existing overrides block we previously injected so this is
+  // idempotent across multiple rewriteLocalDeps calls within one test.
+  const stripped = content.replace(
+    /^overrides:[\s\S]*?(?=^\S|\Z)/m,
+    '',
+  );
+  const newBlock = ['overrides:', ...overrideLines, ''].join('\n');
+  await fs.writeFile(workspaceYaml, newBlock + stripped, 'utf8');
 }
 
 /**

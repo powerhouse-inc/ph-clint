@@ -1,10 +1,10 @@
 /**
  * Builds the *root* `package.json` for split-layout projects (Powerhouse
- * enabled). A plain passthrough — deliberately no pnpm workspaces because
- * they interfere with `{name}-app`'s own `pnpm build`.
+ * enabled). The project is a pnpm workspace — root has no own deps; scripts
+ * orchestrate the app + cli members via `pnpm --filter`.
  *
- * Uses `pnpm --prefix <dir>` for all orchestration scripts — no cwd mutation.
- * Build order: app first, then cli (cli depends on app via `file:` dep).
+ * Build order matters: the cli member depends on the app via `workspace:*`,
+ * so the app must be built before the cli compiles against its dist.
  */
 import {
   type ClintProjectSpec,
@@ -18,25 +18,27 @@ export function buildRootPackageJson(spec: ClintProjectSpec): string {
   const cli = getCliFolderName(spec);
   const app = getAppFolderName(spec);
 
-  const prefix = (dir: string, cmd: string) => `pnpm --prefix ${dir} ${cmd}`;
-  const both = (cmd: string) => `${prefix(app, cmd)} && ${prefix(cli, cmd)}`;
+  const filter = (member: string, cmd: string) =>
+    `pnpm --filter ${member} ${cmd}`;
 
   const connectEnabled = phAtLeast(spec.features.powerhouse, 'Connect');
 
   const buildScript = connectEnabled
-    ? `${prefix(app, 'build')} && ${prefix(app, 'connect build --outDir dist/connect')} && ${prefix(cli, 'build')}`
-    : both('build');
+    ? `${filter(app, 'build')} && ${filter(app, 'connect build --outDir dist/connect')} && ${filter(cli, 'build')}`
+    : `${filter(app, 'build')} && ${filter(cli, 'build')}`;
 
+  // Note: no `install` script. With the workspace layout, plain `pnpm install`
+  // at the project root resolves all members in one pass — and defining
+  // `install` would trip pnpm's `install` lifecycle hook, recursing forever.
   const scripts: Record<string, string> = {
-    install: both('install'),
     build: buildScript,
-    test: both('test'),
-    dev: prefix(cli, 'dev'),
-    start: prefix(cli, 'start'),
-    lint: both('lint'),
-    'publish:dev': `${prefix(cli, 'exec ph-publish')} dev -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
-    'publish:staging': `${prefix(cli, 'exec ph-publish')} staging -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
-    'publish:production': `${prefix(cli, 'exec ph-publish')} production -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
+    test: 'pnpm -r run test',
+    dev: filter(cli, 'dev'),
+    start: filter(cli, 'start'),
+    lint: 'pnpm -r run lint',
+    'publish:dev': `${filter(cli, 'exec ph-publish')} dev -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
+    'publish:staging': `${filter(cli, 'exec ph-publish')} staging -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
+    'publish:production': `${filter(cli, 'exec ph-publish')} production -c ../publish.config.js${connectEnabled ? ' --verify-connect' : ''}`,
   };
 
   const pkg = {

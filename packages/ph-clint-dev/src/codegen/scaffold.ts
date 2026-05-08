@@ -97,7 +97,18 @@ export async function runPhInit(
     );
   }
   await patchAppPackageName(options.appDir, options.spec, log);
+  // ph init writes its own pnpm-workspace.yaml, .npmrc, and pnpm-lock.yaml
+  // inside the app dir. In split layout the project root is the workspace,
+  // so the inner ones would shadow the root config and split node_modules
+  // across two stores. Strip them.
+  await stripInnerWorkspaceFiles(options.appDir);
   return { ran: true, exitCode };
+}
+
+async function stripInnerWorkspaceFiles(appDir: string): Promise<void> {
+  for (const name of ['pnpm-workspace.yaml', '.npmrc', 'pnpm-lock.yaml']) {
+    await fs.rm(path.join(appDir, name), { force: true });
+  }
 }
 
 /**
