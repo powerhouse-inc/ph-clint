@@ -61,7 +61,7 @@ function helpPatternsForSpec(spec: ClintProjectSpec): RegExp[] {
 }
 
 describe.each(TRANSITIONS)(
-  'incremental codegen — %s → %s',
+  'incremental codegen [%s → %s]',
   (fromName, toName) => {
     it(
       'transitions, installs, builds, and runs --help',
