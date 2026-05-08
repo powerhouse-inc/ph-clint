@@ -97,7 +97,6 @@ export async function runPhInit(
     );
   }
   await patchAppPackageName(options.appDir, options.spec, log);
-  await patchAppExportTypes(options.appDir, log);
   return { ran: true, exitCode };
 }
 
@@ -133,50 +132,6 @@ export async function patchAppPackageName(
   } catch (err) {
     log?.(
       `Warning: could not patch app package name: ${err instanceof Error ? err.message : String(err)}`,
-    );
-    return false;
-  }
-}
-
-/**
- * Fix the `"types"` entries in the app `package.json` exports map.
- *
- * `ph init` (as of 6.0.0-dev.217) emits `declarationDir: "./dist/types"` in
- * tsconfig but generates exports pointing `"types"` at `./dist/browser/*.d.ts`.
- * We rewrite them to `./dist/types/*.d.ts` so TypeScript resolves the app's
- * type declarations correctly.
- *
- * Returns `true` if the file was actually changed.
- */
-export async function patchAppExportTypes(
-  appDir: string,
-  log?: (msg: string) => void,
-): Promise<boolean> {
-  const appPkgJsonPath = path.join(appDir, 'package.json');
-  try {
-    const raw = await fs.readFile(appPkgJsonPath, 'utf8');
-    const pkg = JSON.parse(raw);
-    if (!pkg.exports || typeof pkg.exports !== 'object') return false;
-
-    let changed = false;
-    for (const [key, value] of Object.entries(pkg.exports)) {
-      if (value && typeof value === 'object' && 'types' in value) {
-        const entry = value as Record<string, string>;
-        if (typeof entry.types === 'string' && entry.types.includes('/dist/browser/')) {
-          entry.types = entry.types.replace('/dist/browser/', '/dist/types/');
-          changed = true;
-        }
-      }
-    }
-
-    if (changed) {
-      await fs.writeFile(appPkgJsonPath, JSON.stringify(pkg, null, 2) + '\n');
-      log?.('Patched app exports: types paths → dist/types/');
-    }
-    return changed;
-  } catch (err) {
-    log?.(
-      `Warning: could not patch app export types: ${err instanceof Error ? err.message : String(err)}`,
     );
     return false;
   }
