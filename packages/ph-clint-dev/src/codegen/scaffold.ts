@@ -138,6 +138,20 @@ export async function patchAppPackageName(
 }
 
 /**
+ * Map of Powerhouse package names → extra build-script approvals required
+ * when installing them. ph init's default `pnpm-workspace.yaml` covers
+ * `@apollo/protobufjs`, `@parcel/watcher`, `esbuild`, `protobufjs`; these
+ * entries list the additional postinstall-script packages each Powerhouse
+ * package pulls in transitively.
+ *
+ * Forwarded to `ph install` as `--allow-build=<pkg>` args (which ph install
+ * passes through to `pnpm add` to satisfy pnpm 11's build-script gate).
+ */
+export const PACKAGE_ALLOW_BUILDS: Record<string, readonly string[]> = {
+  '@powerhousedao/clint-common': ['@sentry/cli'],
+};
+
+/**
  * Run `ph install <packages> --local --pnpm` in the app directory to register
  * external packages in `powerhouse.config.json`.
  */
@@ -155,7 +169,16 @@ export async function runPhInstallPackages(options: {
     return false;
   }
 
-  const args = ['install', ...packages, '--local', '--pnpm'];
+  // Union of extra allow-build entries across the packages being installed.
+  const allowBuilds = new Set<string>();
+  for (const pkg of packages) {
+    for (const entry of PACKAGE_ALLOW_BUILDS[pkg] ?? []) {
+      allowBuilds.add(entry);
+    }
+  }
+  const allowBuildArgs = [...allowBuilds].map((p) => `--allow-build=${p}`);
+
+  const args = ['install', ...packages, '--local', '--pnpm', ...allowBuildArgs];
   log(
     `Running \`${binName} install ${packages.join(' ')} --local\` in ${path.basename(appDir)} …`,
   );
