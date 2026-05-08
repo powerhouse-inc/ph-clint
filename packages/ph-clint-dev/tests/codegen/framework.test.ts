@@ -111,10 +111,15 @@ describe('buildFrameworkGenTs', () => {
     });
     const code = buildFrameworkGenTs(spec)!;
     expect(code).toContain("import { documentModels as globModels } from 'foo-app';");
-    expect(code).toContain('...globModels.filter(');
+    // Glob branch widens the imported array to the base module type so the
+    // file still type-checks when the reactor package has zero models defined
+    // (in which case `documentModels` is exported as `[] as const`).
+    expect(code).toContain("import type { DocumentModelModule } from 'document-model';");
+    expect(code).toContain('...(globModels as readonly DocumentModelModule[]).filter(');
     expect(code).toContain('.test(m.documentModel.global.id)');
-    // No `as const` when globs are present (runtime array loses literal types).
-    expect(code).not.toContain('as const');
+    // No `as const` on the registry literal when globs are present (runtime
+    // array loses literal types).
+    expect(code).not.toContain('] as const);');
   });
 
   it('emits runtime filter for partial glob like powerhouse/*', () => {
@@ -139,10 +144,11 @@ describe('buildFrameworkGenTs', () => {
     const code = buildFrameworkGenTs(spec)!;
     // Explicit entry imported by name.
     expect(code).toContain("import { PhClintProject } from 'foo-app';");
-    // Glob entry uses documentModels filter.
+    // Glob entry uses documentModels filter widened to the base module type.
     expect(code).toContain("import { documentModels as globModels } from 'foo-app';");
+    expect(code).toContain("import type { DocumentModelModule } from 'document-model';");
     expect(code).toContain('  PhClintProject,');
-    expect(code).toContain('...globModels.filter(');
+    expect(code).toContain('...(globModels as readonly DocumentModelModule[]).filter(');
   });
 
   it('emits runtime filter for glob on external package', () => {
@@ -157,7 +163,8 @@ describe('buildFrameworkGenTs', () => {
     const code = buildFrameworkGenTs(spec)!;
     expect(code).toContain("import { PhClintProject } from 'foo-app';");
     expect(code).toContain("import { documentModels as globModels } from '@acme/reactor-pkg';");
-    expect(code).toContain('...globModels.filter(');
+    expect(code).toContain("import type { DocumentModelModule } from 'document-model';");
+    expect(code).toContain('...(globModels as readonly DocumentModelModule[]).filter(');
   });
 
   it('uses unique aliases for multiple glob packages', () => {

@@ -102,6 +102,15 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
   lines.push(' * this file will be overwritten.');
   lines.push(' */');
   lines.push(`import { defineRegistry } from '@powerhousedao/ph-clint';`);
+  // Glob entries widen each `documentModels` import to `readonly DocumentModelModule[]`
+  // before filtering. Without this, a freshly-scaffolded reactor package whose
+  // `documentModels` is exported as `[] as const` (no models defined yet) would
+  // make the filter callback's `m` infer to `never`, and `m.documentModel.global.id`
+  // would fail to type-check. The glob branch already abandons `as const` literal
+  // narrowing, so widening to the base module type costs nothing extra.
+  if (hasGlobs) {
+    lines.push(`import type { DocumentModelModule } from 'document-model';`);
+  }
 
   // Emit imports — named imports for explicit entries, documentModels for globs.
   for (const e of entries) {
@@ -136,7 +145,7 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
       if (e.kind === 'explicit') {
         lines.push(`  ${e.name},`);
       } else {
-        lines.push(`  ...${e.modelsAlias}.filter((m) => /${e.regexSource}/.test(m.documentModel.global.id)),`);
+        lines.push(`  ...(${e.modelsAlias} as readonly DocumentModelModule[]).filter((m) => /${e.regexSource}/.test(m.documentModel.global.id)),`);
       }
     }
     lines.push(']);');

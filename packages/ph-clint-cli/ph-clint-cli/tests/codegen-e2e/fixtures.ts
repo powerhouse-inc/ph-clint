@@ -5,9 +5,15 @@
  * Zod defaults are applied. Tests call `clintProjectSpecSchema.parse(fixture)`
  * to get the fully-resolved `ClintProjectSpec`.
  *
- * PH-enabled fixtures use `packages: []` (no document types). The app
+ * Most PH-enabled fixtures use `packages: []` (no document types). The app
  * package is scaffolded by `ph init` which exports an empty `documentModels`
- * array — enough for the CLI to compile and run.
+ * array — enough for the CLI to compile and run when the spec doesn't
+ * reference any document types.
+ *
+ * `connect-full` additionally exercises the `*​/*` glob branch of
+ * `framework.gen.ts` codegen against that empty `documentModels` export to
+ * regression-cover the empty-glob-package case (the freshly-scaffolded
+ * reactor package with no models defined yet).
  */
 import { type ClintProjectSpecInput } from '../../src/spec/types.js';
 
@@ -104,7 +110,15 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
     ],
   },
 
-  /** Everything on: Connect + agent + routine, no document types. */
+  /**
+   * Everything on: Connect + agent + routine, plus a `*​/*` glob on the app
+   * package. The glob exercises the runtime-filter branch of `framework.gen.ts`
+   * codegen against an app package whose `documentModels` is exported as
+   * `[] as const` (the state `ph init` leaves it in until the user authors
+   * a document model). Without the `DocumentModelModule` widening cast in
+   * `buildFrameworkGenTs`, `tsc` fails with TS2339 on `m.documentModel.global.id`
+   * because the filter callback's `m` collapses to `never`.
+   */
   'connect-full': {
     name: 'test-connect-cli',
     scope: '@ph',
@@ -125,6 +139,13 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       },
       routine: { enabled: true },
     },
+    packages: [
+      {
+        id: 'app-test-connect',
+        packageName: '@ph/test-connect-app',
+        documentTypes: ['*/*'],
+      },
+    ],
   },
 };
 
