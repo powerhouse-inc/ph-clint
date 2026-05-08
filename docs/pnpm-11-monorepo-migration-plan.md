@@ -33,18 +33,43 @@
   - `ph-clint-dev`: 25/25 suites, 258/258 tests pass
   - `clint-common`: 6/7 suites, 29/29 tests pass (1 suite fails on missing fixture file — pre-existing)
   - `ph-clint-cli`: 6/6 suites, 36/36 tests pass
-
 - [x] **Step 12**: Update `ph-publish` to handle `workspace:` protocol
   - `types.ts`: Added `'peerDependencies'` to `FileDep.field` union
   - `deps.ts`: Extended `analyzeFileDeps` to detect `workspace:` specifiers and scan `peerDependencies`
   - Tests: Added 4 new tests (workspace:*, workspace:^, peerDependencies, rewrite+restore round-trip)
   - 25/25 suites, 262/262 tests pass
 - [x] **Step 13**: Verify `publish:dev --dry-run` — all 5 packages validated, workspace: deps rewritten to ^version, restored after dry-run
+- [x] **Step 14**: Publish `0.1.0-dev.62` — all 5 packages published successfully
+- [x] **Step 15**: Update `AGENTS.md` to reflect new workspace structure
+- [x] **Step 16**: Document pnpm 11 global install `allowBuilds` prompt issue (`specs/issues/pnpm-11-global-install-allowBuilds-prompt.md`)
+- [x] **Committed**: `e28de34` — all migration changes + version bump to 0.1.0-dev.62
+
+- [x] **Step 17**: Investigate version mismatch in codegen output
+  - Symptom: globally installed `ph-clint@0.1.0-dev.62` generates deps pointing to `0.1.0-dev.61`
+  - **Root cause**: NOT a codegen bug. The global install never actually updated.
+    - pnpm 11 changed the global store layout: shims moved from `$PNPM_HOME/` to `$PNPM_HOME/bin/`
+    - Old v10 shims at `$PNPM_HOME/ph-clint` were not cleaned up during migration
+    - The stale shim still pointed to `global/5/.../0.1.0-dev.61`, shadowing the new install at `global/v11/.../0.1.0-dev.62`
+    - `$PNPM_HOME` (without `/bin`) was still in PATH from the pre-v11 shell session
+  - This is a known pnpm bug cluster: [#11464](https://github.com/pnpm/pnpm/issues/11464), [#10517](https://github.com/pnpm/pnpm/issues/10517), [#10883](https://github.com/pnpm/pnpm/issues/10883)
+  - `readPackageInfo()` in `config.ts` reads the version from `package.json` at runtime (not compile time) — the mechanism is correct, it was just reading the wrong package
+- [x] **Step 18**: Create install script (`scripts/install-cli.sh`)
+  - Detects pnpm version, offers upgrade from v10 → v11 with `pnpm self-update` + `pnpm setup`
+  - Detects and lists stale v10 shims, asks user confirmation before deleting
+  - Installs via `npm install -g` (avoids `allowBuilds` prompt entirely)
+  - Verifies binary location, version, and `--help` smoke test
+  - Dry-run by default (`--run` flag to execute)
+  - Platform-aware: macOS (`~/Library/pnpm`, `~/.zshrc`) vs Linux (`~/.local/share/pnpm`, `~/.bashrc`)
+- [x] **Step 19**: Widen `@electric-sql/pglite` peer dep range in `ph-clint`
+  - Was `^0.2.0`, actual dep is `0.3.15` — caused npm warnings on global install
+  - Widened to `>=0.2.0` (only uses `new PGlite(path)`, stable across versions)
+- [x] **Step 20**: Updated issue spec with stale shim migration findings
 
 ### Remaining
-- [ ] **Step 14**: Verify examples still work with `file:` deps pointing into workspace packages
-- [ ] **Step 15**: Update `AGENTS.md` to reflect new workspace structure
-- [ ] **Step 16**: Test Docker entrypoint with pnpm 11 (`pnpm add -g` still works in v11)
+
+- [ ] **Step 21**: Sandbox smoke test (3 configurations: minimal, mastra, connect+chat)
+- [ ] **Step 22**: Verify examples still work with `file:` deps pointing into workspace packages
+- [ ] **Step 23**: Test Docker entrypoint with pnpm 11 (low risk — `pnpm add -g` works in v11)
 
 ### Pre-existing Issues (not caused by migration)
 
