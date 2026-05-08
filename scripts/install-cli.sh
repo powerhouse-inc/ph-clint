@@ -9,7 +9,7 @@
 # Usage:
 #   bash scripts/install-cli.sh              # dry-run (default): show what would happen
 #   bash scripts/install-cli.sh --run        # actually install and make changes
-#   curl -fsSL <hosted-url> | bash           # one-liner (future)
+#   curl -fsSL <hosted-url> -o install-cli.sh && bash install-cli.sh  # one-liner (future)
 #
 # See: specs/issues/pnpm-11-global-install-allowBuilds-prompt.md
 
