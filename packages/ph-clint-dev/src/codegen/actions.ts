@@ -491,6 +491,7 @@ async function executeAction(
       const result = await ctx.runProcess('pnpm install', {
         cwd: action.dir,
         timeout: 300_000,
+        env: { CI: 'true' },
       });
       return result.success;
     }

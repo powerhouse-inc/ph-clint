@@ -117,6 +117,7 @@ export const publishTrigger = createDocumentChangeTrigger({
             const installResult = await runProcess('pnpm install', {
               cwd: workdir,
               timeout: 300_000,
+              env: { CI: 'true' },
             });
             if (!installResult.success) {
               log?.error(`${TAG} pnpm install failed in ${workdir}`);

@@ -255,10 +255,19 @@ describe('buildReadme', () => {
 });
 
 describe('buildPnpmWorkspaceYaml', () => {
-  it('approves esbuild and unrs-resolver build scripts', () => {
+  it('approves native build scripts pulled in by reactor/sentry/prisma', () => {
     const out = buildPnpmWorkspaceYaml();
     expect(out).toContain('allowBuilds:');
+    expect(out).toContain("'@apollo/protobufjs': true");
+    expect(out).toContain("'@datadog/pprof': true");
+    expect(out).toContain("'@parcel/watcher': true");
+    expect(out).toContain("'@prisma/client': true");
+    expect(out).toContain("'@prisma/engines': true");
+    expect(out).toContain("'@sentry/cli': true");
     expect(out).toContain('esbuild: true');
+    expect(out).toContain('prisma: true');
+    expect(out).toContain('protobufjs: true');
+    expect(out).toContain('sqlite3: true');
     expect(out).toContain('unrs-resolver: true');
   });
 });
