@@ -74,8 +74,8 @@ export interface FileDep {
   intraGroup: boolean;
   /** The resolved version to publish with. */
   publishVersion?: string;
-  /** Which field: 'dependencies' or 'devDependencies'. */
-  field: 'dependencies' | 'devDependencies';
+  /** Which field: 'dependencies', 'devDependencies', or 'peerDependencies'. */
+  field: 'dependencies' | 'devDependencies' | 'peerDependencies';
 }
 
 /** Info about a package resolved during pipeline execution. */

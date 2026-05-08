@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { FileDep, ResolvedPackage } from './types.js';
 
 /**
- * Analyze file: dependencies in a package.json.
+ * Analyze file: and workspace: dependencies in a package.json.
  * Classifies each as intra-group or external.
  */
 export function analyzeFileDeps(
@@ -13,32 +13,45 @@ export function analyzeFileDeps(
 ): FileDep[] {
   const deps: FileDep[] = [];
 
-  for (const field of ['dependencies', 'devDependencies'] as const) {
+  for (const field of [
+    'dependencies',
+    'devDependencies',
+    'peerDependencies',
+  ] as const) {
     const section = packageJson[field];
     if (!section || typeof section !== 'object') continue;
 
     for (const [name, specifier] of Object.entries(
       section as Record<string, string>,
     )) {
-      if (typeof specifier !== 'string' || !specifier.startsWith('file:')) {
-        continue;
+      if (typeof specifier !== 'string') continue;
+
+      if (specifier.startsWith('workspace:')) {
+        // workspace: deps are always intra-group
+        deps.push({
+          name,
+          originalSpecifier: specifier,
+          resolvedPath: '',
+          intraGroup: true,
+          field,
+        });
+      } else if (specifier.startsWith('file:')) {
+        const relativePath = specifier.slice(5); // strip 'file:'
+        const resolvedPath = path.resolve(packageDir, relativePath);
+
+        // Check if this path is in the same publish group
+        const intraGroup = groupPackagePaths.some(
+          (gp) => path.resolve(gp) === resolvedPath,
+        );
+
+        deps.push({
+          name,
+          originalSpecifier: specifier,
+          resolvedPath,
+          intraGroup,
+          field,
+        });
       }
-
-      const relativePath = specifier.slice(5); // strip 'file:'
-      const resolvedPath = path.resolve(packageDir, relativePath);
-
-      // Check if this path is in the same publish group
-      const intraGroup = groupPackagePaths.some(
-        (gp) => path.resolve(gp) === resolvedPath,
-      );
-
-      deps.push({
-        name,
-        originalSpecifier: specifier,
-        resolvedPath,
-        intraGroup,
-        field,
-      });
     }
   }
 
@@ -69,7 +82,7 @@ export function resolveExternalDepVersion(dep: FileDep): FileDep {
 }
 
 /**
- * Resolve all file: deps for a set of packages.
+ * Resolve all file: and workspace: deps for a set of packages.
  * Sets publishVersion on all deps (intra-group uses the computed version).
  */
 export function resolveAllFileDeps(

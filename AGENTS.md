@@ -9,20 +9,27 @@ Read [docs/architecture.md](./docs/architecture.md) for a high-level overview of
 ## Repository Structure
 
 ```
-packages/
-  ph-clint/          # Core framework library (@powerhousedao/ph-clint)
-  clint-common/      # Shared reactor package (@powerhousedao/clint-common)
-  ph-clint-dev/      # Build-time tooling (@powerhousedao/ph-clint-dev)
-  ph-clint-cli/      # The ph-clint CLI itself (@powerhousedao/ph-clint-cli + ph-clint-app)
-docs/                # Architecture and contributor documentation
-specs/               # Design specs and working notes
+packages/                # pnpm workspace root
+  pnpm-workspace.yaml   # workspace config, overrides, allowBuilds
+  package.json           # workspace scripts (build, test, publish)
+  pnpm-lock.yaml         # single unified lockfile
+  ph-clint/              # Core framework library (@powerhousedao/ph-clint)
+  clint-common/          # Shared reactor package (@powerhousedao/clint-common)
+  ph-clint-dev/          # Build-time tooling (@powerhousedao/ph-clint-dev)
+  ph-clint-cli/          # The ph-clint CLI itself (@powerhousedao/ph-clint-cli + ph-clint-app)
+docs/                    # Architecture and contributor documentation
+specs/                   # Design specs and working notes
 ```
 
-No pnpm workspace — each package installs independently. Cross-package references use `file:` protocol dependencies.
+The `packages/` directory is a pnpm workspace. Inter-package dependencies use `workspace:*` protocol (auto-converted to semver on publish). Run all commands from `packages/`.
+
+Projects outside the workspace (examples, prototypes, sandbox, clis) remain independent and use `file:` protocol to reference workspace packages during local development.
 
 ## Key Conventions
 
-- **Package manager**: Always use `pnpm`, never `npm` or `yarn`
+- **Package manager**: Always use `pnpm` (v11+), never `npm` or `yarn`
+- **Workspace root**: `packages/` — run `pnpm install`, `pnpm run build`, `pnpm run test` from there
+- **Single package**: `pnpm --filter '@powerhousedao/ph-clint' run test` to target one package
 - **Running tests**: Always use `pnpm test` (unit/integration) and `pnpm test:e2e` (end-to-end) — never invoke jest directly
 - **Module system**: ESM only (`"type": "module"`)
 - **TypeScript**: Strict mode, Node16 module resolution

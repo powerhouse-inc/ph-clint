@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/clint-common",
-  "version": "0.1.0-dev.61",
+  "version": "0.1.0-dev.62",
   "license": "AGPL-3.0-only",
   "type": "module",
   "files": [
@@ -101,7 +101,7 @@
     "zod": "^4.3.5"
   },
   "peerDependencies": {
-    "@powerhousedao/ph-clint": ">=0.1.0-dev.49"
+    "@powerhousedao/ph-clint": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@powerhousedao/ph-clint": {
@@ -109,7 +109,7 @@
     }
   },
   "devDependencies": {
-    "@powerhousedao/ph-clint": "file:../ph-clint",
+    "@powerhousedao/ph-clint": "workspace:*",
     "@electric-sql/pglite": "0.3.15",
     "@electric-sql/pglite-tools": "0.2.20",
     "@eslint/js": "^9.38.0",
@@ -132,10 +132,5 @@
     "vite": "8.0.8",
     "vite-tsconfig-paths": "6.1.1",
     "vitest": "4.1.1"
-  },
-  "pnpm": {
-    "overrides": {
-      "zod": "4.3.6"
-    }
   }
 }

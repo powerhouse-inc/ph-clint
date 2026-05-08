@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "install": "pnpm --prefix ph-clint install && pnpm --prefix ph-clint-dev install && pnpm --prefix ph-clint-cli/ph-clint-app install && pnpm --prefix ph-clint-cli/ph-clint-cli install && pnpm --prefix clint-common install",
-    "build": "pnpm --prefix ph-clint build && pnpm --prefix ph-clint-dev build && pnpm --prefix ph-clint-cli/ph-clint-app build && pnpm --prefix ph-clint-cli/ph-clint-cli build && pnpm --prefix clint-common build",
-    "test": "pnpm --prefix ph-clint test && pnpm --prefix ph-clint-dev test && pnpm --prefix ph-clint-cli/ph-clint-app test && pnpm --prefix ph-clint-cli/ph-clint-cli test && pnpm --prefix clint-common test",
-    "test:coverage": "pnpm --prefix ph-clint test && pnpm --prefix ph-clint-dev test && pnpm --prefix ph-clint-cli/ph-clint-cli test && node scripts/merge-coverage.mjs",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "test:coverage": "pnpm --filter '@powerhousedao/ph-clint' --filter '@powerhousedao/ph-clint-dev' --filter '@powerhousedao/ph-clint-cli' run test && node scripts/merge-coverage.mjs",
+    "lint": "pnpm -r run lint",
+    "dev": "pnpm -r --parallel run dev",
     "publish:dev": "tsx ph-clint-dev/src/publish-cli.ts dev -c ./publish.config.js",
     "publish:staging": "tsx ph-clint-dev/src/publish-cli.ts staging -c ./publish.config.js",
     "publish:production": "tsx ph-clint-dev/src/publish-cli.ts production -c ./publish.config.js"

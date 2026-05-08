@@ -123,6 +123,76 @@ describe('restoreFileDepPaths', () => {
   });
 });
 
+describe('rewritePackageJson with workspace: deps', () => {
+  it('rewrites workspace: deps and restores them', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rewrite-test-'));
+    const dir = path.join(tmp, 'mypkg');
+    fs.mkdirSync(dir, { recursive: true });
+    const pkgJson = {
+      name: 'mypkg',
+      version: '0.0.1',
+      dependencies: {
+        mylib: 'workspace:*',
+        lodash: '^4.0.0',
+      },
+      peerDependencies: {
+        myframework: 'workspace:*',
+      },
+    };
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify(pkgJson, null, 2) + '\n',
+    );
+
+    const entry: PackageEntry = { path: 'mypkg', category: 'cli' };
+    const pkg: ResolvedPackage = {
+      entry,
+      absPath: dir,
+      packageJson: pkgJson,
+      name: 'mypkg',
+      fileDeps: [
+        {
+          name: 'mylib',
+          originalSpecifier: 'workspace:*',
+          resolvedPath: '',
+          intraGroup: true,
+          publishVersion: '^1.0.0-dev.0',
+          field: 'dependencies',
+        },
+        {
+          name: 'myframework',
+          originalSpecifier: 'workspace:*',
+          resolvedPath: '',
+          intraGroup: true,
+          publishVersion: '^1.0.0-dev.0',
+          field: 'peerDependencies',
+        },
+      ],
+    };
+
+    rewritePackageJson(pkg, '1.0.0-dev.0');
+
+    const rewritten = JSON.parse(
+      fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'),
+    );
+    expect(rewritten.version).toBe('1.0.0-dev.0');
+    expect(rewritten.dependencies.mylib).toBe('^1.0.0-dev.0');
+    expect(rewritten.dependencies.lodash).toBe('^4.0.0');
+    expect(rewritten.peerDependencies.myframework).toBe('^1.0.0-dev.0');
+
+    // Restore
+    restoreFileDepPaths(pkg);
+    const restored = JSON.parse(
+      fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'),
+    );
+    expect(restored.dependencies.mylib).toBe('workspace:*');
+    expect(restored.peerDependencies.myframework).toBe('workspace:*');
+    expect(restored.version).toBe('1.0.0-dev.0'); // version kept
+
+    fs.rmSync(tmp, { recursive: true });
+  });
+});
+
 describe('removeBackup', () => {
   it('removes backup file', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rewrite-test-'));

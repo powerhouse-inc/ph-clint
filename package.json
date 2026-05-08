@@ -2,7 +2,7 @@
   "name": "ph-clint-repo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.26.0",
+  "packageManager": "pnpm@11.0.8",
   "engines": {
     "node": ">=22.13.0"
   }

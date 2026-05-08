@@ -78,6 +78,68 @@ describe('analyzeFileDeps', () => {
     expect(deps[0].field).toBe('devDependencies');
   });
 
+  it('classifies workspace: deps as intra-group', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
+    const cliDir = makeTempPkg(tmp, 'mycli', {
+      mylib: 'workspace:*',
+    });
+
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(cliDir, 'package.json'), 'utf-8'),
+    );
+    const deps = analyzeFileDeps(cliDir, pkgJson, [cliDir]);
+
+    expect(deps).toHaveLength(1);
+    expect(deps[0].name).toBe('mylib');
+    expect(deps[0].intraGroup).toBe(true);
+    expect(deps[0].originalSpecifier).toBe('workspace:*');
+    expect(deps[0].field).toBe('dependencies');
+
+    fs.rmSync(tmp, { recursive: true });
+  });
+
+  it('handles workspace:^ specifiers', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
+    const cliDir = makeTempPkg(tmp, 'mycli', {
+      mylib: 'workspace:^',
+    });
+
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(cliDir, 'package.json'), 'utf-8'),
+    );
+    const deps = analyzeFileDeps(cliDir, pkgJson, [cliDir]);
+
+    expect(deps).toHaveLength(1);
+    expect(deps[0].intraGroup).toBe(true);
+    expect(deps[0].originalSpecifier).toBe('workspace:^');
+
+    fs.rmSync(tmp, { recursive: true });
+  });
+
+  it('handles peerDependencies with workspace:', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
+    const pkgDir = path.join(tmp, 'mypkg');
+    fs.mkdirSync(pkgDir, { recursive: true });
+    const pkgJson = {
+      name: 'mypkg',
+      version: '0.0.1',
+      peerDependencies: { mylib: 'workspace:*' },
+    };
+    fs.writeFileSync(
+      path.join(pkgDir, 'package.json'),
+      JSON.stringify(pkgJson, null, 2),
+    );
+
+    const deps = analyzeFileDeps(pkgDir, pkgJson, [pkgDir]);
+
+    expect(deps).toHaveLength(1);
+    expect(deps[0].name).toBe('mylib');
+    expect(deps[0].intraGroup).toBe(true);
+    expect(deps[0].field).toBe('peerDependencies');
+
+    fs.rmSync(tmp, { recursive: true });
+  });
+
   it('ignores non-file: deps', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
     const cliDir = makeTempPkg(tmp, 'mycli', {
