@@ -1514,15 +1514,16 @@ export function defineCli<
    * Falls back to the sibling directory convention for workspace layouts.
    */
   function resolveAppPackageDir(cliRoot: string, cliName: string): string {
-    // Read the full scoped package name from the CLI's package.json
-    const cliPkgPath = path.join(cliRoot, 'package.json');
-    const cliPkg = JSON.parse(fs.readFileSync(cliPkgPath, 'utf8'));
-    const fullName = cliPkg.name as string; // e.g. "@powerhousedao/ph-clint-cli"
-    const appPkgName = fullName.replace(/-cli$/, '-app'); // e.g. "@powerhousedao/ph-clint-app"
-
-    // Try Node module resolution first (works for npm global, pnpm global, etc.)
+    // Try Node module resolution first (works for npm global, pnpm global, etc.).
+    // Any failure — missing/unreadable package.json, unresolvable module, no
+    // matching package.json walking up — falls through to the sibling fallback.
     try {
-      const req = createRequire(path.join(cliRoot, 'package.json'));
+      const cliPkgPath = path.join(cliRoot, 'package.json');
+      const cliPkg = JSON.parse(fs.readFileSync(cliPkgPath, 'utf8'));
+      const fullName = cliPkg.name as string; // e.g. "@powerhousedao/ph-clint-cli"
+      const appPkgName = fullName.replace(/-cli$/, '-app'); // e.g. "@powerhousedao/ph-clint-app"
+
+      const req = createRequire(cliPkgPath);
       const entry = req.resolve(appPkgName);
       // Walk up from the resolved entry to find the package root
       let dir = path.dirname(entry);
@@ -1535,7 +1536,7 @@ export function defineCli<
         dir = path.dirname(dir);
       }
     } catch {
-      // Module resolution failed — fall through to sibling convention
+      // Fall through to sibling convention
     }
     // Fall back to sibling directory (workspace layout)
     const bareName = cliName.replace(/^@[^/]+\//, '');
