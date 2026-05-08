@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { Command as Commander } from 'commander';
 import { z } from 'zod';
 import type {
@@ -261,9 +262,7 @@ export function defineCli<
     if (config.connect?.enabled && options.root) {
       const connect = { ...config.connect };
       if (!connect.workdir) {
-        // Strip npm scope (e.g. "@scope/foo" → "foo") for the sibling dir name
-        const bareName = options.name.replace(/^@[^/]+\//, '');
-        connect.workdir = path.resolve(options.root, `../${bareName}-app`);
+        connect.workdir = resolveAppPackageDir(options.root, options.name);
       }
       if (connect.assetsDir === undefined && connect.workdir) {
         const candidateDir = path.join(connect.workdir, 'dist', 'connect');
@@ -1509,6 +1508,39 @@ export function defineCli<
   const staticDescription = typeof options.description === 'string'
     ? options.description
     : options.description({ workdir: activeWorkdir, config: {} as TMerged});
+
+  /**
+   * Resolve the -app companion package directory using Node module resolution.
+   * Falls back to the sibling directory convention for workspace layouts.
+   */
+  function resolveAppPackageDir(cliRoot: string, cliName: string): string {
+    // Read the full scoped package name from the CLI's package.json
+    const cliPkgPath = path.join(cliRoot, 'package.json');
+    const cliPkg = JSON.parse(fs.readFileSync(cliPkgPath, 'utf8'));
+    const fullName = cliPkg.name as string; // e.g. "@powerhousedao/ph-clint-cli"
+    const appPkgName = fullName.replace(/-cli$/, '-app'); // e.g. "@powerhousedao/ph-clint-app"
+
+    // Try Node module resolution first (works for npm global, pnpm global, etc.)
+    try {
+      const req = createRequire(path.join(cliRoot, 'package.json'));
+      const entry = req.resolve(appPkgName);
+      // Walk up from the resolved entry to find the package root
+      let dir = path.dirname(entry);
+      while (dir !== path.dirname(dir)) {
+        const candidate = path.join(dir, 'package.json');
+        if (fs.existsSync(candidate)) {
+          const pkg = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+          if (pkg.name === appPkgName) return dir;
+        }
+        dir = path.dirname(dir);
+      }
+    } catch {
+      // Module resolution failed — fall through to sibling convention
+    }
+    // Fall back to sibling directory (workspace layout)
+    const bareName = cliName.replace(/^@[^/]+\//, '');
+    return path.resolve(cliRoot, `../${bareName}-app`);
+  }
 
   cliRef = {
     name: options.name,
