@@ -100,13 +100,42 @@ if command -v pnpm >/dev/null 2>&1; then
     warn "pnpm 11 introduced a new global store layout. Upgrading now will prevent"
     warn "issues when you scaffold a project and run 'pnpm install' inside it."
 
+    # Determine the right upgrade command based on how pnpm was installed.
+    # pnpm self-update only exists in 9.12+. Corepack-managed installs reject
+    # self-update entirely. Fall back to npm install -g as the universal option.
+    PNPM_UPGRADE_CMD=""
+    PNPM_UPGRADE_NOTE=""
+    if command -v corepack >/dev/null 2>&1 && corepack --version >/dev/null 2>&1; then
+      # Check if pnpm is managed by corepack (lives inside the corepack shims dir)
+      PNPM_PATH=$(command -v pnpm)
+      if echo "$PNPM_PATH" | grep -q "corepack\|nvm.*bin/pnpm"; then
+        PNPM_UPGRADE_CMD="corepack install --global pnpm@latest"
+        PNPM_UPGRADE_NOTE="pnpm appears to be managed by corepack"
+      fi
+    fi
+    if [ -z "$PNPM_UPGRADE_CMD" ]; then
+      # pnpm self-update exists in 9.12+; parse minor version
+      PNPM_MINOR=$(echo "$PNPM_VER" | cut -d. -f2)
+      if [ "$PNPM_MAJOR" -gt 9 ] 2>/dev/null || { [ "$PNPM_MAJOR" -eq 9 ] && [ "$PNPM_MINOR" -ge 12 ]; } 2>/dev/null; then
+        PNPM_UPGRADE_CMD="pnpm self-update"
+      else
+        PNPM_UPGRADE_CMD="npm install -g pnpm@latest"
+        PNPM_UPGRADE_NOTE="pnpm self-update is not available before v9.12"
+      fi
+    fi
+
+    if [ -n "$PNPM_UPGRADE_NOTE" ]; then
+      info "$PNPM_UPGRADE_NOTE"
+    fi
+    info "Upgrade command: $PNPM_UPGRADE_CMD"
+
     if $DRY_RUN; then
       echo ""
-      dry "Would run: pnpm self-update"
+      dry "Would run: $PNPM_UPGRADE_CMD"
       dry "Would run: pnpm setup"
     elif confirm "Upgrade pnpm to v11 and update shell config?"; then
-      info "Running pnpm self-update..."
-      pnpm self-update 2>&1 | tail -3
+      info "Running: $PNPM_UPGRADE_CMD"
+      eval "$PNPM_UPGRADE_CMD" 2>&1 | tail -5
       PNPM_VER=$(pnpm --version 2>/dev/null || echo "unknown")
       ok "pnpm upgraded to $PNPM_VER"
 
@@ -115,7 +144,7 @@ if command -v pnpm >/dev/null 2>&1; then
       ok "Shell config updated"
     else
       warn "Skipped. You'll need pnpm 11+ to work with scaffolded projects."
-      warn "Upgrade later with: pnpm self-update && pnpm setup"
+      warn "Upgrade later with: $PNPM_UPGRADE_CMD && pnpm setup"
     fi
   else
     ok "pnpm $PNPM_VER (v11+)"
