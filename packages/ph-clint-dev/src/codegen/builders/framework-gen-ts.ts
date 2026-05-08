@@ -101,13 +101,22 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
   lines.push(' * tick. Put custom bindings in `framework.ts`, not here — edits to');
   lines.push(' * this file will be overwritten.');
   lines.push(' */');
-  lines.push(`import { defineRegistry } from '@powerhousedao/ph-clint';`);
-  // Glob entries widen each `documentModels` import to `readonly DocumentModelModule[]`
-  // before filtering. Without this, a freshly-scaffolded reactor package whose
-  // `documentModels` is exported as `[] as const` (no models defined yet) would
-  // make the filter callback's `m` infer to `never`, and `m.documentModel.global.id`
-  // would fail to type-check. The glob branch already abandons `as const` literal
-  // narrowing, so widening to the base module type costs nothing extra.
+  // Pure-explicit branches keep their precise inferred `Registry` shape via
+  // `as const` + `typeof registry` — no `DocumentRegistry` import needed.
+  // Glob branches additionally need:
+  //   - `DocumentModelModule` (type-only) to widen the filter callback so that
+  //     a freshly-scaffolded reactor package exporting `documentModels = [] as const`
+  //     doesn't make `m` infer to `never` and trip TS2339 on `m.documentModel.global.id`.
+  //   - `DocumentRegistry` (type-only) to annotate `registry` directly. Without
+  //     this annotation, the inferred type of `defineRegistry([...rest, Explicit])`
+  //     is a mapped type over a rest tuple containing `DocumentModelModule`, and
+  //     when an explicit entry from a downstream package brings in a different
+  //     `document-model` version (lockfile duplication), TS2883 fires because the
+  //     emitted .d.ts can't name both `DocumentModelModule` copies portably. The
+  //     annotation collapses the public type to `DocumentRegistry`, which is
+  //     consistent with the dynamic semantics of glob registration (no literal-key
+  //     narrowing was achievable on glob entries anyway).
+  lines.push(`import { defineRegistry${hasGlobs ? ', type DocumentRegistry' : ''} } from '@powerhousedao/ph-clint';`);
   if (hasGlobs) {
     lines.push(`import type { DocumentModelModule } from 'document-model';`);
   }
@@ -139,8 +148,11 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
     }
     lines.push('] as const);');
   } else {
-    // Mix of explicit + glob — runtime filter loses `as const` inference.
-    lines.push('export const registry = defineRegistry([');
+    // Pure-glob or mixed explicit + glob — runtime filter abandons `as const`
+    // narrowing. Annotate registry as the wide `DocumentRegistry` to firewall
+    // unnameable inferred types out of declaration emit (see the import-block
+    // comment above).
+    lines.push('export const registry: DocumentRegistry = defineRegistry([');
     for (const e of entries) {
       if (e.kind === 'explicit') {
         lines.push(`  ${e.name},`);
@@ -152,6 +164,14 @@ export function buildFrameworkGenTs(spec: ClintProjectSpec): string | null {
   }
 
   lines.push('');
-  lines.push('export type Registry = typeof registry;');
+  // Pure-explicit and empty registries keep `typeof registry` so consumers can
+  // narrow by literal document-type key. Glob-bearing registries publish the
+  // wide `DocumentRegistry` shape since literal-key narrowing isn't achievable
+  // when entries are filtered at runtime.
+  lines.push(
+    hasGlobs
+      ? 'export type Registry = DocumentRegistry;'
+      : 'export type Registry = typeof registry;',
+  );
   return lines.join('\n') + '\n';
 }

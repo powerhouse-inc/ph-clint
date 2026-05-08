@@ -63,7 +63,11 @@ describe('buildFrameworkGenTs', () => {
     // framework.gen.ts exports only `registry` + `Registry` type; the
     // createTypes() call lives in framework.ts to avoid a circular import.
     expect(code).toContain('export const registry');
-    expect(code).toContain('export type Registry');
+    // No globs → keep precise inferred Registry shape via `typeof registry`,
+    // and no `DocumentRegistry` / `DocumentModelModule` imports needed.
+    expect(code).toContain('export type Registry = typeof registry;');
+    expect(code).not.toContain('DocumentRegistry');
+    expect(code).not.toContain('DocumentModelModule');
     expect(code).not.toContain('createTypes');
   });
 
@@ -84,8 +88,12 @@ describe('buildFrameworkGenTs', () => {
     const pos2 = code!.indexOf('  Invoice,');
     expect(pos1).toBeGreaterThan(0);
     expect(pos2).toBeGreaterThan(pos1);
-    // `as const` preserved for literal inference.
+    // `as const` preserved for literal inference; pure-explicit branch keeps
+    // the precise inferred Registry shape (no `: DocumentRegistry` annotation).
     expect(code).toContain('] as const);');
+    expect(code).toContain('export type Registry = typeof registry;');
+    expect(code).not.toContain('DocumentRegistry');
+    expect(code).not.toContain('DocumentModelModule');
   });
 
   it('imports external package modules from their own npm package', () => {
@@ -111,12 +119,22 @@ describe('buildFrameworkGenTs', () => {
     });
     const code = buildFrameworkGenTs(spec)!;
     expect(code).toContain("import { documentModels as globModels } from 'foo-app';");
-    // Glob branch widens the imported array to the base module type so the
-    // file still type-checks when the reactor package has zero models defined
-    // (in which case `documentModels` is exported as `[] as const`).
+    // Glob branch:
+    //   - Widens the imported array to the base module type so the file
+    //     type-checks when the reactor package has zero models defined yet
+    //     (i.e. `documentModels` is exported as `[] as const`).
+    //   - Annotates `registry: DocumentRegistry` to keep declaration emit
+    //     portable when the inferred type would otherwise reference
+    //     `DocumentModelModule` from a downstream copy of `document-model`
+    //     (e.g. lockfile duplication across packages → TS2883).
+    expect(code).toContain(
+      "import { defineRegistry, type DocumentRegistry } from '@powerhousedao/ph-clint';",
+    );
     expect(code).toContain("import type { DocumentModelModule } from 'document-model';");
+    expect(code).toContain('export const registry: DocumentRegistry = defineRegistry([');
     expect(code).toContain('...(globModels as readonly DocumentModelModule[]).filter(');
     expect(code).toContain('.test(m.documentModel.global.id)');
+    expect(code).toContain('export type Registry = DocumentRegistry;');
     // No `as const` on the registry literal when globs are present (runtime
     // array loses literal types).
     expect(code).not.toContain('] as const);');
@@ -149,6 +167,10 @@ describe('buildFrameworkGenTs', () => {
     expect(code).toContain("import type { DocumentModelModule } from 'document-model';");
     expect(code).toContain('  PhClintProject,');
     expect(code).toContain('...(globModels as readonly DocumentModelModule[]).filter(');
+    // Mixed branch annotates registry as DocumentRegistry too (a single
+    // explicit entry doesn't recover narrowing once a rest tuple is present).
+    expect(code).toContain('export const registry: DocumentRegistry = defineRegistry([');
+    expect(code).toContain('export type Registry = DocumentRegistry;');
   });
 
   it('emits runtime filter for glob on external package', () => {
@@ -165,6 +187,8 @@ describe('buildFrameworkGenTs', () => {
     expect(code).toContain("import { documentModels as globModels } from '@acme/reactor-pkg';");
     expect(code).toContain("import type { DocumentModelModule } from 'document-model';");
     expect(code).toContain('...(globModels as readonly DocumentModelModule[]).filter(');
+    expect(code).toContain('export const registry: DocumentRegistry = defineRegistry([');
+    expect(code).toContain('export type Registry = DocumentRegistry;');
   });
 
   it('uses unique aliases for multiple glob packages', () => {
