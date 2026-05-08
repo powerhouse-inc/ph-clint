@@ -119,7 +119,7 @@ if command -v pnpm >/dev/null 2>&1; then
       if [ "$PNPM_MAJOR" -gt 9 ] 2>/dev/null || { [ "$PNPM_MAJOR" -eq 9 ] && [ "$PNPM_MINOR" -ge 12 ]; } 2>/dev/null; then
         PNPM_UPGRADE_CMD="pnpm self-update"
       else
-        PNPM_UPGRADE_CMD="npm install -g pnpm@latest"
+        PNPM_UPGRADE_CMD="npm install -g --force pnpm@latest"
         PNPM_UPGRADE_NOTE="pnpm self-update is not available before v9.12"
       fi
     fi
