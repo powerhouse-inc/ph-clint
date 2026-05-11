@@ -61,4 +61,28 @@ describe('createInstrumentedStream', () => {
       expect.objectContaining({ result: 'error' }),
     );
   });
+
+  it('emits a child llm.call span with token counts from usage chunk', async () => {
+    const inner = async function* () {
+      yield { type: 'text-delta', text: 'hi' };
+      yield {
+        type: 'finish',
+        usage: { promptTokens: 12, completionTokens: 4, totalTokens: 16 },
+        model: 'anthropic/claude-sonnet-4-5',
+      };
+    };
+    const metricsMock = buildMetricsMock();
+
+    const wrapped = createInstrumentedStream(inner, { metrics: metricsMock, attrs: { agentId: 'a1' } });
+    for await (const _ of wrapped('hello')) { /* drain */ }
+
+    const spans = exporter.getFinishedSpans();
+    const llm = spans.find(s => s.name === 'llm.call');
+    expect(llm).toBeDefined();
+    expect(llm!.attributes['llm.tokens.prompt']).toBe(12);
+    expect(llm!.attributes['llm.tokens.completion']).toBe(4);
+    expect(llm!.attributes['llm.model']).toBe('anthropic/claude-sonnet-4-5');
+    expect(metricsMock.llmTokens.add).toHaveBeenCalledWith(12, expect.objectContaining({ kind: 'prompt', model: 'anthropic/claude-sonnet-4-5' }));
+    expect(metricsMock.llmTokens.add).toHaveBeenCalledWith(4, expect.objectContaining({ kind: 'completion', model: 'anthropic/claude-sonnet-4-5' }));
+  });
 });
