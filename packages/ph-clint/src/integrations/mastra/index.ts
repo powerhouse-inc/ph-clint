@@ -7,6 +7,7 @@ import { commandsToMastraTools } from './tools.js';
 import { getMastraPaths } from './paths.js';
 import { discoverMcpTools, disconnectAllMcp } from './mcp.js';
 import { MarkdownConversationLogger, loggedStream } from './logging.js';
+import { createInstrumentedStream } from './instrumented-stream.js';
 import type { GetToolsOptions, MastraHelpers, WrapAgentOptions } from './types.js';
 
 export type { MastraHelpers, GetToolsOptions, WrapAgentOptions } from './types.js';
@@ -131,89 +132,95 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
         ? new MarkdownConversationLogger({ directory: options.logDirectory })
         : undefined;
 
+      const rawStream = async function*(prompt: AgentPromptInput, opts?: Parameters<AgentProvider['stream']>[1]): AsyncGenerator<StreamChunk> {
+        const streamOpts: Record<string, unknown> = { maxSteps };
+        if (providerOptions) streamOpts.providerOptions = providerOptions;
+
+        if (opts?.threadId) {
+          streamOpts.memory = {
+            thread: opts.threadId,
+            resource: 'cli-user',
+          };
+        }
+
+        // Pass abort signal through to Mastra agent
+        if (opts?.abortSignal) {
+          streamOpts.abortSignal = opts.abortSignal;
+        }
+
+        const sessionId = opts?.threadId ?? agentId;
+
+        // Build the message input for Mastra. When prompt is an array of
+        // content parts (text + images), construct a UserModelMessage so the
+        // model receives the images natively via the AI SDK vision format.
+        let mastraInput: unknown;
+        if (typeof prompt === 'string') {
+          mastraInput = prompt;
+        } else {
+          mastraInput = {
+            role: 'user' as const,
+            content: prompt.map((part) => {
+              if (part.type === 'text') return { type: 'text' as const, text: part.text };
+              return { type: 'image' as const, image: part.image, mediaType: part.mediaType };
+            }),
+          };
+        }
+
+        if (logger) {
+          // Resolve instructions from the Mastra Agent if available
+          let instructions: string | undefined;
+          try {
+            instructions = typeof agent.getInstructions === 'function'
+              ? await agent.getInstructions()
+              : agent.instructions;
+          } catch { /* ignore — instructions are optional */ }
+          if (typeof instructions !== 'string') instructions = undefined;
+
+          logger.startSession(sessionId, agentId, agentName, instructions);
+          const logText = typeof prompt === 'string'
+            ? prompt
+            : prompt.filter(p => p.type === 'text').map(p => (p as { text: string }).text).join('\n');
+          logger.logUserMessage(sessionId, logText);
+        }
+
+        const streamResult = await agent.stream(mastraInput, streamOpts);
+
+        const innerStream = mapMastraStream(streamResult.fullStream as any);
+
+        try {
+          if (logger) {
+            yield* loggedStream(innerStream, logger, sessionId);
+          } else {
+            yield* innerStream;
+          }
+        } catch (err) {
+          const isAbort = err instanceof Error && err.name === 'AbortError';
+          if (isAbort) {
+            // Log abort in markdown logger
+            if (logger) {
+              logger.logError(sessionId, 'Stream aborted by user');
+            }
+            return; // Clean exit — not an error
+          }
+          if (logger) {
+            logger.logError(sessionId, err instanceof Error ? err.message : String(err));
+          }
+          throw err;
+        }
+      };
+
+      const stream = createInstrumentedStream(rawStream, {
+        metrics: ctx.observability.metrics,
+        attrs: { agentId },
+      });
+
       return {
         id: agentId,
         name: agentName,
         description: options?.description,
         image: options?.image,
         mastraAgent: agent,
-        async *stream(prompt: AgentPromptInput, opts?) {
-          const streamOpts: Record<string, unknown> = { maxSteps };
-          if (providerOptions) streamOpts.providerOptions = providerOptions;
-
-          if (opts?.threadId) {
-            streamOpts.memory = {
-              thread: opts.threadId,
-              resource: 'cli-user',
-            };
-          }
-
-          // Pass abort signal through to Mastra agent
-          if (opts?.abortSignal) {
-            streamOpts.abortSignal = opts.abortSignal;
-          }
-
-          const sessionId = opts?.threadId ?? agentId;
-
-          // Build the message input for Mastra. When prompt is an array of
-          // content parts (text + images), construct a UserModelMessage so the
-          // model receives the images natively via the AI SDK vision format.
-          let mastraInput: unknown;
-          if (typeof prompt === 'string') {
-            mastraInput = prompt;
-          } else {
-            mastraInput = {
-              role: 'user' as const,
-              content: prompt.map((part) => {
-                if (part.type === 'text') return { type: 'text' as const, text: part.text };
-                return { type: 'image' as const, image: part.image, mediaType: part.mediaType };
-              }),
-            };
-          }
-
-          if (logger) {
-            // Resolve instructions from the Mastra Agent if available
-            let instructions: string | undefined;
-            try {
-              instructions = typeof agent.getInstructions === 'function'
-                ? await agent.getInstructions()
-                : agent.instructions;
-            } catch { /* ignore — instructions are optional */ }
-            if (typeof instructions !== 'string') instructions = undefined;
-
-            logger.startSession(sessionId, agentId, agentName, instructions);
-            const logText = typeof prompt === 'string'
-              ? prompt
-              : prompt.filter(p => p.type === 'text').map(p => (p as { text: string }).text).join('\n');
-            logger.logUserMessage(sessionId, logText);
-          }
-
-          const streamResult = await agent.stream(mastraInput, streamOpts);
-
-          const rawStream = mapMastraStream(streamResult.fullStream as any);
-
-          try {
-            if (logger) {
-              yield* loggedStream(rawStream, logger, sessionId);
-            } else {
-              yield* rawStream;
-            }
-          } catch (err) {
-            const isAbort = err instanceof Error && err.name === 'AbortError';
-            if (isAbort) {
-              // Log abort in markdown logger
-              if (logger) {
-                logger.logError(sessionId, 'Stream aborted by user');
-              }
-              return; // Clean exit — not an error
-            }
-            if (logger) {
-              logger.logError(sessionId, err instanceof Error ? err.message : String(err));
-            }
-            throw err;
-          }
-
-        },
+        stream,
       };
     },
   };

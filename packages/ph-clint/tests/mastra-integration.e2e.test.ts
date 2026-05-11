@@ -16,6 +16,7 @@ import { defineCommand } from '../src/core/command.js';
 import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { createMemoryWorkdirStore } from '../src/core/store.js';
 import type { AgentSetupContext, AgentProvider, StreamChunk } from '../src/core/types.js';
+import { createMockObservability } from './observability/__fixtures__.js';
 
 // Load .env from example 04 (no dotenv dependency)
 try {
@@ -87,6 +88,7 @@ describeWithKey('Mastra integration E2E', () => {
       context: { workdir: testWorkspace, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} },
       commands: [echoCommand],
       skills: [],
+      observability: createMockObservability(),
     };
     const m = createMastraHelpers(ctx);
     const { Agent } = await import('@mastra/core/agent');
