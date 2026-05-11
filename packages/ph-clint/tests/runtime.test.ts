@@ -12,6 +12,7 @@ import type { ReactorContext } from '../src/integrations/powerhouse/types.js';
 import { createMemoryWorkdirStore } from '../src/core/store.js';
 import { defineCommand } from '../src/core/command.js';
 import { z } from 'zod';
+import { createMockObservability } from './observability/__fixtures__.js';
 
 const noopCommand = defineCommand({
   id: 'noop',
@@ -45,6 +46,7 @@ function createMinimalDeps(overrides?: Partial<CliRuntimeDeps>): CliRuntimeDeps 
     commandMap: new Map([['noop', noopCommand]]),
     skillIds: new Set<string>(),
     resolvedSkills: [],
+    observability: createMockObservability(),
     ...overrides,
   };
 }
