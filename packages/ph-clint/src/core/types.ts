@@ -674,6 +674,12 @@ export interface AgentSetupContext<TConfig = Record<string, unknown>> {
   skills: import('./skills.js').SkillInfo[];
   /** Full prompts configuration — agent profiles, skill configs, artifact paths. */
   prompts?: PromptsConfig;
+  /**
+   * Observability singletons from initObservability(). Always present; inner
+   * sentry/otel may be null when env-gated off. Used by mastra integration to
+   * wire span/metric instrumentation onto agent.stream + tool.execute.
+   */
+  observability: import('../observability/index.js').ObservabilityHandle;
 }
 
 // ── Agent Loader ──────────────────────────────────────────────────
@@ -938,4 +944,6 @@ export interface BootstrapResult {
   getAgent(): Promise<AgentProvider | undefined>;
   /** The raw Mastra Agent from the provider, if available. Lazy-loads the agent. */
   get mastraAgent(): Promise<unknown | undefined>;
+  /** Observability handle from initObservability(). Always present, with nullable inner Sentry/OTel singletons. */
+  observability: import('../observability/index.js').ObservabilityHandle;
 }
