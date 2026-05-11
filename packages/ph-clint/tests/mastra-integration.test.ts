@@ -13,6 +13,7 @@ import { mapMastraStream } from '../src/integrations/mastra/stream.js';
 import { createMemoryWorkdirStore, createWorkdirStore } from '../src/core/store.js';
 import type { AgentSetupContext, PromptsConfig, ServiceInstanceStatus, ServiceManager } from '../src/core/types.js';
 import type { SkillInfo } from '../src/core/skills.js';
+import { createMockObservability } from './observability/__fixtures__.js';
 
 const testWorkspace = join(tmpdir(), `ph-clint-mastra-test-${randomBytes(4).toString('hex')}`);
 
@@ -37,6 +38,7 @@ function makeAgentSetupContext(overrides?: Partial<AgentSetupContext>): AgentSet
     context: { workdir, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} },
     commands: [echoCommand],
     skills: [],
+    observability: createMockObservability(),
     ...overrides,
   };
 }
