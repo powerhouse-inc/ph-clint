@@ -8,6 +8,7 @@ import { getMastraPaths } from './paths.js';
 import { discoverMcpTools, disconnectAllMcp } from './mcp.js';
 import { MarkdownConversationLogger, loggedStream } from './logging.js';
 import { createInstrumentedStream } from './instrumented-stream.js';
+import { instrumentTools } from './instrumented-tools.js';
 import type { GetToolsOptions, MastraHelpers, WrapAgentOptions } from './types.js';
 
 export type { MastraHelpers, GetToolsOptions, WrapAgentOptions } from './types.js';
@@ -48,18 +49,24 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       // routine, emit, log attached. Building a new context from raw fields loses those.
       const cliTools = await commandsToMastraTools(ctx.commands, ctx.context);
 
-      if (options?.includeMcp === false) return cliTools;
-
-      const services = ctx.context.services;
-      if (!services) {
-        log?.debug('[getTools] No services on context — skipping MCP discovery');
-        return cliTools;
+      let combined: Record<string, any>;
+      if (options?.includeMcp === false) {
+        combined = cliTools;
+      } else {
+        const services = ctx.context.services;
+        if (!services) {
+          log?.debug('[getTools] No services on context — skipping MCP discovery');
+          combined = cliTools;
+        } else {
+          log?.debug('[getTools] Discovering MCP tools from services...');
+          const mcpTools = await discoverMcpTools(services, log, options?.MCPClient);
+          log?.debug(`[getTools] CLI tools: ${Object.keys(cliTools).length}, MCP tools: ${Object.keys(mcpTools).length}`);
+          combined = { ...cliTools, ...mcpTools };
+        }
       }
 
-      log?.debug('[getTools] Discovering MCP tools from services...');
-      const mcpTools = await discoverMcpTools(services, log, options?.MCPClient);
-      log?.debug(`[getTools] CLI tools: ${Object.keys(cliTools).length}, MCP tools: ${Object.keys(mcpTools).length}`);
-      return { ...cliTools, ...mcpTools };
+      // Wrap each tool's execute() with a tool.execute span + counter.
+      return instrumentTools(combined as any, ctx.observability.metrics);
     },
 
     getAgentInstructions(agentId: string): string {

@@ -6,6 +6,7 @@ import {
   BasicTracerProvider,
 } from '@opentelemetry/sdk-trace-base';
 import { createInstrumentedStream } from '../../src/integrations/mastra/instrumented-stream.js';
+import { instrumentTools } from '../../src/integrations/mastra/instrumented-tools.js';
 
 const exporter = new InMemorySpanExporter();
 const provider = new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] });
@@ -84,5 +85,30 @@ describe('createInstrumentedStream', () => {
     expect(llm!.attributes['llm.model']).toBe('anthropic/claude-sonnet-4-5');
     expect(metricsMock.llmTokens.add).toHaveBeenCalledWith(12, expect.objectContaining({ kind: 'prompt', model: 'anthropic/claude-sonnet-4-5' }));
     expect(metricsMock.llmTokens.add).toHaveBeenCalledWith(4, expect.objectContaining({ kind: 'completion', model: 'anthropic/claude-sonnet-4-5' }));
+  });
+});
+
+describe('instrumentTools', () => {
+  beforeEach(() => { exporter.reset(); });
+
+  it('wraps each tool execute with a tool.execute span + counter', async () => {
+    const metricsMock = buildMetricsMock();
+    const fakeTool = { execute: jest.fn().mockResolvedValue({ ok: true } as never) };
+    const tools = instrumentTools({ search: fakeTool } as any, metricsMock);
+
+    await tools.search.execute({ q: 'hello' });
+
+    const spans = exporter.getFinishedSpans();
+    expect(spans.some(s => s.name === 'tool.execute' && s.attributes['tool.name'] === 'search')).toBe(true);
+    expect(metricsMock.toolExecutions.add).toHaveBeenCalledWith(1, expect.objectContaining({ tool: 'search', result: 'success' }));
+  });
+
+  it('records error result when tool throws', async () => {
+    const metricsMock = buildMetricsMock();
+    const failing = { execute: jest.fn().mockRejectedValue(new Error('nope') as never) };
+    const tools = instrumentTools({ failing } as any, metricsMock);
+
+    await expect(tools.failing.execute({})).rejects.toThrow('nope');
+    expect(metricsMock.toolExecutions.add).toHaveBeenCalledWith(1, expect.objectContaining({ tool: 'failing', result: 'error' }));
   });
 });
