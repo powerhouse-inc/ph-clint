@@ -301,7 +301,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
 
   // Wire capabilities immediately so triggers can access reactor/agent
   if (routine) {
-    routine.setCapabilities({ getReactor, getAgent });
+    routine.setCapabilities({ getReactor, getAgent, metrics: observability.metrics });
   }
 
   return {
