@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from '@jest/globals';
+import { describe, it, expect, afterEach, jest } from '@jest/globals';
 import { createRoutine } from '../src/core/routine.js';
 import { defineTrigger } from '../src/core/trigger.js';
 import { defineCommand } from '../src/core/command.js';
@@ -12,6 +12,18 @@ import {
   ROUTINE_ONE_TICK_WAIT,
   ROUTINE_MULTI_TICK_WAIT,
 } from './fixtures/timing.js'; // plain JS — avoids rootDir issues
+import { createMockMetrics } from './observability/__fixtures__.js';
+import { trace } from '@opentelemetry/api';
+import {
+  InMemorySpanExporter,
+  SimpleSpanProcessor,
+  BasicTracerProvider,
+} from '@opentelemetry/sdk-trace-base';
+
+const observabilityExporter = new InMemorySpanExporter();
+trace.setGlobalTracerProvider(
+  new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(observabilityExporter)] }),
+);
 
 let routine: Routine | undefined;
 
@@ -833,6 +845,29 @@ describe('createRoutine', () => {
       expect(typeof capturedCtx.emit).toBe('function');
       expect(emittedEvents.length).toBeGreaterThan(0);
       expect(emittedEvents[0]!.data).toEqual({ hello: 'world' });
+    });
+  });
+
+  describe('observability', () => {
+    it('emits routine.iteration spans + increments routineIterations metric per iteration', async () => {
+      observabilityExporter.reset();
+      const metricsMock = createMockMetrics();
+
+      routine = makeRoutine();
+      // Wire metrics via setCapabilities — same path runtime uses in production.
+      routine.setCapabilities({ metrics: metricsMock });
+
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT));
+      await routine.stop();
+
+      const spans = observabilityExporter.getFinishedSpans().filter(s => s.name === 'routine.iteration');
+      expect(spans.length).toBeGreaterThanOrEqual(2);
+      // Each span carries an iteration index (0-based) + a duration attribute.
+      expect(spans[0]!.attributes['routine.index']).toBe(0);
+      expect(spans[0]!.attributes['routine.duration_ms']).toEqual(expect.any(Number));
+      expect(metricsMock.routineIterations.add).toHaveBeenCalled();
+      expect((metricsMock.routineIterations.add as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(2);
     });
   });
 });

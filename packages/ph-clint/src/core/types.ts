@@ -381,6 +381,8 @@ export interface Routine {
   setCapabilities<R extends DocumentRegistry = AnyRegistry>(caps: {
     getReactor?: () => Promise<ReactorContext<R> | undefined>;
     getAgent?: () => Promise<AgentProvider | undefined>;
+    /** Observability metrics — when set, each iteration increments `clint.routine.iterations`. */
+    metrics?: import('../observability/index.js').ClintMetrics;
   }): void;
 }
 
