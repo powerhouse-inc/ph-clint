@@ -17,6 +17,7 @@ import type {
   Routine,
   WorkdirStore,
 } from './types.js';
+import type { ObservabilityHandle } from '../observability/index.js';
 import type { SkillInfo } from './skills.js';
 import type {
   ReactorConfiguration,
@@ -56,6 +57,9 @@ export interface CliRuntimeDeps {
   skillIds: Set<string>;
   resolvedSkills: SkillInfo[];
   prompts?: PromptsConfig;
+
+  /** Observability handle threaded through to AgentSetupContext for span/metric wiring. */
+  observability: ObservabilityHandle;
 }
 
 /**
@@ -73,7 +77,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
   const {
     cliName, cliVersion, workdir, workspace, config, context, log,
     commandMap, reactorConfig, agentLoader, routine, proxyInstance,
-    skillIds, resolvedSkills, prompts,
+    skillIds, resolvedSkills, prompts, observability,
   } = deps;
   const enableSwitchboard = deps.enableSwitchboard ?? true;
   const enableConnect = deps.enableConnect ?? true;
@@ -111,6 +115,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       commands: [...commandMap.values()].filter(c => !skillIds.has(c.id)),
       skills: resolvedSkills,
       prompts,
+      observability,
     };
     cachedProvider = await agentLoader(agentCtx);
     return cachedProvider;

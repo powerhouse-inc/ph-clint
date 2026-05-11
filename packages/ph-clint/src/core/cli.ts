@@ -53,6 +53,7 @@ import { createLogger } from './logger.js';
 import { createProxyServer, type ProxyServerInstance } from './proxy.js';
 import { buildServiceRoutes } from './proxy-routes.js';
 import { createCliRuntime } from './runtime.js';
+import { initObservability, type ObservabilityHandle } from '../observability/index.js';
 
 /* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
 const defaultStdout = (text: string) => { process.stdout.write(text); };
@@ -850,6 +851,21 @@ export function defineCli<
    * Returns resolved workdir, config, context, and lazy agent accessor.
    */
   async function bootstrap(opts?: BootstrapOptions): Promise<BootstrapResult> {
+    const obs: ObservabilityHandle = initObservability({
+      env: process.env,
+      cliName: options.name,
+      packageVersion: options.version,
+    });
+
+    // Flush spans/metrics on shutdown so the last events make it out.
+    // Skip listener registration when nothing's active (tests, no-telemetry runs).
+    if (obs.otel || obs.sentry) {
+      const shutdownObs = () => { void obs.shutdown(); };
+      process.once('SIGTERM', shutdownObs);
+      process.once('SIGINT', shutdownObs);
+      process.once('beforeExit', shutdownObs);
+    }
+
     const stdoutFn = opts?.stdout ?? ((msg: string) => { console.log(msg); });
     const stderrFn = opts?.stderr ?? ((msg: string) => { console.error(msg); });
     const cwd = process.cwd();
@@ -909,6 +925,7 @@ export function defineCli<
       skillIds,
       resolvedSkills,
       prompts: options.prompts,
+      observability: obs,
     });
 
     context.agent = runtime.getAgent;
@@ -921,6 +938,7 @@ export function defineCli<
       get mastraAgent() {
         return runtime.getAgent().then(p => p?.mastraAgent);
       },
+      observability: obs,
     };
   }
 
@@ -948,6 +966,22 @@ export function defineCli<
    */
   async function runImpl(argv: string[], opts: ResolvedRunOptions): Promise<void> {
     const { exit, stdout, stderr, cwd, writeRaw } = opts;
+
+    // Observability — initialized once per run so spans/metrics/errors flow to
+    // the platform stack. Each init step inside is env-gated (see observability/index.ts).
+    const obs: ObservabilityHandle = initObservability({
+      env: process.env,
+      cliName: options.name,
+      packageVersion: options.version,
+    });
+    // Only register signal listeners when there's actual shutdown work to do —
+    // avoids leaking listeners across many in-process invocations under test.
+    if (obs.otel || obs.sentry) {
+      const shutdownObs = () => { void obs.shutdown(); };
+      process.once('SIGTERM', shutdownObs);
+      process.once('SIGINT', shutdownObs);
+      process.once('beforeExit', shutdownObs);
+    }
 
     // ── Extract pre-command framework flags ────────────────────────
     // Framework flags (--workdir, --config, --resume, -i) are extracted from
@@ -1082,6 +1116,7 @@ export function defineCli<
       skillIds,
       resolvedSkills,
       prompts: options.prompts,
+      observability: obs,
     });
 
     // Wire lazy accessors onto the context
