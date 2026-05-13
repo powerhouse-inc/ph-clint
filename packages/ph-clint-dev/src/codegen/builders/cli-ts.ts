@@ -14,7 +14,8 @@ function getExternalPackages(spec: ClintProjectSpec) {
 }
 
 export function buildCliTs(spec: ClintProjectSpec): string {
-  const { mastra, routine, powerhouse, observability } = spec.features;
+  const { mastra, routine, powerhouse } = spec.features;
+  const observabilityEnabled = spec.deployment.observabilityEnabled;
   const ph = powerhouse;
   const lines: string[] = [];
 
@@ -52,7 +53,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   if (mastra.enabled && mastra.common?.enableChat) {
     lines.push(`import { chatSessionWatchTrigger } from '@powerhousedao/clint-common/chat';`);
   }
-  if (observability.enabled) {
+  if (observabilityEnabled) {
     lines.push(`import { observability } from '@powerhousedao/ph-clint-observability';`);
   }
   lines.push('// @clint:end imports');
@@ -128,7 +129,7 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   lines.push('  // @clint:end proxy');
   lines.push('');
   lines.push('  // @clint:begin lifecycle');
-  if (observability.enabled) {
+  if (observabilityEnabled) {
     lines.push('  lifecycle: [observability()],');
   }
   lines.push('  // @clint:end lifecycle');

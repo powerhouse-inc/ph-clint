@@ -1,5 +1,5 @@
-import { InvalidAgentImageError } from '../../gen/features-mastra/error.js';
 import type { PhClintProjectLifecycleOperations } from 'document-models/ph-clint-project/v1';
+import { InvalidAgentImageError } from '../../gen/features-mastra/error.js';
 
 export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperations = {
   importSpecOperation(state, action) {
@@ -79,6 +79,7 @@ export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperation
 
     // Deployment fields
     state.deployment.proxyEnabled = action.input.proxyEnabled ?? false;
+    state.deployment.observabilityEnabled = action.input.observabilityEnabled ?? false;
     state.deployment.supportedResources = action.input.supportedResources ? [...action.input.supportedResources] : [];
   },
 };

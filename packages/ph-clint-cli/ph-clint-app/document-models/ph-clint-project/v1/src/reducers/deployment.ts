@@ -1,5 +1,5 @@
-import { DuplicateResourceError, ResourceNotFoundError } from '../../gen/deployment/error.js';
 import type { PhClintProjectDeploymentOperations } from 'document-models/ph-clint-project/v1';
+import { DuplicateResourceError, ResourceNotFoundError } from '../../gen/deployment/error.js';
 
 export const phClintProjectDeploymentOperations: PhClintProjectDeploymentOperations = {
   addSupportedResourceOperation(state, action) {
@@ -17,5 +17,8 @@ export const phClintProjectDeploymentOperations: PhClintProjectDeploymentOperati
   },
   setProxyEnabledOperation(state, action) {
     state.deployment.proxyEnabled = action.input.enabled;
+  },
+  setObservabilityEnabledOperation(state, action) {
+    state.deployment.observabilityEnabled = action.input.enabled;
   },
 };

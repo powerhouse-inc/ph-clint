@@ -170,7 +170,7 @@ describe('buildCliTs', () => {
     it('emits import + lifecycle: [observability()] inside markers when enabled', () => {
       const spec = clintProjectSpecSchema.parse({
         name: 'foo-cli',
-        features: { observability: { enabled: true } },
+        deployment: { observabilityEnabled: true },
       });
       const code = buildCliTs(spec);
       expect(code).toContain(`import { observability } from '@powerhousedao/ph-clint-observability';`);

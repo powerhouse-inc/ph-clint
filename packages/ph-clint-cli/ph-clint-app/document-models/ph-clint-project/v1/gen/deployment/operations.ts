@@ -1,9 +1,14 @@
+/**
+ * WARNING: DO NOT EDIT
+ * This file is auto-generated and updated by codegen
+ */
 import { type SignalDispatch } from 'document-model';
-import type { AddSupportedResourceAction, RemoveSupportedResourceAction, SetProxyEnabledAction } from './actions.js';
-import type { PhClintProjectState } from '../types.js';
+import type { PhClintProjectGlobalState } from '../types.js';
+import type { AddSupportedResourceAction, RemoveSupportedResourceAction, SetObservabilityEnabledAction, SetProxyEnabledAction } from './actions.js';
 
 export interface PhClintProjectDeploymentOperations {
-  addSupportedResourceOperation: (state: PhClintProjectState, action: AddSupportedResourceAction, dispatch?: SignalDispatch) => void;
-  removeSupportedResourceOperation: (state: PhClintProjectState, action: RemoveSupportedResourceAction, dispatch?: SignalDispatch) => void;
-  setProxyEnabledOperation: (state: PhClintProjectState, action: SetProxyEnabledAction, dispatch?: SignalDispatch) => void;
+  addSupportedResourceOperation: (state: PhClintProjectGlobalState, action: AddSupportedResourceAction, dispatch?: SignalDispatch) => void;
+  removeSupportedResourceOperation: (state: PhClintProjectGlobalState, action: RemoveSupportedResourceAction, dispatch?: SignalDispatch) => void;
+  setProxyEnabledOperation: (state: PhClintProjectGlobalState, action: SetProxyEnabledAction, dispatch?: SignalDispatch) => void;
+  setObservabilityEnabledOperation: (state: PhClintProjectGlobalState, action: SetObservabilityEnabledAction, dispatch?: SignalDispatch) => void;
 }

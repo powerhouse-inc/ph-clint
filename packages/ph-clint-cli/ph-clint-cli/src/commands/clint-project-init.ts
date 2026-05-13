@@ -104,7 +104,7 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
       }
     : { enabled: false };
 
-  const candidate = {
+  const candidate: Record<string, unknown> = {
     name,
     scope,
     description: input.description ?? '',
@@ -112,9 +112,11 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
       powerhouse: input.enablePowerhouse ? 'Connect' as const : 'Disabled' as const,
       mastra,
       routine: { enabled: routine },
-      observability: { enabled: input.enableObservability },
     },
   };
+  if (input.enableObservability) {
+    candidate.deployment = { observabilityEnabled: true };
+  }
   return clintProjectSpecSchema.parse(candidate);
 }
 

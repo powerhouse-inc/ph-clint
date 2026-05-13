@@ -1,31 +1,14 @@
-import { type SignalDispatch } from "document-model";
-import type {
-  AddExternalSkillAction,
-  RemoveExternalSkillAction,
-  SetExternalSkillNameAction,
-  SetExternalSkillGithubUrlAction,
-} from "./actions.js";
-import type { PhClintProjectState } from "../types.js";
+/**
+ * WARNING: DO NOT EDIT
+ * This file is auto-generated and updated by codegen
+ */
+import { type SignalDispatch } from 'document-model';
+import type { PhClintProjectGlobalState } from '../types.js';
+import type { AddExternalSkillAction, RemoveExternalSkillAction, SetExternalSkillGithubUrlAction, SetExternalSkillNameAction } from './actions.js';
 
 export interface PhClintProjectExternalSkillsOperations {
-  addExternalSkillOperation: (
-    state: PhClintProjectState,
-    action: AddExternalSkillAction,
-    dispatch?: SignalDispatch,
-  ) => void;
-  removeExternalSkillOperation: (
-    state: PhClintProjectState,
-    action: RemoveExternalSkillAction,
-    dispatch?: SignalDispatch,
-  ) => void;
-  setExternalSkillNameOperation: (
-    state: PhClintProjectState,
-    action: SetExternalSkillNameAction,
-    dispatch?: SignalDispatch,
-  ) => void;
-  setExternalSkillGithubUrlOperation: (
-    state: PhClintProjectState,
-    action: SetExternalSkillGithubUrlAction,
-    dispatch?: SignalDispatch,
-  ) => void;
+  addExternalSkillOperation: (state: PhClintProjectGlobalState, action: AddExternalSkillAction, dispatch?: SignalDispatch) => void;
+  removeExternalSkillOperation: (state: PhClintProjectGlobalState, action: RemoveExternalSkillAction, dispatch?: SignalDispatch) => void;
+  setExternalSkillNameOperation: (state: PhClintProjectGlobalState, action: SetExternalSkillNameAction, dispatch?: SignalDispatch) => void;
+  setExternalSkillGithubUrlOperation: (state: PhClintProjectGlobalState, action: SetExternalSkillGithubUrlAction, dispatch?: SignalDispatch) => void;
 }

@@ -106,6 +106,7 @@ export default function Editor() {
 
   // deployment dispatchers
   const setProxyEnabled = (enabled: boolean) => dispatch(actions.setProxyEnabled({ enabled }));
+  const setObservabilityEnabled = (enabled: boolean) => dispatch(actions.setObservabilityEnabled({ enabled }));
   const addSupportedResource = (resource: string) => dispatch(actions.addSupportedResource({ resource }));
   const removeSupportedResource = (resource: string) => dispatch(actions.removeSupportedResource({ resource }));
 
@@ -189,6 +190,7 @@ export default function Editor() {
             publishStaging={publishStaging}
             publishProduction={publishProduction}
             setProxyEnabled={setProxyEnabled}
+            setObservabilityEnabled={setObservabilityEnabled}
             addSupportedResource={addSupportedResource}
             removeSupportedResource={removeSupportedResource}
           />
@@ -735,6 +737,7 @@ function PublishTab(props: {
   publishStaging: () => void;
   publishProduction: () => void;
   setProxyEnabled: (enabled: boolean) => void;
+  setObservabilityEnabled: (enabled: boolean) => void;
   addSupportedResource: (resource: string) => void;
   removeSupportedResource: (resource: string) => void;
 }) {
@@ -784,7 +787,13 @@ function PublishTab(props: {
       <hr />
 
       {/* Deployment */}
-      <DeploymentSection deployment={props.deployment} setProxyEnabled={props.setProxyEnabled} addSupportedResource={props.addSupportedResource} removeSupportedResource={props.removeSupportedResource} />
+      <DeploymentSection
+        deployment={props.deployment}
+        setProxyEnabled={props.setProxyEnabled}
+        setObservabilityEnabled={props.setObservabilityEnabled}
+        addSupportedResource={props.addSupportedResource}
+        removeSupportedResource={props.removeSupportedResource}
+      />
 
       <hr />
 
@@ -807,7 +816,13 @@ function PublishTab(props: {
 
 const KNOWN_RESOURCES = ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'];
 
-function DeploymentSection(props: { deployment: PhClintDeployment; setProxyEnabled: (enabled: boolean) => void; addSupportedResource: (resource: string) => void; removeSupportedResource: (resource: string) => void }) {
+function DeploymentSection(props: {
+  deployment: PhClintDeployment;
+  setProxyEnabled: (enabled: boolean) => void;
+  setObservabilityEnabled: (enabled: boolean) => void;
+  addSupportedResource: (resource: string) => void;
+  removeSupportedResource: (resource: string) => void;
+}) {
   const [newResource, setNewResource] = useState('');
   const { deployment } = props;
   const customResources = deployment.supportedResources.filter((r) => !KNOWN_RESOURCES.includes(r));
@@ -824,8 +839,14 @@ function DeploymentSection(props: { deployment: PhClintDeployment; setProxyEnabl
     <section className="my-6">
       <h3 className="text-lg font-semibold">Deployment</h3>
 
-      <div className="my-3 rounded border border-gray-200 bg-white p-4">
+      <div className="my-3 rounded border border-gray-200 bg-white p-4 space-y-3">
         <Toggle label="Proxy" checked={deployment.proxyEnabled} hint="Run a reverse proxy that exposes all service endpoints through a single port" onChange={props.setProxyEnabled} />
+        <Toggle
+          label="Observability"
+          checked={deployment.observabilityEnabled}
+          hint="Wire @powerhousedao/ph-clint-observability into the generated CLI. End-user opts in at runtime; env vars: {CLINAME}_SENTRY_DSN, {CLINAME}_OTEL_EXPORTER_OTLP_ENDPOINT."
+          onChange={props.setObservabilityEnabled}
+        />
       </div>
 
       <div className="my-3 rounded border border-gray-200 bg-white p-4">

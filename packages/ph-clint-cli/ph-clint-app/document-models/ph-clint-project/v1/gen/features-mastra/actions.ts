@@ -1,20 +1,24 @@
+/**
+ * WARNING: DO NOT EDIT
+ * This file is auto-generated and updated by codegen
+ */
 import type { Action } from 'document-model';
 import type {
-  EnableMastraInput,
-  DisableMastraInput,
-  SetAgentIdInput,
-  SetAgentNameInput,
   AddModelInput,
-  RemoveModelInput,
-  SetDefaultModelInput,
   AddProfileInput,
-  UpdateProfileInput,
+  ClearAgentImageInput,
+  DisableMastraInput,
+  EnableMastraInput,
+  RemoveModelInput,
   RemoveProfileInput,
   ReorderProfilesInput,
   SetAgentDescriptionInput,
+  SetAgentIdInput,
   SetAgentImageInput,
-  ClearAgentImageInput,
+  SetAgentNameInput,
+  SetDefaultModelInput,
   SetEnableChatInput,
+  UpdateProfileInput,
 } from '../types.js';
 
 export type EnableMastraAction = Action & {

@@ -111,6 +111,7 @@ type PublishRecord {
 
 type PhClintDeployment {
   proxyEnabled: Boolean!
+  observabilityEnabled: Boolean!
   supportedResources: [String!]!
 }
 
@@ -309,6 +310,7 @@ input ImportSpecInput {
   agentImage: String
   enableChat: Boolean
   proxyEnabled: Boolean
+  observabilityEnabled: Boolean
   supportedResources: [String!]
 }
 
@@ -347,5 +349,9 @@ input RemoveSupportedResourceInput {
 }
 
 input SetProxyEnabledInput {
+  enabled: Boolean!
+}
+
+input SetObservabilityEnabledInput {
   enabled: Boolean!
 }

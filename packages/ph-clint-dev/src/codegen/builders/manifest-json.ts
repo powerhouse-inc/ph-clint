@@ -49,7 +49,8 @@ function cliEnvPrefix(specName: string): string {
 }
 
 export function buildManifestJson(spec: ClintProjectSpec): string {
-  const { mastra, powerhouse, observability } = spec.features;
+  const { mastra, powerhouse } = spec.features;
+  const observabilityEnabled = spec.deployment.observabilityEnabled;
 
   const agent: ManifestAgent | false = mastra.enabled
     ? {
@@ -68,7 +69,7 @@ export function buildManifestJson(spec: ClintProjectSpec): string {
       }
     : false;
 
-  const obs: ManifestObservability | false = observability.enabled
+  const obs: ManifestObservability | false = observabilityEnabled
     ? {
         enabled: true,
         package: '@powerhousedao/ph-clint-observability',

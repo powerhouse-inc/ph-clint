@@ -1,27 +1,28 @@
 {
-    "name": "ph-clint-app",
-    "description": "",
-    "category": "",
-    "publisher": {
-        "name": "",
-        "url": ""
-    },
-    "documentModels": [
-        {
-            "id": "powerhouse/ph-clint-project",
-            "name": "PhClintProject"
-        }
-    ],
-    "editors": [
-        {
-            "id": "ph-clint-project-editor",
-            "name": "PhClintProjectEditor",
-            "documentTypes": [
-                "powerhouse/ph-clint-project"
-            ]
-        }
-    ],
-    "apps": [],
-    "subgraphs": [],
-    "importScripts": []
+	"name": "ph-clint-app",
+	"description": "",
+	"category": "",
+	"publisher": {
+		"name": "",
+		"url": ""
+	},
+	"documentModels": [
+		{
+			"id": "powerhouse/ph-clint-project",
+			"name": "PhClintProject"
+		}
+	],
+	"apps": [],
+	"editors": [
+		{
+			"id": "ph-clint-project-editor",
+			"name": "PhClintProjectEditor",
+			"documentTypes": [
+				"powerhouse/ph-clint-project"
+			]
+		}
+	],
+	"processors": [],
+	"subgraphs": [],
+	"config": []
 }

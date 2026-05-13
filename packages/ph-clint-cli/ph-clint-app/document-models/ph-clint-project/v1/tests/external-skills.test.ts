@@ -1,5 +1,5 @@
-import { generateMock } from "document-model";
-import { describe, expect, it } from "vitest";
+import { generateMock } from 'document-model';
+import { describe, expect, it } from 'vitest';
 import {
   reducer,
   utils,
@@ -12,10 +12,10 @@ import {
   RemoveExternalSkillInputSchema,
   SetExternalSkillNameInputSchema,
   SetExternalSkillGithubUrlInputSchema,
-} from "document-models/ph-clint-project/v1";
+} from 'document-models/ph-clint-project/v1';
 
-describe("ExternalSkillsOperations", () => {
-  it("should handle addExternalSkill operation", () => {
+describe('ExternalSkillsOperations', () => {
+  it('should handle addExternalSkill operation', () => {
     const document = utils.createDocument();
     const input = generateMock(AddExternalSkillInputSchema());
 
@@ -23,16 +23,12 @@ describe("ExternalSkillsOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_EXTERNAL_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_EXTERNAL_SKILL');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle removeExternalSkill operation", () => {
+  it('should handle removeExternalSkill operation', () => {
     const document = utils.createDocument();
     const input = generateMock(RemoveExternalSkillInputSchema());
 
@@ -40,16 +36,12 @@ describe("ExternalSkillsOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_EXTERNAL_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('REMOVE_EXTERNAL_SKILL');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setExternalSkillName operation", () => {
+  it('should handle setExternalSkillName operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetExternalSkillNameInputSchema());
 
@@ -57,16 +49,12 @@ describe("ExternalSkillsOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_EXTERNAL_SKILL_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_EXTERNAL_SKILL_NAME');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setExternalSkillGithubUrl operation", () => {
+  it('should handle setExternalSkillGithubUrl operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetExternalSkillGithubUrlInputSchema());
 
@@ -74,12 +62,8 @@ describe("ExternalSkillsOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_EXTERNAL_SKILL_GITHUB_URL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_EXTERNAL_SKILL_GITHUB_URL');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });

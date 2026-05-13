@@ -1,1 +1,1 @@
-export { PhClintProjectEditor } from "./ph-clint-project-editor/module.js";
+export { PhClintProjectEditor } from './ph-clint-project-editor/module.js';

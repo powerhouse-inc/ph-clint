@@ -191,7 +191,7 @@ describe('buildCliPackageJson', () => {
     it('adds observability dep and telemetry:dev script when enabled', () => {
       const spec = clintProjectSpecSchema.parse({
         name: 'foo-cli',
-        features: { observability: { enabled: true } },
+        deployment: { observabilityEnabled: true },
       });
       const pkg = parseBuilt(spec);
       const deps = pkg.dependencies as Record<string, string>;

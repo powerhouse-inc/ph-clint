@@ -55,7 +55,8 @@ function getPowerhouseVersion(): string {
 
 export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext): string {
   const PH_CLINT_VERSION = phClintRange(ctx.toolVersion);
-  const { mastra, powerhouse, observability } = spec.features;
+  const { mastra, powerhouse } = spec.features;
+  const observabilityEnabled = spec.deployment.observabilityEnabled;
   const pkgName = getPackageName(spec);
   const bin = getBinName(spec);
 
@@ -69,7 +70,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     dependencies['@mastra/mcp'] = '^1.4.1';
     dependencies['@mastra/memory'] = '^1.13.1';
   }
-  if (observability.enabled) {
+  if (observabilityEnabled) {
     dependencies['@powerhousedao/ph-clint-observability'] = PH_CLINT_VERSION;
   }
   if (phAtLeast(powerhouse, 'Reactor')) {

@@ -1,7 +1,9 @@
 /**
+ * WARNING: DO NOT EDIT
+ * This file is auto-generated and updated by codegen
  * Factory methods for creating PhClintProjectDocument instances
  */
-import type { PHAuthState, PHDocumentState, PHBaseState } from 'document-model';
+import type { PHAuthState, PHBaseState, PHDocumentState } from 'document-model';
 import { createBaseState, defaultBaseState } from 'document-model';
 import type { PhClintProjectDocument, PhClintProjectGlobalState, PhClintProjectLocalState, PhClintProjectPHState } from './types.js';
 import { utils } from './utils.js';
@@ -31,6 +33,7 @@ export function defaultGlobalState(): PhClintProjectGlobalState {
     publishHistory: [],
     deployment: {
       proxyEnabled: false,
+      observabilityEnabled: false,
       supportedResources: ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'],
     },
   };
@@ -52,7 +55,7 @@ export function createGlobalState(state?: Partial<PhClintProjectGlobalState>): P
   return {
     ...defaultGlobalState(),
     ...(state || {}),
-  } as PhClintProjectGlobalState;
+  };
 }
 
 export function createLocalState(state?: Partial<PhClintProjectLocalState>): PhClintProjectLocalState {

@@ -71,10 +71,6 @@ const routineFeatureSchema = z.object({
   enabled: z.boolean().default(false),
 });
 
-const observabilityFeatureSchema = z.object({
-  enabled: z.boolean().default(false),
-});
-
 const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
   enabled: false,
   agentId: null,
@@ -86,7 +82,6 @@ const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
   common: { enableChat: false },
 };
 const DEFAULT_ROUTINE = { enabled: false } as const;
-const DEFAULT_OBSERVABILITY = { enabled: false } as const;
 
 export const powerhousePackageSchema = z.object({
   id: z.string(),
@@ -120,13 +115,11 @@ export const clintProjectSpecSchema = z.object({
       powerhouse: powerhouseLevelSchema,
       mastra: mastraFeatureSchema.default(DEFAULT_MASTRA),
       routine: routineFeatureSchema.default(DEFAULT_ROUTINE),
-      observability: observabilityFeatureSchema.default(DEFAULT_OBSERVABILITY),
     })
     .default({
       powerhouse: 'Disabled' as const,
       mastra: DEFAULT_MASTRA,
       routine: DEFAULT_ROUTINE,
-      observability: DEFAULT_OBSERVABILITY,
     }),
   /**
    * Reactor packages and their document types. Each entry groups a package
@@ -143,8 +136,9 @@ export const clintProjectSpecSchema = z.object({
   externalSkills: z.array(externalSkillSchema).default([]),
   deployment: z.object({
     proxyEnabled: z.boolean().default(false),
+    observabilityEnabled: z.boolean().default(false),
     supportedResources: z.array(z.string()).default([]),
-  }).default({ proxyEnabled: false, supportedResources: [] }),
+  }).default({ proxyEnabled: false, observabilityEnabled: false, supportedResources: [] }),
   /** ID of the source specification document (if backed by a Powerhouse document). */
   documentId: z.string().optional(),
   /** Document type of the source specification document. */

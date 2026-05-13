@@ -118,7 +118,7 @@ describe('buildManifestJson', () => {
     it('populates observability block with package and derived env vars when enabled', () => {
       const m = parseManifest({
         name: 'foo-cli',
-        features: { observability: { enabled: true } },
+        deployment: { observabilityEnabled: true },
       });
       expect(m.features.observability).toEqual({
         enabled: true,
@@ -133,7 +133,7 @@ describe('buildManifestJson', () => {
     it('handles multi-segment names in env var derivation', () => {
       const m = parseManifest({
         name: 'multi-word-cli',
-        features: { observability: { enabled: true } },
+        deployment: { observabilityEnabled: true },
       });
       expect(m.features.observability.envVars.sentryDsn).toBe('MULTI_WORD_CLI_SENTRY_DSN');
       expect(m.features.observability.envVars.otelExporterOtlpEndpoint).toBe('MULTI_WORD_CLI_OTEL_EXPORTER_OTLP_ENDPOINT');

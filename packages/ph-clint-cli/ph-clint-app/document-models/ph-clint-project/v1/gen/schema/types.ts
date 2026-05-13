@@ -154,6 +154,7 @@ export type ImportSpecInput = {
   mastraEnabled: Scalars['Boolean']['input'];
   models?: InputMaybe<Array<ImportModelInput>>;
   name: Scalars['String']['input'];
+  observabilityEnabled?: InputMaybe<Scalars['Boolean']['input']>;
   packages: Array<ImportPackageInput>;
   powerhouse: PowerhouseLevel;
   profiles?: InputMaybe<Array<ImportProfileInput>>;
@@ -176,6 +177,7 @@ export type PhClintAgentProfile = {
 };
 
 export type PhClintDeployment = {
+  observabilityEnabled: Scalars['Boolean']['output'];
   proxyEnabled: Scalars['Boolean']['output'];
   supportedResources: Array<Scalars['String']['output']>;
 };
@@ -320,6 +322,10 @@ export type SetExternalSkillGithubUrlInput = {
 export type SetExternalSkillNameInput = {
   id: Scalars['OID']['input'];
   name: Scalars['String']['input'];
+};
+
+export type SetObservabilityEnabledInput = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type SetPackageIdentifierInput = {

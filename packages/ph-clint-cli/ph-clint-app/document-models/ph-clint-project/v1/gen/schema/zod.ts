@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as z from 'zod';
 import type {
   AddExternalSkillInput,
@@ -51,6 +52,7 @@ import type {
   SetEnableChatInput,
   SetExternalSkillGithubUrlInput,
   SetExternalSkillNameInput,
+  SetObservabilityEnabledInput,
   SetPackageIdentifierInput,
   SetPackageVersionInput,
   SetPowerhouseLevelInput,
@@ -210,6 +212,7 @@ export function ImportSpecInputSchema(): z.ZodObject<Properties<ImportSpecInput>
     mastraEnabled: z.boolean(),
     models: z.array(z.lazy(() => ImportModelInputSchema())).nullish(),
     name: z.string(),
+    observabilityEnabled: z.boolean().nullish(),
     packages: z.array(z.lazy(() => ImportPackageInputSchema())),
     powerhouse: PowerhouseLevelSchema,
     profiles: z.array(z.lazy(() => ImportProfileInputSchema())).nullish(),
@@ -241,6 +244,7 @@ export function PhClintAgentProfileSchema(): z.ZodObject<Properties<PhClintAgent
 export function PhClintDeploymentSchema(): z.ZodObject<Properties<PhClintDeployment>> {
   return z.object({
     __typename: z.literal('PhClintDeployment').optional(),
+    observabilityEnabled: z.boolean(),
     proxyEnabled: z.boolean(),
     supportedResources: z.array(z.string()),
   });
@@ -438,6 +442,12 @@ export function SetExternalSkillNameInputSchema(): z.ZodObject<Properties<SetExt
   return z.object({
     id: z.string(),
     name: z.string(),
+  });
+}
+
+export function SetObservabilityEnabledInputSchema(): z.ZodObject<Properties<SetObservabilityEnabledInput>> {
+  return z.object({
+    enabled: z.boolean(),
   });
 }
 

@@ -123,6 +123,7 @@ export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
     agentImage: spec.features.mastra.agentImage ?? null,
     enableChat: spec.features.mastra.common.enableChat,
     proxyEnabled: spec.deployment.proxyEnabled,
+    observabilityEnabled: spec.deployment.observabilityEnabled,
     supportedResources: spec.deployment.supportedResources,
   };
 }

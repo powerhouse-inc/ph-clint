@@ -1,59 +1,60 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type { Reducer, StateReducer } from 'document-model';
-import { isDocumentAction, createReducer } from 'document-model';
+import { createReducer, isDocumentAction } from 'document-model';
 import type { PhClintProjectPHState } from 'document-models/ph-clint-project/v1';
 
-import { phClintProjectIdentityOperations } from '../src/reducers/identity.js';
-import { phClintProjectFeaturesPowerhouseOperations } from '../src/reducers/features-powerhouse.js';
-import { phClintProjectFeaturesMastraOperations } from '../src/reducers/features-mastra.js';
-import { phClintProjectFeaturesRoutineOperations } from '../src/reducers/features-routine.js';
-import { phClintProjectPowerhousePackagesOperations } from '../src/reducers/powerhouse-packages.js';
-import { phClintProjectExternalSkillsOperations } from '../src/reducers/external-skills.js';
-import { phClintProjectPublishingOperations } from '../src/reducers/publishing.js';
-import { phClintProjectLifecycleOperations } from '../src/reducers/lifecycle.js';
 import { phClintProjectDeploymentOperations } from '../src/reducers/deployment.js';
+import { phClintProjectExternalSkillsOperations } from '../src/reducers/external-skills.js';
+import { phClintProjectFeaturesMastraOperations } from '../src/reducers/features-mastra.js';
+import { phClintProjectFeaturesPowerhouseOperations } from '../src/reducers/features-powerhouse.js';
+import { phClintProjectFeaturesRoutineOperations } from '../src/reducers/features-routine.js';
+import { phClintProjectIdentityOperations } from '../src/reducers/identity.js';
+import { phClintProjectLifecycleOperations } from '../src/reducers/lifecycle.js';
+import { phClintProjectPowerhousePackagesOperations } from '../src/reducers/powerhouse-packages.js';
+import { phClintProjectPublishingOperations } from '../src/reducers/publishing.js';
 
 import {
-  SetDescriptionInputSchema,
-  SetVersionInputSchema,
-  SetPackageIdentifierInputSchema,
-  SetPowerhouseLevelInputSchema,
-  EnableMastraInputSchema,
-  DisableMastraInputSchema,
-  SetAgentIdInputSchema,
-  SetAgentNameInputSchema,
+  AddExternalSkillInputSchema,
   AddModelInputSchema,
-  RemoveModelInputSchema,
-  SetDefaultModelInputSchema,
+  AddPackageDocumentTypeInputSchema,
+  AddPowerhousePackageInputSchema,
   AddProfileInputSchema,
-  UpdateProfileInputSchema,
+  AddSupportedResourceInputSchema,
+  BumpVersionInputSchema,
+  ClearAgentImageInputSchema,
+  DisableMastraInputSchema,
+  DisableRoutineInputSchema,
+  EnableMastraInputSchema,
+  EnableRoutineInputSchema,
+  ImportSpecInputSchema,
+  PublishDevInputSchema,
+  PublishProductionInputSchema,
+  PublishStagingInputSchema,
+  RemoveExternalSkillInputSchema,
+  RemoveModelInputSchema,
+  RemovePackageDocumentTypeInputSchema,
+  RemovePowerhousePackageInputSchema,
   RemoveProfileInputSchema,
+  RemoveSupportedResourceInputSchema,
   ReorderProfilesInputSchema,
   SetAgentDescriptionInputSchema,
+  SetAgentIdInputSchema,
   SetAgentImageInputSchema,
-  ClearAgentImageInputSchema,
+  SetAgentNameInputSchema,
+  SetDefaultModelInputSchema,
+  SetDescriptionInputSchema,
   SetEnableChatInputSchema,
-  EnableRoutineInputSchema,
-  DisableRoutineInputSchema,
-  AddPowerhousePackageInputSchema,
-  RemovePowerhousePackageInputSchema,
-  AddPackageDocumentTypeInputSchema,
-  RemovePackageDocumentTypeInputSchema,
-  SetPackageVersionInputSchema,
-  AddExternalSkillInputSchema,
-  RemoveExternalSkillInputSchema,
-  SetExternalSkillNameInputSchema,
   SetExternalSkillGithubUrlInputSchema,
-  BumpVersionInputSchema,
-  PublishDevInputSchema,
-  PublishStagingInputSchema,
-  PublishProductionInputSchema,
-  SetPublishStatusInputSchema,
-  ImportSpecInputSchema,
-  AddSupportedResourceInputSchema,
-  RemoveSupportedResourceInputSchema,
+  SetExternalSkillNameInputSchema,
+  SetObservabilityEnabledInputSchema,
+  SetPackageIdentifierInputSchema,
+  SetPackageVersionInputSchema,
+  SetPowerhouseLevelInputSchema,
   SetProxyEnabledInputSchema,
+  SetPublishStatusInputSchema,
+  SetVersionInputSchema,
+  UpdateProfileInputSchema,
 } from './schema/zod.js';
 
 const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispatch) => {
@@ -369,6 +370,14 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (state, action, dispat
       SetProxyEnabledInputSchema().parse(action.input);
 
       phClintProjectDeploymentOperations.setProxyEnabledOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_OBSERVABILITY_ENABLED': {
+      SetObservabilityEnabledInputSchema().parse(action.input);
+
+      phClintProjectDeploymentOperations.setObservabilityEnabledOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
