@@ -1,0 +1,54 @@
+{
+  "name": "@powerhousedao/ph-clint-observability",
+  "version": "0.1.0-dev.69",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "ph-telemetry-dev": "./dist/dev-server.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test:types": "tsc --noEmit",
+    "test": "pnpm test:types && NODE_OPTIONS='--experimental-vm-modules' jest --coverage --maxWorkers=4"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.205.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.205.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-metrics": "^2.0.1",
+    "@opentelemetry/sdk-node": "^0.205.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/semantic-conventions": "^1.36.0",
+    "@sentry/node": "^8.50.0",
+    "@sentry/opentelemetry": "^8.50.0",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@powerhousedao/ph-clint": "workspace:*"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.3.0",
+    "@types/node": "^25.5.2",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
+    "typescript": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

@@ -7,6 +7,7 @@ export default {
       packages: [
         { path: 'ph-clint', category: 'lib' },
         { path: 'ph-clint-dev', category: 'lib' },
+        { path: 'ph-clint-observability', category: 'lib' },
         { path: 'ph-clint-cli/ph-clint-app', category: 'app' },
         { path: 'ph-clint-cli/ph-clint-cli', category: 'cli' },
         { path: 'clint-common', category: 'app' },

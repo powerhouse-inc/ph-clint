@@ -1,6 +1,7 @@
 packages:
   - 'ph-clint'
   - 'ph-clint-dev'
+  - 'ph-clint-observability'
   - 'ph-clint-cli/ph-clint-app'
   - 'ph-clint-cli/ph-clint-cli'
   - 'clint-common'

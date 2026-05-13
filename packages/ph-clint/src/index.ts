@@ -140,4 +140,12 @@ export type {
   PhClintEvents,
   EmitFn,
   OnFn,
+  LifecycleHook,
+  LifecycleHandle,
+  LifecycleInitContext,
+  BootTimings,
+  WrapRegistry,
 } from './core/types.js';
+export { IDENTITY_WRAPS, composeWraps } from './core/wraps.js';
+export { initLifecycle } from './core/lifecycle.js';
+export type { LifecycleResult } from './core/lifecycle.js';
