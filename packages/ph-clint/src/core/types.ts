@@ -188,6 +188,17 @@ export interface Command<
   inputSchema: TInput;
   outputSchema?: z.ZodType<TOutput>;
   prompt?: PromptConfig;
+  /**
+   * Field keys from `inputSchema` to be parsed as positional arguments, in order.
+   * Positional fields are NOT registered as `--flag` options. A required positional
+   * field may not follow an optional one.
+   *
+   * Example:
+   *   inputSchema: z.object({ title: z.string(), priority: z.number().default(1) }),
+   *   positional: ['title', 'priority'],
+   *   // usage: cli add "Buy milk" 2
+   */
+  positional?: readonly string[];
   execute: (input: z.output<TInput>, context: CommandContext<TConfig, R>) => Promise<TOutput>;
 }
 

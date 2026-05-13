@@ -85,13 +85,22 @@ function getFieldsToPrompt(
 }
 
 /**
- * Extract which flag keys the user explicitly provided from raw argv tokens.
+ * Extract which keys the user explicitly provided from raw argv tokens.
+ * Counts both --flag tokens and leading positional tokens (mapped to
+ * positional field keys in declared order).
  */
-function getExplicitKeys(argv: string[]): Set<string> {
+function getExplicitKeys(argv: string[], positional?: readonly string[]): Set<string> {
   const keys = new Set<string>();
+  const positionalKeys = positional ?? [];
+  let positionalIdx = 0;
+  let sawFlag = false;
   for (const arg of argv) {
     if (arg.startsWith('--')) {
+      sawFlag = true;
       keys.add(arg.slice(2));
+    } else if (!sawFlag && positionalIdx < positionalKeys.length) {
+      keys.add(positionalKeys[positionalIdx]!);
+      positionalIdx++;
     }
   }
   return keys;
@@ -248,7 +257,8 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
       const { commandId, collectedArgs } = state;
       prompting = null;
       try {
-        const args = cli.parseArgs(commandId, argsToArgv(collectedArgs));
+        const cmd = cli.getCommand(commandId);
+        const args = cli.parseArgs(commandId, argsToArgv(collectedArgs, cmd?.positional));
         return await executeCommandWithCapture(commandId, args);
       } catch (err: unknown) {
         const msg = formatZodError(err, commandId);
@@ -264,10 +274,23 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
 
   /**
    * Convert a collected args map back to argv-style tokens for parseArgs.
+   * Positional fields are emitted first, in declared order, then flags.
    */
-  function argsToArgv(args: Record<string, unknown>): string[] {
+  function argsToArgv(
+    args: Record<string, unknown>,
+    positional?: readonly string[],
+  ): string[] {
     const argv: string[] = [];
+    const positionalKeys = positional ?? [];
+    const positionalSet = new Set(positionalKeys);
+
+    for (const key of positionalKeys) {
+      const value = args[key];
+      if (value === undefined || value === null || value === '') break;
+      argv.push(String(value));
+    }
     for (const [key, value] of Object.entries(args)) {
+      if (positionalSet.has(key)) continue;
       if (typeof value === 'boolean') {
         if (value) argv.push(`--${key}`);
       } else if (value !== undefined && value !== null && value !== '') {
@@ -341,7 +364,8 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
           return { text: '', type: 'panel', panelId: `services:${serviceId}` };
         }
 
-        const explicitKeys = getExplicitKeys(parsed.args!);
+        const cmdForKeys = cli.getCommand(parsed.commandId!);
+        const explicitKeys = getExplicitKeys(parsed.args!, cmdForKeys?.positional);
 
         try {
           // Parse provided args first
@@ -368,7 +392,7 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
           // If the error is about a missing required field and the command has prompt config,
           // enter prompting mode with what we have
           const cmd = cli.getCommand(parsed.commandId!);
-          if (cmd?.prompt && msg.includes('Missing required option')) {
+          if (cmd?.prompt && (msg.includes('Missing required option') || msg.includes('Missing required argument'))) {
             const partialArgs = parseArgsPartial(parsed.args!, cmd);
             const fieldsToPrompt = getFieldsToPrompt(parsed.commandId!, explicitKeys, cli);
 
@@ -395,11 +419,19 @@ export function createReplSession(opts: ReplSessionOptions): ReplSession {
   function parseArgsPartial(argv: string[], cmd: ReturnType<typeof cli.getCommand>): Record<string, unknown> {
     if (!cmd) return {};
     const fields = getSchemaFields(cmd.inputSchema);
+    const positionalKeys = cmd.positional ?? [];
     const result: Record<string, unknown> = {};
+    let positionalIdx = 0;
 
     for (let i = 0; i < argv.length; i++) {
       const arg = argv[i]!;
-      if (!arg.startsWith('--')) continue;
+      if (!arg.startsWith('--')) {
+        if (positionalIdx < positionalKeys.length) {
+          result[positionalKeys[positionalIdx]!] = arg;
+          positionalIdx++;
+        }
+        continue;
+      }
 
       const flagName = arg.slice(2);
       const field = fields.find((f) => f.key === flagName);
