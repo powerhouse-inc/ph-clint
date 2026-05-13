@@ -177,4 +177,28 @@ describe('buildCliPackageJson', () => {
     const deps = pkg.dependencies as Record<string, string>;
     expect(deps['@powerhousedao/ph-clint']).toBe('0.2.0-dev.5');
   });
+
+  describe('observability', () => {
+    it('no observability dep or telemetry:dev script when disabled', () => {
+      const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
+      const pkg = parseBuilt(spec);
+      const deps = pkg.dependencies as Record<string, string>;
+      const scripts = pkg.scripts as Record<string, string>;
+      expect(deps['@powerhousedao/ph-clint-observability']).toBeUndefined();
+      expect(scripts['telemetry:dev']).toBeUndefined();
+    });
+
+    it('adds observability dep and telemetry:dev script when enabled', () => {
+      const spec = clintProjectSpecSchema.parse({
+        name: 'foo-cli',
+        features: { observability: { enabled: true } },
+      });
+      const pkg = parseBuilt(spec);
+      const deps = pkg.dependencies as Record<string, string>;
+      const scripts = pkg.scripts as Record<string, string>;
+      // Same dep range as ph-clint — lockstep
+      expect(deps['@powerhousedao/ph-clint-observability']).toBe(deps['@powerhousedao/ph-clint']);
+      expect(scripts['telemetry:dev']).toBe('ph-telemetry-dev --cli-name=foo-cli');
+    });
+  });
 });

@@ -71,6 +71,10 @@ const routineFeatureSchema = z.object({
   enabled: z.boolean().default(false),
 });
 
+const observabilityFeatureSchema = z.object({
+  enabled: z.boolean().default(false),
+});
+
 const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
   enabled: false,
   agentId: null,
@@ -82,6 +86,7 @@ const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
   common: { enableChat: false },
 };
 const DEFAULT_ROUTINE = { enabled: false } as const;
+const DEFAULT_OBSERVABILITY = { enabled: false } as const;
 
 export const powerhousePackageSchema = z.object({
   id: z.string(),
@@ -115,11 +120,13 @@ export const clintProjectSpecSchema = z.object({
       powerhouse: powerhouseLevelSchema,
       mastra: mastraFeatureSchema.default(DEFAULT_MASTRA),
       routine: routineFeatureSchema.default(DEFAULT_ROUTINE),
+      observability: observabilityFeatureSchema.default(DEFAULT_OBSERVABILITY),
     })
     .default({
       powerhouse: 'Disabled' as const,
       mastra: DEFAULT_MASTRA,
       routine: DEFAULT_ROUTINE,
+      observability: DEFAULT_OBSERVABILITY,
     }),
   /**
    * Reactor packages and their document types. Each entry groups a package

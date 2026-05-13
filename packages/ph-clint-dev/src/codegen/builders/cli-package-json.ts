@@ -55,7 +55,7 @@ function getPowerhouseVersion(): string {
 
 export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext): string {
   const PH_CLINT_VERSION = phClintRange(ctx.toolVersion);
-  const { mastra, powerhouse } = spec.features;
+  const { mastra, powerhouse, observability } = spec.features;
   const pkgName = getPackageName(spec);
   const bin = getBinName(spec);
 
@@ -68,6 +68,9 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     dependencies['@mastra/libsql'] = '^1.7.4';
     dependencies['@mastra/mcp'] = '^1.4.1';
     dependencies['@mastra/memory'] = '^1.13.1';
+  }
+  if (observability.enabled) {
+    dependencies['@powerhousedao/ph-clint-observability'] = PH_CLINT_VERSION;
   }
   if (phAtLeast(powerhouse, 'Reactor')) {
     const appPkg = getAppPackageName(spec);
@@ -100,6 +103,9 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     scripts['mastra:dev'] = 'mastra dev';
     scripts['mastra:build'] = 'mastra build';
     scripts['mastra:start'] = 'mastra start';
+  }
+  if (observability.enabled) {
+    scripts['telemetry:dev'] = `ph-telemetry-dev --cli-name=${spec.name}`;
   }
   // Single-layout: publish scripts live in the CLI package.json (which IS the
   // root). Split-layout gets these from root-package-json.ts instead.

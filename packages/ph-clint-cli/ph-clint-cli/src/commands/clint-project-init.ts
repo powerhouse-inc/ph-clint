@@ -46,6 +46,13 @@ const inputSchema = z.object({
     .boolean()
     .default(false)
     .describe('Enable the tick-based routine loop'),
+  enableObservability: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Wire @powerhousedao/ph-clint-observability into the generated CLI. ' +
+      'The generated CLI will ask its end-user for telemetry consent on first run.',
+    ),
   force: z
     .boolean()
     .default(false)
@@ -105,6 +112,7 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
       powerhouse: input.enablePowerhouse ? 'Connect' as const : 'Disabled' as const,
       mastra,
       routine: { enabled: routine },
+      observability: { enabled: input.enableObservability },
     },
   };
   return clintProjectSpecSchema.parse(candidate);

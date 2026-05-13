@@ -22,19 +22,34 @@ interface ManifestPowerhouse {
   package: string;
 }
 
+interface ManifestObservability {
+  enabled: true;
+  package: string;
+  envVars: {
+    sentryDsn: string;
+    otelExporterOtlpEndpoint: string;
+  };
+}
+
 interface Manifest {
   type: 'clint-project';
   features: {
     agent: ManifestAgent | false;
     powerhouse: ManifestPowerhouse | false;
+    observability: ManifestObservability | false;
   };
   serviceCommand: string;
   proxyEnabled: boolean;
   supportedResources: string[];
 }
 
+/** Convert a kebab-case spec.name like 'foo-bar-cli' into an env-var prefix 'FOO_BAR_CLI'. */
+function cliEnvPrefix(specName: string): string {
+  return specName.toUpperCase().replace(/-/g, '_');
+}
+
 export function buildManifestJson(spec: ClintProjectSpec): string {
-  const { mastra, powerhouse } = spec.features;
+  const { mastra, powerhouse, observability } = spec.features;
 
   const agent: ManifestAgent | false = mastra.enabled
     ? {
@@ -53,9 +68,20 @@ export function buildManifestJson(spec: ClintProjectSpec): string {
       }
     : false;
 
+  const obs: ManifestObservability | false = observability.enabled
+    ? {
+        enabled: true,
+        package: '@powerhousedao/ph-clint-observability',
+        envVars: {
+          sentryDsn: `${cliEnvPrefix(spec.name)}_SENTRY_DSN`,
+          otelExporterOtlpEndpoint: `${cliEnvPrefix(spec.name)}_OTEL_EXPORTER_OTLP_ENDPOINT`,
+        },
+      }
+    : false;
+
   const manifest: Manifest = {
     type: 'clint-project',
-    features: { agent, powerhouse: ph },
+    features: { agent, powerhouse: ph, observability: obs },
     serviceCommand: getBinName(spec),
     proxyEnabled: spec.deployment.proxyEnabled,
     supportedResources: spec.deployment.supportedResources,

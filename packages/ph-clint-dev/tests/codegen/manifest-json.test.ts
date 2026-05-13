@@ -108,4 +108,35 @@ describe('buildManifestJson', () => {
     expect(output.endsWith('\n')).toBe(true);
     expect(() => JSON.parse(output)).not.toThrow();
   });
+
+  describe('observability', () => {
+    it('sets features.observability to false when disabled (default)', () => {
+      const m = parseManifest({ name: 'foo-cli' });
+      expect(m.features.observability).toBe(false);
+    });
+
+    it('populates observability block with package and derived env vars when enabled', () => {
+      const m = parseManifest({
+        name: 'foo-cli',
+        features: { observability: { enabled: true } },
+      });
+      expect(m.features.observability).toEqual({
+        enabled: true,
+        package: '@powerhousedao/ph-clint-observability',
+        envVars: {
+          sentryDsn: 'FOO_CLI_SENTRY_DSN',
+          otelExporterOtlpEndpoint: 'FOO_CLI_OTEL_EXPORTER_OTLP_ENDPOINT',
+        },
+      });
+    });
+
+    it('handles multi-segment names in env var derivation', () => {
+      const m = parseManifest({
+        name: 'multi-word-cli',
+        features: { observability: { enabled: true } },
+      });
+      expect(m.features.observability.envVars.sentryDsn).toBe('MULTI_WORD_CLI_SENTRY_DSN');
+      expect(m.features.observability.envVars.otelExporterOtlpEndpoint).toBe('MULTI_WORD_CLI_OTEL_EXPORTER_OTLP_ENDPOINT');
+    });
+  });
 });

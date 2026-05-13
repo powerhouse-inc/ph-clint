@@ -155,4 +155,31 @@ describe('buildCliTs', () => {
     expect(code).not.toContain('chatSessionWatchTrigger');
     expect(code).toContain('triggers: []');
   });
+
+  describe('observability', () => {
+    it('does not emit observability import or lifecycle line when disabled', () => {
+      const spec = clintProjectSpecSchema.parse({ name: 'foo-cli' });
+      const code = buildCliTs(spec);
+      expect(code).not.toContain('@powerhousedao/ph-clint-observability');
+      expect(code).not.toContain('observability()');
+      // Empty marker region is still emitted as a placeholder so regen can fill it.
+      expect(code).toContain('// @clint:begin lifecycle');
+      expect(code).toContain('// @clint:end lifecycle');
+    });
+
+    it('emits import + lifecycle: [observability()] inside markers when enabled', () => {
+      const spec = clintProjectSpecSchema.parse({
+        name: 'foo-cli',
+        features: { observability: { enabled: true } },
+      });
+      const code = buildCliTs(spec);
+      expect(code).toContain(`import { observability } from '@powerhousedao/ph-clint-observability';`);
+      expect(code).toContain('lifecycle: [observability()],');
+      const lifecycleRegion = code.substring(
+        code.indexOf('// @clint:begin lifecycle'),
+        code.indexOf('// @clint:end lifecycle'),
+      );
+      expect(lifecycleRegion).toContain('observability()');
+    });
+  });
 });
