@@ -204,6 +204,69 @@ describe('defineCli', () => {
       const parsed = optCli.parseArgs('cmd', ['--required', 'val']);
       expect(parsed).toEqual({ required: 'val' });
     });
+
+    describe('positional', () => {
+      const posCli = defineCli({
+        name: 'pos',
+        version: '0.0.1',
+        description: 'positional CLI',
+        commands: [
+          defineCommand({
+            id: 'task',
+            description: 'Add a task',
+            inputSchema: z.object({
+              title: z.string().describe('Title'),
+              priority: z.number().default(1).describe('Priority'),
+              loud: z.boolean().default(false).describe('Loud'),
+            }),
+            positional: ['title', 'priority'],
+            execute: async (i) => i,
+          }),
+        ],
+      });
+
+      it('parses a required positional', () => {
+        expect(posCli.parseArgs('task', ['hello'])).toEqual({
+          title: 'hello',
+          priority: 1,
+          loud: false,
+        });
+      });
+
+      it('parses positional + optional positional', () => {
+        expect(posCli.parseArgs('task', ['hello', '5'])).toEqual({
+          title: 'hello',
+          priority: '5',
+          loud: false,
+        });
+      });
+
+      it('parses positional followed by flag', () => {
+        expect(posCli.parseArgs('task', ['hello', '--loud'])).toEqual({
+          title: 'hello',
+          priority: 1,
+          loud: true,
+        });
+      });
+
+      it('throws on missing required positional', () => {
+        expect(() => posCli.parseArgs('task', [])).toThrow(
+          'Missing required argument: <title>',
+        );
+      });
+
+      it('throws on extra positional beyond declared list', () => {
+        expect(() => posCli.parseArgs('task', ['a', 'b', 'c'])).toThrow(
+          'Unexpected argument: c',
+        );
+      });
+
+      it('rejects positional field passed as flag', () => {
+        expect(() => posCli.parseArgs('task', ['--title', 'hello'])).toThrow(
+          'Option --title is positional',
+        );
+      });
+    });
   });
 
   describe('help generation', () => {

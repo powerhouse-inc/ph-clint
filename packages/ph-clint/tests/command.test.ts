@@ -30,4 +30,59 @@ describe('defineCommand', () => {
     const result = await cmd.execute({ name: 'Alice', count: 3 }, ctx);
     expect(result).toBe('Alice x3');
   });
+
+  describe('positional', () => {
+    it('accepts a valid positional config', () => {
+      const c = defineCommand({
+        id: 'pos',
+        description: 'p',
+        inputSchema: z.object({
+          title: z.string(),
+          priority: z.number().default(1),
+        }),
+        positional: ['title', 'priority'],
+        execute: async () => 'ok',
+      });
+      expect(c.positional).toEqual(['title', 'priority']);
+    });
+
+    it('throws when positional key is not in inputSchema', () => {
+      expect(() =>
+        defineCommand({
+          id: 'pos',
+          description: 'p',
+          inputSchema: z.object({ title: z.string() }),
+          positional: ['missing'],
+          execute: async () => 'ok',
+        }),
+      ).toThrow("positional field 'missing' is not in inputSchema");
+    });
+
+    it('throws when required positional follows optional', () => {
+      expect(() =>
+        defineCommand({
+          id: 'pos',
+          description: 'p',
+          inputSchema: z.object({
+            title: z.string().optional(),
+            priority: z.number(),
+          }),
+          positional: ['title', 'priority'],
+          execute: async () => 'ok',
+        }),
+      ).toThrow("required positional 'priority' may not follow an optional positional");
+    });
+
+    it('throws when a positional key appears twice', () => {
+      expect(() =>
+        defineCommand({
+          id: 'pos',
+          description: 'p',
+          inputSchema: z.object({ title: z.string() }),
+          positional: ['title', 'title'],
+          execute: async () => 'ok',
+        }),
+      ).toThrow("listed more than once");
+    });
+  });
 });

@@ -369,19 +369,31 @@ export function defineCli<
     }
 
     const fields = getSchemaFields(cmd.inputSchema);
+    const positionalKeys = cmd.positional ?? [];
+    const positionalSet = new Set(positionalKeys);
     const result: Record<string, unknown> = {};
+    let positionalIdx = 0;
 
     for (let i = 0; i < argv.length; i++) {
       const arg = argv[i]!;
 
       if (!arg.startsWith('--')) {
-        throw new Error(`Unexpected argument: ${arg}`);
+        if (positionalIdx >= positionalKeys.length) {
+          throw new Error(`Unexpected argument: ${arg}`);
+        }
+        const key = positionalKeys[positionalIdx]!;
+        result[key] = arg;
+        positionalIdx++;
+        continue;
       }
 
       const flagName = arg.slice(2);
       const field = fields.find((f) => f.key === flagName);
       if (!field) {
         throw new Error(`Unknown option: ${arg}`);
+      }
+      if (positionalSet.has(flagName)) {
+        throw new Error(`Option --${flagName} is positional; pass it by position instead`);
       }
 
       if (field.baseType === 'boolean') {
@@ -402,6 +414,9 @@ export function defineCli<
       if (field.hasDefault) {
         result[field.key] = field.defaultValue;
       } else if (!field.isOptional) {
+        if (positionalSet.has(field.key)) {
+          throw new Error(`Missing required argument: <${field.key}>`);
+        }
         throw new Error(`Missing required option: --${field.key}`);
       }
     }
@@ -516,10 +531,15 @@ export function defineCli<
       lines.push('');
 
       const fields = getSchemaFields(cmd.inputSchema);
+      const positionalSet = new Set(cmd.positional ?? []);
       if (fields.length > 0) {
         lines.push('Parameters:');
         for (const field of fields) {
-          const parts: string[] = [`  --${field.key}`];
+          const isPositional = positionalSet.has(field.key);
+          const label = isPositional
+            ? (field.isOptional || field.hasDefault ? `[${field.key}]` : `<${field.key}>`)
+            : `--${field.key}`;
+          const parts: string[] = [`  ${label}`];
           parts.push(field.description ?? '');
           if (field.hasDefault) parts.push(`(default: ${JSON.stringify(field.defaultValue)})`);
           if (!field.isOptional) parts.push('(required)');
@@ -544,24 +564,57 @@ export function defineCli<
       return lines.join('\n');
     }
 
+    const fields = getSchemaFields(cmd.inputSchema);
+    const positionalKeys = cmd.positional ?? [];
+    const positionalSet = new Set(positionalKeys);
+
     const lines: string[] = [];
-    lines.push(`${options.name} ${cmd.id}`);
+    const usageParts = [`${options.name}`, cmd.id];
+    for (const key of positionalKeys) {
+      const field = fields.find((f) => f.key === key);
+      if (!field) continue;
+      const isOptional = field.isOptional || field.hasDefault;
+      usageParts.push(isOptional ? `[${key}]` : `<${key}>`);
+    }
+    const flagFields = fields.filter((f) => !positionalSet.has(f.key));
+    if (flagFields.length > 0) {
+      usageParts.push('[options]');
+    }
+    lines.push(`Usage: ${usageParts.join(' ')}`);
     lines.push('');
     lines.push(cmd.description);
     lines.push('');
-    lines.push('Options:');
 
-    const fields = getSchemaFields(cmd.inputSchema);
-    for (const field of fields) {
-      const parts: string[] = [`  --${field.key}`];
-      parts.push(field.description ?? '');
-      if (field.hasDefault) {
-        parts.push(`(default: ${JSON.stringify(field.defaultValue)})`);
+    if (positionalKeys.length > 0) {
+      lines.push('Arguments:');
+      for (const key of positionalKeys) {
+        const field = fields.find((f) => f.key === key);
+        if (!field) continue;
+        const isOptional = field.isOptional || field.hasDefault;
+        const label = isOptional ? `[${field.key}]` : `<${field.key}>`;
+        const parts: string[] = [`  ${label}`];
+        parts.push(field.description ?? '');
+        if (field.hasDefault) {
+          parts.push(`(default: ${JSON.stringify(field.defaultValue)})`);
+        }
+        lines.push(parts.join('  '));
       }
-      if (!field.isOptional) {
-        parts.push('(required)');
+      lines.push('');
+    }
+
+    if (flagFields.length > 0) {
+      lines.push('Options:');
+      for (const field of flagFields) {
+        const parts: string[] = [`  --${field.key}`];
+        parts.push(field.description ?? '');
+        if (field.hasDefault) {
+          parts.push(`(default: ${JSON.stringify(field.defaultValue)})`);
+        }
+        if (!field.isOptional) {
+          parts.push('(required)');
+        }
+        lines.push(parts.join('  '));
       }
-      lines.push(parts.join('  '));
     }
     lines.push('');
     return lines.join('\n');
@@ -677,7 +730,20 @@ export function defineCli<
       const isBuiltinConfig = cmd.id === 'config' && options.configSchema;
 
       const fields = getSchemaFields(cmd.inputSchema);
+      const positionalKeys = cmd.positional ?? [];
+      const positionalSet = new Set(positionalKeys);
+
+      // Register positional arguments in declared order
+      for (const key of positionalKeys) {
+        const field = fields.find((f) => f.key === key);
+        if (!field) continue;
+        const isOptional = field.isOptional || field.hasDefault;
+        const spec = isOptional ? `[${field.key}]` : `<${field.key}>`;
+        sub.argument(spec, field.description ?? '');
+      }
+
       for (const field of fields) {
+        if (positionalSet.has(field.key)) continue;
         const desc = field.description ?? '';
         const shorthand = isBuiltinConfig ? configShorthands[field.key] : undefined;
         const longFlag = `--${field.key}`;
@@ -710,10 +776,22 @@ export function defineCli<
         sub.helpInformation = () => generateCommandHelp(cmd.id) + '\n';
       }
 
-      sub.action(async (opts) => {
+      sub.action(async (...actionArgs: unknown[]) => {
+        // Commander passes positional args first, then opts, then the Command instance.
+        // Slice off the trailing Command instance to isolate positionals + opts.
+        const trailing = actionArgs.slice(0, -1);
+        const opts = (trailing[positionalKeys.length] ?? {}) as Record<string, unknown>;
+        const merged: Record<string, unknown> = { ...opts };
+        for (let i = 0; i < positionalKeys.length; i++) {
+          const key = positionalKeys[i]!;
+          const value = trailing[i];
+          if (value !== undefined) {
+            merged[key] = value;
+          }
+        }
         let parsed;
         try {
-          parsed = cmd.inputSchema.parse(opts);
+          parsed = cmd.inputSchema.parse(merged);
         } catch (err) {
           throw new Error(formatZodError(err, cmd.id));
         }

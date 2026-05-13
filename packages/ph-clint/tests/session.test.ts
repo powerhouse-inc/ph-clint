@@ -105,6 +105,65 @@ describe('createReplSession', () => {
       expect(result.text).toContain('Hello World');
     });
 
+    it('executes a command with positional arguments', async () => {
+      const addTask = defineCommand({
+        id: 'task',
+        description: 'Add a task',
+        inputSchema: z.object({
+          title: z.string().describe('Title'),
+          priority: z.coerce.number().default(1).describe('Priority'),
+        }),
+        positional: ['title', 'priority'],
+        execute: async ({ title, priority }) => ({ text: `${title}@${priority}` }),
+      });
+
+      const cli2 = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Test',
+        commands: [addTask],
+        interactive: { welcome: '' },
+      });
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
+      const s = createReplSession({ cli: cli2, context: ctx });
+
+      const r1 = await s.processInput('/task "Buy milk"');
+      expect(r1.text).toContain('Buy milk@1');
+
+      const r2 = await s.processInput('/task "Buy milk" 5');
+      expect(r2.text).toContain('Buy milk@5');
+    });
+
+    it('prompts for missing required positional when prompt config is set', async () => {
+      const addTask = defineCommand({
+        id: 'task',
+        description: 'Add a task',
+        inputSchema: z.object({
+          title: z.string().describe('Title'),
+        }),
+        positional: ['title'],
+        prompt: {},
+        execute: async ({ title }) => ({ text: `added:${title}` }),
+      });
+
+      const cli2 = defineCli({
+        name: 'test',
+        version: '1.0.0',
+        description: 'Test',
+        commands: [addTask],
+        interactive: { welcome: '' },
+      });
+      const ctx: CommandContext = { workspace: createMemoryWorkdirStore(), config: {}, workdir: '', stdout: () => {}, runProcess: () => Promise.resolve({ success: true, output: '' }) };
+      const s = createReplSession({ cli: cli2, context: ctx });
+
+      const r1 = await s.processInput('/task');
+      expect(r1.type).toBe('prompt');
+
+      const r2 = await s.processInput('Buy milk');
+      expect(r2.type).toBe('result');
+      expect(r2.text).toContain('added:Buy milk');
+    });
+
     it('captures ctx.stdout() output during direct command execution', async () => {
       const stdoutCmd = defineCommand({
         id: 'verbose',
