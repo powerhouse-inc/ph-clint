@@ -84,7 +84,7 @@ export function observability(opts: ObservabilityOptions = {}): LifecycleHook {
       const { initOtel } = await import('./otel.js');
       const { buildMetricInstruments, buildWraps, emitBootstrapSpan } = await import('./wraps.js');
 
-      const sentry = sentryDsn ? await initSentry({ dsn: sentryDsn, release: ctx.cliVersion }) : null;
+      const sentry = sentryDsn ? await initSentry({ dsn: sentryDsn, fallbackRelease: ctx.cliVersion }) : null;
       const otel = otelEndpoint
         ? await initOtel({
             endpoint: otelEndpoint,
