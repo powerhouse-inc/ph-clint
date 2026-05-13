@@ -198,7 +198,9 @@ describe('buildCliPackageJson', () => {
       const scripts = pkg.scripts as Record<string, string>;
       // Same dep range as ph-clint — lockstep
       expect(deps['@powerhousedao/ph-clint-observability']).toBe(deps['@powerhousedao/ph-clint']);
-      expect(scripts['telemetry:dev']).toBe('ph-telemetry-dev --cli-name=foo-cli');
+      // Uses the bin name (foo), not the package name (foo-cli) — so the
+      // receiver's announced env var matches what the running CLI reads.
+      expect(scripts['telemetry:dev']).toBe('ph-telemetry-dev --cli-name=foo');
     });
   });
 });

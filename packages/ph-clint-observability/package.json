@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-observability",
-  "version": "0.1.0-dev.70",
+  "version": "0.1.0-dev.71",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -14,7 +14,7 @@
     }
   },
   "bin": {
-    "ph-telemetry-dev": "./dist/dev-server.js"
+    "ph-telemetry-dev": "./dist/bin/ph-telemetry-dev.js"
   },
   "files": [
     "dist"

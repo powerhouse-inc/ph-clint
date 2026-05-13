@@ -106,7 +106,11 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     scripts['mastra:start'] = 'mastra start';
   }
   if (observabilityEnabled) {
-    scripts['telemetry:dev'] = `ph-telemetry-dev --cli-name=${spec.name}`;
+    // Use the bin name (no -cli suffix) so the receiver's announced env var
+    // matches what the running CLI reads — defineCli's name field is derived
+    // the same way via getBinName(), and ph-clint's {CLINAME}_FIELD_NAME
+    // convention uppercases that.
+    scripts['telemetry:dev'] = `ph-telemetry-dev --cli-name=${bin}`;
   }
   // Single-layout: publish scripts live in the CLI package.json (which IS the
   // root). Split-layout gets these from root-package-json.ts instead.

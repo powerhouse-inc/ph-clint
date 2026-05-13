@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /**
- * ph-telemetry-dev — local OTLP HTTP receiver for dev work.
+ * Local OTLP HTTP receiver for dev work.
  *
  * Inspired by the deleted service-announcer pattern: prints the endpoint to
  * stdout so the dev knows what env var to set in another terminal before
@@ -9,6 +8,9 @@
  * Receives OTel OTLP HTTP at /v1/traces and /v1/metrics. JSON payloads
  * (OTEL_EXPORTER_OTLP_PROTOCOL=http/json on the sender side) are
  * pretty-printed; protobuf payloads show byte length only.
+ *
+ * This module is library-only — pure exports, no side effects. The bin
+ * entry that actually invokes the server lives at `src/bin/ph-telemetry-dev.ts`.
  */
 import http from 'node:http';
 import { parseArgs } from 'node:util';
@@ -102,21 +104,4 @@ export async function startDevServer(opts: DevServerOptions): Promise<DevServerH
     port: actualPort,
     close: () => new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())),
   };
-}
-
-/* istanbul ignore next -- entry-point bootstrap; exercised by manual `pnpm telemetry:dev` */
-async function main() {
-  const args = parseCliArgs(process.argv);
-  const handle = await startDevServer(args);
-  process.once('SIGINT', () => { void handle.close().then(() => process.exit(0)); });
-  process.once('SIGTERM', () => { void handle.close().then(() => process.exit(0)); });
-}
-
-// Only run main when invoked as a script (not when imported by tests).
-/* istanbul ignore next */
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
-    process.stderr.write(`ph-telemetry-dev: ${err instanceof Error ? err.message : String(err)}\n`);
-    process.exit(1);
-  });
 }
