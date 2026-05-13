@@ -16,6 +16,7 @@ import { defineCommand } from '../src/core/command.js';
 import { createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { createMemoryWorkdirStore } from '../src/core/store.js';
 import type { AgentSetupContext, AgentProvider, StreamChunk } from '../src/core/types.js';
+import { IDENTITY_WRAPS } from '../src/core/wraps.js';
 
 // Load .env from example 04 (no dotenv dependency)
 try {
@@ -84,9 +85,10 @@ describeWithKey('Mastra integration E2E', () => {
       config: {},
       cliName: 'test-e2e',
       cliVersion: '1.0.0',
-      context: { workdir: testWorkspace, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} },
+      context: { workdir: testWorkspace, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} } as any,
       commands: [echoCommand],
       skills: [],
+      wraps: IDENTITY_WRAPS,
     };
     const m = createMastraHelpers(ctx);
     const { Agent } = await import('@mastra/core/agent');

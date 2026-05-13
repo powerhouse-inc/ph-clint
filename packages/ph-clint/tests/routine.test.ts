@@ -835,4 +835,31 @@ describe('createRoutine', () => {
       expect(emittedEvents[0]!.data).toEqual({ hello: 'world' });
     });
   });
+
+  describe('wraps capability', () => {
+    it('invokes wraps.routineIteration once per loop iteration with monotonic index', async () => {
+      const iterations: Array<{ index: number }> = [];
+      const spyWraps = {
+        command: (_id: string, inner: () => Promise<unknown>) => inner(),
+        agentStream: ((inner: unknown) => inner) as any,
+        tool: ((_n: string, t: unknown) => t) as any,
+        routineIteration: async <R,>(attrs: { index: number }, inner: () => Promise<R>): Promise<R> => {
+          iterations.push({ ...attrs });
+          return inner();
+        },
+      };
+
+      routine = makeRoutine();
+      routine.setCapabilities({ wraps: spyWraps });
+      routine.start();
+      await new Promise(r => setTimeout(r, ROUTINE_MULTI_TICK_WAIT));
+      await routine.stop();
+
+      expect(iterations.length).toBeGreaterThanOrEqual(2);
+      // Indices should be 0, 1, 2, … (monotonic, starting at 0)
+      for (let i = 0; i < iterations.length; i++) {
+        expect(iterations[i]!.index).toBe(i);
+      }
+    });
+  });
 });

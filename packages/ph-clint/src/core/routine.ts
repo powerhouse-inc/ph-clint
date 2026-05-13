@@ -11,11 +11,13 @@ import type {
   Trigger,
   TriggerContext,
   WorkItem,
+  WrapRegistry,
 } from './types.js';
 import type { ReactorContext } from '../integrations/powerhouse/types.js';
 import { createEventBus } from './events.js';
 import { createProcessManager } from './processes.js';
 import { createMemoryWorkdirStore } from './store.js';
+import { IDENTITY_WRAPS } from './wraps.js';
 
 export interface RoutineOptions {
   triggers: Trigger<any, any, any>[];
@@ -60,6 +62,7 @@ export function createRoutine(options: RoutineOptions): Routine {
   // Mutable capability accessors — set after construction via setCapabilities()
   let getReactor: (() => Promise<ReactorContext | undefined>) | undefined = options.getReactor;
   let getAgent: (() => Promise<AgentProvider | undefined>) | undefined = options.getAgent;
+  let wraps: WrapRegistry = IDENTITY_WRAPS;
 
   function makeTriggerContext(trigger: Trigger<any, any, any>): TriggerContext<any, any, any> {
     // Each trigger gets its own persistent state object. If the trigger
@@ -127,49 +130,55 @@ export function createRoutine(options: RoutineOptions): Routine {
     }
 
     status = 'running';
+    let iterationIndex = 0;
 
     while (!stopRequested) {
       const iterationStart = Date.now();
 
-      // 1. Poll triggers for new work
-      for (const trigger of options.triggers) {
-        const tCtx = triggerContexts.get(trigger.id)!;
-        try {
-          const item = await trigger.poll(tCtx);
-          if (item) {
-            queue.push(item);
+      // Each loop body is wrapped by the registered lifecycle hooks. Identity
+      // by default — when no hook contributes, this is just `inner()`.
+      await wraps.routineIteration({ index: iterationIndex }, async () => {
+        // 1. Poll triggers for new work
+        for (const trigger of options.triggers) {
+          const tCtx = triggerContexts.get(trigger.id)!;
+          try {
+            const item = await trigger.poll(tCtx);
+            if (item) {
+              queue.push(item);
+            }
+          } catch (err) {
+            // Trigger poll errors are logged but swallowed to keep the loop alive.
+            // Use `ctx` (the live mutable reference) rather than `options.context`
+            // which may be undefined when the routine was created without context.
+            ctx.log?.warn?.(
+              `[routine] trigger ${trigger.id} poll error: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            ctx.log?.debug?.(
+              `[routine] trigger ${trigger.id} stack: ${err instanceof Error ? err.stack : ''}`,
+            );
           }
-        } catch (err) {
-          // Trigger poll errors are logged but swallowed to keep the loop alive.
-          // Use `ctx` (the live mutable reference) rather than `options.context`
-          // which may be undefined when the routine was created without context.
-          ctx.log?.warn?.(
-            `[routine] trigger ${trigger.id} poll error: ${err instanceof Error ? err.message : String(err)}`,
-          );
-          ctx.log?.debug?.(
-            `[routine] trigger ${trigger.id} stack: ${err instanceof Error ? err.stack : ''}`,
-          );
         }
-      }
 
-      // 2. Execute next queued item (FIFO)
-      if (queue.length > 0) {
-        const item = queue.shift()!;
-        try {
-          const result = await executeWorkItem(item);
-          if (routine.onOutput && result !== undefined && result !== null) {
-            const text = typeof result === 'object' && result !== null && 'text' in result
-              ? (result as Record<string, unknown>).text as string
-              : String(result);
-            if (text) routine.onOutput(text);
+        // 2. Execute next queued item (FIFO)
+        if (queue.length > 0) {
+          const item = queue.shift()!;
+          try {
+            const result = await executeWorkItem(item);
+            if (routine.onOutput && result !== undefined && result !== null) {
+              const text = typeof result === 'object' && result !== null && 'text' in result
+                ? (result as Record<string, unknown>).text as string
+                : String(result);
+              if (text) routine.onOutput(text);
+            }
+            await item.callbacks?.onSuccess?.(result);
+          } catch (error) {
+            await item.callbacks?.onFailure?.(
+              error instanceof Error ? error : new Error(String(error)),
+            );
           }
-          await item.callbacks?.onSuccess?.(result);
-        } catch (error) {
-          await item.callbacks?.onFailure?.(
-            error instanceof Error ? error : new Error(String(error)),
-          );
         }
-      }
+      });
+      iterationIndex++;
 
       // 3. Respect timing constraints
       const elapsed = Date.now() - iterationStart;
@@ -279,6 +288,7 @@ export function createRoutine(options: RoutineOptions): Routine {
         getReactor = caps.getReactor as unknown as typeof getReactor;
       }
       if (caps.getAgent) getAgent = caps.getAgent;
+      if (caps.wraps) wraps = caps.wraps;
     },
   };
 

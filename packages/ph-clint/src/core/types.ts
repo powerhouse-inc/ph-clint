@@ -377,10 +377,12 @@ export interface Routine {
   onChunk?: (chunk: StreamChunk) => void;
   /** Update the context used for command execution within the routine. */
   setContext(context: CommandContext): void;
-  /** Set lazy capability accessors (reactor, agent) for trigger contexts. */
+  /** Set lazy capability accessors (reactor, agent) and the wrap registry for trigger contexts. */
   setCapabilities<R extends DocumentRegistry = AnyRegistry>(caps: {
     getReactor?: () => Promise<ReactorContext<R> | undefined>;
     getAgent?: () => Promise<AgentProvider | undefined>;
+    /** Composed wrap registry from lifecycle hooks. Defaults to IDENTITY_WRAPS when absent. */
+    wraps?: WrapRegistry;
   }): void;
 }
 
@@ -674,6 +676,12 @@ export interface AgentSetupContext<TConfig = Record<string, unknown>> {
   skills: import('./skills.js').SkillInfo[];
   /** Full prompts configuration — agent profiles, skill configs, artifact paths. */
   prompts?: PromptsConfig;
+  /**
+   * The composed wrap registry from registered lifecycle hooks. Always present;
+   * identity wraps when no hook contributes. Mastra uses `wraps.tool` and
+   * `wraps.agentStream` to instrument tools and the stream generator.
+   */
+  wraps: WrapRegistry;
 }
 
 // ── Agent Loader ──────────────────────────────────────────────────
@@ -685,6 +693,88 @@ export interface AgentSetupContext<TConfig = Record<string, unknown>> {
  */
 export type AgentLoader<TConfig = Record<string, unknown>> =
   (ctx: AgentSetupContext<TConfig>) => Promise<AgentProvider>;
+
+// ── Lifecycle Hooks & Wrap Registry ───────────────────────────────
+
+/**
+ * Bootstrap-phase timestamps captured before plugin onInit runs. Plugins use
+ * these to emit retroactive spans covering the pre-config window.
+ */
+export interface BootTimings {
+  /** ms since epoch — set on the first line of bootstrap()/runImpl(). */
+  bootStartedAt: number;
+  /** ms since epoch — set immediately after resolveConfig() completes. */
+  configResolvedAt: number;
+  /** ms since epoch — set just before initLifecycle() is invoked. */
+  lifecycleInitStartedAt: number;
+}
+
+/**
+ * Context passed to LifecycleHook.onInit. Fully-resolved config (including
+ * plugin schema fragments) plus framework identity and process state.
+ */
+export interface LifecycleInitContext {
+  /** Fully resolved config (the user's schema + every plugin's contributed fields). */
+  config: Record<string, unknown>;
+  cliName: string;
+  cliVersion: string;
+  log: Logger;
+  eventBus: EventBus<AnyRegistry>;
+  /** Path to ~/.ph/<cliname>/ — plugins persist their own state here. */
+  userStoreFolder: string;
+  /** True when stdin is a TTY — plugins use this to decide whether to prompt. */
+  isInteractive: boolean;
+  bootTimings: BootTimings;
+}
+
+/**
+ * The four named wrap points the framework exposes for plugins to instrument.
+ * Identity wraps are the default; composition is middleware-style.
+ *
+ * Important: `agentStream` must return `inner` directly when not wrapping —
+ * any passthrough `async function*` adds a generator frame per yield.
+ */
+export interface WrapRegistry {
+  /** Wraps each CLI/agent command execution. */
+  command<R>(id: string, inner: () => Promise<R>): Promise<R>;
+  /** Wraps the agent stream generator. Return `inner` directly for identity. */
+  agentStream<P, O, T>(
+    inner: (prompt: P, opts?: O) => AsyncGenerator<T>,
+    attrs: { agentId: string },
+  ): (prompt: P, opts?: O) => AsyncGenerator<T>;
+  /** Wraps each agent tool's execute function. */
+  tool<T extends { execute: (args: unknown) => unknown }>(name: string, tool: T): T;
+  /** Wraps a routine iteration body. */
+  routineIteration<R>(attrs: { index: number }, inner: () => Promise<R>): Promise<R>;
+}
+
+/**
+ * Returned by LifecycleHook.onInit. Contributes wrap implementations and an
+ * optional shutdown function. Empty (no contribute, no shutdown) composes to
+ * identity — the plugin had nothing to do this run.
+ */
+export interface LifecycleHandle {
+  contribute?: Partial<WrapRegistry>;
+  shutdown?: () => Promise<void>;
+}
+
+/**
+ * A lifecycle hook is a declarative plugin contract:
+ *   - declares an optional config schema fragment (merged at defineCli time)
+ *   - declares an `onInit` invoked after config resolves but before any
+ *     command/stream/iteration runs (mirrors the AgentLoader timing pattern)
+ *
+ * Hooks register via `defineCli({ lifecycle: [...] })`. They contribute
+ * `WrapRegistry` fragments which the framework composes into a single
+ * registry. If `lifecycle` is omitted, the framework uses `IDENTITY_WRAPS`
+ * — there is no "telemetry off" branch in core, only "no contributions".
+ */
+export interface LifecycleHook {
+  name: string;
+  /** Zod fragment merged into the effective config schema (auto-derives env vars, surfaces in `cli config`). */
+  configSchema?: z.ZodObject<any>;
+  onInit(ctx: LifecycleInitContext): Promise<LifecycleHandle> | LifecycleHandle;
+}
 
 // ── Prompts ──────────────────────────────────────────────────────
 
@@ -833,6 +923,16 @@ export interface CliOptions<
    * are auto-injected into the config schema.
    */
   proxyEnabled?: boolean;
+  /**
+   * Lifecycle hooks registered with this CLI. Each hook may contribute a
+   * config schema fragment (merged into the effective schema, so its fields
+   * flow through the 6-layer resolver and `cli config`) and an `onInit`
+   * callback invoked after config resolves with the resulting `WrapRegistry`
+   * contributions composed into the framework.
+   *
+   * Identity wraps are the default — omit or pass `[]` for no instrumentation.
+   */
+  lifecycle?: LifecycleHook[];
 }
 
 /**

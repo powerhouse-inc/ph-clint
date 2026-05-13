@@ -16,7 +16,9 @@ import type {
   PromptsConfig,
   Routine,
   WorkdirStore,
+  WrapRegistry,
 } from './types.js';
+import { IDENTITY_WRAPS } from './wraps.js';
 import type { SkillInfo } from './skills.js';
 import type {
   ReactorConfiguration,
@@ -56,6 +58,11 @@ export interface CliRuntimeDeps {
   skillIds: Set<string>;
   resolvedSkills: SkillInfo[];
   prompts?: PromptsConfig;
+
+  /** Composed wrap registry from lifecycle hooks. Defaults to IDENTITY_WRAPS. */
+  wraps?: WrapRegistry;
+  /** Reverse-order shutdown for lifecycle hooks. Called from teardown(). */
+  lifecycleShutdown?: () => Promise<void>;
 }
 
 /**
@@ -78,6 +85,8 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
   const enableSwitchboard = deps.enableSwitchboard ?? true;
   const enableConnect = deps.enableConnect ?? true;
   const skipRoutineStart = deps.skipRoutineStart ?? false;
+  const wraps = deps.wraps ?? IDENTITY_WRAPS;
+  const lifecycleShutdown = deps.lifecycleShutdown;
 
   let cachedReactor: ReactorContext | undefined;
   let switchboardInstance: SwitchboardInstance | undefined;
@@ -111,6 +120,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       commands: [...commandMap.values()].filter(c => !skillIds.has(c.id)),
       skills: resolvedSkills,
       prompts,
+      wraps,
     };
     cachedProvider = await agentLoader(agentCtx);
     return cachedProvider;
@@ -166,6 +176,12 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
     if (cachedReactor) {
       log.debug('Stopping Reactor...');
       await cachedReactor.shutdown();
+    }
+    // Lifecycle hooks last — they may want to flush telemetry covering the
+    // teardown of other subsystems. Their internal try/catch handles failures.
+    if (lifecycleShutdown) {
+      log.debug('Stopping lifecycle hooks...');
+      await lifecycleShutdown();
     }
   }
 
@@ -294,9 +310,11 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
     }
   }
 
-  // Wire capabilities immediately so triggers can access reactor/agent
+  // Wire capabilities immediately so triggers can access reactor/agent.
+  // Wraps are passed alongside — IDENTITY_WRAPS by default when no lifecycle
+  // hook is registered.
   if (routine) {
-    routine.setCapabilities({ getReactor, getAgent });
+    routine.setCapabilities({ getReactor, getAgent, wraps });
   }
 
   return {

@@ -12,6 +12,7 @@ import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
 import { mapMastraStream } from '../src/integrations/mastra/stream.js';
 import { createMemoryWorkdirStore, createWorkdirStore } from '../src/core/store.js';
 import type { AgentSetupContext, PromptsConfig, ServiceInstanceStatus, ServiceManager } from '../src/core/types.js';
+import { IDENTITY_WRAPS } from '../src/core/wraps.js';
 import type { SkillInfo } from '../src/core/skills.js';
 
 const testWorkspace = join(tmpdir(), `ph-clint-mastra-test-${randomBytes(4).toString('hex')}`);
@@ -34,9 +35,10 @@ function makeAgentSetupContext(overrides?: Partial<AgentSetupContext>): AgentSet
     config: {},
     cliName: 'test-cli',
     cliVersion: '1.0.0',
-    context: { workdir, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} },
+    context: { workdir, workspace: createMemoryWorkdirStore(), config: {}, stdout: () => {} } as any,
     commands: [echoCommand],
     skills: [],
+    wraps: IDENTITY_WRAPS,
     ...overrides,
   };
 }

@@ -53,6 +53,8 @@ import { createLogger } from './logger.js';
 import { createProxyServer, type ProxyServerInstance } from './proxy.js';
 import { buildServiceRoutes } from './proxy-routes.js';
 import { createCliRuntime } from './runtime.js';
+import { initLifecycle } from './lifecycle.js';
+import type { BootTimings, LifecycleInitContext } from './types.js';
 
 /* istanbul ignore next -- fallback stdout used only when running without RunOptions (real terminal) */
 const defaultStdout = (text: string) => { process.stdout.write(text); };
@@ -128,6 +130,23 @@ export function defineCli<
     });
     const configObj = options.configSchema as any;
     options = { ...options, configSchema: configObj.merge(proxySchema) as unknown as TSchema };
+  }
+
+  // Merge lifecycle hook config schema fragments. Plugin-contributed fields
+  // flow through the 6-layer resolver, getConfigEnvVars(), and `cli config`
+  // with the standard {CLINAME}_{FIELD_NAME} env-var naming convention.
+  // Type-inference scope: TConfig still reflects the user's declared schema.
+  // Plugins read their own fields from ctx.config typed against their own schema.
+  if (options.lifecycle && options.lifecycle.length > 0 && options.configSchema) {
+    let merged = options.configSchema as any;
+    for (const hook of options.lifecycle) {
+      if (hook.configSchema) {
+        merged = merged.merge(hook.configSchema);
+      }
+    }
+    if (merged !== options.configSchema) {
+      options = { ...options, configSchema: merged as unknown as TSchema };
+    }
   }
 
   const commandMap = new Map<string, Command>();
@@ -592,6 +611,7 @@ export function defineCli<
     context: CommandContext,
     resolvedDescription: string,
     onSkillInvocation?: (invocation: SkillInvocation) => Promise<void>,
+    wraps?: import('./types.js').WrapRegistry,
   ): Commander {
     const program = new Commander();
     program
@@ -697,7 +717,11 @@ export function defineCli<
         } catch (err) {
           throw new Error(formatZodError(err, cmd.id));
         }
-        const result = await cmd.execute(parsed, context);
+        // Wrap the execution through the registered wrap registry. Identity
+        // when no lifecycle hook is registered — pure passthrough.
+        const result = wraps
+          ? await wraps.command(cmd.id, () => cmd.execute(parsed, context))
+          : await cmd.execute(parsed, context);
         if (isSkillInvocation(result)) {
           if (onSkillInvocation) {
             await onSkillInvocation(result);
@@ -850,6 +874,12 @@ export function defineCli<
    * Returns resolved workdir, config, context, and lazy agent accessor.
    */
   async function bootstrap(opts?: BootstrapOptions): Promise<BootstrapResult> {
+    const bootTimings: BootTimings = {
+      bootStartedAt: Date.now(),
+      configResolvedAt: 0,
+      lifecycleInitStartedAt: 0,
+    };
+
     const stdoutFn = opts?.stdout ?? ((msg: string) => { console.log(msg); });
     const stderrFn = opts?.stderr ?? ((msg: string) => { console.error(msg); });
     const cwd = process.cwd();
@@ -889,12 +919,28 @@ export function defineCli<
           implementationDefaults: options.configDefaults,
         })
       : {};
+    bootTimings.configResolvedAt = Date.now();
 
     const logLevel = opts?.logLevel ?? 'info';
     const log = createLogger(logLevel, stderrFn);
     const context = buildContext({ workdir, workspace, config, stdout: stdoutFn, log });
 
     wireServices(context, config, log);
+
+    // Run lifecycle hooks after config resolves, before runtime construction.
+    // Identity wraps when no hook is registered; otherwise composed contributions.
+    bootTimings.lifecycleInitStartedAt = Date.now();
+    const lifecycleCtx: LifecycleInitContext = {
+      config,
+      cliName: options.name,
+      cliVersion: options.version,
+      log,
+      eventBus: getEventBus(),
+      userStoreFolder: userStoreFolder(options.name),
+      isInteractive: process.stdin.isTTY === true,
+      bootTimings,
+    };
+    const lifecycle = await initLifecycle(options.lifecycle ?? [], lifecycleCtx);
 
     const runtime = createCliRuntime({
       cliName: options.name,
@@ -909,6 +955,8 @@ export function defineCli<
       skillIds,
       resolvedSkills,
       prompts: options.prompts,
+      wraps: lifecycle.wraps,
+      lifecycleShutdown: lifecycle.shutdown,
     });
 
     context.agent = runtime.getAgent;
@@ -947,6 +995,12 @@ export function defineCli<
    * Internal run with fully-resolved options — no process globals, fully testable.
    */
   async function runImpl(argv: string[], opts: ResolvedRunOptions): Promise<void> {
+    const bootTimings: BootTimings = {
+      bootStartedAt: Date.now(),
+      configResolvedAt: 0,
+      lifecycleInitStartedAt: 0,
+    };
+
     const { exit, stdout, stderr, cwd, writeRaw } = opts;
 
     // ── Extract pre-command framework flags ────────────────────────
@@ -1038,6 +1092,7 @@ export function defineCli<
           implementationDefaults: options.configDefaults,
         })
       : {};
+    bootTimings.configResolvedAt = Date.now();
     const logLevel = opts.logLevel ?? (verboseFlag ? 'debug' : 'info');
     const log = createLogger(logLevel, stderr);
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
@@ -1051,6 +1106,21 @@ export function defineCli<
     }
 
     wireServices(context, config, log, proxyInstance);
+
+    // Run lifecycle hooks after config resolves, before runtime construction.
+    // Identity wraps when no hook is registered; otherwise composed contributions.
+    bootTimings.lifecycleInitStartedAt = Date.now();
+    const lifecycleCtx: LifecycleInitContext = {
+      config,
+      cliName: options.name,
+      cliVersion: options.version,
+      log,
+      eventBus: getEventBus(),
+      userStoreFolder: userStoreFolder(options.name),
+      isInteractive: process.stdin.isTTY === true,
+      bootTimings,
+    };
+    const lifecycle = await initLifecycle(options.lifecycle ?? [], lifecycleCtx);
 
     // Resolve Resolvable values now that workdir/config are known.
     // Cast config to the inferred type — at runtime it IS that type (Zod parsed it).
@@ -1082,6 +1152,8 @@ export function defineCli<
       skillIds,
       resolvedSkills,
       prompts: options.prompts,
+      wraps: lifecycle.wraps,
+      lifecycleShutdown: lifecycle.shutdown,
     });
 
     // Wire lazy accessors onto the context
@@ -1183,7 +1255,7 @@ export function defineCli<
         }
       }
 
-      const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
+      const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined, lifecycle.wraps);
       try {
         await program.parseAsync(argv);
       } catch (err: any) {
@@ -1358,7 +1430,7 @@ export function defineCli<
       }
     } else {
       // ── Nothing to do: no -i, no keep-alive, no subcommand/prompt → show help ──
-      const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined);
+      const program = buildProgram(stdout, context, resolvedDescription, agentLoader ? handleSkillInvocation : undefined, lifecycle.wraps);
       program.outputHelp();
       await runtime.teardown();
     }
