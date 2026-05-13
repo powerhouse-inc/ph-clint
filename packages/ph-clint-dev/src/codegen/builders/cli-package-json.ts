@@ -105,7 +105,7 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     scripts['mastra:build'] = 'mastra build';
     scripts['mastra:start'] = 'mastra start';
   }
-  if (observability.enabled) {
+  if (observabilityEnabled) {
     scripts['telemetry:dev'] = `ph-telemetry-dev --cli-name=${spec.name}`;
   }
   // Single-layout: publish scripts live in the CLI package.json (which IS the
