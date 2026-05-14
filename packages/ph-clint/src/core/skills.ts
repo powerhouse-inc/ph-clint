@@ -37,10 +37,17 @@ function parseFrontmatter(content: string): Omit<SkillInfo, 'skillMdPath'> | nul
  *
  * Scans each artifact directory for `{skillName}/SKILL.md` files, parses
  * frontmatter, and returns a deduplicated sorted list. First directory wins
- * on name collisions.
+ * on name collisions. When a name appears in more than one root, `onWarn` is
+ * invoked once per collision so the caller can surface the conflict.
+ *
+ * Convention: codegen orders artifacts as `[skills-tpl/, skills-ext/]`, so
+ * tpl always wins over ext. The warning message names both roots verbatim.
  */
-export function readSkills(artifacts: string[]): SkillInfo[] {
-  const seen = new Set<string>();
+export function readSkills(
+  artifacts: string[],
+  onWarn?: (message: string) => void,
+): SkillInfo[] {
+  const seenAt = new Map<string, string>(); // name → first artifact root that won
   const skills: SkillInfo[] = [];
 
   for (const source of artifacts) {
@@ -55,16 +62,23 @@ export function readSkills(artifacts: string[]): SkillInfo[] {
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      if (seen.has(entry.name)) continue;
 
       const skillMdPath = path.join(source, entry.name, 'SKILL.md');
       if (!fs.existsSync(skillMdPath)) continue;
+
+      const existing = seenAt.get(entry.name);
+      if (existing !== undefined) {
+        onWarn?.(
+          `Skill "${entry.name}" exists in both ${existing} and ${source} — using ${existing}`,
+        );
+        continue;
+      }
 
       try {
         const content = fs.readFileSync(skillMdPath, 'utf-8');
         const info = parseFrontmatter(content);
         if (info) {
-          seen.add(entry.name);
+          seenAt.set(entry.name, source);
           const cliDocsPath = path.join(source, entry.name, '.cli-docs.md');
           const hasDocs = fs.existsSync(cliDocsPath);
           skills.push({ ...info, skillMdPath, ...(hasDocs && { cliDocsPath }) });

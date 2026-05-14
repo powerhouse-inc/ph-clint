@@ -63,10 +63,27 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
         }
       }
 
+      // Optional glob filter — used by sub-agents to restrict their tool set.
+      // `undefined` → all tools; `[]` → no tools; else → tools whose name matches a pattern.
+      let filtered: Record<string, any>;
+      if (options?.include === undefined) {
+        filtered = merged;
+      } else if (options.include.length === 0) {
+        filtered = {};
+      } else {
+        const { matchAny } = await import('../../core/glob.js');
+        filtered = Object.fromEntries(
+          Object.entries(merged).filter(([name]) => matchAny(name, options.include!)),
+        );
+        log?.debug(
+          `[getTools] filter: ${options.include.join(',')} → ${Object.keys(filtered).length}/${Object.keys(merged).length} tools`,
+        );
+      }
+
       // Apply the wrap registry — identity by default, instrumenting when a
       // lifecycle hook (e.g. observability) contributes wrap.tool.
       const wrapped: Record<string, any> = {};
-      for (const [name, tool] of Object.entries(merged)) {
+      for (const [name, tool] of Object.entries(filtered)) {
         wrapped[name] = ctx.wraps.tool(name, tool as { execute: (args: unknown) => unknown });
       }
       return wrapped;

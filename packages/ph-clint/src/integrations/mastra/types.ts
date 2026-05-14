@@ -12,6 +12,19 @@ export interface GetToolsOptions {
    * consumer's node_modules, not from ph-clint's.
    */
   MCPClient?: any;
+  /**
+   * Glob-style patterns matched against the final tool names (CLI + MCP).
+   *
+   * Pattern syntax: `*` matches any run of characters, `?` matches one char,
+   * `[abc]` matches one char from the set. Patterns are anchored to the full
+   * tool name (no implicit wildcards on either side).
+   *
+   * Semantics:
+   *   - `undefined`        → include every tool (default).
+   *   - `[]` (empty array) → include none (used for sub-agents with no tool patterns).
+   *   - Non-empty array    → include tools whose name matches at least one pattern.
+   */
+  include?: string[];
 }
 
 /**

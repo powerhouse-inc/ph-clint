@@ -303,18 +303,24 @@ describe.each(Object.keys(FIXTURES))('initial codegen [%s]', (fixtureName) => {
         expect(config.model.id).toBe('model');
       }
 
-      // Multi-model fixtures expose API key env vars for each provider.
-      if (
-        spec.features.mastra.enabled &&
-        spec.features.mastra.models.length > 1
-      ) {
-        const configList = runCommand(cliDir, 'config --list');
-        // Models from different providers → each provider's API key appears.
-        const providers = new Set(
-          spec.features.mastra.models.map((m) => m.id.split('/')[0]),
-        );
-        for (const provider of providers) {
-          expect(configList).toMatch(new RegExp(`${provider}.*key`, 'i'));
+      // Multi-provider fixtures expose API key env vars for every provider
+      // actually USED by an agent (main + sub). Providers present in the
+      // models library but unused by any agent are not in the secrets schema.
+      if (spec.features.mastra.enabled) {
+        const usedProviders = new Set<string>();
+        if (spec.features.mastra.mainAgent) {
+          usedProviders.add(
+            spec.features.mastra.mainAgent.modelId.split('/')[0],
+          );
+        }
+        for (const sub of spec.features.mastra.subAgents) {
+          usedProviders.add(sub.modelId.split('/')[0]);
+        }
+        if (usedProviders.size > 1) {
+          const configList = runCommand(cliDir, 'config --list');
+          for (const provider of usedProviders) {
+            expect(configList).toMatch(new RegExp(`${provider}.*key`, 'i'));
+          }
         }
       }
 

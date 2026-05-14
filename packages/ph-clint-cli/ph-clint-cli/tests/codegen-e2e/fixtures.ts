@@ -55,7 +55,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
     },
   },
 
-  /** Multiple models from different providers + custom profiles + scoped. Main only. */
+  /** Main + sub-agents across multiple providers (anthropic + openai). */
   'mastra-multi-model': {
     name: 'test-multi-cli',
     scope: '@acme',
@@ -81,6 +81,17 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
           skills: [],
           toolPatterns: [],
         },
+        subAgents: [
+          {
+            id: 'specialist',
+            name: 'Specialist',
+            description: 'Specialised assistant on a different provider.',
+            modelId: 'openai/gpt-4o',
+            profileIds: ['developer'],
+            skills: [],
+            toolPatterns: [],
+          },
+        ],
       },
     },
   },
@@ -215,6 +226,17 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
           skills: [],
           toolPatterns: [],
         },
+        subAgents: [
+          {
+            id: 'ops-helper',
+            name: 'Ops Helper',
+            description: 'Operations helper using a different provider.',
+            modelId: 'openai/gpt-4o',
+            profileIds: ['ops'],
+            skills: [],
+            toolPatterns: [],
+          },
+        ],
       },
       routine: { enabled: true },
     },

@@ -82,6 +82,41 @@ describe('readSkills', () => {
     expect(skills[0]!.description).toBe('From source 1');
   });
 
+  it('invokes onWarn when a skill name appears in multiple sources', () => {
+    const tpl = path.join(tmpDir, 'skills-tpl');
+    const ext = path.join(tmpDir, 'skills-ext');
+    createSkill(tpl, 'playwright-cli', 'From tpl');
+    createSkill(ext, 'playwright-cli', 'From ext');
+    createSkill(ext, 'unique-skill', 'Only here');
+
+    const warnings: string[] = [];
+    const skills = readSkills([tpl, ext], (msg) => warnings.push(msg));
+
+    expect(skills.map((s) => s.name).sort()).toEqual([
+      'playwright-cli',
+      'unique-skill',
+    ]);
+    // tpl wins
+    expect(skills.find((s) => s.name === 'playwright-cli')!.description).toBe(
+      'From tpl',
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('playwright-cli');
+    expect(warnings[0]).toContain(tpl);
+    expect(warnings[0]).toContain(ext);
+  });
+
+  it('does not invoke onWarn when there are no collisions', () => {
+    const tpl = path.join(tmpDir, 'skills-tpl');
+    const ext = path.join(tmpDir, 'skills-ext');
+    createSkill(tpl, 'tpl-only', 'From tpl');
+    createSkill(ext, 'ext-only', 'From ext');
+
+    const warnings: string[] = [];
+    readSkills([tpl, ext], (msg) => warnings.push(msg));
+    expect(warnings).toEqual([]);
+  });
+
   it('handles SKILL.md without frontmatter gracefully', () => {
     const source = path.join(tmpDir, 'skills');
     const skillDir = path.join(source, 'broken');
