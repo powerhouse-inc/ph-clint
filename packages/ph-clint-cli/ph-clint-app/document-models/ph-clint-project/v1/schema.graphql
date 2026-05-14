@@ -46,13 +46,32 @@ enum PowerhouseLevel {
 
 type PhClintMastraFeature {
   enabled: Boolean!
-  agentId: String
-  agentName: String
-  agentDescription: String
-  agentImage: String
+  mainAgent: PhClintMainAgent
+  subAgents: [PhClintSubAgent!]!
   models: [PhClintAgentModel!]!
   profiles: [PhClintAgentProfile!]!
   common: PhClintMastraCommon!
+}
+
+type PhClintMainAgent {
+  id: OID!
+  name: String!
+  description: String
+  image: String
+  modelId: OID!
+  profileIds: [OID!]!
+  skills: [String!]!
+  toolPatterns: [String!]!
+}
+
+type PhClintSubAgent {
+  id: OID!
+  name: String!
+  description: String!
+  modelId: OID!
+  profileIds: [OID!]!
+  skills: [String!]!
+  toolPatterns: [String!]!
 }
 
 type PhClintMastraCommon {
@@ -60,12 +79,12 @@ type PhClintMastraCommon {
 }
 
 type PhClintAgentModel {
-  id: String!
+  id: OID!
   isDefault: Boolean!
 }
 
 type PhClintAgentProfile {
-  id: String!
+  id: OID!
   title: String!
   content: String!
 }
@@ -134,76 +153,6 @@ input SetPackageIdentifierInput {
 input SetPowerhouseLevelInput {
   level: PowerhouseLevel!
   skipAutoProxy: Boolean
-}
-
-# features_mastra
-
-input EnableMastraInput {
-  agentId: String!
-  agentName: String!
-}
-
-input DisableMastraInput {
-  _: Boolean
-}
-
-input SetAgentIdInput {
-  agentId: String!
-}
-
-input SetAgentNameInput {
-  agentName: String!
-}
-
-input AddModelInput {
-  id: String!
-  isDefault: Boolean
-}
-
-input RemoveModelInput {
-  id: String!
-}
-
-input SetDefaultModelInput {
-  id: String!
-}
-
-input AddProfileInput {
-  id: String!
-  title: String!
-  content: String!
-  insertBefore: String
-}
-
-input UpdateProfileInput {
-  id: String!
-  title: String
-  content: String
-}
-
-input RemoveProfileInput {
-  id: String!
-}
-
-input ReorderProfilesInput {
-  ids: [String!]!
-  insertBefore: String
-}
-
-input SetAgentDescriptionInput {
-  description: String!
-}
-
-input SetAgentImageInput {
-  image: String!
-}
-
-input ClearAgentImageInput {
-  _: Boolean
-}
-
-input SetEnableChatInput {
-  enabled: Boolean!
 }
 
 # features_routine
@@ -302,12 +251,10 @@ input ImportSpecInput {
   routineEnabled: Boolean!
   packages: [ImportPackageInput!]!
   externalSkills: [ImportSkillInput!]!
-  agentId: String
-  agentName: String
-  models: [ImportModelInput!]
-  profiles: [ImportProfileInput!]
-  agentDescription: String
-  agentImage: String
+  mainAgent: ImportMainAgentInput
+  subAgents: [ImportSubAgentInput!]!
+  models: [ImportModelInput!]!
+  profiles: [ImportProfileInput!]!
   enableChat: Boolean
   proxyEnabled: Boolean
   observabilityEnabled: Boolean
@@ -328,14 +275,35 @@ input ImportSkillInput {
 }
 
 input ImportModelInput {
-  id: String!
+  id: OID!
   isDefault: Boolean!
 }
 
 input ImportProfileInput {
-  id: String!
+  id: OID!
   title: String!
   content: String!
+}
+
+input ImportMainAgentInput {
+  id: OID!
+  name: String!
+  description: String
+  image: String
+  modelId: OID!
+  profileIds: [OID!]!
+  skills: [String!]!
+  toolPatterns: [String!]!
+}
+
+input ImportSubAgentInput {
+  id: OID!
+  name: String!
+  description: String!
+  modelId: OID!
+  profileIds: [OID!]!
+  skills: [String!]!
+  toolPatterns: [String!]!
 }
 
 # deployment
@@ -354,4 +322,147 @@ input SetProxyEnabledInput {
 
 input SetObservabilityEnabledInput {
   enabled: Boolean!
+}
+
+# features_mastra
+
+input EnableMastraInput {
+  agentId: OID!
+  agentName: String!
+}
+
+input DisableMastraInput {
+  _: Boolean
+}
+
+input SetEnableChatInput {
+  enabled: Boolean!
+}
+
+# mastra_models
+
+input AddModelInput {
+  id: OID!
+  isDefault: Boolean
+}
+
+input RemoveModelInput {
+  id: OID!
+}
+
+input SetDefaultModelInput {
+  id: OID!
+}
+
+# mastra_profiles
+
+input AddProfileInput {
+  id: OID!
+  title: String!
+  content: String!
+  insertBefore: OID
+}
+
+input UpdateProfileInput {
+  id: OID!
+  title: String
+  content: String
+}
+
+input RemoveProfileInput {
+  id: OID!
+}
+
+input ReorderProfilesInput {
+  ids: [OID!]!
+  insertBefore: OID
+}
+
+# mastra_main_agent
+
+input SetMainAgentNameInput {
+  name: String!
+}
+
+input SetMainAgentDescriptionInput {
+  description: String!
+}
+
+input ClearMainAgentDescriptionInput {
+  _: Boolean
+}
+
+input SetMainAgentImageInput {
+  image: String!
+}
+
+input ClearMainAgentImageInput {
+  _: Boolean
+}
+
+# mastra_sub_agents
+
+input AddSubAgentInput {
+  id: OID!
+  name: String!
+  description: String!
+  modelId: OID!
+}
+
+input RemoveSubAgentInput {
+  id: OID!
+}
+
+input SetSubAgentNameInput {
+  id: OID!
+  name: String!
+}
+
+input SetSubAgentDescriptionInput {
+  id: OID!
+  description: String!
+}
+
+# mastra_agent_bindings
+
+input SetAgentModelInput {
+  agentId: OID!
+  modelId: OID!
+}
+
+input AddAgentProfileRefInput {
+  agentId: OID!
+  profileId: OID!
+  insertBefore: OID
+}
+
+input RemoveAgentProfileRefInput {
+  agentId: OID!
+  profileId: OID!
+}
+
+input ReorderAgentProfileRefsInput {
+  agentId: OID!
+  ids: [OID!]!
+  insertBefore: OID
+}
+
+input AddAgentSkillInput {
+  agentId: OID!
+  name: String!
+}
+
+input RemoveAgentSkillInput {
+  agentId: OID!
+  name: String!
+}
+
+input AddAgentToolPatternInput {
+  agentId: OID!
+  pattern: String!
+}
+
+input RemoveAgentToolPatternInput {
+  agentId: OID!
+  pattern: String!
 }

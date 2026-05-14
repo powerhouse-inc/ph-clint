@@ -1,85 +1,116 @@
-import type { PhClintProjectLifecycleOperations } from 'document-models/ph-clint-project/v1';
-import { InvalidAgentImageError } from '../../gen/features-mastra/error.js';
+import type { PhClintProjectLifecycleOperations } from "document-models/ph-clint-project/v1";
+import { InvalidAgentImageError } from "../../gen/lifecycle/error.js";
 
-export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperations = {
-  importSpecOperation(state, action) {
-    state.name = action.input.name;
-    state.scope = action.input.scope || null;
-    state.version = action.input.version;
-    state.description = action.input.description;
-    state.features.powerhouse = action.input.powerhouse;
-    state.features.mastra.enabled = action.input.mastraEnabled;
-    state.features.routine.enabled = action.input.routineEnabled;
-    // Derive the expected managed app package name
-    const appBase = action.input.name.replace(/-cli$/, '-app');
-    const appPkgName = action.input.scope ? `${action.input.scope}/${appBase}` : appBase;
-    const phEnabled = action.input.powerhouse !== 'Disabled';
+export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperations =
+  {
+    importSpecOperation(state, action) {
+      state.name = action.input.name;
+      state.scope = action.input.scope || null;
+      state.version = action.input.version;
+      state.description = action.input.description;
+      state.features.powerhouse = action.input.powerhouse;
+      state.features.mastra.enabled = action.input.mastraEnabled;
+      state.features.routine.enabled = action.input.routineEnabled;
 
-    state.packages = action.input.packages.map((p) => ({
-      id: p.id,
-      packageName: p.packageName,
-      documentTypes: [...p.documentTypes],
-      version: p.version || null,
-      managed: phEnabled && p.packageName === appPkgName,
-    }));
-    state.externalSkills = action.input.externalSkills.map((s) => ({
-      id: s.id,
-      name: s.name,
-      githubUrl: s.githubUrl,
-    }));
-    state.features.mastra.agentId = action.input.agentId || null;
-    state.features.mastra.agentName = action.input.agentName || null;
-    state.features.mastra.models = (action.input.models || []).map((m) => ({
-      id: m.id,
-      isDefault: m.isDefault,
-    }));
-    state.features.mastra.profiles = (action.input.profiles || []).map((p) => ({
-      id: p.id,
-      title: p.title,
-      content: p.content,
-    }));
+      const appBase = action.input.name.replace(/-cli$/, "-app");
+      const appPkgName = action.input.scope
+        ? `${action.input.scope}/${appBase}`
+        : appBase;
+      const phEnabled = action.input.powerhouse !== "Disabled";
 
-    // agentDescription — respects mastra-enabled guard
-    if (action.input.agentDescription && state.features.mastra.enabled) {
-      state.features.mastra.agentDescription = action.input.agentDescription;
-    } else {
-      state.features.mastra.agentDescription = null;
-    }
+      state.packages = action.input.packages.map((p) => ({
+        id: p.id,
+        packageName: p.packageName,
+        documentTypes: [...p.documentTypes],
+        version: p.version || null,
+        managed: phEnabled && p.packageName === appPkgName,
+      }));
+      state.externalSkills = action.input.externalSkills.map((s) => ({
+        id: s.id,
+        name: s.name,
+        githubUrl: s.githubUrl,
+      }));
 
-    // agentImage — validates data URL format (same logic as setAgentImageOperation)
-    if (action.input.agentImage && state.features.mastra.enabled) {
-      if (!/^data:[a-z]+\/[a-z0-9.+-]+;base64,/.test(action.input.agentImage)) {
-        throw new InvalidAgentImageError('Invalid image: must be a data URL (data:<mime>;base64,...)');
+      state.features.mastra.models = action.input.models.map((m) => ({
+        id: m.id,
+        isDefault: m.isDefault,
+      }));
+      state.features.mastra.profiles = action.input.profiles.map((p) => ({
+        id: p.id,
+        title: p.title,
+        content: p.content,
+      }));
+
+      if (action.input.mainAgent && state.features.mastra.enabled) {
+        const m = action.input.mainAgent;
+        let image: string | null = null;
+        if (m.image) {
+          if (!/^data:[a-z]+\/[a-z0-9.+-]+;base64,/.test(m.image)) {
+            throw new InvalidAgentImageError(
+              "Invalid image: must be a data URL (data:<mime>;base64,...)",
+            );
+          }
+          image = m.image;
+        }
+        state.features.mastra.mainAgent = {
+          id: m.id,
+          name: m.name,
+          description: m.description || null,
+          image,
+          modelId: m.modelId,
+          profileIds: [...m.profileIds],
+          skills: [...m.skills],
+          toolPatterns: [...m.toolPatterns],
+        };
+      } else {
+        state.features.mastra.mainAgent = null;
       }
-      state.features.mastra.agentImage = action.input.agentImage;
-    } else {
-      state.features.mastra.agentImage = null;
-    }
 
-    // enableChat — respects mastra+powerhouse guards, manages clint-common package
-    if (action.input.enableChat && state.features.mastra.enabled && state.features.powerhouse !== 'Disabled') {
-      state.features.mastra.common.enableChat = true;
-      const CLINT_COMMON_PKG = '@powerhousedao/clint-common';
-      const CHAT_DOC_TYPE = 'powerhouse/chat-session';
-      const existing = state.packages.find((p) => p.packageName === CLINT_COMMON_PKG);
-      if (!existing) {
-        state.packages.push({
-          id: 'pkg-clint-common',
-          packageName: CLINT_COMMON_PKG,
-          documentTypes: [CHAT_DOC_TYPE],
-          version: null,
-          managed: true,
-        });
-      } else if (!existing.documentTypes.includes(CHAT_DOC_TYPE)) {
-        existing.documentTypes.push(CHAT_DOC_TYPE);
+      if (state.features.mastra.enabled) {
+        state.features.mastra.subAgents = action.input.subAgents.map((s) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          modelId: s.modelId,
+          profileIds: [...s.profileIds],
+          skills: [...s.skills],
+          toolPatterns: [...s.toolPatterns],
+        }));
+      } else {
+        state.features.mastra.subAgents = [];
       }
-    } else {
-      state.features.mastra.common.enableChat = false;
-    }
 
-    // Deployment fields
-    state.deployment.proxyEnabled = action.input.proxyEnabled ?? false;
-    state.deployment.observabilityEnabled = action.input.observabilityEnabled ?? false;
-    state.deployment.supportedResources = action.input.supportedResources ? [...action.input.supportedResources] : [];
-  },
-};
+      if (
+        action.input.enableChat &&
+        state.features.mastra.enabled &&
+        state.features.powerhouse !== "Disabled"
+      ) {
+        state.features.mastra.common.enableChat = true;
+        const CLINT_COMMON_PKG = "@powerhousedao/clint-common";
+        const CHAT_DOC_TYPE = "powerhouse/chat-session";
+        const existing = state.packages.find(
+          (p) => p.packageName === CLINT_COMMON_PKG,
+        );
+        if (!existing) {
+          state.packages.push({
+            id: "pkg-clint-common",
+            packageName: CLINT_COMMON_PKG,
+            documentTypes: [CHAT_DOC_TYPE],
+            version: null,
+            managed: true,
+          });
+        } else if (!existing.documentTypes.includes(CHAT_DOC_TYPE)) {
+          existing.documentTypes.push(CHAT_DOC_TYPE);
+        }
+      } else {
+        state.features.mastra.common.enableChat = false;
+      }
+
+      state.deployment.proxyEnabled = action.input.proxyEnabled ?? false;
+      state.deployment.observabilityEnabled =
+        action.input.observabilityEnabled ?? false;
+      state.deployment.supportedResources = action.input.supportedResources
+        ? [...action.input.supportedResources]
+        : [];
+    },
+  };
