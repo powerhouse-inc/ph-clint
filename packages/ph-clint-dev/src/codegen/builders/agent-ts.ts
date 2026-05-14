@@ -118,16 +118,24 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   lines.push('  const memory = await m.createMemory();');
   lines.push('');
 
-  // Emit each sub-agent.
+  // Emit each sub-agent. Sub-agent models are fixed by the spec (no runtime
+  // override), but the API key still has to come from `ctx.config.<provider>ApiKey`
+  // — otherwise Mastra falls back to `process.env.<PROVIDER>_API_KEY` which
+  // isn't populated in this CLI.
   for (const sub of subs) {
     const varName = camelCase(sub.id);
     const includeExpr = toolPatternsExpr(sub, false)!; // sub: always emits include (empty array = no tools)
+    const [subProvider] = sub.modelId.split(/[:/]/);
+    const subApiKeyField = `${subProvider}ApiKey`;
+    const modelLiteral = JSON.stringify(sub.modelId);
     lines.push(`  const ${varName} = new Agent({`);
     lines.push(`    id: '${sub.id}',`);
     lines.push(`    name: ${JSON.stringify(sub.name)},`);
     lines.push(`    description: ${JSON.stringify(sub.description)},`);
     lines.push(`    instructions: m.getAgentInstructions('${sub.id}'),`);
-    lines.push(`    model: ${JSON.stringify(sub.modelId)},`);
+    lines.push(`    model: ctx.config.${subApiKeyField}`);
+    lines.push(`      ? { id: ${modelLiteral} as \`\${string}/\${string}\`, apiKey: ctx.config.${subApiKeyField} }`);
+    lines.push(`      : (${modelLiteral} as \`\${string}/\${string}\`),`);
     lines.push('    tools: async () => {');
     lines.push(`      ctx.context.log?.debug(\`[agent ${sub.id}] resolving tools\`);`);
     lines.push(`      return m.getTools({ MCPClient, include: ${includeExpr} });`);

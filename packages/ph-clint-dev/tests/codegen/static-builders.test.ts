@@ -196,6 +196,49 @@ describe('buildAgentTs', () => {
     expect(out).not.toContain("import { Agent }");
   });
 
+  it('sub-agents pass ctx.config.<provider>ApiKey to their model (else they fall back to process.env)', () => {
+    const input: import('../../src/spec/types.js').ClintProjectSpecInput = {
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          models: [
+            { id: 'anthropic/claude-sonnet-4-5' },
+            { id: 'openai/gpt-4o' },
+          ],
+          mainAgent: {
+            id: 'foo-agent',
+            name: 'Foo Agent',
+            description: null,
+            image: null,
+            modelId: 'anthropic/claude-sonnet-4-5',
+            profileIds: [],
+            skills: [],
+            toolPatterns: [],
+          },
+          subAgents: [
+            {
+              id: 'summarizer',
+              name: 'Summarizer',
+              description: 'Summarizes content.',
+              modelId: 'openai/gpt-4o',
+              profileIds: [],
+              skills: [],
+              toolPatterns: [],
+            },
+          ],
+        },
+      },
+    };
+    const spec = clintProjectSpecSchema.parse(input);
+    const out = buildAgentTs(spec);
+    // Sub-agent uses its provider's apiKey, model id is fixed (no runtime override).
+    expect(out).toContain('model: ctx.config.openaiApiKey');
+    expect(out).toContain('id: "openai/gpt-4o" as `${string}/${string}`, apiKey: ctx.config.openaiApiKey');
+    // The bare-string fallback we just replaced should no longer appear.
+    expect(out).not.toMatch(/model: "openai\/gpt-4o",/);
+  });
+
   it('main agent on a real provider — emits its <provider>ApiKey field, never clintApiKey', () => {
     const spec = specWithAgent({
       models: [
