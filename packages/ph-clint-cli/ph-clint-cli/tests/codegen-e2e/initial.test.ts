@@ -39,7 +39,6 @@ import {
 
 const tmpDirs: string[] = [];
 afterAll(async () => {
-  if (process.env.KEEP_TMP) return;
   await Promise.all(tmpDirs.map(rmRf));
 }, 120_000);
 
