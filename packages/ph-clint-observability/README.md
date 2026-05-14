@@ -45,7 +45,13 @@ To revoke or re-prompt, delete or edit that file:
 pnpm telemetry:dev
 ```
 
-Runs a small OTLP HTTP receiver on `127.0.0.1:4318` and announces the env var to set so your CLI sends telemetry there. Incoming spans and metrics are pretty-printed to stdout.
+Runs a small OTLP + Sentry-envelope receiver on `127.0.0.1:4318` and announces the env vars to set so your CLI sends telemetry there. Three routes on one server:
+
+- `POST /v1/traces` — OTLP traces (OTel)
+- `POST /v1/metrics` — OTLP metrics (OTel)
+- `POST /api/<projectId>/envelope/` — Sentry envelope (errors, transactions, sessions)
+
+The receiver prints two env vars to export — one for OTel, one for Sentry — both pointing at the same local server. Incoming traces, metrics, and Sentry events are pretty-printed to stdout. Sentry envelope items are parsed and `event` / `transaction` payloads are decoded as JSON; other item types (attachments, sessions) show their type only.
 
 ## What's instrumented
 
