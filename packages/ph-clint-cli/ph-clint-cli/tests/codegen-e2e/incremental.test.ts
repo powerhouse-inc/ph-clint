@@ -11,7 +11,12 @@
  */
 import { describe, it, expect, afterAll } from '@jest/globals';
 import { generateProject } from '../../src/codegen/index.js';
-import { clintProjectSpecSchema, type ClintProjectSpec } from '../../src/spec/types.js';
+import {
+  clintProjectSpecSchema,
+  getAppPackageName,
+  type ClintProjectSpec,
+  type ClintProjectSpecInput,
+} from '../../src/spec/types.js';
 import { FIXTURES, TRANSITIONS } from './fixtures.js';
 import {
   mkTmpDir,
@@ -36,6 +41,43 @@ function needsMigration(from: ClintProjectSpec, to: ClintProjectSpec): boolean {
     from.features.powerhouse === 'Disabled' &&
     to.features.powerhouse !== 'Disabled'
   );
+}
+
+/**
+ * Build the to-fixture's spec input with the from-fixture's identity grafted
+ * on. Identity (name + scope) carries forward — the project doesn't rename
+ * mid-transition — and any `packages[]` entry whose bare name matches the
+ * to-fixture's *own* auto-derived app package is rewritten to match the
+ * from-fixture's app package name. Without that rewrite, a transition
+ * between fixtures with different scopes leaves a stale `packages[]` entry
+ * pointing at a package name no codegen path will ever produce — pnpm then
+ * tries to fetch it from the npm registry and 404s.
+ */
+function buildToInput(
+  fromSpec: ClintProjectSpec,
+  toFixtureName: string,
+): ClintProjectSpecInput {
+  const raw = FIXTURES[toFixtureName];
+  const originalToSpec = clintProjectSpecSchema.parse(raw);
+  const oldAppBare = getAppPackageName(originalToSpec).replace(/^@[^/]+\//, '');
+  const newAppName = getAppPackageName(fromSpec);
+
+  const packages = raw.packages?.map((pkg) => {
+    const bare = pkg.packageName.replace(/^@[^/]+\//, '');
+    if (bare !== oldAppBare) return pkg;
+    return {
+      ...pkg,
+      id: pkg.id.replace(oldAppBare, newAppName.replace(/^@[^/]+\//, '')),
+      packageName: newAppName,
+    };
+  });
+
+  return {
+    ...raw,
+    name: fromSpec.name,
+    scope: fromSpec.scope,
+    ...(packages !== undefined && { packages }),
+  };
 }
 
 /**
@@ -68,7 +110,10 @@ describe.each(TRANSITIONS)(
       async () => {
         const fromSpec = clintProjectSpecSchema.parse(FIXTURES[fromName]);
         // Keep the from-fixture's identity (name, scope) — only features change.
-        const toInput = { ...FIXTURES[toName], name: fromSpec.name, scope: fromSpec.scope };
+        // Also rewrite the to-fixture's app-package entry so a cross-scope
+        // transition doesn't leave a stale packageName pointing at a non-
+        // existent npm package.
+        const toInput = buildToInput(fromSpec, toName);
         const toSpec = clintProjectSpecSchema.parse(toInput);
         const migrates = needsMigration(fromSpec, toSpec);
 
