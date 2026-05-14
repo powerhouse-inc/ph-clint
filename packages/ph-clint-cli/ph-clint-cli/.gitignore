@@ -8,3 +8,6 @@ coverage/
 *.db
 *.db-shm
 *.db-wal
+
+# spec-roundtrip e2e log artefacts
+spec-roundtrip-e2e-*.log
