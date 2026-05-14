@@ -65,7 +65,12 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     zod: '^4.3.6',
   };
   if (mastra.enabled) {
-    dependencies['@mastra/core'] = '^1.22.0';
+    // Mastra 1.32.x has `agents: Record<string, Agent>` — a freshly-constructed
+    // `new Agent({...})` is directly assignable. 1.33+ re-introduces a
+    // `Record<string, SubAgent>` constraint whose `TOutput` default (`unknown`)
+    // doesn't match `Agent`'s default (`undefined`) without an explicit generic
+    // or a cast, neither of which fits our type-strictness rule. Pin to 1.32.x.
+    dependencies['@mastra/core'] = '~1.32.0';
     dependencies['@mastra/libsql'] = '^1.7.4';
     dependencies['@mastra/mcp'] = '^1.4.1';
     dependencies['@mastra/memory'] = '^1.13.1';

@@ -118,7 +118,7 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   lines.push('  const memory = await m.createMemory();');
   lines.push('');
 
-  // Emit each sub-agent
+  // Emit each sub-agent.
   for (const sub of subs) {
     const varName = camelCase(sub.id);
     const includeExpr = toolPatternsExpr(sub, false)!; // sub: always emits include (empty array = no tools)
@@ -138,9 +138,19 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   }
 
   const mainInclude = toolPatternsExpr(main, true);
-  const agentsField = subs.length > 0
-    ? `    agents: { ${subs.map((s) => camelCase(s.id)).join(', ')} },`
-    : '';
+  // Mastra's `agents:` is typed `Record<string, Agent>` with default generics
+  // (`Agent<string, ToolsInput, undefined, unknown>`), but TypeScript's strict
+  // function-type variance check rejects an inline object literal whose values
+  // were inferred with literal-id generics. Declare the map ahead of time with
+  // the wide `Record<string, Agent>` annotation so the values are coerced to
+  // the same defaults the supervisor expects.
+  let agentsField = '';
+  if (subs.length > 0) {
+    const entries = subs.map((s) => camelCase(s.id)).join(', ');
+    lines.push(`  const subAgents: Record<string, Agent> = { ${entries} };`);
+    lines.push('');
+    agentsField = '    agents: subAgents,';
+  }
 
   lines.push(`  const main = new Agent({`);
   lines.push(`    id: '${main.id}',`);
