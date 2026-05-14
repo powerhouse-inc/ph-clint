@@ -325,8 +325,12 @@ const EXPECTED_SPEC_PATHS = new Set([
   'features.mastra.mainAgent.image',
   'features.mastra.mainAgent.modelId',
   'features.mastra.mainAgent.profileIds[]',
-  'features.mastra.mainAgent.skills[]',
-  'features.mastra.mainAgent.toolPatterns[]',
+  // skills[] and toolPatterns[] collapse to the bare prefix when the array is
+  // empty (collectPaths returns just the prefix for an empty array). The main
+  // agent's skills/toolPatterns are commonly empty, so the bare-prefix path
+  // is what appears in the spec JSON.
+  'features.mastra.mainAgent.skills',
+  'features.mastra.mainAgent.toolPatterns',
   'features.mastra.subAgents[].id',
   'features.mastra.subAgents[].name',
   'features.mastra.subAgents[].description',
@@ -349,6 +353,7 @@ const EXPECTED_SPEC_PATHS = new Set([
   'externalSkills[].name',
   'externalSkills[].githubUrl',
   'deployment.proxyEnabled',
+  'deployment.observabilityEnabled',
   'deployment.supportedResources[]',
   'documentId',
   'documentType',
