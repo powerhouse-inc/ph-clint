@@ -47,7 +47,7 @@
 - Core fields: `name` (must end with `-cli`), `scope` (optional `@org`), `version`, `description`
 - Feature toggles:
   - `powerhouse`: ordered level enum `Disabled → Reactor → Switchboard → Connect` — determines flat vs split layout
-  - `mastra`: `enabled`, `agentId`, `agentName`, `agentDescription`, `agentImage`, `models[]`, `profiles[]`, `common.enableChat`
+  - `mastra`: `enabled`, `mainAgent` (nullable; `id`, `name`, `description`, `image` data-URL, `modelId`, `profileIds[]`, `skills[]`, `toolPatterns[]`), `subAgents[]` (same fields minus `image` and with required `description`), `models[]` (library), `profiles[]` (library), `common.enableChat`
   - `routine`: `enabled` (forced on when Mastra is enabled)
 - `packages[]` — reactor packages with `id`, `packageName`, `documentTypes[]`, `version`
 - `externalSkills[]` — GitHub-sourced skills with `id`, `name`, `githubUrl`
@@ -238,13 +238,20 @@
 ### Part 8 — Agent
 
 #### Clint Agent
-- Agent factory: `createAgent(ctx)` — returns `AgentProvider`
+- Agent factory: `createAgent(ctx)` — returns `AgentProvider` for the main agent
 - Demo mode (no API key): echo-style agent that returns `[Clint demo mode]` + user prompt
-- Full mode (with API key): Mastra `Agent` with:
-  - `instructions`: concise helper persona
-  - `model`: configurable via `config.model` (default: `anthropic/claude-haiku-4-5`)
-  - `tools`: CLI commands + MCP tools via `createMastraHelpers().getTools()`
-  - `memory`: LibSQL-backed via `createMastraHelpers().createMemory()`
+- Full mode (with API key): Mastra supervisor `Agent` with:
+  - One `new Agent({})` per sub-agent declared in the spec, threaded into the
+    supervisor's `agents: subAgents` field (Mastra surfaces each as a tool
+    named `agent-<id>`). Sub-agent models come from the spec verbatim.
+  - Main agent's `instructions`: concatenated profile sections, resolved via
+    `m.getAgentInstructions(mainAgentId)`
+  - Main agent's `model`: configurable via `config.model` (overridable at
+    runtime; only applies to the main agent — sub-agent models are fixed)
+  - Tool patterns: empty on main → all tools; empty on a sub → no tools;
+    non-empty → glob-filtered subset of CLI + MCP tools
+  - Memory: shared LibSQL store across main and sub-agents; separate threads
+    per delegation (Mastra default)
   - `maxSteps: 40` via `wrapAgent()`
 - Lazy initialization — agent constructed only when first called
 

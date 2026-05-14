@@ -3,8 +3,8 @@
  *
  * 1. Start ph-clint-cli (Reactor + Switchboard + routine loop).
  * 2. Create a `powerhouse/ph-clint-project` document and populate it
- *    via IMPORT_SPEC with ALL fields (including agentDescription,
- *    agentImage, enableChat, deployment fields).
+ *    via IMPORT_SPEC with ALL fields (including mainAgent, subAgents,
+ *    enableChat, deployment fields).
  * 3. Wait for the spec-change trigger to generate the project on disk.
  * 4. Read the generated project-spec.json and verify every field
  *    matches the document state.
