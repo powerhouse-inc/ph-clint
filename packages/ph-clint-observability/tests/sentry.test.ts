@@ -4,6 +4,7 @@ import { initSentry } from '../src/sentry.js';
 describe('initSentry', () => {
   afterEach(() => {
     delete process.env.SENTRY_RELEASE;
+    delete process.env.SENTRY_SERVER_NAME;
   });
 
   it('returns a handle with captureException and flush', async () => {
@@ -34,6 +35,15 @@ describe('initSentry', () => {
     // contract is: if SENTRY_RELEASE is in env, we don't pass `release` to
     // init(), so the SDK reads env natively. The test pins that initSentry
     // doesn't fault under this scenario.
+    expect(handle).toBeDefined();
+  });
+
+  it('initializes without faulting when SENTRY_SERVER_NAME is set', async () => {
+    // Sentry's defaultIntegrations: false strips the NodeContext integration
+    // that normally populates server_name. We set it explicitly from
+    // os.hostname() or SENTRY_SERVER_NAME so events get host attribution.
+    process.env.SENTRY_SERVER_NAME = 'override-host.example.com';
+    const handle = await initSentry({ dsn: 'https://x@example.invalid/1' });
     expect(handle).toBeDefined();
   });
 });

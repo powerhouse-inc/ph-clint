@@ -1,3 +1,5 @@
+import { hostname } from 'node:os';
+
 export interface SentryInitInput {
   dsn: string;
   /**
@@ -41,6 +43,14 @@ export async function initSentry(opts: SentryInitInput): Promise<SentryHandle> {
   const Sentry = await import('@sentry/node');
   const initOpts: Parameters<typeof Sentry.init>[0] = {
     dsn: opts.dsn,
+    // Explicitly set the host name. With `defaultIntegrations: false` we
+    // disable Sentry's `NodeContext` integration, which is what normally
+    // populates `event.server_name`. Without this, errors in Sentry have no
+    // host attribution — which makes multi-host/multi-pod deployments
+    // impossible to triage. Operators can still override via
+    // `SENTRY_SERVER_NAME` env (Sentry SDK reads it natively when serverName
+    // is not passed, but ours wins if both are set — see below).
+    serverName: process.env.SENTRY_SERVER_NAME ?? hostname(),
     defaultIntegrations: false,
     integrations: [],
     skipOpenTelemetrySetup: true,

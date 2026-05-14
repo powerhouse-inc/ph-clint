@@ -1,3 +1,5 @@
+import { hostname } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import type { Tracer, Meter } from '@opentelemetry/api';
 import type { SpanProcessor } from '@opentelemetry/sdk-trace-base';
 
@@ -6,6 +8,34 @@ export interface OtelInitInput {
   serviceName: string;
   version: string;
   sentryEnabled: boolean;
+}
+
+/**
+ * Per-process instance id. Generated once at module load so every span and
+ * metric from this process carries the same value. Distinguishes multiple
+ * processes of the same service on the same host — useful when several CLI
+ * invocations run concurrently (e.g., in a pod with many short-lived calls).
+ */
+const SERVICE_INSTANCE_ID = randomUUID();
+
+/** The host this process is running on. Exported for the Sentry init too. */
+export const HOST_NAME = hostname();
+
+/**
+ * Build the explicit resource-attribute map that initOtel passes to
+ * `resourceFromAttributes()`. NodeSDK's default detectors layer host.name /
+ * host.id / host.arch / process.* on top — those are NOT added here, the
+ * SDK adds them at runtime.
+ *
+ * Extracted as a pure function so tests can pin the explicit-attribute
+ * contract without booting NodeSDK.
+ */
+export function buildResourceAttributes(opts: { serviceName: string; version: string }): Record<string, string> {
+  return {
+    'service.name': opts.serviceName,
+    'service.version': opts.version,
+    'service.instance.id': SERVICE_INSTANCE_ID,
+  };
 }
 
 export interface OtelHandle {
@@ -37,7 +67,6 @@ export async function initOtel(opts: OtelInitInput): Promise<OtelHandle> {
     sdkMetrics,
     sdkTraceBase,
     resourcesMod,
-    semconv,
     apiMod,
   ] = await Promise.all([
     import('@opentelemetry/sdk-node'),
@@ -46,15 +75,20 @@ export async function initOtel(opts: OtelInitInput): Promise<OtelHandle> {
     import('@opentelemetry/sdk-metrics'),
     import('@opentelemetry/sdk-trace-base'),
     import('@opentelemetry/resources'),
-    import('@opentelemetry/semantic-conventions'),
     import('@opentelemetry/api'),
   ]);
 
   const base = stripTrailingSlash(opts.endpoint);
-  const resource = resourcesMod.resourceFromAttributes({
-    [semconv.ATTR_SERVICE_NAME]: opts.serviceName,
-    [semconv.ATTR_SERVICE_VERSION]: opts.version,
-  });
+  // host.name / host.id / host.arch / process.* are auto-populated by NodeSDK's
+  // default resource detectors (hostDetector, osDetector, processDetector).
+  // We add service.instance.id explicitly via buildResourceAttributes —
+  // distinguishes multiple processes of the same service on the same host,
+  // which the default detector set doesn't reliably cover across SDK versions.
+  // Operators can layer arbitrary tags on top via OTEL_RESOURCE_ATTRIBUTES
+  // (the envDetector in NodeSDK's default set picks those up).
+  const resource = resourcesMod.resourceFromAttributes(
+    buildResourceAttributes({ serviceName: opts.serviceName, version: opts.version }),
+  );
 
   const spanProcessors: SpanProcessor[] = [
     new sdkTraceBase.BatchSpanProcessor(new OTLPTraceExporter({ url: `${base}/v1/traces` })),

@@ -255,4 +255,10 @@ describe('metrics contract', () => {
       expect(kinds).toEqual(new Set(['prompt', 'completion']));
     });
   });
+
+  // Resource-attribute contract (service.name, service.version,
+  // service.instance.id) is pinned in `otel.test.ts` against the pure
+  // buildResourceAttributes helper. This test attaches a meter directly to
+  // a standalone MeterProvider (no NodeSDK, no resource piping), so we
+  // don't re-test it here.
 });
