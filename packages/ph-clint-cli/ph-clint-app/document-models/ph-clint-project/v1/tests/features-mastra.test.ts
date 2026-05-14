@@ -27,7 +27,7 @@ function enabledWithPowerhouse(): PhClintProjectDocument {
 
 describe("FeaturesMastraOperations", () => {
   describe("ENABLE_MASTRA", () => {
-    it("seeds mainAgent + default model + base profile", () => {
+    it("seeds mainAgent + base model + base profile", () => {
       const doc = enabled();
       const s = doc.state.global.features.mastra;
       expect(doc.operations.global[0].error).toBeUndefined();
@@ -39,7 +39,7 @@ describe("FeaturesMastraOperations", () => {
       expect(s.mainAgent!.profileIds).toEqual(["base"]);
       expect(s.mainAgent!.skills).toEqual([]);
       expect(s.mainAgent!.toolPatterns).toEqual([]);
-      expect(s.models).toEqual([{ id: "clint/demo-agent", isDefault: true }]);
+      expect(s.models).toEqual([{ id: "clint/demo-agent" }]);
       expect(s.profiles).toEqual([
         { id: "base", title: "Base Profile", content: "You are a helpful assistant." },
       ]);
@@ -74,12 +74,10 @@ describe("FeaturesMastraOperations", () => {
 
     it("when re-enabled, replaces id and name but preserves the existing mainAgent's bindings", () => {
       let doc = enabled();
-      // Re-enable with a new agentId+name
       doc = reducer(doc, enableMastra({ agentId: "renamed", agentName: "Renamed" }));
       const main = doc.state.global.features.mastra.mainAgent!;
       expect(main.id).toBe("renamed");
       expect(main.name).toBe("Renamed");
-      // Bindings preserved
       expect(main.modelId).toBe("clint/demo-agent");
       expect(main.profileIds).toEqual(["base"]);
     });
@@ -100,7 +98,6 @@ describe("FeaturesMastraOperations", () => {
     it("removes managed clint-common package when disabled", () => {
       let doc = enabledWithPowerhouse();
       doc = reducer(doc, setEnableChat({ enabled: true }));
-      // clint-common added
       expect(
         doc.state.global.packages.some(
           (p) => p.packageName === "@powerhousedao/clint-common" && p.managed,

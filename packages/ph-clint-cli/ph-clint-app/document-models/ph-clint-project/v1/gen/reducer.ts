@@ -54,7 +54,6 @@ import {
   ReorderAgentProfileRefsInputSchema,
   ReorderProfilesInputSchema,
   SetAgentModelInputSchema,
-  SetDefaultModelInputSchema,
   SetDescriptionInputSchema,
   SetEnableChatInputSchema,
   SetExternalSkillGithubUrlInputSchema,
@@ -435,18 +434,6 @@ const stateReducer: StateReducer<PhClintProjectPHState> = (
       RemoveModelInputSchema().parse(action.input);
 
       phClintProjectMastraModelsOperations.removeModelOperation(
-        (state as any)[action.scope],
-        action as any,
-        dispatch,
-      );
-
-      break;
-    }
-
-    case "SET_DEFAULT_MODEL": {
-      SetDefaultModelInputSchema().parse(action.input);
-
-      phClintProjectMastraModelsOperations.setDefaultModelOperation(
         (state as any)[action.scope],
         action as any,
         dispatch,

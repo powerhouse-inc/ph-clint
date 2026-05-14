@@ -74,8 +74,7 @@ export const phClintProjectMastraProfilesOperations: PhClintProjectMastraProfile
         throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);
       }
       const main = state.features.mastra.mainAgent;
-      const usedByMain =
-        !!main && main.profileIds.includes(action.input.id);
+      const usedByMain = !!main && main.profileIds.includes(action.input.id);
       const usedBySub = state.features.mastra.subAgents.some((s) =>
         s.profileIds.includes(action.input.id),
       );

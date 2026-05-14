@@ -1,5 +1,4 @@
 import {
-  addAgentProfileRef,
   addProfile,
   enableMastra,
   reducer,
@@ -32,10 +31,7 @@ describe("MastraProfilesOperations", () => {
 
     it("inserts before the named profile when insertBefore is provided", () => {
       let doc = enabled();
-      doc = reducer(
-        doc,
-        addProfile({ id: "tools", title: "Tools", content: "" }),
-      );
+      doc = reducer(doc, addProfile({ id: "tools", title: "Tools", content: "" }));
       doc = reducer(
         doc,
         addProfile({
@@ -113,19 +109,6 @@ describe("MastraProfilesOperations", () => {
       ).toBeDefined();
     });
 
-    it("rejects when in use by a sub-agent", () => {
-      // Not directly possible to attach a profile to a sub-agent unless we
-      // add the sub-agent first and then add the profile reference. So this
-      // test exercises that branch via addAgentProfileRef on a sub-agent.
-      let doc = enabled();
-      doc = reducer(doc, addProfile({ id: "shared", title: "Shared", content: "" }));
-      // No sub-agent here; just verify removal of an unused profile works
-      doc = reducer(doc, removeProfile({ id: "shared" }));
-      expect(
-        doc.state.global.features.mastra.profiles.find((p) => p.id === "shared"),
-      ).toBeUndefined();
-    });
-
     it("removes an unused profile", () => {
       let doc = enabled();
       doc = reducer(doc, addProfile({ id: "tools", title: "Tools", content: "" }));
@@ -170,8 +153,4 @@ describe("MastraProfilesOperations", () => {
       expect(op.error).toContain("Profile not found");
     });
   });
-
-  // Suppress unused-import warning when the optional addAgentProfileRef
-  // import becomes used in future expansions.
-  void addAgentProfileRef;
 });

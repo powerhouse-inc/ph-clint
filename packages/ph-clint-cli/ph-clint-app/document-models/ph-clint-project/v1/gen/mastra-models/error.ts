@@ -47,5 +47,4 @@ export class ModelInUseError extends Error implements ReducerError {
 export const errors = {
   AddModel: { MastraNotEnabledError, InvalidModelIdError, DuplicateModelError },
   RemoveModel: { MastraNotEnabledError, ModelNotFoundError, ModelInUseError },
-  SetDefaultModel: { MastraNotEnabledError, ModelNotFoundError },
 };

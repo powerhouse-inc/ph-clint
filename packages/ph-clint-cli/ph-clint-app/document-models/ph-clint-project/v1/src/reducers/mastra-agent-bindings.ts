@@ -1,8 +1,4 @@
 import type { PhClintProjectMastraAgentBindingsOperations } from "document-models/ph-clint-project/v1";
-import type {
-  PhClintMainAgent,
-  PhClintSubAgent,
-} from "../../gen/schema/types.js";
 import {
   AgentNotFoundError,
   InvalidSkillNameError,
@@ -13,6 +9,10 @@ import {
   SkillNotFoundError,
   ToolPatternNotFoundError,
 } from "../../gen/mastra-agent-bindings/error.js";
+import type {
+  PhClintMainAgent,
+  PhClintSubAgent,
+} from "../../gen/schema/types.js";
 
 type Agent = PhClintMainAgent | PhClintSubAgent;
 

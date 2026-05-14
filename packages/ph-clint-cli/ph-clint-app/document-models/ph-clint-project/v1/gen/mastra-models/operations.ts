@@ -4,11 +4,7 @@
  */
 import { type SignalDispatch } from "document-model";
 import type { PhClintProjectGlobalState } from "../types.js";
-import type {
-  AddModelAction,
-  RemoveModelAction,
-  SetDefaultModelAction,
-} from "./actions.js";
+import type { AddModelAction, RemoveModelAction } from "./actions.js";
 
 export interface PhClintProjectMastraModelsOperations {
   addModelOperation: (
@@ -19,11 +15,6 @@ export interface PhClintProjectMastraModelsOperations {
   removeModelOperation: (
     state: PhClintProjectGlobalState,
     action: RemoveModelAction,
-    dispatch?: SignalDispatch,
-  ) => void;
-  setDefaultModelOperation: (
-    state: PhClintProjectGlobalState,
-    action: SetDefaultModelAction,
     dispatch?: SignalDispatch,
   ) => void;
 }

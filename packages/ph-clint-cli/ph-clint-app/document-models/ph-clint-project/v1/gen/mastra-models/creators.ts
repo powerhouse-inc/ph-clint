@@ -3,21 +3,9 @@
  * This file is auto-generated and updated by codegen
  */
 import { createAction } from "document-model";
-import {
-  AddModelInputSchema,
-  RemoveModelInputSchema,
-  SetDefaultModelInputSchema,
-} from "../schema/zod.js";
-import type {
-  AddModelInput,
-  RemoveModelInput,
-  SetDefaultModelInput,
-} from "../types.js";
-import type {
-  AddModelAction,
-  RemoveModelAction,
-  SetDefaultModelAction,
-} from "./actions.js";
+import { AddModelInputSchema, RemoveModelInputSchema } from "../schema/zod.js";
+import type { AddModelInput, RemoveModelInput } from "../types.js";
+import type { AddModelAction, RemoveModelAction } from "./actions.js";
 
 export const addModel = (input: AddModelInput) =>
   createAction<AddModelAction>(
@@ -34,14 +22,5 @@ export const removeModel = (input: RemoveModelInput) =>
     { ...input },
     undefined,
     RemoveModelInputSchema,
-    "global",
-  );
-
-export const setDefaultModel = (input: SetDefaultModelInput) =>
-  createAction<SetDefaultModelAction>(
-    "SET_DEFAULT_MODEL",
-    { ...input },
-    undefined,
-    SetDefaultModelInputSchema,
     "global",
   );

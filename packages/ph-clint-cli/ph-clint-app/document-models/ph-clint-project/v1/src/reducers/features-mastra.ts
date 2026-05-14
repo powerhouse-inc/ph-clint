@@ -20,10 +20,7 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
       }
       state.features.mastra.enabled = true;
       if (state.features.mastra.models.length === 0) {
-        state.features.mastra.models.push({
-          id: "clint/demo-agent",
-          isDefault: true,
-        });
+        state.features.mastra.models.push({ id: "clint/demo-agent" });
       }
       if (state.features.mastra.profiles.length === 0) {
         state.features.mastra.profiles.push({

@@ -80,7 +80,6 @@ type PhClintMastraCommon {
 
 type PhClintAgentModel {
   id: OID!
-  isDefault: Boolean!
 }
 
 type PhClintAgentProfile {
@@ -276,7 +275,6 @@ input ImportSkillInput {
 
 input ImportModelInput {
   id: OID!
-  isDefault: Boolean!
 }
 
 input ImportProfileInput {
@@ -343,14 +341,9 @@ input SetEnableChatInput {
 
 input AddModelInput {
   id: OID!
-  isDefault: Boolean
 }
 
 input RemoveModelInput {
-  id: OID!
-}
-
-input SetDefaultModelInput {
   id: OID!
 }
 

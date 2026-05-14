@@ -17,7 +17,6 @@ import {
 } from "document-models/ph-clint-project/v1";
 import { describe, expect, it } from "vitest";
 
-/** Helper: enabled doc with extra models, profiles, and one sub-agent. */
 function setup(): PhClintProjectDocument {
   let doc = reducer(
     utils.createDocument(),

@@ -58,7 +58,6 @@ import type {
   ReorderAgentProfileRefsInput,
   ReorderProfilesInput,
   SetAgentModelInput,
-  SetDefaultModelInput,
   SetDescriptionInput,
   SetEnableChatInput,
   SetExternalSkillGithubUrlInput,
@@ -148,7 +147,6 @@ export function AddExternalSkillInputSchema(): z.ZodObject<
 export function AddModelInputSchema(): z.ZodObject<Properties<AddModelInput>> {
   return z.object({
     id: z.string(),
-    isDefault: z.boolean().nullish(),
   });
 }
 
@@ -286,7 +284,6 @@ export function ImportModelInputSchema(): z.ZodObject<
 > {
   return z.object({
     id: z.string(),
-    isDefault: z.boolean(),
   });
 }
 
@@ -365,7 +362,6 @@ export function PhClintAgentModelSchema(): z.ZodObject<
   return z.object({
     __typename: z.literal("PhClintAgentModel").optional(),
     id: z.string(),
-    isDefault: z.boolean(),
   });
 }
 
@@ -642,14 +638,6 @@ export function SetAgentModelInputSchema(): z.ZodObject<
   return z.object({
     agentId: z.string(),
     modelId: z.string(),
-  });
-}
-
-export function SetDefaultModelInputSchema(): z.ZodObject<
-  Properties<SetDefaultModelInput>
-> {
-  return z.object({
-    id: z.string(),
   });
 }
 

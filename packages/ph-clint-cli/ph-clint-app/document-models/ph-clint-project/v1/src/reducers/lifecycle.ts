@@ -33,7 +33,6 @@ export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperation
 
       state.features.mastra.models = action.input.models.map((m) => ({
         id: m.id,
-        isDefault: m.isDefault,
       }));
       state.features.mastra.profiles = action.input.profiles.map((p) => ({
         id: p.id,

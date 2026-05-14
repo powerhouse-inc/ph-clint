@@ -83,7 +83,6 @@ export type AddExternalSkillInput = {
 
 export type AddModelInput = {
   id: Scalars["OID"]["input"];
-  isDefault?: InputMaybe<Scalars["Boolean"]["input"]>;
 };
 
 export type AddPackageDocumentTypeInput = {
@@ -162,7 +161,6 @@ export type ImportMainAgentInput = {
 
 export type ImportModelInput = {
   id: Scalars["OID"]["input"];
-  isDefault: Scalars["Boolean"]["input"];
 };
 
 export type ImportPackageInput = {
@@ -216,7 +214,6 @@ export type ImportSubAgentInput = {
 
 export type PhClintAgentModel = {
   id: Scalars["OID"]["output"];
-  isDefault: Scalars["Boolean"]["output"];
 };
 
 export type PhClintAgentProfile = {
@@ -386,10 +383,6 @@ export type ReorderProfilesInput = {
 export type SetAgentModelInput = {
   agentId: Scalars["OID"]["input"];
   modelId: Scalars["OID"]["input"];
-};
-
-export type SetDefaultModelInput = {
-  id: Scalars["OID"]["input"];
 };
 
 export type SetDescriptionInput = {

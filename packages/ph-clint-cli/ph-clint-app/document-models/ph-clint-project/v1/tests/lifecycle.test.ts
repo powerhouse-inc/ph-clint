@@ -1,5 +1,8 @@
+import { generateMock } from "document-model";
 import {
   importSpec,
+  ImportSpecInputSchema,
+  isPhClintProjectDocument,
   reducer,
   utils,
   type ImportSpecInput,
@@ -38,8 +41,8 @@ function baseInput(): ImportSpecInput {
       },
     ],
     models: [
-      { id: "anthropic/claude-sonnet-4-5", isDefault: true },
-      { id: "openai/gpt-4o", isDefault: false },
+      { id: "anthropic/claude-sonnet-4-5" },
+      { id: "openai/gpt-4o" },
     ],
     profiles: [
       { id: "base", title: "Base", content: "Base instructions." },
@@ -219,5 +222,22 @@ describe("LifecycleOperations.importSpec", () => {
       "vetra-agent-s",
       "vetra-agent-m",
     ]);
+  });
+
+  it("should handle importSpec operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(ImportSpecInputSchema());
+
+    const updatedDocument = reducer(document, importSpec(input));
+
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "IMPORT_SPEC",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });
