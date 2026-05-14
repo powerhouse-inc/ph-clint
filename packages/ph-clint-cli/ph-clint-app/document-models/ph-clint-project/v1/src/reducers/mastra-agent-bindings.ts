@@ -1,4 +1,8 @@
 import type { PhClintProjectMastraAgentBindingsOperations } from "document-models/ph-clint-project/v1";
+import type {
+  PhClintMainAgent,
+  PhClintSubAgent,
+} from "../../gen/schema/types.js";
 import {
   AgentNotFoundError,
   InvalidSkillNameError,
@@ -10,6 +14,17 @@ import {
   ToolPatternNotFoundError,
 } from "../../gen/mastra-agent-bindings/error.js";
 
+type Agent = PhClintMainAgent | PhClintSubAgent;
+
+function resolveAgent(
+  main: PhClintMainAgent | null | undefined,
+  subs: PhClintSubAgent[],
+  agentId: string,
+): Agent | undefined {
+  if (main && main.id === agentId) return main;
+  return subs.find((s) => s.id === agentId);
+}
+
 export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAgentBindingsOperations =
   {
     setAgentModelOperation(state, action) {
@@ -18,19 +33,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot set agent model when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );
@@ -50,19 +58,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot add profile ref when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );
@@ -97,19 +98,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot remove profile ref when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );
@@ -128,19 +122,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot reorder profile refs when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );
@@ -174,19 +161,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot add skill when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );
@@ -207,19 +187,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot remove skill when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );
@@ -238,19 +211,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot add tool pattern when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );
@@ -271,19 +237,12 @@ export const phClintProjectMastraAgentBindingsOperations: PhClintProjectMastraAg
           "Cannot remove tool pattern when Mastra is disabled.",
         );
       }
-      let agent = null;
-      if (
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.id === action.input.agentId
-      ) {
-        agent = state.features.mastra.mainAgent;
-      } else {
-        agent =
-          state.features.mastra.subAgents.find(
-            (s) => s.id === action.input.agentId,
-          ) || null;
-      }
-      if (agent === null) {
+      const agent = resolveAgent(
+        state.features.mastra.mainAgent,
+        state.features.mastra.subAgents,
+        action.input.agentId,
+      );
+      if (!agent) {
         throw new AgentNotFoundError(
           `Agent not found: ${action.input.agentId}`,
         );

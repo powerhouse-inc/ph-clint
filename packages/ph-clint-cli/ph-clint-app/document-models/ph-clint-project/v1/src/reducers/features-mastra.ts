@@ -32,7 +32,8 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
           content: "You are a helpful assistant.",
         });
       }
-      if (state.features.mastra.mainAgent === null) {
+      const existing = state.features.mastra.mainAgent;
+      if (!existing) {
         state.features.mastra.mainAgent = {
           id: action.input.agentId,
           name: trimmedName,
@@ -44,8 +45,8 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
           toolPatterns: [],
         };
       } else {
-        state.features.mastra.mainAgent.id = action.input.agentId;
-        state.features.mastra.mainAgent.name = trimmedName;
+        existing.id = action.input.agentId;
+        existing.name = trimmedName;
       }
     },
     disableMastraOperation(state) {

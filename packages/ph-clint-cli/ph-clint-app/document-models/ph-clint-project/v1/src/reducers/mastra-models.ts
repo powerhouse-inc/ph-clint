@@ -49,10 +49,9 @@ export const phClintProjectMastraModelsOperations: PhClintProjectMastraModelsOpe
       if (idx === -1) {
         throw new ModelNotFoundError(`Model not found: ${action.input.id}`);
       }
-      const usedByMain =
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.modelId === action.input.id;
-      const usedBySub = state.features.mastra.subAgents.find(
+      const main = state.features.mastra.mainAgent;
+      const usedByMain = !!main && main.modelId === action.input.id;
+      const usedBySub = state.features.mastra.subAgents.some(
         (s) => s.modelId === action.input.id,
       );
       if (usedByMain || usedBySub) {

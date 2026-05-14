@@ -662,7 +662,7 @@ export const documentModel: DocumentModelGlobalState = {
               template:
                 "Enable the Mastra agent feature. Seeds mainAgent with the seeded model + profile.",
               reducer:
-                "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(\n    `Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`,\n  );\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nif (state.features.mastra.models.length === 0) {\n  state.features.mastra.models.push({ id: 'clint/demo-agent', isDefault: true });\n}\nif (state.features.mastra.profiles.length === 0) {\n  state.features.mastra.profiles.push({ id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' });\n}\nif (state.features.mastra.mainAgent === null) {\n  state.features.mastra.mainAgent = {\n    id: action.input.agentId,\n    name: trimmedName,\n    description: null,\n    image: null,\n    modelId: 'clint/demo-agent',\n    profileIds: ['base'],\n    skills: [],\n    toolPatterns: [],\n  };\n} else {\n  state.features.mastra.mainAgent.id = action.input.agentId;\n  state.features.mastra.mainAgent.name = trimmedName;\n}",
+                "if (!/^[a-z][a-z0-9-]*$/.test(action.input.agentId)) {\n  throw new InvalidAgentIdError(\n    `Invalid agent ID: ${action.input.agentId}. Must be lowercase kebab-case.`,\n  );\n}\nconst trimmedName = action.input.agentName.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.enabled = true;\nif (state.features.mastra.models.length === 0) {\n  state.features.mastra.models.push({ id: 'clint/demo-agent', isDefault: true });\n}\nif (state.features.mastra.profiles.length === 0) {\n  state.features.mastra.profiles.push({ id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' });\n}\nconst existing = state.features.mastra.mainAgent;\nif (!existing) {\n  state.features.mastra.mainAgent = {\n    id: action.input.agentId,\n    name: trimmedName,\n    description: null,\n    image: null,\n    modelId: 'clint/demo-agent',\n    profileIds: ['base'],\n    skills: [],\n    toolPatterns: [],\n  };\n} else {\n  existing.id = action.input.agentId;\n  existing.name = trimmedName;\n}",
               errors: [
                 {
                   id: "e-enable-mastra-invalid-id",
@@ -780,7 +780,7 @@ export const documentModel: DocumentModelGlobalState = {
               schema: "input RemoveModelInput {\n  id: OID!\n}",
               template: "Remove a model from the library.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove model when Mastra is disabled.');\n}\nconst idx = state.features.mastra.models.findIndex(m => m.id === action.input.id);\nif (idx === -1) {\n  throw new ModelNotFoundError(`Model not found: ${action.input.id}`);\n}\nconst usedByMain = state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.modelId === action.input.id;\nconst usedBySub = state.features.mastra.subAgents.find(s => s.modelId === action.input.id);\nif (usedByMain || usedBySub) {\n  throw new ModelInUseError(`Model ${action.input.id} is in use by an agent.`);\n}\nconst wasDefault = state.features.mastra.models[idx].isDefault;\nstate.features.mastra.models.splice(idx, 1);\nif (wasDefault && state.features.mastra.models.length > 0) {\n  state.features.mastra.models[0].isDefault = true;\n}",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove model when Mastra is disabled.');\n}\nconst idx = state.features.mastra.models.findIndex((m) => m.id === action.input.id);\nif (idx === -1) {\n  throw new ModelNotFoundError(`Model not found: ${action.input.id}`);\n}\nconst main = state.features.mastra.mainAgent;\nconst usedByMain = !!main && main.modelId === action.input.id;\nconst usedBySub = state.features.mastra.subAgents.some(\n  (s) => s.modelId === action.input.id,\n);\nif (usedByMain || usedBySub) {\n  throw new ModelInUseError(\n    `Model ${action.input.id} is in use by an agent.`,\n  );\n}\nconst wasDefault = state.features.mastra.models[idx].isDefault;\nstate.features.mastra.models.splice(idx, 1);\nif (wasDefault && state.features.mastra.models.length > 0) {\n  state.features.mastra.models[0].isDefault = true;\n}",
               errors: [
                 {
                   id: "e-remove-model-not-enabled",
@@ -927,7 +927,7 @@ export const documentModel: DocumentModelGlobalState = {
               schema: "input RemoveProfileInput {\n  id: OID!\n}",
               template: "Remove a profile from the library.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove profile when Mastra is disabled.');\n}\nconst idx = state.features.mastra.profiles.findIndex(p => p.id === action.input.id);\nif (idx === -1) {\n  throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);\n}\nconst usedByMain = state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.profileIds.includes(action.input.id);\nconst usedBySub = state.features.mastra.subAgents.find(s => s.profileIds.includes(action.input.id));\nif (usedByMain || usedBySub) {\n  throw new ProfileInUseError(`Profile ${action.input.id} is in use by an agent.`);\n}\nstate.features.mastra.profiles.splice(idx, 1);",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove profile when Mastra is disabled.');\n}\nconst idx = state.features.mastra.profiles.findIndex((p) => p.id === action.input.id);\nif (idx === -1) {\n  throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);\n}\nconst main = state.features.mastra.mainAgent;\nconst usedByMain = !!main && main.profileIds.includes(action.input.id);\nconst usedBySub = state.features.mastra.subAgents.some(\n  (s) => s.profileIds.includes(action.input.id),\n);\nif (usedByMain || usedBySub) {\n  throw new ProfileInUseError(\n    `Profile ${action.input.id} is in use by an agent.`,\n  );\n}\nstate.features.mastra.profiles.splice(idx, 1);",
               errors: [
                 {
                   id: "e-remove-profile-not-enabled",
@@ -1002,7 +1002,7 @@ export const documentModel: DocumentModelGlobalState = {
               schema: "input SetMainAgentNameInput {\n  name: String!\n}",
               template: "Set the main agent's display name.",
               reducer:
-                "if (!state.features.mastra.enabled || state.features.mastra.mainAgent === null) {\n  throw new MastraNotEnabledError('Cannot set main agent name when Mastra is disabled.');\n}\nconst trimmed = action.input.name.trim();\nif (!trimmed) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nstate.features.mastra.mainAgent.name = trimmed;",
+                "const main = state.features.mastra.mainAgent;\nif (!state.features.mastra.enabled || !main) {\n  throw new MastraNotEnabledError(\n    'Cannot set main agent name when Mastra is disabled.',\n  );\n}\nconst trimmed = action.input.name.trim();\nif (!trimmed) {\n  throw new InvalidAgentNameError('Agent name must not be empty.');\n}\nmain.name = trimmed;",
               errors: [
                 {
                   id: "e-set-main-name-not-enabled",
@@ -1032,7 +1032,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input SetMainAgentDescriptionInput {\n  description: String!\n}",
               template: "Set the main agent's description.",
               reducer:
-                "if (!state.features.mastra.enabled || state.features.mastra.mainAgent === null) {\n  throw new MastraNotEnabledError('Cannot set main agent description when Mastra is disabled.');\n}\nstate.features.mastra.mainAgent.description = action.input.description;",
+                "const main = state.features.mastra.mainAgent;\nif (!state.features.mastra.enabled || !main) {\n  throw new MastraNotEnabledError(\n    'Cannot set main agent description when Mastra is disabled.',\n  );\n}\nmain.description = action.input.description;",
               errors: [
                 {
                   id: "e-set-main-desc-not-enabled",
@@ -1053,7 +1053,7 @@ export const documentModel: DocumentModelGlobalState = {
               schema: "input ClearMainAgentDescriptionInput {\n  _: Boolean\n}",
               template: "Clear the main agent's description.",
               reducer:
-                "if (!state.features.mastra.enabled || state.features.mastra.mainAgent === null) {\n  throw new MastraNotEnabledError('Cannot clear main agent description when Mastra is disabled.');\n}\nstate.features.mastra.mainAgent.description = null;",
+                "const main = state.features.mastra.mainAgent;\nif (!state.features.mastra.enabled || !main) {\n  throw new MastraNotEnabledError(\n    'Cannot clear main agent description when Mastra is disabled.',\n  );\n}\nmain.description = null;",
               errors: [
                 {
                   id: "e-clear-main-desc-not-enabled",
@@ -1075,7 +1075,7 @@ export const documentModel: DocumentModelGlobalState = {
               schema: "input SetMainAgentImageInput {\n  image: String!\n}",
               template: "Set the main agent's avatar.",
               reducer:
-                "if (!state.features.mastra.enabled || state.features.mastra.mainAgent === null) {\n  throw new MastraNotEnabledError('Cannot set main agent image when Mastra is disabled.');\n}\nif (!/^data:[a-z]+\\/[a-z0-9.+-]+;base64,/.test(action.input.image)) {\n  throw new InvalidAgentImageError('Agent image must be a data URL (data:image/...;base64,...)');\n}\nstate.features.mastra.mainAgent.image = action.input.image;",
+                "const main = state.features.mastra.mainAgent;\nif (!state.features.mastra.enabled || !main) {\n  throw new MastraNotEnabledError(\n    'Cannot set main agent image when Mastra is disabled.',\n  );\n}\nif (!/^data:[a-z]+\\/[a-z0-9.+-]+;base64,/.test(action.input.image)) {\n  throw new InvalidAgentImageError(\n    'Agent image must be a data URL (data:image/...;base64,...)',\n  );\n}\nmain.image = action.input.image;",
               errors: [
                 {
                   id: "e-set-main-image-not-enabled",
@@ -1103,7 +1103,7 @@ export const documentModel: DocumentModelGlobalState = {
               schema: "input ClearMainAgentImageInput {\n  _: Boolean\n}",
               template: "Clear the main agent's avatar.",
               reducer:
-                "if (!state.features.mastra.enabled || state.features.mastra.mainAgent === null) {\n  throw new MastraNotEnabledError('Cannot clear main agent image when Mastra is disabled.');\n}\nstate.features.mastra.mainAgent.image = null;",
+                "const main = state.features.mastra.mainAgent;\nif (!state.features.mastra.enabled || !main) {\n  throw new MastraNotEnabledError(\n    'Cannot clear main agent image when Mastra is disabled.',\n  );\n}\nmain.image = null;",
               errors: [
                 {
                   id: "e-clear-main-image-not-enabled",
@@ -1134,7 +1134,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input AddSubAgentInput {\n  id: OID!\n  name: String!\n  description: String!\n  modelId: OID!\n}",
               template: "Add a sub-agent.",
               reducer:
-                "if (!state.features.mastra.enabled || state.features.mastra.mainAgent === null) {\n  throw new MastraNotEnabledError('Cannot add sub-agent when Mastra is disabled.');\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.id)) {\n  throw new InvalidAgentIdError(`Invalid sub-agent ID: ${action.input.id}. Must be lowercase kebab-case.`);\n}\nconst trimmedName = action.input.name.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Sub-agent name must not be empty.');\n}\nif (state.features.mastra.mainAgent.id === action.input.id) {\n  throw new DuplicateAgentIdError(`Agent ID already taken by main agent: ${action.input.id}`);\n}\nif (state.features.mastra.subAgents.find(s => s.id === action.input.id)) {\n  throw new DuplicateAgentIdError(`Sub-agent already exists: ${action.input.id}`);\n}\nif (!state.features.mastra.models.find(m => m.id === action.input.modelId)) {\n  throw new ModelReferenceNotFoundError(`Model not in library: ${action.input.modelId}`);\n}\nstate.features.mastra.subAgents.push({\n  id: action.input.id,\n  name: trimmedName,\n  description: action.input.description,\n  modelId: action.input.modelId,\n  profileIds: [],\n  skills: [],\n  toolPatterns: [],\n});",
+                "const main = state.features.mastra.mainAgent;\nif (!state.features.mastra.enabled || !main) {\n  throw new MastraNotEnabledError(\n    'Cannot add sub-agent when Mastra is disabled.',\n  );\n}\nif (!/^[a-z][a-z0-9-]*$/.test(action.input.id)) {\n  throw new InvalidAgentIdError(\n    `Invalid sub-agent ID: ${action.input.id}. Must be lowercase kebab-case.`,\n  );\n}\nconst trimmedName = action.input.name.trim();\nif (!trimmedName) {\n  throw new InvalidAgentNameError('Sub-agent name must not be empty.');\n}\nif (main.id === action.input.id) {\n  throw new DuplicateAgentIdError(\n    `Agent ID already taken by main agent: ${action.input.id}`,\n  );\n}\nif (state.features.mastra.subAgents.find((s) => s.id === action.input.id)) {\n  throw new DuplicateAgentIdError(\n    `Sub-agent already exists: ${action.input.id}`,\n  );\n}\nif (!state.features.mastra.models.find((m) => m.id === action.input.modelId)) {\n  throw new ModelReferenceNotFoundError(\n    `Model not in library: ${action.input.modelId}`,\n  );\n}\nstate.features.mastra.subAgents.push({\n  id: action.input.id,\n  name: trimmedName,\n  description: action.input.description,\n  modelId: action.input.modelId,\n  profileIds: [],\n  skills: [],\n  toolPatterns: [],\n});",
               errors: [
                 {
                   id: "e-add-sub-not-enabled",
@@ -1290,7 +1290,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input SetAgentModelInput {\n  agentId: OID!\n  modelId: OID!\n}",
               template: "Bind an agent to a model.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent model when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nif (!state.features.mastra.models.find(m => m.id === action.input.modelId)) {\n  throw new ModelReferenceNotFoundError(`Model not in library: ${action.input.modelId}`);\n}\nagent.modelId = action.input.modelId;",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot set agent model when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nif (!state.features.mastra.models.find((m) => m.id === action.input.modelId)) {\n  throw new ModelReferenceNotFoundError(\n    `Model not in library: ${action.input.modelId}`,\n  );\n}\nagent.modelId = action.input.modelId;",
               errors: [
                 {
                   id: "e-set-model-not-enabled",
@@ -1329,7 +1329,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input AddAgentProfileRefInput {\n  agentId: OID!\n  profileId: OID!\n  insertBefore: OID\n}",
               template: "Add a profile reference to an agent.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add profile ref when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nif (!state.features.mastra.profiles.find(p => p.id === action.input.profileId)) {\n  throw new ProfileReferenceNotFoundError(`Profile not in library: ${action.input.profileId}`);\n}\nif (agent.profileIds.includes(action.input.profileId)) {\n  return;\n}\nif (action.input.insertBefore) {\n  const beforeIdx = agent.profileIds.indexOf(action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileReferenceNotFoundError(`insertBefore profile not in agent's profileIds: ${action.input.insertBefore}`);\n  }\n  agent.profileIds.splice(beforeIdx, 0, action.input.profileId);\n} else {\n  agent.profileIds.push(action.input.profileId);\n}",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add profile ref when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nif (!state.features.mastra.profiles.find((p) => p.id === action.input.profileId)) {\n  throw new ProfileReferenceNotFoundError(\n    `Profile not in library: ${action.input.profileId}`,\n  );\n}\nif (agent.profileIds.includes(action.input.profileId)) {\n  return;\n}\nif (action.input.insertBefore) {\n  const beforeIdx = agent.profileIds.indexOf(action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileReferenceNotFoundError(\n      `insertBefore profile not in agent's profileIds: ${action.input.insertBefore}`,\n    );\n  }\n  agent.profileIds.splice(beforeIdx, 0, action.input.profileId);\n} else {\n  agent.profileIds.push(action.input.profileId);\n}",
               errors: [
                 {
                   id: "e-add-profile-ref-not-enabled",
@@ -1365,7 +1365,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input RemoveAgentProfileRefInput {\n  agentId: OID!\n  profileId: OID!\n}",
               template: "Remove a profile reference from an agent.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove profile ref when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst idx = agent.profileIds.indexOf(action.input.profileId);\nif (idx === -1) {\n  throw new ProfileReferenceNotFoundError(`Profile not in agent's profileIds: ${action.input.profileId}`);\n}\nagent.profileIds.splice(idx, 1);",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove profile ref when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst idx = agent.profileIds.indexOf(action.input.profileId);\nif (idx === -1) {\n  throw new ProfileReferenceNotFoundError(\n    `Profile not in agent's profileIds: ${action.input.profileId}`,\n  );\n}\nagent.profileIds.splice(idx, 1);",
               errors: [
                 {
                   id: "e-remove-profile-ref-not-enabled",
@@ -1402,7 +1402,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input ReorderAgentProfileRefsInput {\n  agentId: OID!\n  ids: [OID!]!\n  insertBefore: OID\n}",
               template: "Reorder an agent's profile references.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot reorder profile refs when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nfor (const id of action.input.ids) {\n  if (!agent.profileIds.includes(id)) {\n    throw new ProfileReferenceNotFoundError(`Profile not in agent's profileIds: ${id}`);\n  }\n}\nconst remaining = agent.profileIds.filter(id => !action.input.ids.includes(id));\nif (action.input.insertBefore) {\n  const beforeIdx = remaining.indexOf(action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileReferenceNotFoundError(`insertBefore profile not in agent's profileIds: ${action.input.insertBefore}`);\n  }\n  remaining.splice(beforeIdx, 0, ...action.input.ids);\n} else {\n  remaining.push(...action.input.ids);\n}\nagent.profileIds = remaining;",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot reorder profile refs when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nfor (const id of action.input.ids) {\n  if (!agent.profileIds.includes(id)) {\n    throw new ProfileReferenceNotFoundError(\n      `Profile not in agent's profileIds: ${id}`,\n    );\n  }\n}\nconst remaining = agent.profileIds.filter(\n  (id) => !action.input.ids.includes(id),\n);\nif (action.input.insertBefore) {\n  const beforeIdx = remaining.indexOf(action.input.insertBefore);\n  if (beforeIdx === -1) {\n    throw new ProfileReferenceNotFoundError(\n      `insertBefore profile not in agent's profileIds: ${action.input.insertBefore}`,\n    );\n  }\n  remaining.splice(beforeIdx, 0, ...action.input.ids);\n} else {\n  remaining.push(...action.input.ids);\n}\nagent.profileIds = remaining;",
               errors: [
                 {
                   id: "e-reorder-refs-not-enabled",
@@ -1439,7 +1439,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input AddAgentSkillInput {\n  agentId: OID!\n  name: String!\n}",
               template: "Add a skill to an agent.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add skill when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst trimmed = action.input.name.trim();\nif (!/^[a-z][a-z0-9-]*$/.test(trimmed)) {\n  throw new InvalidSkillNameError(`Invalid skill name: ${action.input.name}. Must be lowercase kebab-case.`);\n}\nif (!agent.skills.includes(trimmed)) {\n  agent.skills.push(trimmed);\n}",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add skill when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst trimmed = action.input.name.trim();\nif (!/^[a-z][a-z0-9-]*$/.test(trimmed)) {\n  throw new InvalidSkillNameError(\n    `Invalid skill name: ${action.input.name}. Must be lowercase kebab-case.`,\n  );\n}\nif (!agent.skills.includes(trimmed)) {\n  agent.skills.push(trimmed);\n}",
               errors: [
                 {
                   id: "e-add-skill-not-enabled",
@@ -1474,7 +1474,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input RemoveAgentSkillInput {\n  agentId: OID!\n  name: String!\n}",
               template: "Remove a skill from an agent.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove skill when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst idx = agent.skills.indexOf(action.input.name);\nif (idx === -1) {\n  throw new SkillNotFoundError(`Skill not on agent: ${action.input.name}`);\n}\nagent.skills.splice(idx, 1);",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove skill when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst idx = agent.skills.indexOf(action.input.name);\nif (idx === -1) {\n  throw new SkillNotFoundError(`Skill not on agent: ${action.input.name}`);\n}\nagent.skills.splice(idx, 1);",
               errors: [
                 {
                   id: "e-remove-skill-not-enabled",
@@ -1510,7 +1510,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input AddAgentToolPatternInput {\n  agentId: OID!\n  pattern: String!\n}",
               template: "Add a tool-name pattern to an agent.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add tool pattern when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst trimmed = action.input.pattern.trim();\nif (!trimmed) {\n  throw new InvalidToolPatternError('Tool pattern must not be empty after trimming.');\n}\nif (!agent.toolPatterns.includes(trimmed)) {\n  agent.toolPatterns.push(trimmed);\n}",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot add tool pattern when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst trimmed = action.input.pattern.trim();\nif (!trimmed) {\n  throw new InvalidToolPatternError('Tool pattern must not be empty after trimming.');\n}\nif (!agent.toolPatterns.includes(trimmed)) {\n  agent.toolPatterns.push(trimmed);\n}",
               errors: [
                 {
                   id: "e-add-pattern-not-enabled",
@@ -1545,7 +1545,7 @@ export const documentModel: DocumentModelGlobalState = {
                 "input RemoveAgentToolPatternInput {\n  agentId: OID!\n  pattern: String!\n}",
               template: "Remove a tool-name pattern from an agent.",
               reducer:
-                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove tool pattern when Mastra is disabled.');\n}\nlet agent = null;\nif (state.features.mastra.mainAgent !== null && state.features.mastra.mainAgent.id === action.input.agentId) {\n  agent = state.features.mastra.mainAgent;\n} else {\n  agent = state.features.mastra.subAgents.find(s => s.id === action.input.agentId) || null;\n}\nif (agent === null) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst idx = agent.toolPatterns.indexOf(action.input.pattern);\nif (idx === -1) {\n  throw new ToolPatternNotFoundError(`Tool pattern not on agent: ${action.input.pattern}`);\n}\nagent.toolPatterns.splice(idx, 1);",
+                "if (!state.features.mastra.enabled) {\n  throw new MastraNotEnabledError('Cannot remove tool pattern when Mastra is disabled.');\n}\nconst main = state.features.mastra.mainAgent;\nlet agent;\nif (main && main.id === action.input.agentId) {\n  agent = main;\n} else {\n  agent = state.features.mastra.subAgents.find(\n    (s) => s.id === action.input.agentId,\n  );\n}\nif (!agent) {\n  throw new AgentNotFoundError(`Agent not found: ${action.input.agentId}`);\n}\nconst idx = agent.toolPatterns.indexOf(action.input.pattern);\nif (idx === -1) {\n  throw new ToolPatternNotFoundError(\n    `Tool pattern not on agent: ${action.input.pattern}`,\n  );\n}\nagent.toolPatterns.splice(idx, 1);",
               errors: [
                 {
                   id: "e-remove-pattern-not-enabled",

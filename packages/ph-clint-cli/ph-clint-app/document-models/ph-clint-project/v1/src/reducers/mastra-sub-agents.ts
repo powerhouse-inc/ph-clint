@@ -11,10 +11,8 @@ import {
 export const phClintProjectMastraSubAgentsOperations: PhClintProjectMastraSubAgentsOperations =
   {
     addSubAgentOperation(state, action) {
-      if (
-        !state.features.mastra.enabled ||
-        state.features.mastra.mainAgent === null
-      ) {
+      const main = state.features.mastra.mainAgent;
+      if (!state.features.mastra.enabled || !main) {
         throw new MastraNotEnabledError(
           "Cannot add sub-agent when Mastra is disabled.",
         );
@@ -28,7 +26,7 @@ export const phClintProjectMastraSubAgentsOperations: PhClintProjectMastraSubAge
       if (!trimmedName) {
         throw new InvalidAgentNameError("Sub-agent name must not be empty.");
       }
-      if (state.features.mastra.mainAgent.id === action.input.id) {
+      if (main.id === action.input.id) {
         throw new DuplicateAgentIdError(
           `Agent ID already taken by main agent: ${action.input.id}`,
         );

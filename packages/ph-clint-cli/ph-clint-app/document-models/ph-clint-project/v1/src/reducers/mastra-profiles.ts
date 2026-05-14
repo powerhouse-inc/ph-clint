@@ -73,10 +73,10 @@ export const phClintProjectMastraProfilesOperations: PhClintProjectMastraProfile
       if (idx === -1) {
         throw new ProfileNotFoundError(`Profile not found: ${action.input.id}`);
       }
+      const main = state.features.mastra.mainAgent;
       const usedByMain =
-        state.features.mastra.mainAgent !== null &&
-        state.features.mastra.mainAgent.profileIds.includes(action.input.id);
-      const usedBySub = state.features.mastra.subAgents.find((s) =>
+        !!main && main.profileIds.includes(action.input.id);
+      const usedBySub = state.features.mastra.subAgents.some((s) =>
         s.profileIds.includes(action.input.id),
       );
       if (usedByMain || usedBySub) {
