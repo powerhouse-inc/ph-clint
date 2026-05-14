@@ -63,7 +63,7 @@ describe('buildSpec', () => {
     expect(main!.skills).toEqual([]);
     expect(main!.toolPatterns).toEqual([]);
     expect(spec.features.mastra.models).toEqual([
-      { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
+      { id: 'anthropic/claude-sonnet-4-5' },
     ]);
     expect(spec.features.mastra.profiles).toEqual([
       { id: 'base', title: 'Base', content: 'You are a helpful assistant.' },

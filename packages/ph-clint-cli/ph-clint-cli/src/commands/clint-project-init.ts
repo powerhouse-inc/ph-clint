@@ -97,7 +97,7 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
   const mastra = input.enableMastra
     ? {
         enabled: true,
-        models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        models: [{ id: 'anthropic/claude-sonnet-4-5' }],
         profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
         mainAgent: {
           id: `${baseName}-agent`,

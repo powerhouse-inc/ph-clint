@@ -41,7 +41,6 @@ export const AGENT_ID_RE = /^[a-z][a-z0-9-]*$/;
 
 export const agentModelSchema = z.object({
   id: z.string(),
-  isDefault: z.boolean(),
 });
 
 export type AgentModel = z.infer<typeof agentModelSchema>;

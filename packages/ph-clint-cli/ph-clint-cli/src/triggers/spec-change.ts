@@ -122,7 +122,6 @@ export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
     })),
     models: spec.features.mastra.models.map((m) => ({
       id: m.id,
-      isDefault: m.isDefault,
     })),
     profiles: spec.features.mastra.profiles.map((p) => ({
       id: p.id,

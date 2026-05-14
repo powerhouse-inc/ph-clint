@@ -14,7 +14,7 @@ interface ManifestAgent {
   name: string;
   description: string | null;
   image: string | null;
-  models: Array<{ id: string; default: boolean }>;
+  models: Array<{ id: string }>;
 }
 
 interface ManifestPowerhouse {
@@ -58,7 +58,7 @@ export function buildManifestJson(spec: ClintProjectSpec): string {
         name: mastra.mainAgent.name,
         description: mastra.mainAgent.description,
         image: mastra.mainAgent.image,
-        models: mastra.models.map((m) => ({ id: m.id, default: m.isDefault })),
+        models: mastra.models.map((m) => ({ id: m.id })),
       }
     : false;
 

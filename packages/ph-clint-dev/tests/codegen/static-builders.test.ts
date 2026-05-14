@@ -21,7 +21,7 @@ import {
 import { clintProjectSpecSchema, type ClintProjectSpecInput } from '../../src/spec/types.js';
 
 function specWithAgent(extras: {
-  models: { id: string; isDefault: boolean }[];
+  models: { id: string }[];
   profiles?: { id: string; title: string; content: string }[];
   modelId: string;
   profileIds?: string[];
@@ -129,7 +129,7 @@ describe('buildMastraIndexTs', () => {
 
   it('mastra on with full agent config — real Mastra instance', () => {
     const spec = specWithAgent({
-      models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+      models: [{ id: 'anthropic/claude-sonnet-4-5' }],
       profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
       modelId: 'anthropic/claude-sonnet-4-5',
       profileIds: ['base'],
@@ -142,7 +142,7 @@ describe('buildMastraIndexTs', () => {
 
   it('only clint/demo-agent — placeholder (no env bridge)', () => {
     const spec = specWithAgent({
-      models: [{ id: 'clint/demo-agent', isDefault: true }],
+      models: [{ id: 'clint/demo-agent' }],
       modelId: 'clint/demo-agent',
     });
     const out = buildMastraIndexTs(spec);
@@ -172,7 +172,7 @@ describe('buildAgentTs', () => {
 
   it('emits a real Mastra agent when full config is present', () => {
     const spec = specWithAgent({
-      models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+      models: [{ id: 'anthropic/claude-sonnet-4-5' }],
       profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
       modelId: 'anthropic/claude-sonnet-4-5',
       profileIds: ['base'],
@@ -187,7 +187,7 @@ describe('buildAgentTs', () => {
 
   it('only clint/demo-agent model — falls back to demo agent (no @ai-sdk import)', () => {
     const spec = specWithAgent({
-      models: [{ id: 'clint/demo-agent', isDefault: true }],
+      models: [{ id: 'clint/demo-agent' }],
       modelId: 'clint/demo-agent',
     });
     const out = buildAgentTs(spec);
@@ -199,8 +199,8 @@ describe('buildAgentTs', () => {
   it('main agent on a real provider — emits its <provider>ApiKey field, never clintApiKey', () => {
     const spec = specWithAgent({
       models: [
-        { id: 'clint/demo-agent', isDefault: false },
-        { id: 'openai/gpt-4o', isDefault: true },
+        { id: 'clint/demo-agent' },
+        { id: 'openai/gpt-4o' },
       ],
       modelId: 'openai/gpt-4o',
     });

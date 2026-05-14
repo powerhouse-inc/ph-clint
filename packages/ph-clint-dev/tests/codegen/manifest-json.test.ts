@@ -19,8 +19,8 @@ describe('buildManifestJson', () => {
         mastra: {
           enabled: true,
           models: [
-            { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-            { id: 'anthropic/claude-haiku-4-5', isDefault: false },
+            { id: 'anthropic/claude-sonnet-4-5' },
+            { id: 'anthropic/claude-haiku-4-5' },
           ],
           profiles: [{ id: 'base', title: 'Base', content: '' }],
           mainAgent: {
@@ -42,8 +42,8 @@ describe('buildManifestJson', () => {
       description: 'A helpful agent',
       image: 'https://example.com/avatar.png',
       models: [
-        { id: 'anthropic/claude-sonnet-4-5', default: true },
-        { id: 'anthropic/claude-haiku-4-5', default: false },
+        { id: 'anthropic/claude-sonnet-4-5' },
+        { id: 'anthropic/claude-haiku-4-5' },
       ],
     });
   });

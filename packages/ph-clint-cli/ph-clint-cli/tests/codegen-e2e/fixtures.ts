@@ -37,7 +37,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
     features: {
       mastra: {
         enabled: true,
-        models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        models: [{ id: 'anthropic/claude-sonnet-4-5' }],
         profiles: [
           { id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' },
         ],
@@ -63,9 +63,9 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       mastra: {
         enabled: true,
         models: [
-          { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-          { id: 'anthropic/claude-haiku-4-5', isDefault: false },
-          { id: 'openai/gpt-4o', isDefault: false },
+          { id: 'anthropic/claude-sonnet-4-5' },
+          { id: 'anthropic/claude-haiku-4-5' },
+          { id: 'openai/gpt-4o' },
         ],
         profiles: [
           { id: 'core', title: 'Core Profile', content: 'You are a helpful assistant.' },
@@ -103,8 +103,8 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       mastra: {
         enabled: true,
         models: [
-          { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-          { id: 'openai/gpt-4o', isDefault: false },
+          { id: 'anthropic/claude-sonnet-4-5' },
+          { id: 'openai/gpt-4o' },
         ],
         profiles: [
           { id: 'base', title: 'Base', content: 'You orchestrate sub-agents.' },
@@ -150,7 +150,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       powerhouse: 'Switchboard',
       mastra: {
         enabled: true,
-        models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        models: [{ id: 'anthropic/claude-sonnet-4-5' }],
         profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
         mainAgent: {
           id: 'sb-agent',
@@ -173,7 +173,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       powerhouse: 'Switchboard',
       mastra: {
         enabled: true,
-        models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        models: [{ id: 'anthropic/claude-sonnet-4-5' }],
         profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
         mainAgent: {
           id: 'chat-agent',
@@ -209,8 +209,8 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       mastra: {
         enabled: true,
         models: [
-          { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-          { id: 'openai/gpt-4o', isDefault: false },
+          { id: 'anthropic/claude-sonnet-4-5' },
+          { id: 'openai/gpt-4o' },
         ],
         profiles: [
           { id: 'base', title: 'Base', content: 'You are the connect agent.' },

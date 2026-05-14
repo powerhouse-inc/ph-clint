@@ -239,8 +239,8 @@ describe('buildFrameworkTs', () => {
         mastra: {
           enabled: true,
           models: [
-            { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-            { id: 'openai/gpt-4o', isDefault: false },
+            { id: 'anthropic/claude-sonnet-4-5' },
+            { id: 'openai/gpt-4o' },
           ],
           profiles: [{ id: 'base', title: 'Base', content: '' }],
           mainAgent: {
@@ -270,8 +270,8 @@ describe('buildFrameworkTs', () => {
         mastra: {
           enabled: true,
           models: [
-            { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-            { id: 'openai/gpt-4o', isDefault: false },
+            { id: 'anthropic/claude-sonnet-4-5' },
+            { id: 'openai/gpt-4o' },
           ],
           profiles: [{ id: 'base', title: 'Base', content: '' }],
           mainAgent: {
@@ -309,7 +309,7 @@ describe('buildFrameworkTs', () => {
       features: {
         mastra: {
           enabled: true,
-          models: [{ id: 'clint/demo-agent', isDefault: true }],
+          models: [{ id: 'clint/demo-agent' }],
           profiles: [{ id: 'base', title: 'Base', content: '' }],
           mainAgent: {
             id: 'main',

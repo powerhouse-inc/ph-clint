@@ -53,9 +53,8 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
   if (mastra.enabled) {
     // The runtime `model` override only applies to the main agent. Sub-agent
     // models are taken verbatim from the spec.
-    const mainModelId = mastra.mainAgent?.modelId
-      ?? mastra.models.find((m) => m.isDefault)?.id
-      ?? 'anthropic/claude-sonnet-4-5';
+    const mainModelId =
+      mastra.mainAgent?.modelId ?? 'anthropic/claude-sonnet-4-5';
     lines.push(
       `  model: z.string().default('${mainModelId}').describe('LLM model for the main agent (sub-agent models come from the spec)'),`,
       `  agentLogging: z.boolean().default(false).describe('Enable agent conversation logging'),`,

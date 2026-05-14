@@ -95,8 +95,8 @@ describe('buildCliTs', () => {
         mastra: {
           enabled: true,
           models: [
-            { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-            { id: 'openai/gpt-4o', isDefault: false },
+            { id: 'anthropic/claude-sonnet-4-5' },
+            { id: 'openai/gpt-4o' },
           ],
           profiles: [
             { id: 'base', title: 'Base', content: 'Base instructions.' },

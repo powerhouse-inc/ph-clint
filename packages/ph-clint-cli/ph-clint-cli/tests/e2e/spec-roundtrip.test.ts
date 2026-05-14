@@ -83,8 +83,8 @@ const SPEC_INPUT = {
     },
   ],
   models: [
-    { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
-    { id: 'openai/gpt-4o', isDefault: false },
+    { id: 'anthropic/claude-sonnet-4-5' },
+    { id: 'openai/gpt-4o' },
   ],
   profiles: [
     { id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' },
@@ -339,7 +339,6 @@ const EXPECTED_SPEC_PATHS = new Set([
   'features.mastra.subAgents[].skills[]',
   'features.mastra.subAgents[].toolPatterns[]',
   'features.mastra.models[].id',
-  'features.mastra.models[].isDefault',
   'features.mastra.profiles[].id',
   'features.mastra.profiles[].title',
   'features.mastra.profiles[].content',
