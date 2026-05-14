@@ -108,13 +108,22 @@ export function buildCliTs(spec: ClintProjectSpec): string {
         skills: s.skills,
       })),
     ];
+    // Fall back to the first available profile when an agent has none
+    // assigned. The `AgentBase.md` builder only emits when `profiles[]` is
+    // empty, so referencing it from a non-empty-profile spec would be a dead
+    // link. With a non-empty library, the first profile is the safest default
+    // an agent always has at least one instruction file at build time.
+    const fallbackSection =
+      mastra.profiles.length > 0
+        ? `'${mastra.profiles[0].id}.md'`
+        : "'AgentBase.md'";
     for (const a of allAgents) {
       lines.push(`      '${a.id}': {`);
       lines.push(`        name: '${a.id}',`);
       const sections =
         a.profileIds.length > 0
           ? a.profileIds.map((id) => `'${id}.md'`)
-          : ["'AgentBase.md'"];
+          : [fallbackSection];
       lines.push(`        sections: [${sections.join(', ')}],`);
       const skills = a.skills.map((s) => `'${s}'`).join(', ');
       lines.push(`        skills: [${skills}],`);

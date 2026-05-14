@@ -115,7 +115,7 @@ const REQUIRED_FILES: Record<string, string[]> = {
   'mastra-configured': [
     'src/agents/agent.ts',
     'src/agents/demo-agent.ts',
-    'prompts/agent-profiles/AgentBase.md',
+    'prompts/agent-profiles/base.md',
   ],
   'mastra-multi-model': [
     'src/agents/agent.ts',
