@@ -1,4 +1,4 @@
-import { generateMock } from "@powerhousedao/codegen";
+import { generateMock } from "document-model";
 import {
   addPackageDocumentType,
   AddPackageDocumentTypeInputSchema,

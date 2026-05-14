@@ -82,8 +82,6 @@ const SPEC_INPUT = {
       githubUrl: 'https://github.com/anthropics/playwright-cli',
     },
   ],
-  agentId: 'roundtrip-agent',
-  agentName: 'Roundtrip Agent',
   models: [
     { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
     { id: 'openai/gpt-4o', isDefault: false },
@@ -92,8 +90,27 @@ const SPEC_INPUT = {
     { id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' },
     { id: 'code-review', title: 'Code Review', content: 'Review code for bugs.' },
   ],
-  agentDescription: 'An agent for testing spec round-trips end-to-end.',
-  agentImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  mainAgent: {
+    id: 'roundtrip-agent',
+    name: 'Roundtrip Agent',
+    description: 'An agent for testing spec round-trips end-to-end.',
+    image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    modelId: 'anthropic/claude-sonnet-4-5',
+    profileIds: ['base', 'code-review'],
+    skills: [],
+    toolPatterns: [],
+  },
+  subAgents: [
+    {
+      id: 'summarizer',
+      name: 'Summarizer',
+      description: 'Summarizes content.',
+      modelId: 'openai/gpt-4o',
+      profileIds: ['base'],
+      skills: ['playwright-cli'],
+      toolPatterns: ['cli-docs'],
+    },
+  ],
   enableChat: true,
   proxyEnabled: true,
   supportedResources: ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l'],
@@ -302,10 +319,21 @@ const EXPECTED_SPEC_PATHS = new Set([
   'description',
   'features.powerhouse',
   'features.mastra.enabled',
-  'features.mastra.agentId',
-  'features.mastra.agentName',
-  'features.mastra.agentDescription',
-  'features.mastra.agentImage',
+  'features.mastra.mainAgent.id',
+  'features.mastra.mainAgent.name',
+  'features.mastra.mainAgent.description',
+  'features.mastra.mainAgent.image',
+  'features.mastra.mainAgent.modelId',
+  'features.mastra.mainAgent.profileIds[]',
+  'features.mastra.mainAgent.skills[]',
+  'features.mastra.mainAgent.toolPatterns[]',
+  'features.mastra.subAgents[].id',
+  'features.mastra.subAgents[].name',
+  'features.mastra.subAgents[].description',
+  'features.mastra.subAgents[].modelId',
+  'features.mastra.subAgents[].profileIds[]',
+  'features.mastra.subAgents[].skills[]',
+  'features.mastra.subAgents[].toolPatterns[]',
   'features.mastra.models[].id',
   'features.mastra.models[].isDefault',
   'features.mastra.profiles[].id',
@@ -497,10 +525,8 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
 
     const mastra = features.mastra as Record<string, unknown>;
     expect(mastra.enabled).toBe(true);
-    expect(mastra.agentId).toBe(SPEC_INPUT.agentId);
-    expect(mastra.agentName).toBe(SPEC_INPUT.agentName);
-    expect(mastra.agentDescription).toBe(SPEC_INPUT.agentDescription);
-    expect(mastra.agentImage).toBe(SPEC_INPUT.agentImage);
+    expect(mastra.mainAgent).toEqual(SPEC_INPUT.mainAgent);
+    expect(mastra.subAgents).toEqual(SPEC_INPUT.subAgents);
     expect(mastra.models).toEqual(SPEC_INPUT.models);
     expect(mastra.profiles).toEqual(SPEC_INPUT.profiles);
 
@@ -650,10 +676,8 @@ describe('Spec round-trip e2e — document ↔ spec JSON', () => {
 
     const mastra = features.mastra as Record<string, unknown>;
     expect(mastra.enabled).toBe(true);
-    expect(mastra.agentId).toBe(SPEC_INPUT.agentId);
-    expect(mastra.agentName).toBe(SPEC_INPUT.agentName);
-    expect(mastra.agentDescription).toBe(SPEC_INPUT.agentDescription);
-    expect(mastra.agentImage).toBe(SPEC_INPUT.agentImage);
+    expect(mastra.mainAgent).toEqual(SPEC_INPUT.mainAgent);
+    expect(mastra.subAgents).toEqual(SPEC_INPUT.subAgents);
     expect(mastra.models).toEqual(SPEC_INPUT.models);
     expect(mastra.profiles).toEqual(SPEC_INPUT.profiles);
 

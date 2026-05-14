@@ -18,7 +18,37 @@ import {
   buildSmokeTestTs,
   buildPnpmWorkspaceYaml,
 } from '../../src/codegen/builders/index.js';
-import { clintProjectSpecSchema } from '../../src/spec/types.js';
+import { clintProjectSpecSchema, type ClintProjectSpecInput } from '../../src/spec/types.js';
+
+function specWithAgent(extras: {
+  models: { id: string; isDefault: boolean }[];
+  profiles?: { id: string; title: string; content: string }[];
+  modelId: string;
+  profileIds?: string[];
+  name?: string;
+}) {
+  const input: ClintProjectSpecInput = {
+    name: extras.name ?? 'foo-cli',
+    features: {
+      mastra: {
+        enabled: true,
+        models: extras.models,
+        profiles: extras.profiles ?? [],
+        mainAgent: {
+          id: 'foo-agent',
+          name: 'Foo Agent',
+          description: null,
+          image: null,
+          modelId: extras.modelId,
+          profileIds: extras.profileIds ?? [],
+          skills: [],
+          toolPatterns: [],
+        },
+      },
+    },
+  };
+  return clintProjectSpecSchema.parse(input);
+}
 
 describe('buildMainTs', () => {
   it('emits the bin shebang and cli.run(process.argv)', () => {
@@ -98,17 +128,11 @@ describe('buildMastraIndexTs', () => {
   });
 
   it('mastra on with full agent config — real Mastra instance', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: {
-        mastra: {
-          enabled: true,
-          agentId: 'foo-agent',
-          agentName: 'Foo Agent',
-          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
-          profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
-        },
-      },
+    const spec = specWithAgent({
+      models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+      profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
+      modelId: 'anthropic/claude-sonnet-4-5',
+      profileIds: ['base'],
     });
     const out = buildMastraIndexTs(spec);
     expect(out).toContain("import { Mastra } from '@mastra/core/mastra'");
@@ -117,17 +141,9 @@ describe('buildMastraIndexTs', () => {
   });
 
   it('only clint/demo-agent — placeholder (no env bridge)', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: {
-        mastra: {
-          enabled: true,
-          agentId: 'foo-agent',
-          agentName: 'Foo Agent',
-          models: [{ id: 'clint/demo-agent', isDefault: true }],
-          profiles: [],
-        },
-      },
+    const spec = specWithAgent({
+      models: [{ id: 'clint/demo-agent', isDefault: true }],
+      modelId: 'clint/demo-agent',
     });
     const out = buildMastraIndexTs(spec);
     expect(out).toContain('export {};');
@@ -155,38 +171,24 @@ describe('buildAgentTs', () => {
   });
 
   it('emits a real Mastra agent when full config is present', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: {
-        mastra: {
-          enabled: true,
-          agentId: 'foo-agent',
-          agentName: 'Foo Agent',
-          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
-          profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
-        },
-      },
+    const spec = specWithAgent({
+      models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+      profiles: [{ id: 'base', title: 'Base', content: 'You are helpful.' }],
+      modelId: 'anthropic/claude-sonnet-4-5',
+      profileIds: ['base'],
     });
     const out = buildAgentTs(spec);
     expect(out).toContain("import { Agent } from '@mastra/core/agent'");
     expect(out).toContain("id: 'foo-agent'");
-    expect(out).toContain("name: 'Foo Agent'");
+    expect(out).toContain('"Foo Agent"');
     expect(out).toContain("import { createMastraHelpers }");
     expect(out).toContain("m.getAgentInstructions('foo-agent')");
   });
 
   it('only clint/demo-agent model — falls back to demo agent (no @ai-sdk import)', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: {
-        mastra: {
-          enabled: true,
-          agentId: 'foo-agent',
-          agentName: 'Foo Agent',
-          models: [{ id: 'clint/demo-agent', isDefault: true }],
-          profiles: [],
-        },
-      },
+    const spec = specWithAgent({
+      models: [{ id: 'clint/demo-agent', isDefault: true }],
+      modelId: 'clint/demo-agent',
     });
     const out = buildAgentTs(spec);
     expect(out).toContain('createDemoAgent');
@@ -194,21 +196,13 @@ describe('buildAgentTs', () => {
     expect(out).not.toContain("import { Agent }");
   });
 
-  it('mixed models — picks first real model as default', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: {
-        mastra: {
-          enabled: true,
-          agentId: 'foo-agent',
-          agentName: 'Foo Agent',
-          models: [
-            { id: 'clint/demo-agent', isDefault: false },
-            { id: 'openai/gpt-4o', isDefault: true },
-          ],
-          profiles: [],
-        },
-      },
+  it('main agent on a real provider — emits its <provider>ApiKey field, never clintApiKey', () => {
+    const spec = specWithAgent({
+      models: [
+        { id: 'clint/demo-agent', isDefault: false },
+        { id: 'openai/gpt-4o', isDefault: true },
+      ],
+      modelId: 'openai/gpt-4o',
     });
     const out = buildAgentTs(spec);
     expect(out).toContain("import { Agent } from '@mastra/core/agent'");

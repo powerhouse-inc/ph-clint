@@ -97,10 +97,19 @@ export function buildSpec(input: InitInput): ClintProjectSpec {
   const mastra = input.enableMastra
     ? {
         enabled: true,
-        agentId: `${baseName}-agent`,
-        agentName: `${baseName.charAt(0).toUpperCase()}${baseName.slice(1).replace(/-(\w)/g, (_, c: string) => ' ' + c.toUpperCase())} Agent`,
         models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
         profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
+        mainAgent: {
+          id: `${baseName}-agent`,
+          name: `${baseName.charAt(0).toUpperCase()}${baseName.slice(1).replace(/-(\w)/g, (_, c: string) => ' ' + c.toUpperCase())} Agent`,
+          description: null,
+          image: null,
+          modelId: 'anthropic/claude-sonnet-4-5',
+          profileIds: ['base'],
+          skills: [],
+          toolPatterns: [],
+        },
+        subAgents: [],
       }
     : { enabled: false };
 

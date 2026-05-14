@@ -12,20 +12,27 @@ describe('buildManifestJson', () => {
     expect(m.features.agent).toBe(false);
   });
 
-  it('populates agent section when mastra is enabled', () => {
+  it('populates agent section when mastra has a main agent', () => {
     const m = parseManifest({
       name: 'foo-cli',
       features: {
         mastra: {
           enabled: true,
-          agentId: 'foo-agent',
-          agentName: 'Foo Agent',
-          agentDescription: 'A helpful agent',
-          agentImage: 'https://example.com/avatar.png',
           models: [
             { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
             { id: 'anthropic/claude-haiku-4-5', isDefault: false },
           ],
+          profiles: [{ id: 'base', title: 'Base', content: '' }],
+          mainAgent: {
+            id: 'foo-agent',
+            name: 'Foo Agent',
+            description: 'A helpful agent',
+            image: 'https://example.com/avatar.png',
+            modelId: 'anthropic/claude-sonnet-4-5',
+            profileIds: ['base'],
+            skills: [],
+            toolPatterns: [],
+          },
         },
       },
     });
@@ -41,13 +48,12 @@ describe('buildManifestJson', () => {
     });
   });
 
-  it('handles null agent description and image', () => {
+  it('falls back to no-agent when mainAgent is null', () => {
     const m = parseManifest({
       name: 'foo-cli',
       features: { mastra: { enabled: true } },
     });
-    expect(m.features.agent.description).toBeNull();
-    expect(m.features.agent.image).toBeNull();
+    expect(m.features.agent).toBe(false);
   });
 
   it('sets features.powerhouse to false when Disabled', () => {

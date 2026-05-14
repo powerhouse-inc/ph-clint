@@ -1,614 +1,115 @@
-import { generateMock } from "document-model";
 import {
   clearMainAgentDescription,
-  ClearMainAgentDescriptionInputSchema,
   clearMainAgentImage,
-  ClearMainAgentImageInputSchema,
-  isPhClintProjectDocument,
+  enableMastra,
   reducer,
   setMainAgentDescription,
-  SetMainAgentDescriptionInputSchema,
   setMainAgentImage,
-  SetMainAgentImageInputSchema,
   setMainAgentName,
-  SetMainAgentNameInputSchema,
   utils,
+  type PhClintProjectDocument,
 } from "document-models/ph-clint-project/v1";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+const PROMETHEUS_PNG = resolve(
+  import.meta.dirname,
+  "prometheus-zoomed-small.png",
+);
+const DATA_URL = `data:image/png;base64,${readFileSync(PROMETHEUS_PNG).toString("base64")}`;
+
+function enabled(): PhClintProjectDocument {
+  return reducer(
+    utils.createDocument(),
+    enableMastra({ agentId: "main", agentName: "Main" }),
+  );
+}
+
 describe("MastraMainAgentOperations", () => {
-  it("should handle setMainAgentName operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentNameInputSchema());
+  describe("SET_MAIN_AGENT_NAME", () => {
+    it("trims and updates the name", () => {
+      const doc = reducer(enabled(), setMainAgentName({ name: "  New Name  " }));
+      expect(doc.state.global.features.mastra.mainAgent!.name).toBe("New Name");
+    });
 
-    const updatedDocument = reducer(document, setMainAgentName(input));
+    it("rejects when the name is empty after trim", () => {
+      const doc = reducer(enabled(), setMainAgentName({ name: "   " }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("must not be empty");
+      expect(doc.state.global.features.mastra.mainAgent!.name).toBe("Main");
+    });
 
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects when mastra is disabled", () => {
+      const doc = reducer(
+        utils.createDocument(),
+        setMainAgentName({ name: "X" }),
+      );
+      expect(doc.operations.global[0].error).toContain("Mastra is disabled");
+    });
   });
 
-  it("should handle setMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentDescriptionInputSchema());
+  describe("SET_MAIN_AGENT_DESCRIPTION", () => {
+    it("sets the description", () => {
+      const doc = reducer(
+        enabled(),
+        setMainAgentDescription({ description: "A helpful agent." }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.description).toBe(
+        "A helpful agent.",
+      );
+    });
 
-    const updatedDocument = reducer(document, setMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects when mastra is disabled", () => {
+      const doc = reducer(
+        utils.createDocument(),
+        setMainAgentDescription({ description: "X" }),
+      );
+      expect(doc.operations.global[0].error).toContain("Mastra is disabled");
+    });
   });
 
-  it("should handle clearMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  describe("CLEAR_MAIN_AGENT_DESCRIPTION", () => {
+    it("clears the description to null", () => {
+      let doc = reducer(
+        enabled(),
+        setMainAgentDescription({ description: "desc" }),
+      );
+      doc = reducer(doc, clearMainAgentDescription({ _: true }));
+      expect(doc.state.global.features.mastra.mainAgent!.description).toBeNull();
+    });
   });
 
-  it("should handle setMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentImageInputSchema());
+  describe("SET_MAIN_AGENT_IMAGE", () => {
+    it("stores a data URL image", () => {
+      const doc = reducer(enabled(), setMainAgentImage({ image: DATA_URL }));
+      expect(doc.state.global.features.mastra.mainAgent!.image).toBe(DATA_URL);
+    });
 
-    const updatedDocument = reducer(document, setMainAgentImage(input));
+    it("rejects a non-data URL", () => {
+      const doc = reducer(
+        enabled(),
+        setMainAgentImage({ image: "https://example.com/avatar.png" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("data URL");
+      expect(doc.state.global.features.mastra.mainAgent!.image).toBeNull();
+    });
 
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects when mastra is disabled", () => {
+      const doc = reducer(
+        utils.createDocument(),
+        setMainAgentImage({ image: DATA_URL }),
+      );
+      expect(doc.operations.global[0].error).toContain("Mastra is disabled");
+    });
   });
 
-  it("should handle clearMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentName operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentNameInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentName(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentName operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentNameInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentName(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentName operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentNameInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentName(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentName operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentNameInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentName(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentName operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentNameInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentName(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentName operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentNameInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentName(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_NAME",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentDescription operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentDescriptionInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentDescription(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_DESCRIPTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, setMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle clearMainAgentImage operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ClearMainAgentImageInputSchema());
-
-    const updatedDocument = reducer(document, clearMainAgentImage(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "CLEAR_MAIN_AGENT_IMAGE",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  describe("CLEAR_MAIN_AGENT_IMAGE", () => {
+    it("clears the image to null", () => {
+      let doc = reducer(enabled(), setMainAgentImage({ image: DATA_URL }));
+      doc = reducer(doc, clearMainAgentImage({ _: true }));
+      expect(doc.state.global.features.mastra.mainAgent!.image).toBeNull();
+    });
   });
 });

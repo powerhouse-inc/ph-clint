@@ -232,53 +232,101 @@ describe('buildFrameworkTs', () => {
     expect(code).toContain('export const configSchema = z.object({');
   });
 
-  it('Mastra on — seeds model + per-provider apiKey defaults in configSchema/secretsSchema', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: {
-        mastra: {
-          enabled: true,
-          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
-        },
-      },
-    });
-    const code = buildFrameworkTs(spec);
-    expect(code).toContain("model: z.string().default('anthropic/claude-sonnet-4-5')");
-    expect(code).toContain('anthropicApiKey: z.string().optional()');
-  });
-
-  it('only clint/demo-agent model — no API key fields in secretsSchema', () => {
-    const spec = clintProjectSpecSchema.parse({
-      name: 'foo-cli',
-      features: {
-        mastra: {
-          enabled: true,
-          models: [{ id: 'clint/demo-agent', isDefault: true }],
-        },
-      },
-    });
-    const code = buildFrameworkTs(spec);
-    expect(code).not.toContain('clintApiKey');
-    // secretsSchema should still exist but be empty
-    expect(code).toContain('export const secretsSchema = z.object({');
-  });
-
-  it('clint/demo-agent + real model — only real provider API key generated', () => {
+  it('Mastra on with main agent — model field defaults to the main agent modelId, secrets enumerate providers', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       features: {
         mastra: {
           enabled: true,
           models: [
-            { id: 'clint/demo-agent', isDefault: false },
             { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
+            { id: 'openai/gpt-4o', isDefault: false },
+          ],
+          profiles: [{ id: 'base', title: 'Base', content: '' }],
+          mainAgent: {
+            id: 'main',
+            name: 'Main',
+            description: null,
+            image: null,
+            modelId: 'anthropic/claude-sonnet-4-5',
+            profileIds: ['base'],
+            skills: [],
+            toolPatterns: [],
+          },
+        },
+      },
+    });
+    const code = buildFrameworkTs(spec);
+    expect(code).toContain("model: z.string().default('anthropic/claude-sonnet-4-5')");
+    expect(code).toContain('anthropicApiKey: z.string().optional()');
+    // openai/gpt-4o is in the library but not used by any agent → no key
+    expect(code).not.toContain('openaiApiKey');
+  });
+
+  it('every provider used across main + sub-agents gets a secret field', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          models: [
+            { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
+            { id: 'openai/gpt-4o', isDefault: false },
+          ],
+          profiles: [{ id: 'base', title: 'Base', content: '' }],
+          mainAgent: {
+            id: 'main',
+            name: 'Main',
+            description: null,
+            image: null,
+            modelId: 'anthropic/claude-sonnet-4-5',
+            profileIds: ['base'],
+            skills: [],
+            toolPatterns: [],
+          },
+          subAgents: [
+            {
+              id: 'sub',
+              name: 'Sub',
+              description: 'x',
+              modelId: 'openai/gpt-4o',
+              profileIds: [],
+              skills: [],
+              toolPatterns: [],
+            },
           ],
         },
       },
     });
     const code = buildFrameworkTs(spec);
     expect(code).toContain('anthropicApiKey: z.string().optional()');
+    expect(code).toContain('openaiApiKey: z.string().optional()');
+  });
+
+  it('only clint/demo-agent — no API key fields in secretsSchema', () => {
+    const spec = clintProjectSpecSchema.parse({
+      name: 'foo-cli',
+      features: {
+        mastra: {
+          enabled: true,
+          models: [{ id: 'clint/demo-agent', isDefault: true }],
+          profiles: [{ id: 'base', title: 'Base', content: '' }],
+          mainAgent: {
+            id: 'main',
+            name: 'Main',
+            description: null,
+            image: null,
+            modelId: 'clint/demo-agent',
+            profileIds: ['base'],
+            skills: [],
+            toolPatterns: [],
+          },
+        },
+      },
+    });
+    const code = buildFrameworkTs(spec);
     expect(code).not.toContain('clintApiKey');
+    expect(code).toContain('export const secretsSchema = z.object({');
   });
 });
 

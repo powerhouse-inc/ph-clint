@@ -1,637 +1,363 @@
-import { generateMock } from "document-model";
 import {
   addAgentProfileRef,
-  AddAgentProfileRefInputSchema,
   addAgentSkill,
-  AddAgentSkillInputSchema,
   addAgentToolPattern,
-  AddAgentToolPatternInputSchema,
-  isPhClintProjectDocument,
+  addModel,
+  addProfile,
+  addSubAgent,
+  enableMastra,
   reducer,
   removeAgentProfileRef,
-  RemoveAgentProfileRefInputSchema,
   removeAgentSkill,
-  RemoveAgentSkillInputSchema,
   removeAgentToolPattern,
-  RemoveAgentToolPatternInputSchema,
   reorderAgentProfileRefs,
-  ReorderAgentProfileRefsInputSchema,
   setAgentModel,
-  SetAgentModelInputSchema,
   utils,
+  type PhClintProjectDocument,
 } from "document-models/ph-clint-project/v1";
 import { describe, expect, it } from "vitest";
 
+/** Helper: enabled doc with extra models, profiles, and one sub-agent. */
+function setup(): PhClintProjectDocument {
+  let doc = reducer(
+    utils.createDocument(),
+    enableMastra({ agentId: "main", agentName: "Main" }),
+  );
+  doc = reducer(doc, addModel({ id: "openai/gpt-4o" }));
+  doc = reducer(doc, addModel({ id: "anthropic/claude-haiku-4-5" }));
+  doc = reducer(doc, addProfile({ id: "tools", title: "Tools", content: "" }));
+  doc = reducer(doc, addProfile({ id: "style", title: "Style", content: "" }));
+  doc = reducer(
+    doc,
+    addSubAgent({
+      id: "sub",
+      name: "Sub",
+      description: "A sub.",
+      modelId: "openai/gpt-4o",
+    }),
+  );
+  return doc;
+}
+
 describe("MastraAgentBindingsOperations", () => {
-  it("should handle setAgentModel operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentModelInputSchema());
+  describe("SET_AGENT_MODEL", () => {
+    it("retargets the main agent's model", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        setAgentModel({ agentId: "main", modelId: "anthropic/claude-haiku-4-5" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.modelId).toBe(
+        "anthropic/claude-haiku-4-5",
+      );
+    });
 
-    const updatedDocument = reducer(document, setAgentModel(input));
+    it("retargets a sub-agent's model", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        setAgentModel({ agentId: "sub", modelId: "anthropic/claude-haiku-4-5" }),
+      );
+      expect(doc.state.global.features.mastra.subAgents[0].modelId).toBe(
+        "anthropic/claude-haiku-4-5",
+      );
+    });
 
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_MODEL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects an unknown agentId", () => {
+      const doc = reducer(
+        setup(),
+        setAgentModel({ agentId: "missing", modelId: "openai/gpt-4o" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("Agent not found");
+    });
+
+    it("rejects an unknown modelId", () => {
+      const doc = reducer(
+        setup(),
+        setAgentModel({ agentId: "main", modelId: "missing/model" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("Model not in library");
+    });
   });
 
-  it("should handle addAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentProfileRefInputSchema());
+  describe("ADD_AGENT_PROFILE_REF", () => {
+    it("appends a profile ref when insertBefore is omitted", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "tools" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.profileIds).toEqual([
+        "base",
+        "tools",
+      ]);
+    });
 
-    const updatedDocument = reducer(document, addAgentProfileRef(input));
+    it("inserts before the named ref when insertBefore is provided", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "tools" }),
+      );
+      doc = reducer(
+        doc,
+        addAgentProfileRef({
+          agentId: "main",
+          profileId: "style",
+          insertBefore: "tools",
+        }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.profileIds).toEqual([
+        "base",
+        "style",
+        "tools",
+      ]);
+    });
 
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("dedupes silently when the profile is already attached", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "base" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.profileIds).toEqual([
+        "base",
+      ]);
+    });
+
+    it("rejects when profile is not in the library", () => {
+      const doc = reducer(
+        setup(),
+        addAgentProfileRef({ agentId: "main", profileId: "missing" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("not in library");
+    });
+
+    it("works for sub-agents too", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "sub", profileId: "tools" }),
+      );
+      expect(doc.state.global.features.mastra.subAgents[0].profileIds).toEqual([
+        "tools",
+      ]);
+    });
   });
 
-  it("should handle removeAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentProfileRefInputSchema());
+  describe("REMOVE_AGENT_PROFILE_REF", () => {
+    it("removes a profile ref", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "tools" }),
+      );
+      doc = reducer(
+        doc,
+        removeAgentProfileRef({ agentId: "main", profileId: "base" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.profileIds).toEqual([
+        "tools",
+      ]);
+    });
 
-    const updatedDocument = reducer(document, removeAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects when the profile ref is not on the agent", () => {
+      const doc = reducer(
+        setup(),
+        removeAgentProfileRef({ agentId: "main", profileId: "tools" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("not in agent");
+    });
   });
 
-  it("should handle reorderAgentProfileRefs operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ReorderAgentProfileRefsInputSchema());
+  describe("REORDER_AGENT_PROFILE_REFS", () => {
+    it("moves listed refs before insertBefore", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "tools" }),
+      );
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "style" }),
+      );
+      doc = reducer(
+        doc,
+        reorderAgentProfileRefs({
+          agentId: "main",
+          ids: ["style"],
+          insertBefore: "tools",
+        }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.profileIds).toEqual([
+        "base",
+        "style",
+        "tools",
+      ]);
+    });
 
-    const updatedDocument = reducer(document, reorderAgentProfileRefs(input));
+    it("appends moved refs when insertBefore is null", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "tools" }),
+      );
+      doc = reducer(
+        doc,
+        addAgentProfileRef({ agentId: "main", profileId: "style" }),
+      );
+      doc = reducer(
+        doc,
+        reorderAgentProfileRefs({
+          agentId: "main",
+          ids: ["base"],
+          insertBefore: null,
+        }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.profileIds).toEqual([
+        "tools",
+        "style",
+        "base",
+      ]);
+    });
 
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REORDER_AGENT_PROFILE_REFS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects when any id is not on the agent", () => {
+      const doc = reducer(
+        setup(),
+        reorderAgentProfileRefs({
+          agentId: "main",
+          ids: ["tools"],
+          insertBefore: null,
+        }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("not in agent");
+    });
   });
 
-  it("should handle setAgentModel operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentModelInputSchema());
+  describe("ADD_AGENT_SKILL", () => {
+    it("adds a kebab-case skill", () => {
+      const doc = reducer(
+        setup(),
+        addAgentSkill({ agentId: "main", name: "playwright-cli" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.skills).toEqual([
+        "playwright-cli",
+      ]);
+    });
 
-    const updatedDocument = reducer(document, setAgentModel(input));
+    it("dedupes silently", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentSkill({ agentId: "main", name: "playwright-cli" }),
+      );
+      doc = reducer(
+        doc,
+        addAgentSkill({ agentId: "main", name: "playwright-cli" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.skills).toEqual([
+        "playwright-cli",
+      ]);
+    });
 
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_MODEL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects invalid format", () => {
+      const doc = reducer(
+        setup(),
+        addAgentSkill({ agentId: "main", name: "Bad-Skill" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("lowercase kebab-case");
+    });
   });
 
-  it("should handle addAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentProfileRefInputSchema());
+  describe("REMOVE_AGENT_SKILL", () => {
+    it("removes a skill from an agent", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentSkill({ agentId: "sub", name: "playwright-cli" }),
+      );
+      doc = reducer(
+        doc,
+        removeAgentSkill({ agentId: "sub", name: "playwright-cli" }),
+      );
+      expect(doc.state.global.features.mastra.subAgents[0].skills).toEqual([]);
+    });
 
-    const updatedDocument = reducer(document, addAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("rejects when the skill is not on the agent", () => {
+      const doc = reducer(
+        setup(),
+        removeAgentSkill({ agentId: "main", name: "missing" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("not on agent");
+    });
   });
 
-  it("should handle removeAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentProfileRefInputSchema());
+  describe("ADD_AGENT_TOOL_PATTERN", () => {
+    it("adds a glob pattern", () => {
+      const doc = reducer(
+        setup(),
+        addAgentToolPattern({ agentId: "sub", pattern: "clint-project-*" }),
+      );
+      expect(doc.state.global.features.mastra.subAgents[0].toolPatterns).toEqual(
+        ["clint-project-*"],
+      );
+    });
 
-    const updatedDocument = reducer(document, removeAgentProfileRef(input));
+    it("rejects an empty pattern", () => {
+      const doc = reducer(
+        setup(),
+        addAgentToolPattern({ agentId: "main", pattern: "   " }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("must not be empty");
+    });
 
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+    it("dedupes silently", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentToolPattern({ agentId: "main", pattern: "*-mcp__*" }),
+      );
+      doc = reducer(
+        doc,
+        addAgentToolPattern({ agentId: "main", pattern: "*-mcp__*" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.toolPatterns).toEqual([
+        "*-mcp__*",
+      ]);
+    });
   });
 
-  it("should handle reorderAgentProfileRefs operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ReorderAgentProfileRefsInputSchema());
-
-    const updatedDocument = reducer(document, reorderAgentProfileRefs(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REORDER_AGENT_PROFILE_REFS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, addAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, addAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setAgentModel operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentModelInputSchema());
-
-    const updatedDocument = reducer(document, setAgentModel(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_MODEL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentProfileRefInputSchema());
-
-    const updatedDocument = reducer(document, addAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentProfileRefInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle reorderAgentProfileRefs operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ReorderAgentProfileRefsInputSchema());
-
-    const updatedDocument = reducer(document, reorderAgentProfileRefs(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REORDER_AGENT_PROFILE_REFS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, addAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, addAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setAgentModel operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentModelInputSchema());
-
-    const updatedDocument = reducer(document, setAgentModel(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_MODEL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentProfileRefInputSchema());
-
-    const updatedDocument = reducer(document, addAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentProfileRefInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle reorderAgentProfileRefs operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ReorderAgentProfileRefsInputSchema());
-
-    const updatedDocument = reducer(document, reorderAgentProfileRefs(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REORDER_AGENT_PROFILE_REFS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, addAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, addAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle setAgentModel operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(SetAgentModelInputSchema());
-
-    const updatedDocument = reducer(document, setAgentModel(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_AGENT_MODEL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentProfileRefInputSchema());
-
-    const updatedDocument = reducer(document, addAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentProfileRef operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentProfileRefInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentProfileRef(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_PROFILE_REF",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle reorderAgentProfileRefs operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(ReorderAgentProfileRefsInputSchema());
-
-    const updatedDocument = reducer(document, reorderAgentProfileRefs(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REORDER_AGENT_PROFILE_REFS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, addAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentSkill operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentSkillInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentSkill(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_SKILL",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle addAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(AddAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, addAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "ADD_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
-  });
-
-  it("should handle removeAgentToolPattern operation", () => {
-    const document = utils.createDocument();
-    const input = generateMock(RemoveAgentToolPatternInputSchema());
-
-    const updatedDocument = reducer(document, removeAgentToolPattern(input));
-
-    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
-    expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "REMOVE_AGENT_TOOL_PATTERN",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
-    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  describe("REMOVE_AGENT_TOOL_PATTERN", () => {
+    it("removes a tool pattern", () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentToolPattern({ agentId: "main", pattern: "*-mcp__*" }),
+      );
+      doc = reducer(
+        doc,
+        removeAgentToolPattern({ agentId: "main", pattern: "*-mcp__*" }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.toolPatterns).toEqual(
+        [],
+      );
+    });
+
+    it("rejects when the pattern is not on the agent", () => {
+      const doc = reducer(
+        setup(),
+        removeAgentToolPattern({ agentId: "main", pattern: "missing-*" }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("not on agent");
+    });
   });
 });

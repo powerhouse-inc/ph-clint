@@ -88,26 +88,52 @@ describe('buildCliTs', () => {
     expect(code).toContain('documentModels');
   });
 
-  it('populates prompts.agents from spec profiles', () => {
+  it('populates prompts.agents with one entry per agent (main + subs), sections from profileIds', () => {
     const spec = clintProjectSpecSchema.parse({
       name: 'foo-cli',
       features: {
         mastra: {
           enabled: true,
-          agentId: 'foo-agent',
-          agentName: 'Foo Agent',
-          models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+          models: [
+            { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
+            { id: 'openai/gpt-4o', isDefault: false },
+          ],
           profiles: [
             { id: 'base', title: 'Base', content: 'Base instructions.' },
             { id: 'tools', title: 'Tools', content: 'Tool usage.' },
+          ],
+          mainAgent: {
+            id: 'foo-agent',
+            name: 'Foo Agent',
+            description: null,
+            image: null,
+            modelId: 'anthropic/claude-sonnet-4-5',
+            profileIds: ['base', 'tools'],
+            skills: ['playwright-cli'],
+            toolPatterns: [],
+          },
+          subAgents: [
+            {
+              id: 'summarizer',
+              name: 'Summarizer',
+              description: 'Summarizes content.',
+              modelId: 'openai/gpt-4o',
+              profileIds: ['base'],
+              skills: [],
+              toolPatterns: ['cli-docs'],
+            },
           ],
         },
       },
     });
     const code = buildCliTs(spec);
+    // Main agent entry
     expect(code).toContain("'foo-agent'");
     expect(code).toContain("'base.md'");
     expect(code).toContain("'tools.md'");
+    expect(code).toContain("'playwright-cli'");
+    // Sub-agent entry
+    expect(code).toContain("'summarizer'");
   });
 
   it('emits proxyEnabled: true when deployment.proxyEnabled is true', () => {
