@@ -94,22 +94,32 @@ export function buildCliTs(spec: ClintProjectSpec): string {
   } else {
     lines.push('    artifacts: [],');
   }
-  if (mastra.enabled && mastra.agentId) {
+  if (mastra.enabled && mastra.mainAgent) {
     lines.push('    agents: {');
-    lines.push(`      '${mastra.agentId}': {`);
-    if (mastra.profiles.length > 0) {
-      lines.push(`        name: '${mastra.profiles[0].id}',`);
-      lines.push('        sections: [');
-      for (const p of mastra.profiles) {
-        lines.push(`          '${p.id}.md',`);
-      }
-      lines.push('        ],');
-    } else {
-      lines.push("        name: 'AgentBase',");
-      lines.push("        sections: ['AgentBase.md'],");
+    const allAgents: { id: string; profileIds: string[]; skills: string[] }[] = [
+      {
+        id: mastra.mainAgent.id,
+        profileIds: mastra.mainAgent.profileIds,
+        skills: mastra.mainAgent.skills,
+      },
+      ...mastra.subAgents.map((s) => ({
+        id: s.id,
+        profileIds: s.profileIds,
+        skills: s.skills,
+      })),
+    ];
+    for (const a of allAgents) {
+      lines.push(`      '${a.id}': {`);
+      lines.push(`        name: '${a.id}',`);
+      const sections =
+        a.profileIds.length > 0
+          ? a.profileIds.map((id) => `'${id}.md'`)
+          : ["'AgentBase.md'"];
+      lines.push(`        sections: [${sections.join(', ')}],`);
+      const skills = a.skills.map((s) => `'${s}'`).join(', ');
+      lines.push(`        skills: [${skills}],`);
+      lines.push('      },');
     }
-    lines.push('        skills: [],');
-    lines.push('      },');
     lines.push('    },');
   } else {
     lines.push('    agents: {},');

@@ -90,6 +90,7 @@ function canonicalJson(value: unknown): string {
 }
 
 export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
+  const main = spec.features.mastra.mainAgent;
   return {
     name: spec.name,
     scope: spec.scope ?? null,
@@ -98,29 +99,46 @@ export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
     powerhouse: spec.features.powerhouse,
     mastraEnabled: spec.features.mastra.enabled,
     routineEnabled: spec.features.routine.enabled,
-    agentId: spec.features.mastra.agentId ?? null,
-    agentName: spec.features.mastra.agentName ?? null,
-    models: spec.features.mastra.models.map(m => ({
+    mainAgent: main
+      ? {
+          id: main.id,
+          name: main.name,
+          description: main.description,
+          image: main.image,
+          modelId: main.modelId,
+          profileIds: [...main.profileIds],
+          skills: [...main.skills],
+          toolPatterns: [...main.toolPatterns],
+        }
+      : null,
+    subAgents: spec.features.mastra.subAgents.map((s) => ({
+      id: s.id,
+      name: s.name,
+      description: s.description,
+      modelId: s.modelId,
+      profileIds: [...s.profileIds],
+      skills: [...s.skills],
+      toolPatterns: [...s.toolPatterns],
+    })),
+    models: spec.features.mastra.models.map((m) => ({
       id: m.id,
       isDefault: m.isDefault,
     })),
-    profiles: spec.features.mastra.profiles.map(p => ({
+    profiles: spec.features.mastra.profiles.map((p) => ({
       id: p.id,
       title: p.title,
       content: p.content,
     })),
-    packages: spec.packages.map(p => ({
+    packages: spec.packages.map((p) => ({
       id: p.id,
       packageName: p.packageName,
       documentTypes: p.documentTypes,
     })),
-    externalSkills: spec.externalSkills.map(s => ({
+    externalSkills: spec.externalSkills.map((s) => ({
       id: s.id,
       name: s.name,
       githubUrl: s.githubUrl,
     })),
-    agentDescription: spec.features.mastra.agentDescription ?? null,
-    agentImage: spec.features.mastra.agentImage ?? null,
     enableChat: spec.features.mastra.common.enableChat,
     proxyEnabled: spec.deployment.proxyEnabled,
     observabilityEnabled: spec.deployment.observabilityEnabled,

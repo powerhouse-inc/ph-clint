@@ -9,14 +9,12 @@ import { DEMO_PROVIDER } from './provider-utils.js';
 
 export function buildDemoAgentTs(spec: ClintProjectSpec): string | null {
   const { mastra } = spec.features;
-  // Only needed alongside the real agent (which imports it)
-  const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
-  if (!mastra.enabled || !mastra.agentId || realModels.length === 0) return null;
+  const realModels = mastra.models.filter(
+    (m) => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER,
+  );
+  if (!mastra.enabled || !mastra.mainAgent || realModels.length === 0) return null;
 
-  const agentId = mastra.agentId;
-  const agentName = mastra.agentName ?? agentId;
-  const agentDescription = mastra.agentDescription;
-  const agentImage = mastra.agentImage;
+  const main = mastra.mainAgent;
   return [
     "import type { AgentProvider, StreamChunk } from '@powerhousedao/ph-clint';",
     '',
@@ -29,10 +27,10 @@ export function buildDemoAgentTs(spec: ClintProjectSpec): string | null {
     '  const conversations = new Map<string, string[]>();',
     '',
     '  return {',
-    `    id: '${agentId}',`,
-    `    name: '${agentName}',`,
-    ...(agentDescription ? [`    description: ${JSON.stringify(agentDescription)},`] : []),
-    ...(agentImage ? [`    image: ${JSON.stringify(agentImage)},`] : []),
+    `    id: '${main.id}',`,
+    `    name: '${main.name}',`,
+    ...(main.description ? [`    description: ${JSON.stringify(main.description)},`] : []),
+    ...(main.image ? [`    image: ${JSON.stringify(main.image)},`] : []),
     '    async *stream(prompt, opts) {',
     '      const text = typeof prompt === \'string\'',
     '        ? prompt',

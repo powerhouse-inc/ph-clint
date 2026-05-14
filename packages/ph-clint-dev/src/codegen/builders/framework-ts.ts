@@ -17,7 +17,11 @@
  *   against, so this file binds `createTypes({ configSchema })` directly and
  *   exports the typed factories from here. No `framework.gen.ts` is emitted.
  */
-import { type ClintProjectSpec, phAtLeast } from '../../spec/types.js';
+import {
+  type ClintProjectSpec,
+  getAllProviders,
+  phAtLeast,
+} from '../../spec/types.js';
 import { DEMO_PROVIDER } from './provider-utils.js';
 
 export function buildFrameworkTs(spec: ClintProjectSpec): string {
@@ -47,9 +51,13 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
   lines.push('export const configSchema = z.object({');
   lines.push('  // @clint:begin framework-config');
   if (mastra.enabled) {
-    const defaultModel = mastra.models.find(m => m.isDefault)?.id ?? 'anthropic/claude-sonnet-4-5';
+    // The runtime `model` override only applies to the main agent. Sub-agent
+    // models are taken verbatim from the spec.
+    const mainModelId = mastra.mainAgent?.modelId
+      ?? mastra.models.find((m) => m.isDefault)?.id
+      ?? 'anthropic/claude-sonnet-4-5';
     lines.push(
-      `  model: z.string().default('${defaultModel}').describe('LLM model to use'),`,
+      `  model: z.string().default('${mainModelId}').describe('LLM model for the main agent (sub-agent models come from the spec)'),`,
       `  agentLogging: z.boolean().default(false).describe('Enable agent conversation logging'),`,
     );
   }
@@ -59,7 +67,8 @@ export function buildFrameworkTs(spec: ClintProjectSpec): string {
   lines.push('export const secretsSchema = z.object({');
   lines.push('  // @clint:begin framework-secrets');
   if (mastra.enabled) {
-    const providers = [...new Set(mastra.models.map(m => m.id.split(/[:/]/)[0]))].filter(p => p !== DEMO_PROVIDER);
+    // Enumerate every unique provider across the main agent + all sub-agents.
+    const providers = getAllProviders(spec).filter((p) => p !== DEMO_PROVIDER);
     for (const provider of providers) {
       const field = `${provider}ApiKey`;
       lines.push(`  ${field}: z.string().optional().describe('${provider} API key'),`);

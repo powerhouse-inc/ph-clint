@@ -37,6 +37,8 @@ export function phAtLeast(
   );
 }
 
+export const AGENT_ID_RE = /^[a-z][a-z0-9-]*$/;
+
 export const agentModelSchema = z.object({
   id: z.string(),
   isDefault: z.boolean(),
@@ -52,20 +54,44 @@ export const agentProfileSchema = z.object({
 
 export type AgentProfile = z.infer<typeof agentProfileSchema>;
 
+const agentDefBase = {
+  id: z.string().regex(AGENT_ID_RE),
+  name: z.string(),
+  modelId: z.string(),
+  profileIds: z.array(z.string()),
+  skills: z.array(z.string()),
+  toolPatterns: z.array(z.string()),
+};
+
+export const mainAgentSchema = z.object({
+  ...agentDefBase,
+  description: z.string().nullable(),
+  image: z.string().nullable(),
+});
+
+export type MainAgent = z.infer<typeof mainAgentSchema>;
+
+export const subAgentSchema = z.object({
+  ...agentDefBase,
+  description: z.string(),
+});
+
+export type SubAgent = z.infer<typeof subAgentSchema>;
+
 const mastraCommonSchema = z.object({
   enableChat: z.boolean().default(false),
 });
 
 const mastraFeatureSchema = z.object({
   enabled: z.boolean().default(false),
-  agentId: z.string().nullable().default(null),
-  agentName: z.string().nullable().default(null),
-  agentDescription: z.string().nullable().default(null),
-  agentImage: z.string().nullable().default(null),
+  mainAgent: mainAgentSchema.nullable().default(null),
+  subAgents: z.array(subAgentSchema).default([]),
   models: z.array(agentModelSchema).default([]),
   profiles: z.array(agentProfileSchema).default([]),
   common: mastraCommonSchema.default({ enableChat: false }),
 });
+
+export type MastraFeature = z.infer<typeof mastraFeatureSchema>;
 
 const routineFeatureSchema = z.object({
   enabled: z.boolean().default(false),
@@ -73,10 +99,8 @@ const routineFeatureSchema = z.object({
 
 const DEFAULT_MASTRA: z.infer<typeof mastraFeatureSchema> = {
   enabled: false,
-  agentId: null,
-  agentName: null,
-  agentDescription: null,
-  agentImage: null,
+  mainAgent: null,
+  subAgents: [],
   models: [],
   profiles: [],
   common: { enableChat: false },
@@ -147,6 +171,73 @@ export const clintProjectSpecSchema = z.object({
 
 export type ClintProjectSpec = z.infer<typeof clintProjectSpecSchema>;
 export type ClintProjectSpecInput = z.input<typeof clintProjectSpecSchema>;
+
+/** Every agent id in the project: `[mainAgent.id, ...subAgents.map(s => s.id)]` filtered for null main. */
+export function getAgentIds(spec: ClintProjectSpec): string[] {
+  const main = spec.features.mastra.mainAgent;
+  const subs = spec.features.mastra.subAgents.map((s) => s.id);
+  return main ? [main.id, ...subs] : subs;
+}
+
+/** Resolve an agentId to the main agent or one of the sub-agents. Returns undefined if not found. */
+export function getAgent(
+  spec: ClintProjectSpec,
+  agentId: string,
+): MainAgent | SubAgent | undefined {
+  const main = spec.features.mastra.mainAgent;
+  if (main && main.id === agentId) return main;
+  return spec.features.mastra.subAgents.find((s) => s.id === agentId);
+}
+
+/** True when `agentId` is the main agent's id. */
+export function isMainAgent(spec: ClintProjectSpec, agentId: string): boolean {
+  const main = spec.features.mastra.mainAgent;
+  return !!main && main.id === agentId;
+}
+
+/** Look up the AgentModel an agent references. Throws if the FK is broken. */
+export function getAgentModel(
+  spec: ClintProjectSpec,
+  agentId: string,
+): AgentModel {
+  const agent = getAgent(spec, agentId);
+  if (!agent) throw new Error(`Agent not found: ${agentId}`);
+  const model = spec.features.mastra.models.find((m) => m.id === agent.modelId);
+  if (!model)
+    throw new Error(
+      `Model FK broken: agent '${agentId}' references missing model '${agent.modelId}'`,
+    );
+  return model;
+}
+
+/** Resolve an agent's profile references in declared order. Throws on FK breaks. */
+export function getAgentProfiles(
+  spec: ClintProjectSpec,
+  agentId: string,
+): AgentProfile[] {
+  const agent = getAgent(spec, agentId);
+  if (!agent) throw new Error(`Agent not found: ${agentId}`);
+  return agent.profileIds.map((pid) => {
+    const profile = spec.features.mastra.profiles.find((p) => p.id === pid);
+    if (!profile)
+      throw new Error(
+        `Profile FK broken: agent '${agentId}' references missing profile '${pid}'`,
+      );
+    return profile;
+  });
+}
+
+/** Unique provider prefixes (e.g. `anthropic`, `openai`) across every agent's modelId. */
+export function getAllProviders(spec: ClintProjectSpec): string[] {
+  const providers = new Set<string>();
+  for (const agentId of getAgentIds(spec)) {
+    const agent = getAgent(spec, agentId);
+    if (!agent) continue;
+    const [provider] = agent.modelId.split(/[:/]/);
+    if (provider) providers.add(provider);
+  }
+  return [...providers];
+}
 
 /** npm package name (e.g. `@scope/my-tool-cli` or `my-tool-cli`). */
 export function getPackageName(spec: ClintProjectSpec): string {

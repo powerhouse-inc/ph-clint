@@ -52,12 +52,12 @@ export function buildManifestJson(spec: ClintProjectSpec): string {
   const { mastra, powerhouse } = spec.features;
   const observabilityEnabled = spec.deployment.observabilityEnabled;
 
-  const agent: ManifestAgent | false = mastra.enabled
+  const agent: ManifestAgent | false = mastra.enabled && mastra.mainAgent
     ? {
-        id: mastra.agentId ?? spec.name,
-        name: mastra.agentName ?? spec.name,
-        description: mastra.agentDescription ?? null,
-        image: mastra.agentImage ?? null,
+        id: mastra.mainAgent.id,
+        name: mastra.mainAgent.name,
+        description: mastra.mainAgent.description,
+        image: mastra.mainAgent.image,
         models: mastra.models.map((m) => ({ id: m.id, default: m.isDefault })),
       }
     : false;

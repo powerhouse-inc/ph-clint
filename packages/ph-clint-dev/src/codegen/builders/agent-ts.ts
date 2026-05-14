@@ -1,11 +1,19 @@
 /**
  * Builds `src/agents/agent.ts` — a Mastra agent factory.
  *
- * Emitted only when `features.mastra.enabled`. When the spec includes agent
- * config (agentId, models, profiles), generates a real `@mastra/core` Agent.
- * Otherwise falls back to a deterministic echo-style demo provider.
+ * Emitted only when `features.mastra.enabled`. When the spec includes a main
+ * agent with a real model, generates a Mastra supervisor `Agent` plus one
+ * `new Agent({})` per sub-agent. Sub-agents are passed in as `agents: { … }`
+ * on the main agent so Mastra exposes them to the model as tools named
+ * `agent-<key>`. Otherwise falls back to a deterministic echo demo provider.
  */
-import { type ClintProjectSpec } from '../../spec/types.js';
+import {
+  type ClintProjectSpec,
+  type MainAgent,
+  type SubAgent,
+  getAgent,
+  getAgentProfiles,
+} from '../../spec/types.js';
 import { DEMO_PROVIDER } from './provider-utils.js';
 
 /** Map provider prefix to AI SDK package. */
@@ -22,10 +30,23 @@ function providerImport(provider: string): { pkg: string; fn: string } {
   }
 }
 
+/** camelCase a kebab-case identifier — used to derive JS variable names from agent ids. */
+function camelCase(id: string): string {
+  return id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+}
+
+/** TS string literal for an agent's tool-pattern include list. Returns null if no `include` should be emitted. */
+function toolPatternsExpr(agent: MainAgent | SubAgent, isMain: boolean): string | null {
+  if (agent.toolPatterns.length === 0) {
+    return isMain ? null : '[]';
+  }
+  return JSON.stringify(agent.toolPatterns);
+}
+
 function buildDemoAgent(spec: ClintProjectSpec): string {
-  const mastra = spec.features.mastra;
-  const id = mastra.agentId ?? spec.name;
-  const name = mastra.agentName ?? id;
+  const main = spec.features.mastra.mainAgent;
+  const id = main?.id ?? spec.name;
+  const name = main?.name ?? id;
   return [
     "import type { AgentProvider, AgentSetupContext, StreamChunk } from '@powerhousedao/ph-clint';",
     "import type { Config } from '../framework.js';",
@@ -61,15 +82,16 @@ function buildDemoAgent(spec: ClintProjectSpec): string {
 }
 
 function buildRealAgent(spec: ClintProjectSpec): string {
-  const mastra = spec.features.mastra;
-  const agentId = mastra.agentId!;
-  const agentName = mastra.agentName!;
-  const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
-  const defaultModel = realModels.find(m => m.isDefault) ?? realModels[0];
-  const modelId = defaultModel?.id ?? 'anthropic/claude-sonnet-4-5';
-  const [provider] = modelId.split(/[:/]/);
-  const { pkg, fn } = providerImport(provider);
-  const apiKeyField = `${provider}ApiKey`;
+  const main = spec.features.mastra.mainAgent!;
+  const subs = spec.features.mastra.subAgents;
+
+  // The main agent's runtime-overridable provider drives `ctx.config.model` and
+  // `ctx.config.<provider>ApiKey` (kept generic with the existing field name).
+  const [mainProvider] = main.modelId.split(/[:/]/);
+  const { pkg, fn } = providerImport(mainProvider);
+  const mainApiKeyField = `${mainProvider}ApiKey`;
+  void pkg;
+  void fn;
 
   const lines: string[] = [];
   lines.push("import { Agent } from '@mastra/core/agent';");
@@ -85,29 +107,59 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   lines.push('/**');
   lines.push(' * Agent factory for the CLI.');
   lines.push(' *');
-  lines.push(' * Returns a demo agent when no API key is configured, or wraps the full');
-  lines.push(' * agent as a ph-clint AgentProvider.');
+  lines.push(' * Builds one Mastra Agent per sub-agent, then a main Agent that exposes them');
+  lines.push(' * via the `agents: { … }` field (Mastra surfaces each as a tool named');
+  lines.push(' * `agent-<key>`). Returns a demo agent when no API key is configured.');
   lines.push(' */');
   lines.push('export async function createAgent(ctx: AgentSetupContext<Config>): Promise<AgentProvider> {');
-  lines.push(`  if (!ctx.config.${apiKeyField}) return createDemoAgent();`);
+  lines.push(`  if (!ctx.config.${mainApiKeyField}) return createDemoAgent();`);
   lines.push('');
   lines.push('  const m = createMastraHelpers(ctx);');
+  lines.push('  const memory = await m.createMemory();');
   lines.push('');
-  lines.push('  const agent = new Agent({');
-  lines.push(`    id: '${agentId}',`);
-  lines.push(`    name: '${agentName}',`);
-  lines.push(`    instructions: m.getAgentInstructions('${agentId}'),`);
-  lines.push(`    model: ctx.config.${apiKeyField}`);
-  lines.push(`      ? { id: ctx.config.model as \`\${string}/\${string}\`, apiKey: ctx.config.${apiKeyField} }`);
+
+  // Emit each sub-agent
+  for (const sub of subs) {
+    const varName = camelCase(sub.id);
+    const includeExpr = toolPatternsExpr(sub, false)!; // sub: always emits include (empty array = no tools)
+    lines.push(`  const ${varName} = new Agent({`);
+    lines.push(`    id: '${sub.id}',`);
+    lines.push(`    name: ${JSON.stringify(sub.name)},`);
+    lines.push(`    description: ${JSON.stringify(sub.description)},`);
+    lines.push(`    instructions: m.getAgentInstructions('${sub.id}'),`);
+    lines.push(`    model: ${JSON.stringify(sub.modelId)},`);
+    lines.push('    tools: async () => {');
+    lines.push(`      ctx.context.log?.debug(\`[agent ${sub.id}] resolving tools\`);`);
+    lines.push(`      return m.getTools({ MCPClient, include: ${includeExpr} });`);
+    lines.push('    },');
+    lines.push('    memory,');
+    lines.push('  });');
+    lines.push('');
+  }
+
+  const mainInclude = toolPatternsExpr(main, true);
+  const agentsField = subs.length > 0
+    ? `    agents: { ${subs.map((s) => camelCase(s.id)).join(', ')} },`
+    : '';
+
+  lines.push(`  const main = new Agent({`);
+  lines.push(`    id: '${main.id}',`);
+  lines.push(`    name: ${JSON.stringify(main.name)},`);
+  lines.push(`    instructions: m.getAgentInstructions('${main.id}'),`);
+  lines.push(`    model: ctx.config.${mainApiKeyField}`);
+  lines.push(`      ? { id: ctx.config.model as \`\${string}/\${string}\`, apiKey: ctx.config.${mainApiKeyField} }`);
   lines.push(`      : (ctx.config.model as \`\${string}/\${string}\`),`);
   lines.push('    tools: async () => {');
-  lines.push("      ctx.context.log?.debug('[agent] tools callback invoked');");
-  lines.push('      const tools = await m.getTools({ MCPClient });');
-  lines.push("      ctx.context.log?.debug(`[agent] tools resolved: ${Object.keys(tools).length} tools`);");
-  lines.push('      return tools;');
+  lines.push("      ctx.context.log?.debug('[agent main] resolving tools');");
+  if (mainInclude === null) {
+    lines.push('      return m.getTools({ MCPClient });');
+  } else {
+    lines.push(`      return m.getTools({ MCPClient, include: ${mainInclude} });`);
+  }
   lines.push('    },');
   lines.push('    workspace: await m.createWorkspace(),');
-  lines.push('    memory: await m.createMemory(),');
+  lines.push('    memory,');
+  if (agentsField) lines.push(agentsField);
   lines.push('  });');
   lines.push('');
   lines.push('  const store = createWorkdirStore(ctx.workdir, CLI_NAME);');
@@ -116,25 +168,31 @@ function buildRealAgent(spec: ClintProjectSpec): string {
   lines.push('    enableLogging: ctx.config.agentLogging,');
   lines.push("    logDirectory: store.getStoreFolder('logs'),");
   lines.push('    cacheControl: true,');
-  if (mastra.agentDescription) {
-    lines.push(`    description: ${JSON.stringify(mastra.agentDescription)},`);
+  if (main.description) {
+    lines.push(`    description: ${JSON.stringify(main.description)},`);
   }
-  if (mastra.agentImage) {
-    lines.push(`    image: ${JSON.stringify(mastra.agentImage)},`);
+  if (main.image) {
+    lines.push(`    image: ${JSON.stringify(main.image)},`);
   }
   lines.push('  };');
-  lines.push('  return m.wrapAgent(agent, wrapOpts);');
+  lines.push('  return m.wrapAgent(main, wrapOpts);');
   lines.push('}');
   lines.push('');
+
+  // `getAgent` / `getAgentProfiles` aren't used at codegen time here but importing them
+  // here keeps the IDE jump-to-definition responsive for downstream debugging.
+  void getAgent;
+  void getAgentProfiles;
+
   return lines.join('\n');
 }
 
 export function buildAgentTs(spec: ClintProjectSpec): string {
   const mastra = spec.features.mastra;
-  const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
-  // Generate real agent when we have full config with real models, demo otherwise
-  if (mastra.agentId && realModels.length > 0) {
-    return buildRealAgent(spec);
-  }
-  return buildDemoAgent(spec);
+  if (!mastra.enabled || !mastra.mainAgent) return buildDemoAgent(spec);
+  const realModels = mastra.models.filter(
+    (m) => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER,
+  );
+  if (realModels.length === 0) return buildDemoAgent(spec);
+  return buildRealAgent(spec);
 }

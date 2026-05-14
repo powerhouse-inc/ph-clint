@@ -31,28 +31,37 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
     },
   },
 
-  /** Real agent with agentId, one model, default profile (AgentBase). */
+  /** Real main agent with one model, default profile. */
   'mastra-configured': {
     name: 'test-mastra-cfg-cli',
     features: {
       mastra: {
         enabled: true,
-        agentId: 'test-agent',
-        agentName: 'Test Agent',
         models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        profiles: [
+          { id: 'base', title: 'Base Profile', content: 'You are a helpful assistant.' },
+        ],
+        mainAgent: {
+          id: 'test-agent',
+          name: 'Test Agent',
+          description: null,
+          image: null,
+          modelId: 'anthropic/claude-sonnet-4-5',
+          profileIds: ['base'],
+          skills: [],
+          toolPatterns: [],
+        },
       },
     },
   },
 
-  /** Multiple models from different providers + custom profiles + scoped. */
+  /** Multiple models from different providers + custom profiles + scoped. Main only. */
   'mastra-multi-model': {
     name: 'test-multi-cli',
     scope: '@acme',
     features: {
       mastra: {
         enabled: true,
-        agentId: 'multi-agent',
-        agentName: 'Multi Agent',
         models: [
           { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
           { id: 'anthropic/claude-haiku-4-5', isDefault: false },
@@ -61,6 +70,55 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
         profiles: [
           { id: 'core', title: 'Core Profile', content: 'You are a helpful assistant.' },
           { id: 'developer', title: 'Developer Profile', content: 'You are a senior developer.' },
+        ],
+        mainAgent: {
+          id: 'multi-agent',
+          name: 'Multi Agent',
+          description: null,
+          image: null,
+          modelId: 'anthropic/claude-sonnet-4-5',
+          profileIds: ['core', 'developer'],
+          skills: [],
+          toolPatterns: [],
+        },
+      },
+    },
+  },
+
+  /** Main + one sub-agent on a different provider. Exercises agent-as-tool emission. */
+  'mastra-with-subagents': {
+    name: 'test-subagent-cli',
+    features: {
+      mastra: {
+        enabled: true,
+        models: [
+          { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
+          { id: 'openai/gpt-4o', isDefault: false },
+        ],
+        profiles: [
+          { id: 'base', title: 'Base', content: 'You orchestrate sub-agents.' },
+          { id: 'summarizer', title: 'Summarizer', content: 'You summarize long documents.' },
+        ],
+        mainAgent: {
+          id: 'main-agent',
+          name: 'Main Agent',
+          description: null,
+          image: null,
+          modelId: 'anthropic/claude-sonnet-4-5',
+          profileIds: ['base'],
+          skills: [],
+          toolPatterns: [],
+        },
+        subAgents: [
+          {
+            id: 'summarizer',
+            name: 'Summarizer',
+            description: 'Summarizes long documents into bullet points.',
+            modelId: 'openai/gpt-4o',
+            profileIds: ['summarizer'],
+            skills: [],
+            toolPatterns: ['cli-docs'],
+          },
         ],
       },
     },
@@ -81,9 +139,18 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       powerhouse: 'Switchboard',
       mastra: {
         enabled: true,
-        agentId: 'sb-agent',
-        agentName: 'Switchboard Agent',
         models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
+        mainAgent: {
+          id: 'sb-agent',
+          name: 'Switchboard Agent',
+          description: null,
+          image: null,
+          modelId: 'anthropic/claude-sonnet-4-5',
+          profileIds: ['base'],
+          skills: [],
+          toolPatterns: [],
+        },
       },
     },
   },
@@ -95,9 +162,18 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       powerhouse: 'Switchboard',
       mastra: {
         enabled: true,
-        agentId: 'chat-agent',
-        agentName: 'Chat Agent',
         models: [{ id: 'anthropic/claude-sonnet-4-5', isDefault: true }],
+        profiles: [{ id: 'base', title: 'Base', content: 'You are a helpful assistant.' }],
+        mainAgent: {
+          id: 'chat-agent',
+          name: 'Chat Agent',
+          description: null,
+          image: null,
+          modelId: 'anthropic/claude-sonnet-4-5',
+          profileIds: ['base'],
+          skills: [],
+          toolPatterns: [],
+        },
         common: { enableChat: true },
       },
     },
@@ -112,12 +188,7 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
 
   /**
    * Everything on: Connect + agent + routine, plus a `*​/*` glob on the app
-   * package. The glob exercises the runtime-filter branch of `framework.gen.ts`
-   * codegen against an app package whose `documentModels` is exported as
-   * `[] as const` (the state `ph init` leaves it in until the user authors
-   * a document model). Without the `DocumentModelModule` widening cast in
-   * `buildFrameworkGenTs`, `tsc` fails with TS2339 on `m.documentModel.global.id`
-   * because the filter callback's `m` collapses to `never`.
+   * package. Exercises the runtime-filter branch of `framework.gen.ts` codegen.
    */
   'connect-full': {
     name: 'test-connect-cli',
@@ -126,8 +197,6 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
       powerhouse: 'Connect',
       mastra: {
         enabled: true,
-        agentId: 'connect-agent',
-        agentName: 'Connect Agent',
         models: [
           { id: 'anthropic/claude-sonnet-4-5', isDefault: true },
           { id: 'openai/gpt-4o', isDefault: false },
@@ -136,6 +205,16 @@ export const FIXTURES: Record<string, ClintProjectSpecInput> = {
           { id: 'base', title: 'Base', content: 'You are the connect agent.' },
           { id: 'ops', title: 'Operations', content: 'You handle operations.' },
         ],
+        mainAgent: {
+          id: 'connect-agent',
+          name: 'Connect Agent',
+          description: null,
+          image: null,
+          modelId: 'anthropic/claude-sonnet-4-5',
+          profileIds: ['base', 'ops'],
+          skills: [],
+          toolPatterns: [],
+        },
       },
       routine: { enabled: true },
     },
@@ -157,6 +236,7 @@ export const TRANSITIONS: [string, string][] = [
   ['minimal', 'mastra-demo'],
   ['mastra-demo', 'mastra-configured'],
   ['mastra-configured', 'mastra-multi-model'],
+  ['mastra-multi-model', 'mastra-with-subagents'],
   ['mastra-demo', 'minimal'],
   ['minimal', 'reactor-minimal'],
   ['reactor-minimal', 'switchboard'],

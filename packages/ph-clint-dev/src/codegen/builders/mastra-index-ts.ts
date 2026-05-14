@@ -7,7 +7,7 @@
  * When Mastra is on with full agent config, bootstrap the CLI and re-export
  * the configured Mastra Agent via `cli.bootstrap()`.
  */
-import { type ClintProjectSpec } from '../../spec/types.js';
+import { type ClintProjectSpec, getAllProviders } from '../../spec/types.js';
 import { DEMO_PROVIDER } from './provider-utils.js';
 
 /**
@@ -35,8 +35,8 @@ export function buildMastraIndexTs(spec: ClintProjectSpec): string {
 
   // Full agent config available — emit bootstrap-based Mastra instance
   const realModels = mastra.models.filter(m => m.id.split(/[:/]/)[0] !== DEMO_PROVIDER);
-  if (mastra.agentId && realModels.length > 0) {
-    const providers = [...new Set(realModels.map(m => m.id.split(/[:/]/)[0]))];
+  if (mastra.mainAgent && realModels.length > 0) {
+    const providers = getAllProviders(spec).filter((p) => p !== DEMO_PROVIDER);
 
     const lines: string[] = [
       '// @clint:begin mastra-index',
