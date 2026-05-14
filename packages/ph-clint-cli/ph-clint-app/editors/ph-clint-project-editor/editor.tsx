@@ -23,6 +23,14 @@ const POWERHOUSE_LEVELS: { value: PowerhouseLevel; description: string }[] = [
   { value: 'Connect', description: 'Web UI for document management' },
 ];
 
+/** Patch-bump a semver-ish version string: 0.0.1 → 0.0.2. Falls back to "<version>.1" when unparseable. */
+function bumpPatch(version: string): string {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
+  if (!m) return `${version}.1`;
+  const [, major, minor, patch] = m;
+  return `${major}.${minor}.${Number(patch) + 1}`;
+}
+
 function TextField(props: { label: string; value: string; placeholder?: string; readOnly?: boolean; compact?: boolean; onCommit: (value: string) => void }) {
   return (
     <label className={props.compact ? 'my-1 block' : 'my-3 block'}>
@@ -55,13 +63,22 @@ function Toggle(props: { label: string; checked: boolean; disabled?: boolean; hi
   );
 }
 
-type Tab = 'spec' | 'agent' | 'powerhouse' | 'skills' | 'publish';
+type Tab = 'cli' | 'agents' | 'profiles' | 'skills' | 'powerhouse' | 'publish';
+
+const TAB_LABELS: { value: Tab; label: string }[] = [
+  { value: 'cli', label: 'CLI' },
+  { value: 'agents', label: 'Agents' },
+  { value: 'profiles', label: 'Profiles' },
+  { value: 'skills', label: 'Skills' },
+  { value: 'powerhouse', label: 'Powerhouse' },
+  { value: 'publish', label: 'Publish' },
+];
 
 export default function Editor() {
   const [document, dispatch] = useSelectedPhClintProjectDocument();
   const state = document.state.global;
   const { powerhouse, mastra, routine } = state.features;
-  const [activeTab, setActiveTab] = useState<Tab>('spec');
+  const [activeTab, setActiveTab] = useState<Tab>('cli');
 
   // identity dispatchers
   const setPackageIdentifier = (identifier: string) => dispatch(actions.setPackageIdentifier({ identifier }));
@@ -116,9 +133,8 @@ export default function Editor() {
   const setSubAgentDescription = (id: string, description: string) => dispatch(actions.setSubAgentDescription({ id, description }));
 
   // library dispatchers
-  const addModel = (id: string, isDefault?: boolean) => dispatch(actions.addModel({ id, isDefault }));
+  const addModel = (id: string) => dispatch(actions.addModel({ id }));
   const removeModel = (id: string) => dispatch(actions.removeModel({ id }));
-  const setDefaultModel = (id: string) => dispatch(actions.setDefaultModel({ id }));
   const addProfile = (id: string, title: string, content: string, insertBefore?: string) =>
     dispatch(actions.addProfile({ id, title, content, insertBefore }));
   const updateProfile = (id: string, title?: string, content?: string) => dispatch(actions.updateProfile({ id, title, content }));
@@ -159,15 +175,15 @@ export default function Editor() {
         <h2 className="mt-4 text-xl font-bold">ph-clint Project Spec</h2>
 
         <nav className="my-4 flex border-b border-gray-200">
-          <button className={tabClasses('spec')} onClick={() => setActiveTab('spec')}>CLI</button>
-          <button className={tabClasses('agent')} onClick={() => setActiveTab('agent')}>Agent</button>
-          <button className={tabClasses('powerhouse')} onClick={() => setActiveTab('powerhouse')}>Powerhouse</button>
-          <button className={tabClasses('skills')} onClick={() => setActiveTab('skills')}>Skills</button>
-          <button className={tabClasses('publish')} onClick={() => setActiveTab('publish')}>Publish</button>
+          {TAB_LABELS.map((t) => (
+            <button key={t.value} className={tabClasses(t.value)} onClick={() => setActiveTab(t.value)}>
+              {t.label}
+            </button>
+          ))}
         </nav>
 
-        {activeTab === 'spec' && (
-          <SpecTab
+        {activeTab === 'cli' && (
+          <CliTab
             state={state}
             powerhouse={powerhouse}
             mastra={mastra}
@@ -179,13 +195,15 @@ export default function Editor() {
             setPowerhouseLevel={setPowerhouseLevel}
             toggleMastra={toggleMastra}
             toggleRoutine={toggleRoutine}
+            setEnableChat={setEnableChat}
+            addModel={addModel}
+            removeModel={removeModel}
           />
         )}
 
-        {activeTab === 'agent' && (
-          <AgentTab
+        {activeTab === 'agents' && (
+          <AgentsTab
             mastra={mastra}
-            isAboveDisabled={isAboveDisabled}
             setMainAgentName={setMainAgentName}
             setMainAgentDescription={setMainAgentDescription}
             clearMainAgentDescription={clearMainAgentDescription}
@@ -203,16 +221,20 @@ export default function Editor() {
             removeAgentSkill={removeAgentSkill}
             addAgentToolPattern={addAgentToolPattern}
             removeAgentToolPattern={removeAgentToolPattern}
-            addModel={addModel}
-            removeModel={removeModel}
-            setDefaultModel={setDefaultModel}
+          />
+        )}
+
+        {activeTab === 'profiles' && (
+          <ProfilesTab
+            mastra={mastra}
             addProfile={addProfile}
             updateProfile={updateProfile}
             removeProfile={removeProfile}
             reorderProfiles={reorderProfiles}
-            setEnableChat={setEnableChat}
           />
         )}
+
+        {activeTab === 'skills' && <SkillsTab skills={state.externalSkills} addSkill={addSkill} removeSkill={removeSkill} />}
 
         {activeTab === 'powerhouse' && (
           <PowerhouseTab
@@ -224,8 +246,6 @@ export default function Editor() {
             removeDocType={removeDocType}
           />
         )}
-
-        {activeTab === 'skills' && <SkillsTab skills={state.externalSkills} addSkill={addSkill} removeSkill={removeSkill} />}
 
         {activeTab === 'publish' && (
           <PublishTab
@@ -248,9 +268,9 @@ export default function Editor() {
   );
 }
 
-/* ── Spec Tab ─────────────────────────────────────────────────── */
+/* ── CLI Tab ──────────────────────────────────────────────────── */
 
-function SpecTab(props: {
+function CliTab(props: {
   state: PhClintProjectState;
   powerhouse: PowerhouseLevel;
   mastra: PhClintMastraFeature;
@@ -262,8 +282,11 @@ function SpecTab(props: {
   setPowerhouseLevel: (level: PowerhouseLevel) => void;
   toggleMastra: (enabled: boolean) => void;
   toggleRoutine: (enabled: boolean) => void;
+  setEnableChat: (enabled: boolean) => void;
+  addModel: (id: string) => void;
+  removeModel: (id: string) => void;
 }) {
-  const { state } = props;
+  const { state, mastra } = props;
   const packageIdentifier = `${state.scope ? state.scope + '/' : ''}${state.name ?? ''}`;
 
   return (
@@ -300,7 +323,28 @@ function SpecTab(props: {
         </div>
 
         <div className="my-4 rounded border border-gray-200 bg-white p-4">
-          <Toggle label="Mastra" checked={props.mastra.enabled} hint="AI agent framework" onChange={props.toggleMastra} />
+          <Toggle label="Mastra" checked={mastra.enabled} hint="AI agent framework" onChange={props.toggleMastra} />
+          {mastra.enabled && (
+            <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+              <ModelsSection
+                models={mastra.models}
+                main={mastra.mainAgent}
+                subAgents={mastra.subAgents}
+                addModel={props.addModel}
+                removeModel={props.removeModel}
+              />
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700">Common</h4>
+                <Toggle
+                  label="Enable Chat"
+                  checked={mastra.common.enableChat}
+                  disabled={!props.isAboveDisabled}
+                  hint={props.isAboveDisabled ? 'Chat session integration via clint-common' : 'Requires Powerhouse to be enabled'}
+                  onChange={props.setEnableChat}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="my-4 rounded border border-gray-200 bg-white p-4">
@@ -311,33 +355,10 @@ function SpecTab(props: {
   );
 }
 
-/* ── Powerhouse Tab ──────────────────────────────────────────── */
+/* ── Agents Tab ───────────────────────────────────────────────── */
 
-function PowerhouseTab(props: {
-  packages: PowerhousePackage[];
-  isAboveDisabled: boolean;
-  addPackage: (packageName: string) => void;
-  removePackage: (id: string) => void;
-  addDocType: (packageId: string, documentType: string) => void;
-  removeDocType: (packageId: string, documentType: string) => void;
-}) {
-  if (!props.isAboveDisabled) {
-    return (
-      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
-        <h3 className="text-lg font-semibold">Powerhouse</h3>
-        <p className="mt-2">Enable Powerhouse in the Spec tab (set level to Reactor or above) to manage packages.</p>
-      </section>
-    );
-  }
-
-  return <PackagesSection packages={props.packages} addPackage={props.addPackage} removePackage={props.removePackage} addDocType={props.addDocType} removeDocType={props.removeDocType} />;
-}
-
-/* ── Agent Tab ────────────────────────────────────────────────── */
-
-interface AgentTabProps {
+interface AgentsTabProps {
   mastra: PhClintMastraFeature;
-  isAboveDisabled: boolean;
   setMainAgentName: (name: string) => void;
   setMainAgentDescription: (description: string) => void;
   clearMainAgentDescription: () => void;
@@ -355,25 +376,18 @@ interface AgentTabProps {
   removeAgentSkill: (agentId: string, name: string) => void;
   addAgentToolPattern: (agentId: string, pattern: string) => void;
   removeAgentToolPattern: (agentId: string, pattern: string) => void;
-  addModel: (id: string, isDefault?: boolean) => void;
-  removeModel: (id: string) => void;
-  setDefaultModel: (id: string) => void;
-  addProfile: (id: string, title: string, content: string, insertBefore?: string) => void;
-  updateProfile: (id: string, title?: string, content?: string) => void;
-  removeProfile: (id: string) => void;
-  reorderProfiles: (ids: string[], insertBefore: string | null) => void;
-  setEnableChat: (enabled: boolean) => void;
 }
 
-function AgentTab(props: AgentTabProps) {
+function AgentsTab(props: AgentsTabProps) {
   const { mastra } = props;
-
   const main = mastra.mainAgent;
+  const [showAddForm, setShowAddForm] = useState(false);
+
   if (!mastra.enabled || !main) {
     return (
       <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
-        <h3 className="text-lg font-semibold">Agent</h3>
-        <p className="mt-2">Enable Mastra in the Spec tab to configure agents.</p>
+        <h3 className="text-lg font-semibold">Agents</h3>
+        <p className="mt-2">Enable Mastra in the CLI tab to configure agents.</p>
       </section>
     );
   }
@@ -382,7 +396,7 @@ function AgentTab(props: AgentTabProps) {
 
   return (
     <>
-      <MainAgentPanel
+      <MainAgentCard
         main={main}
         models={mastra.models}
         profiles={mastra.profiles}
@@ -401,71 +415,55 @@ function AgentTab(props: AgentTabProps) {
         removeAgentToolPattern={props.removeAgentToolPattern}
       />
 
-      <hr />
-
-      <SubAgentsSection
-        subAgents={mastra.subAgents}
-        models={mastra.models}
-        profiles={mastra.profiles}
-        existingAgentIds={allAgentIds}
-        addSubAgent={props.addSubAgent}
-        removeSubAgent={props.removeSubAgent}
-        setSubAgentName={props.setSubAgentName}
-        setSubAgentDescription={props.setSubAgentDescription}
-        setAgentModel={props.setAgentModel}
-        addAgentProfileRef={props.addAgentProfileRef}
-        removeAgentProfileRef={props.removeAgentProfileRef}
-        reorderAgentProfileRefs={props.reorderAgentProfileRefs}
-        addAgentSkill={props.addAgentSkill}
-        removeAgentSkill={props.removeAgentSkill}
-        addAgentToolPattern={props.addAgentToolPattern}
-        removeAgentToolPattern={props.removeAgentToolPattern}
-      />
-
-      <hr />
-
-      <ModelsSection
-        models={mastra.models}
-        main={mastra.mainAgent}
-        subAgents={mastra.subAgents}
-        addModel={props.addModel}
-        removeModel={props.removeModel}
-        setDefaultModel={props.setDefaultModel}
-      />
-
-      <hr />
-
-      <ProfilesSection
-        profiles={mastra.profiles}
-        main={mastra.mainAgent}
-        subAgents={mastra.subAgents}
-        addProfile={props.addProfile}
-        updateProfile={props.updateProfile}
-        removeProfile={props.removeProfile}
-        reorderProfiles={props.reorderProfiles}
-      />
-
-      <hr />
+      {mastra.subAgents.map((sub) => (
+        <SubAgentCard
+          key={sub.id}
+          sub={sub}
+          models={mastra.models}
+          profiles={mastra.profiles}
+          removeSubAgent={props.removeSubAgent}
+          setSubAgentName={props.setSubAgentName}
+          setSubAgentDescription={props.setSubAgentDescription}
+          setAgentModel={props.setAgentModel}
+          addAgentProfileRef={props.addAgentProfileRef}
+          removeAgentProfileRef={props.removeAgentProfileRef}
+          reorderAgentProfileRefs={props.reorderAgentProfileRefs}
+          addAgentSkill={props.addAgentSkill}
+          removeAgentSkill={props.removeAgentSkill}
+          addAgentToolPattern={props.addAgentToolPattern}
+          removeAgentToolPattern={props.removeAgentToolPattern}
+        />
+      ))}
 
       <section className="my-6">
-        <h3 className="text-lg font-semibold">Common</h3>
-        <div className="my-3 rounded border border-gray-200 bg-white p-4">
-          <Toggle
-            label="Enable Chat"
-            checked={mastra.common.enableChat}
-            disabled={!props.isAboveDisabled}
-            hint={props.isAboveDisabled ? 'Chat session integration via clint-common' : 'Requires Powerhouse to be enabled'}
-            onChange={props.setEnableChat}
+        {showAddForm ? (
+          <AddSubAgentForm
+            models={mastra.models}
+            existingAgentIds={allAgentIds}
+            onAdd={(id, name, description, modelId) => {
+              props.addSubAgent(id, name, description, modelId);
+              setShowAddForm(false);
+            }}
+            onCancel={() => setShowAddForm(false)}
           />
-        </div>
+        ) : (
+          <button
+            className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={mastra.models.length === 0}
+            title={mastra.models.length === 0 ? 'Add a model first (CLI tab → Mastra)' : ''}
+            onClick={() => setShowAddForm(true)}
+          >
+            + Add Sub-agent
+          </button>
+        )}
       </section>
     </>
   );
 }
 
-/* ── Main Agent panel ─────────────────────────────────────────── */
+/* ── Main Agent card (collapsible, sits as a peer of sub-agents) ── */
 
-interface MainAgentPanelProps {
+interface MainAgentCardProps {
   main: PhClintMainAgent;
   models: PhClintAgentModel[];
   profiles: PhClintAgentProfile[];
@@ -484,58 +482,65 @@ interface MainAgentPanelProps {
   removeAgentToolPattern: (agentId: string, pattern: string) => void;
 }
 
-function MainAgentPanel(props: MainAgentPanelProps) {
+function MainAgentCard(props: MainAgentCardProps) {
   const { main } = props;
+  const [expanded, setExpanded] = useState(true);
 
   return (
-    <section className="my-6">
-      <div className="flex items-center gap-2">
-        <h3 className="text-lg font-semibold">Main Agent</h3>
-        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Main</span>
-      </div>
-      <p className="text-sm text-gray-600">The orchestrating agent. Subagents are exposed to it as tools named <code>agent-&lt;subagent-id&gt;</code>. Only the main agent can have an avatar.</p>
-
-      <div className="my-3 rounded border border-gray-200 bg-white p-4">
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
-          <div style={{ flexShrink: 0, width: '7rem' }}>
-            <AgentImageField image={main.image ?? null} onSetImage={props.setMainAgentImage} onClearImage={props.clearMainAgentImage} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="grid grid-cols-[1fr_2fr] gap-4">
-              <TextField compact readOnly label="Agent ID" value={main.id} onCommit={() => {}} />
-              <TextField compact label="Agent Name" value={main.name} placeholder="My Agent" onCommit={props.setMainAgentName} />
-            </div>
-            <DescriptionField
-              value={main.description}
-              placeholder="A brief description of what this agent does"
-              onSet={props.setMainAgentDescription}
-              onClear={props.clearMainAgentDescription}
-            />
-          </div>
+    <div className="my-3 rounded border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button className="text-sm text-gray-400 hover:text-gray-700" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
+            {expanded ? '▾' : '▸'}
+          </button>
+          <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-500">{main.id}</span>
+          <span className="font-semibold">{main.name}</span>
+          <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Main</span>
         </div>
-
-        <hr className="my-4" />
-
-        <AgentBindings
-          agentId={main.id}
-          isMain
-          modelId={main.modelId}
-          profileIds={main.profileIds}
-          skills={main.skills}
-          toolPatterns={main.toolPatterns}
-          models={props.models}
-          profiles={props.profiles}
-          setAgentModel={props.setAgentModel}
-          addAgentProfileRef={props.addAgentProfileRef}
-          removeAgentProfileRef={props.removeAgentProfileRef}
-          reorderAgentProfileRefs={props.reorderAgentProfileRefs}
-          addAgentSkill={props.addAgentSkill}
-          removeAgentSkill={props.removeAgentSkill}
-          addAgentToolPattern={props.addAgentToolPattern}
-          removeAgentToolPattern={props.removeAgentToolPattern}
-        />
       </div>
-    </section>
+      {main.description && <p className="ml-7 text-sm text-gray-600">{main.description}</p>}
+
+      {expanded && (
+        <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+          <div style={{ display: 'flex', gap: '1.5rem' }}>
+            <div style={{ flexShrink: 0, width: '7rem' }}>
+              <AgentImageField image={main.image ?? null} onSetImage={props.setMainAgentImage} onClearImage={props.clearMainAgentImage} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="grid grid-cols-[1fr_2fr] gap-4">
+                <TextField compact readOnly label="Agent ID" value={main.id} onCommit={() => {}} />
+                <TextField compact label="Agent Name" value={main.name} placeholder="My Agent" onCommit={props.setMainAgentName} />
+              </div>
+              <DescriptionField
+                value={main.description}
+                placeholder="A brief description of what this agent does"
+                onSet={props.setMainAgentDescription}
+                onClear={props.clearMainAgentDescription}
+              />
+            </div>
+          </div>
+
+          <AgentBindings
+            agentId={main.id}
+            isMain
+            modelId={main.modelId}
+            profileIds={main.profileIds}
+            skills={main.skills}
+            toolPatterns={main.toolPatterns}
+            models={props.models}
+            profiles={props.profiles}
+            setAgentModel={props.setAgentModel}
+            addAgentProfileRef={props.addAgentProfileRef}
+            removeAgentProfileRef={props.removeAgentProfileRef}
+            reorderAgentProfileRefs={props.reorderAgentProfileRefs}
+            addAgentSkill={props.addAgentSkill}
+            removeAgentSkill={props.removeAgentSkill}
+            addAgentToolPattern={props.addAgentToolPattern}
+            removeAgentToolPattern={props.removeAgentToolPattern}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -563,79 +568,6 @@ function DescriptionField(props: { value: string | null | undefined; placeholder
   );
 }
 
-/* ── Sub agents ──────────────────────────────────────────────── */
-
-interface SubAgentsSectionProps {
-  subAgents: PhClintSubAgent[];
-  models: PhClintAgentModel[];
-  profiles: PhClintAgentProfile[];
-  existingAgentIds: string[];
-  addSubAgent: (id: string, name: string, description: string, modelId: string) => void;
-  removeSubAgent: (id: string) => void;
-  setSubAgentName: (id: string, name: string) => void;
-  setSubAgentDescription: (id: string, description: string) => void;
-  setAgentModel: (agentId: string, modelId: string) => void;
-  addAgentProfileRef: (agentId: string, profileId: string, insertBefore?: string) => void;
-  removeAgentProfileRef: (agentId: string, profileId: string) => void;
-  reorderAgentProfileRefs: (agentId: string, ids: string[], insertBefore: string | null) => void;
-  addAgentSkill: (agentId: string, name: string) => void;
-  removeAgentSkill: (agentId: string, name: string) => void;
-  addAgentToolPattern: (agentId: string, pattern: string) => void;
-  removeAgentToolPattern: (agentId: string, pattern: string) => void;
-}
-
-function SubAgentsSection(props: SubAgentsSectionProps) {
-  const [showAddForm, setShowAddForm] = useState(false);
-
-  return (
-    <section className="my-6">
-      <h3 className="text-lg font-semibold">Sub-agents</h3>
-      <p className="text-sm text-gray-600">Specialised agents the main agent can delegate to. Each is exposed as a tool named <code>agent-&lt;id&gt;</code>.</p>
-
-      {props.subAgents.map((sub) => (
-        <SubAgentCard
-          key={sub.id}
-          sub={sub}
-          models={props.models}
-          profiles={props.profiles}
-          removeSubAgent={props.removeSubAgent}
-          setSubAgentName={props.setSubAgentName}
-          setSubAgentDescription={props.setSubAgentDescription}
-          setAgentModel={props.setAgentModel}
-          addAgentProfileRef={props.addAgentProfileRef}
-          removeAgentProfileRef={props.removeAgentProfileRef}
-          reorderAgentProfileRefs={props.reorderAgentProfileRefs}
-          addAgentSkill={props.addAgentSkill}
-          removeAgentSkill={props.removeAgentSkill}
-          addAgentToolPattern={props.addAgentToolPattern}
-          removeAgentToolPattern={props.removeAgentToolPattern}
-        />
-      ))}
-
-      {showAddForm ? (
-        <AddSubAgentForm
-          models={props.models}
-          existingAgentIds={props.existingAgentIds}
-          onAdd={(id, name, description, modelId) => {
-            props.addSubAgent(id, name, description, modelId);
-            setShowAddForm(false);
-          }}
-          onCancel={() => setShowAddForm(false)}
-        />
-      ) : (
-        <button
-          className="mt-3 rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={props.models.length === 0}
-          title={props.models.length === 0 ? 'Add a model first' : ''}
-          onClick={() => setShowAddForm(true)}
-        >
-          + Add Sub-agent
-        </button>
-      )}
-    </section>
-  );
-}
-
 function AddSubAgentForm(props: {
   models: PhClintAgentModel[];
   existingAgentIds: string[];
@@ -645,8 +577,7 @@ function AddSubAgentForm(props: {
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const defaultModel = props.models.find((m) => m.isDefault) ?? props.models[0];
-  const [modelId, setModelId] = useState<string>(defaultModel?.id ?? '');
+  const [modelId, setModelId] = useState<string>(props.models[0]?.id ?? '');
 
   const idValid = /^[a-z][a-z0-9-]*$/.test(id) && !props.existingAgentIds.includes(id);
   const canAdd = idValid && name.trim() && description.trim() && modelId;
@@ -689,10 +620,7 @@ function AddSubAgentForm(props: {
         <span className="text-xs text-gray-600">Model</span>
         <select value={modelId} onChange={(e) => setModelId(e.target.value)} className="w-full rounded border p-2 font-mono text-sm">
           {props.models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.id}
-              {m.isDefault ? ' (default)' : ''}
-            </option>
+            <option key={m.id} value={m.id}>{m.id}</option>
           ))}
         </select>
       </label>
@@ -811,10 +739,7 @@ function AgentBindings(props: AgentBindingsProps) {
           className="mt-1 w-full rounded border p-2 font-mono text-sm"
         >
           {props.models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.id}
-              {m.isDefault ? ' (default)' : ''}
-            </option>
+            <option key={m.id} value={m.id}>{m.id}</option>
           ))}
         </select>
       </label>
@@ -1079,15 +1004,14 @@ function AgentImageField(props: { image: string | null | undefined; onSetImage: 
   );
 }
 
-/* ── Models library ──────────────────────────────────────────── */
+/* ── Models library (inlined under CLI > Features > Mastra) ─── */
 
 function ModelsSection(props: {
   models: PhClintAgentModel[];
   main: PhClintMainAgent | null | undefined;
   subAgents: PhClintSubAgent[];
-  addModel: (id: string, isDefault?: boolean) => void;
+  addModel: (id: string) => void;
   removeModel: (id: string) => void;
-  setDefaultModel: (id: string) => void;
 }) {
   const [newModelId, setNewModelId] = useState('');
 
@@ -1107,15 +1031,14 @@ function ModelsSection(props: {
   };
 
   return (
-    <section className="my-6">
-      <h3 className="text-lg font-semibold">Models</h3>
-      <p className="text-sm text-gray-600">Provider/model format (e.g. anthropic/claude-sonnet-4-5). Exactly one is the default.</p>
+    <div>
+      <h4 className="text-sm font-semibold text-gray-700">Models</h4>
+      <p className="text-xs text-gray-500">Provider/model format (e.g. <code>anthropic/claude-sonnet-4-5</code>). Each agent picks one from this list.</p>
 
       {props.models.length > 0 && (
-        <table className="mt-3 w-full text-sm">
+        <table className="mt-2 w-full text-sm">
           <thead>
             <tr className="border-b text-left text-gray-500">
-              <th className="py-1">Default</th>
               <th className="py-1">Model</th>
               <th className="py-1">Used by</th>
               <th className="py-1" />
@@ -1127,9 +1050,6 @@ function ModelsSection(props: {
               const inUse = users.length > 0;
               return (
                 <tr key={m.id} className="border-b border-gray-100">
-                  <td className="py-2">
-                    <input type="radio" name="default-model" checked={m.isDefault} onChange={() => props.setDefaultModel(m.id)} />
-                  </td>
                   <td className="py-2 font-mono">{m.id}</td>
                   <td className="py-2 text-xs text-gray-500">{users.length === 0 ? <em>—</em> : users.join(', ')}</td>
                   <td className="py-2 text-right">
@@ -1149,7 +1069,7 @@ function ModelsSection(props: {
         </table>
       )}
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-2 flex items-center gap-2">
         <input
           type="text"
           placeholder="provider/model-name"
@@ -1164,11 +1084,40 @@ function ModelsSection(props: {
           Add Model
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
-/* ── Profiles library ────────────────────────────────────────── */
+/* ── Profiles Tab ─────────────────────────────────────────────── */
+
+function ProfilesTab(props: {
+  mastra: PhClintMastraFeature;
+  addProfile: (id: string, title: string, content: string, insertBefore?: string) => void;
+  updateProfile: (id: string, title?: string, content?: string) => void;
+  removeProfile: (id: string) => void;
+  reorderProfiles: (ids: string[], insertBefore: string | null) => void;
+}) {
+  if (!props.mastra.enabled) {
+    return (
+      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+        <h3 className="text-lg font-semibold">Profiles</h3>
+        <p className="mt-2">Enable Mastra in the CLI tab to manage agent profiles.</p>
+      </section>
+    );
+  }
+
+  return (
+    <ProfilesSection
+      profiles={props.mastra.profiles}
+      main={props.mastra.mainAgent}
+      subAgents={props.mastra.subAgents}
+      addProfile={props.addProfile}
+      updateProfile={props.updateProfile}
+      removeProfile={props.removeProfile}
+      reorderProfiles={props.reorderProfiles}
+    />
+  );
+}
 
 function ProfilesSection(props: {
   profiles: PhClintAgentProfile[];
@@ -1385,6 +1334,28 @@ function ExternalSkillsSection(props: { skills: ExternalSkill[]; addSkill: (name
   );
 }
 
+/* ── Powerhouse Tab ──────────────────────────────────────────── */
+
+function PowerhouseTab(props: {
+  packages: PowerhousePackage[];
+  isAboveDisabled: boolean;
+  addPackage: (packageName: string) => void;
+  removePackage: (id: string) => void;
+  addDocType: (packageId: string, documentType: string) => void;
+  removeDocType: (packageId: string, documentType: string) => void;
+}) {
+  if (!props.isAboveDisabled) {
+    return (
+      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+        <h3 className="text-lg font-semibold">Powerhouse</h3>
+        <p className="mt-2">Enable Powerhouse in the CLI tab (set level to Reactor or above) to manage packages.</p>
+      </section>
+    );
+  }
+
+  return <PackagesSection packages={props.packages} addPackage={props.addPackage} removePackage={props.removePackage} addDocType={props.addDocType} removeDocType={props.removeDocType} />;
+}
+
 /* ── Publish Tab ──────────────────────────────────────────────── */
 
 function PublishTab(props: {
@@ -1402,6 +1373,7 @@ function PublishTab(props: {
   removeSupportedResource: (resource: string) => void;
 }) {
   const recentHistory = props.publishHistory.slice(-5).reverse();
+  const nextPatch = bumpPatch(props.version);
 
   return (
     <>
@@ -1412,6 +1384,22 @@ function PublishTab(props: {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">Current version:</span>
             <span className="font-mono font-semibold">{props.version}</span>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-sm text-gray-600">Bump version to:</span>
+            <input
+              type="text"
+              placeholder={nextPatch}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const v = e.currentTarget.value.trim();
+                  if (v) props.bumpVersion(v);
+                  e.currentTarget.value = '';
+                }
+              }}
+              className="rounded border p-1 font-mono text-sm"
+            />
           </div>
 
           <div className="mt-4 flex items-center gap-2">
@@ -1461,21 +1449,6 @@ function PublishTab(props: {
         <div className="my-3 rounded border border-gray-200 bg-white p-4">
           <p className="text-sm text-gray-600">Document ID: <span className="font-mono">{props.documentHeader.id}</span></p>
           <p className="text-sm text-gray-600">Type: <span className="font-mono">{props.documentHeader.documentType}</span></p>
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-gray-600">Bump version to:</span>
-            <input
-              type="text"
-              placeholder="0.2.0"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const v = e.currentTarget.value.trim();
-                  if (v) props.bumpVersion(v);
-                  e.currentTarget.value = '';
-                }
-              }}
-              className="rounded border p-1 font-mono text-sm"
-            />
-          </div>
         </div>
       </section>
     </>
