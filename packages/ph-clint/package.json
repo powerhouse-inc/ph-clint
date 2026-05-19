@@ -73,6 +73,7 @@
     "@powerhousedao/reactor": "^6.0.0-dev.216",
     "@powerhousedao/reactor-api": "^6.0.0-dev.216",
     "@powerhousedao/reactor-mcp": "^6.0.0-dev.216",
+    "@powerhousedao/switchboard": "^6.0.0-dev.253",
     "@powerhousedao/shared": "^6.0.0-dev.216",
     "document-model": "^6.0.0-dev.216",
     "kysely": "^0.27.0",
@@ -95,6 +96,9 @@
       "optional": true
     },
     "@powerhousedao/reactor-mcp": {
+      "optional": true
+    },
+    "@powerhousedao/switchboard": {
       "optional": true
     },
     "@powerhousedao/shared": {

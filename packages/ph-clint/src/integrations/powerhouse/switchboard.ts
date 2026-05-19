@@ -1,6 +1,9 @@
 /**
- * Switchboard — wraps the Phase 1 Reactor via initializeAndStartAPI,
- * exposing GraphQL + MCP endpoints.
+ * Switchboard — wraps the caller-provided Reactor via
+ * `@powerhousedao/switchboard/server`'s `startSwitchboard`, exposing GraphQL
+ * (including the `Packages` subgraph for dynamic install/uninstall), MCP,
+ * and attachment endpoints. The caller's reactor is forwarded through the
+ * `reactor` option on switchboard's `StartServerOptions`.
  */
 
 import type { ReactorClientModule, SwitchboardInstance } from './types.js';
@@ -16,6 +19,12 @@ export interface StartSwitchboardOptions {
   dbPath: string;
   /** Default drive ID (for constructing the drive URL). */
   driveId: string;
+  /**
+   * Registry URL for `HttpPackageLoader`. When set, the switchboard's
+   * `Packages` subgraph is registered (install/uninstall mutations) and
+   * dynamic package resolution is enabled.
+   */
+  registryUrl?: string;
 }
 
 /**
@@ -28,20 +37,19 @@ async function lazyImport<T = Record<string, unknown>>(
   return import(/* webpackIgnore: true */ specifier) as Promise<T>;
 }
 
-interface SwitchboardApi {
-  stop?: () => Promise<void>;
-  httpAdapter?: { httpServer?: { close(cb: () => void): void }; close?(cb: () => void): void };
+interface SwitchboardHandle {
+  shutdown: () => Promise<void>;
 }
 
 /**
- * Build the SwitchboardInstance result from a raw API handle.
+ * Build the SwitchboardInstance result from a raw handle.
  *
- * Pure function — constructs URLs and wraps the shutdown logic.
+ * Pure function — constructs URLs and forwards the shutdown logic.
  * Separated from startSwitchboard for testability (no lazy imports).
  */
 export function buildSwitchboardInstance(
   options: Pick<StartSwitchboardOptions, 'host' | 'port' | 'driveId'>,
-  api: SwitchboardApi,
+  handle: SwitchboardHandle,
 ): SwitchboardInstance {
   const host = options.host ?? 'localhost';
   const switchboardUrl = `http://${host}:${options.port}/graphql`;
@@ -54,17 +62,7 @@ export function buildSwitchboardInstance(
     mcpUrl,
     async shutdown() {
       try {
-        if (api && typeof api.stop === 'function') {
-          await api.stop();
-        } else if (api?.httpAdapter) {
-          const server = api.httpAdapter.httpServer ?? api.httpAdapter;
-          if (server) {
-            const closeFn = 'close' in server ? server.close : undefined;
-            if (typeof closeFn === 'function') {
-              await new Promise<void>((resolve) => closeFn(() => resolve()));
-            }
-          }
-        }
+        await handle.shutdown();
       } catch {
         // Best-effort shutdown
       }
@@ -72,35 +70,43 @@ export function buildSwitchboardInstance(
   };
 }
 
+interface StartSwitchboardEntry {
+  startSwitchboard: (opts: {
+    reactor: ReactorClientModule;
+    port: number;
+    dbPath: string;
+    mcp?: boolean;
+    packages?: string[];
+    registryUrl?: string;
+    strictPort?: boolean;
+  }) => Promise<SwitchboardHandle & { port: number }>;
+}
+
 /**
- * Start Switchboard wrapping the Phase 1 Reactor.
+ * Start Switchboard wrapping the caller-provided Reactor.
  *
- * Lazy-loads @powerhousedao/reactor-api — it's an optional peer dependency.
- * Returns the pre-built ReactorClientModule directly to avoid creating
- * a second Reactor instance.
+ * Lazy-loads `@powerhousedao/switchboard/server` — it's an optional peer
+ * dependency. Hands the pre-built ReactorClientModule to switchboard's
+ * `startSwitchboard` so we don't construct a second Reactor.
  */
 export async function startSwitchboard(
   options: StartSwitchboardOptions,
 ): Promise<SwitchboardInstance> {
-  const reactorApi = await lazyImport<{
-    initializeAndStartAPI: (
-      factory: (documentModels: unknown) => unknown,
-      opts: Record<string, unknown>,
-      mode: string,
-    ) => Promise<SwitchboardApi>;
-  }>('@powerhousedao/reactor-api');
-  const { initializeAndStartAPI } = reactorApi;
+  const { startSwitchboard: startSwitchboardImpl } =
+    await lazyImport<StartSwitchboardEntry>(
+      '@powerhousedao/switchboard/server',
+    );
 
-  const api = await initializeAndStartAPI(
-    async (_documentModels: unknown) => options.reactorModule,
-    {
-      port: options.port,
-      dbPath: options.dbPath,
-      mcp: true,
-      packages: [],
-    },
-    'agent',
-  );
+  const handle = await startSwitchboardImpl({
+    reactor: options.reactorModule,
+    port: options.port,
+    dbPath: options.dbPath,
+    mcp: true,
+    packages: [],
+    registryUrl: options.registryUrl,
+    // Fail rather than silently shift ports when the requested port is busy.
+    strictPort: true,
+  });
 
-  return buildSwitchboardInstance(options, api);
+  return buildSwitchboardInstance(options, handle);
 }
