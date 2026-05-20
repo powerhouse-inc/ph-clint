@@ -3,27 +3,40 @@
  *
  * Usage: node connect-server.js --dir <path> --port <port>
  *
- * Exposes a `/__reload` channel so external publishers (e.g. ph-clint's
- * publish-reload trigger) can force loaded SPA clients to refresh, and
- * a `POST /__reload/error` endpoint so browser tabs can report module-
- * load failures back to the server for downstream observers.
+ * Exposes a `/__packages` channel so external publishers (e.g. ph-clint's
+ * publish-reload trigger) can push the live package list to running SPA
+ * clients, and a `POST /__packages/error` endpoint so browser tabs can
+ * report module-load failures back to the server for downstream observers.
  *
- *   GET  /__reload         — SSE stream. Emits two event types:
- *                              `reload` → clients run location.reload().
- *                              `package-error` → carries a JSON
- *                                {message, filename, stack?} payload.
- *   POST /__reload         — broadcast a `reload` event. Returns 204
- *                            with `X-Reload-Clients` count header.
- *   POST /__reload/error   — accept a browser-side error report; body
- *                            is JSON {message, filename, stack?}.
- *                            Broadcasts as a `package-error` SSE event.
- *                            Returns 204.
+ *   GET  /__packages         — SSE stream. On connect, emits a `connected`
+ *                              event followed immediately by a
+ *                              `packages-changed` event carrying the current
+ *                              list, so a tab that opens after a publish
+ *                              still sees the latest state without polling
+ *                              `/ph-packages.json`. Further events:
+ *                                `packages-changed` → JSON `{ packages: string[] }`
+ *                                `package-error` → JSON `{ message, filename, stack? }`
+ *   POST /__packages         — body JSON `{ packages: string[] }`. Replaces
+ *                              the in-memory dynamic list served by
+ *                              `/ph-packages.json` and broadcasts
+ *                              `packages-changed`. Returns 204 with
+ *                              `X-Subscribers` count header.
+ *   POST /__packages/error   — accept a browser-side error report; body is
+ *                              JSON {message, filename, stack?}.
+ *                              Broadcasts as a `package-error` SSE event.
+ *                              Returns 204.
+ *   GET  /ph-packages.json   — served dynamically: reads the baked file from
+ *                              `<dir>` and replaces its `packages` array with
+ *                              the merged baked + dynamic list, so a fresh
+ *                              page load picks up newly-published packages.
  *
- * Every served HTML response is rewritten to include a small `<script>` that:
- *   - subscribes to /__reload and runs location.reload() on `reload`.
- *   - hooks `window.error` and `unhandledrejection`, filters to CDN-loaded
- *     module URLs (those matching `/-/cdn/`), and POSTs the error to
- *     /__reload/error so the trigger (and any other listener) sees it.
+ * Every served HTML response is rewritten to include a small `<script>` that
+ * hooks `window.error` and `unhandledrejection`, filters to CDN-loaded
+ * module URLs (those matching `/-/cdn/`), and POSTs the error to
+ * /__packages/error so observers (e.g. the publish-reload trigger) see it.
+ * The SPA itself is expected to open its own `EventSource('/__packages')`
+ * and call `packageManager.addPackage` / `removePackage` on each
+ * `packages-changed` event — full page reloads are no longer used.
  *
  * NOT exported from the barrel — compiled by tsc to
  * dist/integrations/powerhouse/connect-server.js and invoked as a child process.
@@ -32,7 +45,7 @@
 import { createServer, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 
 const MIME_TYPES: Record<string, string> = {
@@ -63,21 +76,58 @@ if (!dir) {
 }
 
 const indexPath = join(dir, 'index.html');
+const phPackagesPath = join(dir, 'ph-packages.json');
 
 if (!existsSync(indexPath)) {
   console.error(`index.html not found in ${dir}`);
   process.exit(1);
 }
 
-const RELOAD_SCRIPT = `
-<script>(function(){
+interface PhPackagesConfig {
+  packages: string[];
+  registryUrl?: string | null;
+  localPackage?: { name: string; version: string };
+  [key: string]: unknown;
+}
+
+function readBakedPhPackages(): PhPackagesConfig {
   try {
-    var es = new EventSource('/__reload');
-    es.addEventListener('reload', function () { location.reload(); });
-  } catch (_) {}
+    const raw = readFileSync(phPackagesPath, 'utf-8');
+    const parsed = JSON.parse(raw) as Partial<PhPackagesConfig>;
+    return {
+      ...parsed,
+      packages: Array.isArray(parsed.packages) ? parsed.packages : [],
+    };
+  } catch {
+    return { packages: [] };
+  }
+}
+
+// The baked packages list is read once at startup and represents the
+// always-on packages (those configured at vetra-app build time, e.g. the
+// project's local-package dependencies). `dynamicPackages` is the overlay
+// pushed by `POST /__packages` for packages published after startup; it
+// accumulates without ever evicting baked entries. `GET /ph-packages.json`
+// returns the merged-and-deduped list.
+const bakedPackages: string[] = readBakedPhPackages().packages.slice();
+let dynamicPackages: string[] = [];
+
+function mergedPackages(): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const name of [...bakedPackages, ...dynamicPackages]) {
+    if (seen.has(name)) continue;
+    seen.add(name);
+    merged.push(name);
+  }
+  return merged;
+}
+
+const INJECTED_SCRIPT = `
+<script>(function(){
   function report(payload) {
     try {
-      fetch('/__reload/error', {
+      fetch('/__packages/error', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
@@ -107,21 +157,16 @@ const RELOAD_SCRIPT = `
 })();</script>
 `;
 
-function injectReloadScript(html: string): string {
+function injectScript(html: string): string {
   const lower = html.toLowerCase();
   const idx = lower.lastIndexOf('</body>');
   if (idx !== -1) {
-    return html.slice(0, idx) + RELOAD_SCRIPT + html.slice(idx);
+    return html.slice(0, idx) + INJECTED_SCRIPT + html.slice(idx);
   }
-  // Fallback for malformed HTML: just append.
-  return html + RELOAD_SCRIPT;
+  return html + INJECTED_SCRIPT;
 }
 
 const sseClients = new Set<ServerResponse>();
-
-function broadcastReload(): number {
-  return broadcast('reload', '{}');
-}
 
 function broadcast(eventName: string, data: string): number {
   const payload = `event: ${eventName}\ndata: ${data}\n\n`;
@@ -133,6 +178,10 @@ function broadcast(eventName: string, data: string): number {
     }
   }
   return sseClients.size;
+}
+
+function broadcastPackages(): number {
+  return broadcast('packages-changed', JSON.stringify({ packages: mergedPackages() }));
 }
 
 async function readJsonBody(
@@ -165,7 +214,7 @@ async function readJsonBody(
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${port}`);
 
-  if (url.pathname === '/__reload') {
+  if (url.pathname === '/__packages') {
     if (req.method === 'GET') {
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -173,13 +222,35 @@ const server = createServer(async (req, res) => {
         Connection: 'keep-alive',
       });
       res.write(`event: connected\ndata: {}\n\n`);
+      res.write(
+        `event: packages-changed\ndata: ${JSON.stringify({ packages: mergedPackages() })}\n\n`,
+      );
       sseClients.add(res);
       req.on('close', () => sseClients.delete(res));
       return;
     }
     if (req.method === 'POST') {
-      const count = broadcastReload();
-      res.writeHead(204, { 'X-Reload-Clients': String(count) });
+      let body: unknown;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        res.writeHead(400);
+        res.end();
+        return;
+      }
+      if (
+        !body ||
+        typeof body !== 'object' ||
+        !Array.isArray((body as { packages?: unknown }).packages) ||
+        !(body as { packages: unknown[] }).packages.every((p) => typeof p === 'string')
+      ) {
+        res.writeHead(400);
+        res.end('expected { packages: string[] }');
+        return;
+      }
+      dynamicPackages = (body as { packages: string[] }).packages.slice();
+      const count = broadcastPackages();
+      res.writeHead(204, { 'X-Subscribers': String(count) });
       res.end();
       return;
     }
@@ -188,7 +259,7 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  if (url.pathname === '/__reload/error') {
+  if (url.pathname === '/__packages/error') {
     if (req.method !== 'POST') {
       res.writeHead(405);
       res.end();
@@ -209,6 +280,19 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === '/ph-packages.json') {
+    if (req.method !== 'GET') {
+      res.writeHead(405);
+      res.end();
+      return;
+    }
+    const config = readBakedPhPackages();
+    config.packages = mergedPackages();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(config));
+    return;
+  }
+
   const filePath = join(dir, url.pathname);
   const ext = extname(filePath);
 
@@ -226,7 +310,7 @@ const server = createServer(async (req, res) => {
   try {
     const target = ext === '.html' && existsSync(filePath) ? filePath : indexPath;
     const content = await readFile(target, 'utf-8');
-    const body = injectReloadScript(content);
+    const body = injectScript(content);
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(body);
   } catch {
