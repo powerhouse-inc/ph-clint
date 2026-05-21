@@ -52,6 +52,9 @@ export function connectServiceDefinition(
     env: (_config: Record<string, unknown>, params?: Record<string, unknown>) => ({
       PH_CONNECT_DEFAULT_DRIVES_URL: (params?.driveUrl as string) ?? '',
       PH_CONNECT_DRIVES_PRESERVE_STRATEGY: 'preserve-all',
+      ...(connectConfig.registryUrl
+        ? { PH_CONNECT_PACKAGES_REGISTRY: connectConfig.registryUrl }
+        : {}),
     }),
     preflight: [
       // ph CLI is only needed for studio mode (Vite dev server)

@@ -354,6 +354,12 @@ export interface SwitchboardConfig {
   portRange?: number;
   /** Service label for preflight messages. Default: '{cliName}-api'. */
   name?: string;
+  /**
+   * Registry URL forwarded to the switchboard's `HttpPackageLoader`. When
+   * set, the `Packages` GraphQL subgraph is registered (install/uninstall
+   * mutations) and dynamic package resolution is enabled.
+   */
+  registryUrl?: string;
 }
 
 /**
@@ -372,6 +378,12 @@ export interface ConnectConfig {
   name?: string;
   /** Path to pre-built Connect static assets. When set, serves via static file server instead of Vite dev server. */
   assetsDir?: string;
+  /**
+   * Package registry URL forwarded to Connect via
+   * `PH_CONNECT_PACKAGES_REGISTRY`. The vite config reads this to resolve
+   * Powerhouse packages for in-browser dynamic imports.
+   */
+  registryUrl?: string;
 }
 
 /**

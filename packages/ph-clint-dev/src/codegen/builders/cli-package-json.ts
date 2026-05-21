@@ -70,10 +70,14 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     // `Record<string, SubAgent>` constraint whose `TOutput` default (`unknown`)
     // doesn't match `Agent`'s default (`undefined`) without an explicit generic
     // or a cast, neither of which fits our type-strictness rule. Pin to 1.32.x.
+    // Tilde-pin every mastra package: mastra ships breaking changes between
+    // minors (e.g. libsql 1.11.0 requires core >=1.34, which would conflict
+    // with the core 1.32.x pin above). `~` keeps us on a known-good minor
+    // and still accepts patch fixes.
     dependencies['@mastra/core'] = '~1.32.0';
-    dependencies['@mastra/libsql'] = '^1.7.4';
-    dependencies['@mastra/mcp'] = '^1.4.1';
-    dependencies['@mastra/memory'] = '^1.13.1';
+    dependencies['@mastra/libsql'] = '~1.10.1';
+    dependencies['@mastra/mcp'] = '~1.7.0';
+    dependencies['@mastra/memory'] = '~1.18.2';
   }
   if (observabilityEnabled) {
     dependencies['@powerhousedao/ph-clint-observability'] = PH_CLINT_VERSION;

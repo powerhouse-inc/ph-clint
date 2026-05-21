@@ -146,6 +146,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       port: switchboardPort,
       dbPath,
       driveId: cachedReactor.driveId,
+      registryUrl: reactorConfig.switchboard.registryUrl,
     });
 
     // Propagate URLs to the reactor context
