@@ -103,13 +103,15 @@ function readBakedPhPackages(): PhPackagesConfig {
   }
 }
 
-// The baked packages list is read once at startup and represents the
-// always-on packages (those configured at vetra-app build time, e.g. the
-// project's local-package dependencies). `dynamicPackages` is the overlay
-// pushed by `POST /__packages` for packages published after startup; it
-// accumulates without ever evicting baked entries. `GET /ph-packages.json`
-// returns the merged-and-deduped list.
-const bakedPackages: string[] = readBakedPhPackages().packages.slice();
+// The baked config is read once at startup and represents the always-on
+// state (packages configured at vetra-app build time, registry URL, local
+// package metadata). `dynamicPackages` is the overlay pushed by
+// `POST /__packages` for packages published after startup; it accumulates
+// without ever evicting baked entries. `GET /ph-packages.json` returns
+// `bakedConfig` with `.packages` replaced by the merged-and-deduped list,
+// so the response path has no synchronous disk I/O.
+const bakedConfig: PhPackagesConfig = readBakedPhPackages();
+const bakedPackages: string[] = bakedConfig.packages.slice();
 let dynamicPackages: string[] = [];
 
 function mergedPackages(): string[] {
@@ -286,10 +288,8 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
-    const config = readBakedPhPackages();
-    config.packages = mergedPackages();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(config));
+    res.end(JSON.stringify({ ...bakedConfig, packages: mergedPackages() }));
     return;
   }
 

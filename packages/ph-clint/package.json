@@ -54,6 +54,7 @@
     "@mastra/memory": "^1.13.1",
     "@powerhousedao/reactor": "6.0.0-dev.257",
     "@powerhousedao/shared": "6.0.0-dev.257",
+    "@powerhousedao/switchboard": "6.0.0-dev.257",
     "@types/http-proxy": "^1.17.16",
     "@types/node": "^25.5.2",
     "@types/react": "^19.2.14",
