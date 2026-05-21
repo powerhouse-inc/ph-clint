@@ -10,7 +10,29 @@ import type { ReactorClientModule } from './types.js';
 interface ReactorBuilderLike {
   withDocumentModels(m: DocumentModelModule[]): ReactorBuilderLike;
   withKysely(k: unknown): ReactorBuilderLike;
-  withChannelScheme(s: unknown): ReactorBuilderLike;
+}
+
+interface ReactorClientBuilderLike {
+  withReactorBuilder(r: unknown): {
+    buildModule(): Promise<ReactorClientModule>;
+  };
+}
+
+/**
+ * Structural shape of the switchboard helpers we call into. Loaded via
+ * dynamic import so `@powerhousedao/switchboard` stays an optional peer.
+ */
+interface SwitchboardServerEntry {
+  applySwitchboardReactorDefaults(
+    reactorBuilder: unknown,
+    clientBuilder: unknown,
+    options?: {
+      documentModels?: DocumentModelModule[];
+      includeBaseModels?: boolean;
+      includeVetraModels?: boolean;
+      signalHandlers?: boolean;
+    },
+  ): void;
 }
 
 export interface BuildReactorOptions {
@@ -18,7 +40,12 @@ export interface BuildReactorOptions {
   documentModels: DocumentModelModule[];
   /** Absolute path to the persistent PGlite directory. */
   storagePath: string;
-  /** Enable Switchboard sync channel scheme (required for Phase 2). */
+  /**
+   * Apply switchboard's reactor wiring so the module can be wrapped with
+   * `startSwitchboard` later. Pulls in channel scheme, base document models,
+   * the reactor-drive read model, etc. via `@powerhousedao/switchboard`'s
+   * `applySwitchboardReactorDefaults`. Leave false for standalone reactors.
+   */
   enableSync?: boolean;
 }
 
@@ -60,51 +87,58 @@ export async function buildReactor(
     'kysely-pglite-dialect',
   );
 
-  // Base document models (always needed for drives and document-model)
-  const sharedMod = await lazyImport<Record<string, unknown>>(
-    '@powerhousedao/shared/document-drive',
-  );
-  const docModelMod = await lazyImport<Record<string, unknown>>(
-    'document-model',
-  );
-
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- dynamic peer dep
   const ReactorBuilder = reactor.ReactorBuilder as new () => ReactorBuilderLike;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- dynamic peer dep
-  const ReactorClientBuilder = reactor.ReactorClientBuilder as new () => {
-    withReactorBuilder(r: unknown): { buildModule(): Promise<ReactorClientModule> };
-  };
-  const ChannelScheme = reactor.ChannelScheme as { SWITCHBOARD: unknown };
+  const ReactorClientBuilder =
+    reactor.ReactorClientBuilder as new () => ReactorClientBuilderLike;
   const PGlite = pgliteMod.PGlite as new (path: string) => unknown;
   const Kysely = kyselyMod.Kysely as new (opts: { dialect: unknown }) => unknown;
   const PGliteDialect = dialectMod.PGliteDialect as new (
     pglite: unknown,
   ) => unknown;
-  const driveDocumentModelModule =
-    sharedMod.driveDocumentModelModule as DocumentModelModule;
-  const documentModelDocumentModelModule =
-    docModelMod.documentModelDocumentModelModule as DocumentModelModule;
 
   const pglite = new PGlite(options.storagePath);
   const kysely = new Kysely({ dialect: new PGliteDialect(pglite) });
 
-  const reactorBuilder = new ReactorBuilder()
-    .withDocumentModels([
+  const reactorBuilder = new ReactorBuilder().withKysely(kysely);
+  const clientBuilder = new ReactorClientBuilder().withReactorBuilder(
+    reactorBuilder,
+  );
+
+  if (options.enableSync) {
+    // Switchboard owns the standard reactor wiring (channel scheme, base
+    // + vetra document models, executor config, etc.). We opt out of signal
+    // handlers because ph-clint manages SIGINT itself. The reactor-drive
+    // read model + projection are skipped for now — ph-clint doesn't expose
+    // its kysely to switchboard yet, so that subgraph stays disabled. See
+    // `createReactorDriveProjection` in `@powerhousedao/switchboard/server`
+    // for adding it later.
+    const sw = await lazyImport<SwitchboardServerEntry>(
+      '@powerhousedao/switchboard/server',
+    );
+    sw.applySwitchboardReactorDefaults(reactorBuilder, clientBuilder, {
+      documentModels: options.documentModels,
+      signalHandlers: false,
+    });
+  } else {
+    // Standalone reactor: register only the document models ph-clint needs.
+    const sharedMod = await lazyImport<Record<string, unknown>>(
+      '@powerhousedao/shared/document-drive',
+    );
+    const docModelMod = await lazyImport<Record<string, unknown>>(
+      'document-model',
+    );
+    const driveDocumentModelModule =
+      sharedMod.driveDocumentModelModule as DocumentModelModule;
+    const documentModelDocumentModelModule =
+      docModelMod.documentModelDocumentModelModule as DocumentModelModule;
+    reactorBuilder.withDocumentModels([
       documentModelDocumentModelModule,
       driveDocumentModelModule,
       ...options.documentModels,
-    ])
-    .withKysely(kysely);
-
-  // Enable sync channel scheme when Switchboard will wrap this Reactor.
-  // This populates reactorModule.syncModule.syncManager which Switchboard requires.
-  if (options.enableSync) {
-    reactorBuilder.withChannelScheme(ChannelScheme.SWITCHBOARD);
+    ]);
   }
 
-  const module = await new ReactorClientBuilder()
-    .withReactorBuilder(reactorBuilder)
-    .buildModule();
-
-  return module;
+  return clientBuilder.buildModule();
 }
