@@ -1,6 +1,3 @@
-overrides:
-  '@powerhousedao/switchboard': 'link:../monorepo/.claude/worktrees/vetra-codegen-agent-api/apps/switchboard'
-
 allowBuilds:
   '@apollo/protobufjs': set this to true or false
   '@prisma/client': set this to true or false
