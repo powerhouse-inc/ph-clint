@@ -329,6 +329,10 @@ export interface DriveConfig {
   /** Deterministic drive ID. When set, the drive is created with this ID
    *  instead of a random UUID. Used for stable cross-session identity. */
   id?: string;
+  /** Editor id (from a Connect-loaded package) that Connect should open this
+   *  drive in. Stored on `header.meta.preferredEditor` at creation time. Has
+   *  no effect on drives that already exist. */
+  preferredEditor?: string;
 }
 
 /**
