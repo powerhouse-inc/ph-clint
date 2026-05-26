@@ -42,6 +42,13 @@ export function formatStreamChunk(chunk: StreamChunk): string {
 
     case 'error':
       return `${RED}Error: ${chunk.error}${RESET}\n`;
+
+    case 'step-finish':
+    case 'finish':
+      // Lifecycle chunks carry token usage for cost accounting; no display
+      // text by default. Renderers that care (eg. observability/eval) read
+      // the chunk directly instead of relying on `formatted`.
+      return '';
   }
 }
 

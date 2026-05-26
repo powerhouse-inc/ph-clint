@@ -241,12 +241,41 @@ export interface ErrorChunk {
   error: string;
 }
 
+/**
+ * Token usage reported by the model at the end of a step (one LLM turn)
+ * or at the end of the full stream. Field names mirror the AI SDK's
+ * `LanguageModelUsage` so callers can pass through provider-specific
+ * details (cache reads/writes, reasoning tokens) without re-mapping.
+ */
+export interface StreamUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  cachedInputTokens?: number;
+  cacheCreationInputTokens?: number;
+  reasoningTokens?: number;
+}
+
+export interface StepFinishChunk {
+  type: 'step-finish';
+  usage?: StreamUsage;
+  finishReason?: string;
+}
+
+export interface FinishChunk {
+  type: 'finish';
+  usage?: StreamUsage;
+  finishReason?: string;
+}
+
 export type StreamChunk =
   | TextDeltaChunk
   | ToolCallChunk
   | ToolOutputChunk
   | ToolResultChunk
-  | ErrorChunk;
+  | ErrorChunk
+  | StepFinishChunk
+  | FinishChunk;
 
 // ── Agent Provider ───────────────────────────────────────────────
 
