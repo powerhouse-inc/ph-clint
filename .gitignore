@@ -30,3 +30,5 @@ pnpm-lock.yaml
 cli-test/
 clis/
 packages/tmp/
+.hotseat
+HOTSEAT.md
