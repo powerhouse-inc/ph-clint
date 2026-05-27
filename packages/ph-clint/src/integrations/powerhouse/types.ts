@@ -31,6 +31,23 @@ import type {
   PHBaseState,
 } from 'document-model';
 import type { WorkdirStore } from '../../core/types.js';
+import type {
+  IAttachmentService,
+  AttachmentResponse,
+  AttachmentUploadResult,
+  ReserveAttachmentOptions,
+  AttachmentHeader,
+} from '@powerhousedao/reactor-attachments';
+import type { AttachmentRef } from '@powerhousedao/reactor';
+
+export type {
+  IAttachmentService,
+  AttachmentRef,
+  AttachmentResponse,
+  AttachmentUploadResult,
+  ReserveAttachmentOptions,
+  AttachmentHeader,
+};
 
 // ── Registry ──────────────────────────────────────────────────────
 
@@ -312,6 +329,13 @@ export interface ReactorContext<R extends DocumentRegistry = AnyRegistry> {
   mcpUrl?: string;
   /** Phase 3: Connect web UI URL (e.g. http://localhost:3000). */
   connectUrl?: string;
+  /**
+   * Switchboard-provided attachment service. Constructed externally
+   * (switchboard owns createRemoteAttachmentService) and passed in via
+   * ReactorSetupContext.attachments. Upload and read sites reach it here.
+   * Undefined when no attachment service is wired.
+   */
+  attachments?: IAttachmentService;
   /** Internal: the ReactorClientModule, passed to startSwitchboard(). */
   _module?: ReactorClientModule;
   /** Teardown — called by the framework on CLI exit. */
@@ -431,6 +455,12 @@ export interface ReactorSetupContext<
   on?: import('../../core/types.js').OnFn<R>;
   /** Switchboard config — passed by the framework so create() can set enableSync. */
   switchboard?: SwitchboardConfig;
+  /**
+   * Switchboard-provided attachment service to thread through to ReactorContext.
+   * The service is constructed externally (switchboard owns createRemoteAttachmentService)
+   * and relayed here so the create() factory can place it on the returned context.
+   */
+  attachments?: IAttachmentService;
 }
 
 /**

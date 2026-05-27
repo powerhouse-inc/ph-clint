@@ -73,6 +73,7 @@
     "@powerhousedao/design-system": "6.0.0-dev.257",
     "@powerhousedao/document-engineering": "1.40.1",
     "@powerhousedao/reactor-api": "6.0.0-dev.257",
+    "@powerhousedao/reactor-attachments": "6.0.0-dev.257",
     "@powerhousedao/reactor-browser": "6.0.0-dev.257",
     "@powerhousedao/shared": "6.0.0-dev.257",
     "@radix-ui/react-use-controllable-state": "^1.2.2",

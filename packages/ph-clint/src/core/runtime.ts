@@ -24,6 +24,7 @@ import type {
   ReactorConfiguration,
   ReactorContext,
   SwitchboardInstance,
+  IAttachmentService,
 } from '../integrations/powerhouse/types.js';
 import type { ProxyServerInstance } from './proxy.js';
 import { resolvePort } from '../integrations/powerhouse/ports.js';
@@ -43,6 +44,12 @@ export interface CliRuntimeDeps {
   commandMap: Map<string, Command>;
 
   reactorConfig?: ReactorConfiguration;
+  /**
+   * Switchboard-provided attachment service. Constructed externally
+   * (switchboard owns createRemoteAttachmentService) and relayed into
+   * ReactorSetupContext so the create() factory can place it on ReactorContext.
+   */
+  attachments?: IAttachmentService;
   agentLoader?: AgentLoader;
   /** The routine object. Used for capability wiring and teardown. */
   routine?: Routine;
@@ -102,6 +109,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       emit: context.emit,
       on: context.on,
       switchboard: reactorConfig.switchboard,
+      attachments: deps.attachments,
     });
     return cachedReactor;
   }
