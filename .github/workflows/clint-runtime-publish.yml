@@ -1,8 +1,9 @@
 name: Build and Publish clint-runtime Docker Image
 
-# Generic clint runtime image — installs an arbitrary clint-project
-# package globally at start. Decoupled from the per-package Rupert
-# workflow. See docker/clint-runtime/Dockerfile for the runtime contract.
+# Generic clint runtime BASE image — provides node/pnpm/tini and the
+# non-installing run.sh entrypoint. Per-agent images (built in-cluster by
+# clint-image-builder) derive FROM this base and bake the package in.
+# See docker/clint-runtime/Dockerfile and docker/clint-agent/Dockerfile.
 
 on:
   workflow_dispatch:
