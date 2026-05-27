@@ -53,7 +53,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
           isError: null,
           mediaType: null,
           url: null,
-          data: null,
+          attachment: null,
           filename: null,
           error: null,
         },

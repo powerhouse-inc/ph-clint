@@ -131,7 +131,7 @@ export function AppendAssistantContentInputSchema(): z.ZodObject<Properties<Appe
 export function AssistantContentPartInputSchema(): z.ZodObject<Properties<AssistantContentPartInput>> {
   return z.object({
     args: z.string().nullish(),
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     error: z.string().nullish(),
     filename: z.string().nullish(),
     id: z.string(),
@@ -162,7 +162,7 @@ export function ContentPartSchema(): z.ZodObject<Properties<ContentPart>> {
   return z.object({
     __typename: z.literal('ContentPart').optional(),
     args: z.string().nullish(),
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     error: z.string().nullish(),
     filename: z.string().nullish(),
     id: z.string(),
@@ -254,7 +254,7 @@ export function StartSessionInputSchema(): z.ZodObject<Properties<StartSessionIn
 
 export function ToolResultPartInputSchema(): z.ZodObject<Properties<ToolResultPartInput>> {
   return z.object({
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     id: z.string(),
     isError: z.boolean().nullish(),
     mediaType: z.string().nullish(),
@@ -302,7 +302,7 @@ export function UsageSummarySchema(): z.ZodObject<Properties<UsageSummary>> {
 
 export function UserContentPartInputSchema(): z.ZodObject<Properties<UserContentPartInput>> {
   return z.object({
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     filename: z.string().nullish(),
     id: z.string(),
     mediaType: z.string().nullish(),

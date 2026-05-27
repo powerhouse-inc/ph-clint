@@ -357,7 +357,7 @@ describe('AgentOperations', () => {
             toolCallId: 'tc-1',
             toolName: 'search',
             args: '',
-            data: '',
+            attachment: '',
             filename: '',
           },
         ],
@@ -367,7 +367,7 @@ describe('AgentOperations', () => {
 
     const part = doc.state.global.messages[0].content[0];
     expect(part.args).toBe('');
-    expect(part.data).toBe('');
+    expect(part.attachment).toBe('');
     expect(part.filename).toBe('');
 
     // Agent info with empty strings

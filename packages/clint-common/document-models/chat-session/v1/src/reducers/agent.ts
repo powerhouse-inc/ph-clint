@@ -26,7 +26,7 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       isError: null,
       mediaType: p.mediaType ?? null,
       url: p.url ?? null,
-      data: p.data ?? null,
+      attachment: p.attachment ?? null,
       filename: p.filename ?? null,
       error: p.error ?? null,
     }));
@@ -70,7 +70,7 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       isError: null,
       mediaType: p.mediaType ?? null,
       url: p.url ?? null,
-      data: p.data ?? null,
+      attachment: p.attachment ?? null,
       filename: p.filename ?? null,
       error: p.error ?? null,
     });

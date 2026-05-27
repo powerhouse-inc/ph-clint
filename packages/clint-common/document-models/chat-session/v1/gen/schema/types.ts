@@ -118,7 +118,7 @@ export type AppendAssistantContentInput = {
 
 export type AssistantContentPartInput = {
   args?: InputMaybe<Scalars['String']['input']>;
-  data?: InputMaybe<Scalars['String']['input']>;
+  attachment?: InputMaybe<Scalars['String']['input']>;
   error?: InputMaybe<Scalars['String']['input']>;
   filename?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['OID']['input'];
@@ -143,7 +143,7 @@ export type ChatSessionState = {
 
 export type ContentPart = {
   args: Maybe<Scalars['String']['output']>;
-  data: Maybe<Scalars['String']['output']>;
+  attachment: Maybe<Scalars['String']['output']>;
   error: Maybe<Scalars['String']['output']>;
   filename: Maybe<Scalars['String']['output']>;
   id: Scalars['OID']['output'];
@@ -219,7 +219,7 @@ export type StartSessionInput = {
 };
 
 export type ToolResultPartInput = {
-  data?: InputMaybe<Scalars['String']['input']>;
+  attachment?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['OID']['input'];
   isError?: InputMaybe<Scalars['Boolean']['input']>;
   mediaType?: InputMaybe<Scalars['String']['input']>;
@@ -258,7 +258,7 @@ export type UsageSummary = {
 };
 
 export type UserContentPartInput = {
-  data?: InputMaybe<Scalars['String']['input']>;
+  attachment?: InputMaybe<Scalars['String']['input']>;
   filename?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['OID']['input'];
   mediaType?: InputMaybe<Scalars['String']['input']>;

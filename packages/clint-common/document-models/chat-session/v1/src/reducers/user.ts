@@ -19,7 +19,7 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
       isError: null,
       mediaType: p.mediaType ?? null,
       url: p.url ?? null,
-      data: p.data ?? null,
+      attachment: p.attachment ?? null,
       filename: p.filename ?? null,
       error: null,
     }));

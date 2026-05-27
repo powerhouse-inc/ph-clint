@@ -79,7 +79,7 @@ type ContentPart {
   isError: Boolean
   mediaType: String
   url: URL
-  data: String
+  attachment: String
   filename: String
   error: String
 }
@@ -165,7 +165,7 @@ input UserContentPartInput {
   text: String
   mediaType: String
   url: URL
-  data: String
+  attachment: String
   filename: String
 }
 
@@ -194,7 +194,7 @@ input AssistantContentPartInput {
   args: String
   mediaType: String
   url: URL
-  data: String
+  attachment: String
   filename: String
   error: String
 }
@@ -238,7 +238,7 @@ input ToolResultPartInput {
   text: String
   mediaType: String
   url: URL
-  data: String
+  attachment: String
 }
 
 input AddToolResultInput {

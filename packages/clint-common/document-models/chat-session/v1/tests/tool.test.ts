@@ -34,7 +34,7 @@ describe('ToolOperations', () => {
             toolName: 'search',
             mediaType: 'image/png',
             url: 'https://example.com/chart.png',
-            data: 'base64data',
+            attachment: 'attachment://v1:abc123def4567890abc123def4567890abc123def4567890abc123def45678901',
           },
         ],
         createdAt: '2025-01-01T00:00:01Z',
@@ -59,7 +59,7 @@ describe('ToolOperations', () => {
     const p2 = msg.content[1];
     expect(p2.type).toBe('IMAGE');
     expect(p2.mediaType).toBe('image/png');
-    expect(p2.data).toBe('base64data');
+    expect(p2.attachment).toBe('attachment://v1:abc123def4567890abc123def4567890abc123def4567890abc123def45678901');
 
     // usage counter incremented
     expect(doc.state.global.usage!.totalMessages).toBe(1);

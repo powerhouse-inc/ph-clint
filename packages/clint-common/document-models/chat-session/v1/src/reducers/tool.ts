@@ -14,7 +14,7 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
       isError: p.isError ?? null,
       mediaType: p.mediaType ?? null,
       url: p.url ?? null,
-      data: p.data ?? null,
+      attachment: p.attachment ?? null,
       filename: null,
       error: null,
     }));
@@ -42,7 +42,7 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
       isError: null,
       mediaType: null,
       url: null,
-      data: null,
+      attachment: null,
       filename: null,
       error: null,
     });
