@@ -58,9 +58,14 @@ ENV PNPM_HOME=/home/clint/.local/share/pnpm \
     PATH=/home/clint/.local/share/pnpm/bin:$PATH \
     NODE_ENV=production
 
+# entrypoint.sh (the legacy install-at-start entrypoint) is retained in the
+# build context for rollback but is no longer the entrypoint. run.sh is the
+# non-installing runtime entrypoint; the agent package is baked in by
+# docker/clint-agent/Dockerfile which derives FROM this base.
 COPY --chown=clint:clint entrypoint.sh /home/clint/entrypoint.sh
-RUN chmod +x /home/clint/entrypoint.sh
+COPY --chown=clint:clint run.sh /home/clint/run.sh
+RUN chmod +x /home/clint/entrypoint.sh /home/clint/run.sh
 
 # tini handles PID 1 / signal forwarding so the agent gets SIGTERM
 # cleanly when k8s tells the pod to stop.
-ENTRYPOINT ["/usr/bin/tini", "--", "/home/clint/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/home/clint/run.sh"]
