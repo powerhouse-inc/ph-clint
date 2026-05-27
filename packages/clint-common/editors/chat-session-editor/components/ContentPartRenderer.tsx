@@ -19,18 +19,12 @@ export function useAttachmentService(): IAttachmentService | undefined {
   return useContext(AttachmentServiceContext);
 }
 
-/**
- * Resolve a displayable URL for a content part that may carry an attachment ref.
- * When `part.attachment` is set the ref is fetched via the context service and an
- * object URL is created (revoked on unmount / ref change).  Falls back to
- * `part.url` when no service is available or the part has no attachment ref.
- */
-function useAttachmentUrl(part: ContentPart): string | undefined {
+export function useAttachmentUrl(attachment: string | null | undefined, fallbackUrl?: string | null): string | undefined {
   const service = useContext(AttachmentServiceContext);
   const [objectUrl, setObjectUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!part.attachment || !service) {
+    if (!attachment || !service) {
       setObjectUrl(undefined);
       return;
     }
@@ -41,8 +35,7 @@ function useAttachmentUrl(part: ContentPart): string | undefined {
     void (async () => {
       try {
         const { body, header } = await service.get(
-          // part.attachment is an AttachmentRef string
-          part.attachment as Parameters<typeof service.get>[0],
+          attachment as Parameters<typeof service.get>[0],
         );
         const chunks: Uint8Array[] = [];
         const reader = body.getReader();
@@ -68,9 +61,9 @@ function useAttachmentUrl(part: ContentPart): string | undefined {
         URL.revokeObjectURL(createdUrl);
       }
     };
-  }, [part.attachment, service]);
+  }, [attachment, service]);
 
-  return objectUrl ?? part.url ?? undefined;
+  return objectUrl ?? fallbackUrl ?? undefined;
 }
 
 // ── Main renderer ─────────────────────────────────────────────────────────────
@@ -195,7 +188,7 @@ function ToolResultRenderer({ part }: { part: ContentPart }) {
 }
 
 function ImagePartRenderer({ part }: { part: ContentPart }) {
-  const src = useAttachmentUrl(part);
+  const src = useAttachmentUrl(part.attachment, part.url);
 
   if (!src) {
     return (
@@ -219,7 +212,7 @@ function ImagePartRenderer({ part }: { part: ContentPart }) {
 }
 
 function FilePartRenderer({ part }: { part: ContentPart }) {
-  const href = useAttachmentUrl(part);
+  const href = useAttachmentUrl(part.attachment, part.url);
   const inner = (
     <>
       <FileIcon className="size-5 shrink-0 text-muted-foreground" />
