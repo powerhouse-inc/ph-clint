@@ -62,8 +62,8 @@ export function extensionForMediaType(mediaType: string | null | undefined, cont
   return contentType === 'IMAGE' ? '.png' : '.bin';
 }
 
-export function resolveFilename(part: ContentPart): string {
-  const ext = extensionForMediaType(part.mediaType, part.type as 'IMAGE' | 'FILE');
+export function resolveFilename(part: ContentPart, mediaTypeOverride?: string | null): string {
+  const ext = extensionForMediaType(mediaTypeOverride ?? part.mediaType, part.type as 'IMAGE' | 'FILE');
   let basename: string;
 
   if (part.filename) {
@@ -98,9 +98,6 @@ export async function extractAttachments(message: Message, options: ExtractAttac
   for (const part of attachmentParts) {
     if (seen.has(part.id)) continue;
 
-    const filename = resolveFilename(part);
-    const localPath = join(downloadsDir, filename);
-
     try {
       let buf: Buffer | null = null;
       let resolvedMediaType: string | null = part.mediaType ?? null;
@@ -125,6 +122,9 @@ export async function extractAttachments(message: Message, options: ExtractAttac
         log?.warn(`${TAG} part ${part.id} has no attachment or url, skipping`);
         continue;
       }
+
+      const filename = resolveFilename(part, resolvedMediaType);
+      const localPath = join(downloadsDir, filename);
 
       await mkdir(downloadsDir, { recursive: true });
       await writeFile(localPath, buf);
