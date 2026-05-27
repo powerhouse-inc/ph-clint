@@ -1,9 +1,75 @@
+import type { IAttachmentService } from '@powerhousedao/reactor-attachments';
 import type { ContentPart } from 'document-models/chat-session';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from './ai-elements/reasoning.js';
 import { Tool, ToolHeader, ToolContent, ToolInput, ToolOutput } from './ai-elements/tool.js';
 import { MessageResponse } from './ai-elements/message.js';
 import { AlertTriangleIcon, DownloadIcon, FileIcon, ImageIcon } from 'lucide-react';
 import { cn } from '../lib/utils.js';
+
+// ── Attachment service context ────────────────────────────────────────────────
+
+const AttachmentServiceContext = createContext<IAttachmentService | undefined>(undefined);
+
+export function AttachmentServiceProvider({ service, children }: { service: IAttachmentService | undefined; children: ReactNode }) {
+  return <AttachmentServiceContext.Provider value={service}>{children}</AttachmentServiceContext.Provider>;
+}
+
+/**
+ * Resolve a displayable URL for a content part that may carry an attachment ref.
+ * When `part.attachment` is set the ref is fetched via the context service and an
+ * object URL is created (revoked on unmount / ref change).  Falls back to
+ * `part.url` when no service is available or the part has no attachment ref.
+ */
+function useAttachmentUrl(part: ContentPart): string | undefined {
+  const service = useContext(AttachmentServiceContext);
+  const [objectUrl, setObjectUrl] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!part.attachment || !service) {
+      setObjectUrl(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    let createdUrl: string | undefined;
+
+    void (async () => {
+      try {
+        const { body, header } = await service.get(
+          // part.attachment is an AttachmentRef string
+          part.attachment as Parameters<typeof service.get>[0],
+        );
+        const chunks: Uint8Array[] = [];
+        const reader = body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (cancelled) break;
+          if (done) break;
+          chunks.push(value);
+        }
+        if (cancelled) return;
+        const blob = new Blob(chunks as BlobPart[], { type: header.mimeType });
+        const url = URL.createObjectURL(blob);
+        createdUrl = url;
+        setObjectUrl(url);
+      } catch {
+        // attachment not yet available or service error — show nothing
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
+    };
+  }, [part.attachment, service]);
+
+  return objectUrl ?? part.url ?? undefined;
+}
+
+// ── Main renderer ─────────────────────────────────────────────────────────────
 
 interface ContentPartRendererProps {
   part: ContentPart;
@@ -124,15 +190,8 @@ function ToolResultRenderer({ part }: { part: ContentPart }) {
   );
 }
 
-function getDownloadHref(part: ContentPart): string | undefined {
-  if (part.url) return part.url;
-  if (part.data) return `data:${part.mediaType ?? 'application/octet-stream'};base64,${part.data}`;
-  return undefined;
-}
-
 function ImagePartRenderer({ part }: { part: ContentPart }) {
-  const src = part.url ?? (part.data ? `data:${part.mediaType ?? 'image/png'};base64,${part.data}` : undefined);
-  const href = getDownloadHref(part);
+  const src = useAttachmentUrl(part);
 
   if (!src) {
     return (
@@ -147,18 +206,16 @@ function ImagePartRenderer({ part }: { part: ContentPart }) {
     <div className="flex justify-center">
       <div className="group/img relative inline-block">
         <img src={src} alt={part.filename ?? 'Image'} className="max-h-64 rounded-md border border-border" />
-        {href && (
-          <a href={href} download={part.filename ?? 'image.png'} className="absolute top-2 right-2 hidden rounded-md bg-black/60 p-1.5 text-white hover:bg-black/80 group-hover/img:block">
-            <DownloadIcon className="size-4" />
-          </a>
-        )}
+        <a href={src} download={part.filename ?? 'image.png'} className="absolute top-2 right-2 hidden rounded-md bg-black/60 p-1.5 text-white hover:bg-black/80 group-hover/img:block">
+          <DownloadIcon className="size-4" />
+        </a>
       </div>
     </div>
   );
 }
 
 function FilePartRenderer({ part }: { part: ContentPart }) {
-  const href = getDownloadHref(part);
+  const href = useAttachmentUrl(part);
   const inner = (
     <>
       <FileIcon className="size-5 shrink-0 text-muted-foreground" />
