@@ -10,15 +10,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { StreamChunk, ReactorContext, Logger, DocumentRegistry } from '@powerhousedao/ph-clint';
-import {
-  addAssistantMessage,
-  appendAssistantContent,
-  updateAssistantContent,
-  addToolResult,
-  addToolOutput,
-  updateUsageSummary,
-  endSession,
-} from '@powerhousedao/clint-common/document-models/chat-session';
+import { addAssistantMessage, appendAssistantContent, updateAssistantContent, addToolResult, addToolOutput, updateUsageSummary, endSession } from '@powerhousedao/clint-common/document-models/chat-session';
 import type { ChatSessionAction } from '@powerhousedao/clint-common/document-models/chat-session';
 import type { ChatSessionRegistry } from './chat-session-init.js';
 
@@ -41,13 +33,9 @@ const TAG = '[chat-bridge]';
 /**
  * Consume an agent stream and write each chunk to a chat-session document.
  */
-export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
-  stream: AsyncGenerator<StreamChunk>,
-  options: WriteBridgeOptions<R>,
-): Promise<void> {
+export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(stream: AsyncGenerator<StreamChunk>, options: WriteBridgeOptions<R>): Promise<void> {
   const { reactor, documentId, log } = options;
-  const dispatch = (action: ChatSessionAction) =>
-    reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [action]);
+  const dispatch = (action: ChatSessionAction) => reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [action]);
 
   // State machine
   let currentMsgId: string | null = null;
@@ -80,9 +68,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
     if (flushTimer) return;
     flushTimer = setTimeout(() => {
       flushTimer = null;
-      flushText().catch((err) =>
-        log?.error(`${TAG} throttled flush error:`, err),
-      );
+      flushText().catch((err) => log?.error(`${TAG} throttled flush error:`, err));
     }, FLUSH_INTERVAL_MS);
   }
 
@@ -136,9 +122,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
                     type: 'TOOL_CALL',
                     toolCallId: chunk.toolCallId ?? randomUUID(),
                     toolName: chunk.toolName,
-                    args: typeof chunk.args === 'string'
-                      ? chunk.args
-                      : JSON.stringify(chunk.args),
+                    args: typeof chunk.args === 'string' ? chunk.args : JSON.stringify(chunk.args),
                   },
                 ],
                 stepIndex,
@@ -157,9 +141,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
                   type: 'TOOL_CALL',
                   toolCallId: chunk.toolCallId ?? randomUUID(),
                   toolName: chunk.toolName,
-                  args: typeof chunk.args === 'string'
-                    ? chunk.args
-                    : JSON.stringify(chunk.args),
+                  args: typeof chunk.args === 'string' ? chunk.args : JSON.stringify(chunk.args),
                 },
               }),
             );
@@ -184,9 +166,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
                   type: 'TOOL_RESULT',
                   toolCallId: chunk.toolCallId ?? '',
                   toolName: chunk.toolName,
-                  result: typeof chunk.result === 'string'
-                    ? chunk.result
-                    : JSON.stringify(chunk.result),
+                  result: typeof chunk.result === 'string' ? chunk.result : JSON.stringify(chunk.result),
                   isError: chunk.isError ?? false,
                 },
               ],
@@ -243,10 +223,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
       }),
     );
 
-    log?.info(
-      `${TAG} stream complete for ${documentId}: ` +
-      `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls`,
-    );
+    log?.info(`${TAG} stream complete for ${documentId}: ` + `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls`);
   } catch (err) {
     await flushText().catch(() => {});
     log?.error(`${TAG} fatal error for ${documentId}:`, err);

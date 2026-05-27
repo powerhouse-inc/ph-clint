@@ -17,13 +17,7 @@ export type ChatSessionRegistry = DocumentRegistry & {
   'powerhouse/chat-session': RegistryEntry<ChatSessionPHState, ChatSessionAction>;
 };
 
-export async function ensureSessionInitialized<R extends ChatSessionRegistry>(
-  reactor: ReactorContext<R>,
-  documentId: string,
-  state: ChatSessionState,
-  agent: AgentProvider,
-  log?: Logger,
-): Promise<string> {
+export async function ensureSessionInitialized<R extends ChatSessionRegistry>(reactor: ReactorContext<R>, documentId: string, state: ChatSessionState, agent: AgentProvider, log?: Logger): Promise<string> {
   if (state.threadId) return state.threadId;
 
   const threadId = randomUUID();

@@ -96,8 +96,7 @@ export const documentModel: DocumentModelGlobalState = {
               description: 'Set or clear the agent avatar attachment ref.',
               schema: 'input SetAgentImageInput {\n  attachment: String\n}',
               template: 'Set or clear the agent avatar attachment ref.',
-              reducer:
-                'if (!state.agent) {\n  state.agent = { id: null, name: null, model: null, description: null, attachment: null };\n}\nstate.agent.attachment = action.input.attachment || null;',
+              reducer: 'if (!state.agent) {\n  state.agent = { id: null, name: null, model: null, description: null, attachment: null };\n}\nstate.agent.attachment = action.input.attachment || null;',
               errors: [],
               examples: [],
               scope: 'global',

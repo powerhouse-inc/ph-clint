@@ -1,8 +1,5 @@
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
-import type {
-  ChatSessionAction,
-  ChatSessionDocument,
-} from 'document-models/chat-session';
+import type { ChatSessionAction, ChatSessionDocument } from 'document-models/chat-session';
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { MoonIcon, PanelRightCloseIcon, PanelRightOpenIcon, PaperclipIcon, SunIcon } from 'lucide-react';
 import { AgentInfoHeader } from './components/AgentInfoHeader.js';
@@ -83,17 +80,7 @@ export function ChatSession({ document, dispatch, className, header }: ChatSessi
   }, [toggleTestPane]);
 
   return (
-    <div
-      ref={rootRef}
-      className={cn(
-        'flex h-full w-full flex-col overflow-hidden bg-background text-foreground',
-        className,
-      )}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnter={onDragEnter}
-      onDragLeave={onDragLeave}
-    >
+    <div ref={rootRef} className={cn('flex h-full w-full flex-col overflow-hidden bg-background text-foreground', className)} onDragOver={onDragOver} onDrop={onDrop} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
       {header}
       <div className="relative flex flex-1 overflow-hidden">
         {isDragOver && (
@@ -108,42 +95,18 @@ export function ChatSession({ document, dispatch, className, header }: ChatSessi
         <div className="flex flex-1 flex-col min-w-0">
           <AgentInfoHeader agent={state.agent} />
           <ConversationView messages={state.messages} />
-          <ChatInputBar
-            dispatch={dispatch}
-            disabled={state.status !== 'ACTIVE'}
-            addFilesRef={addFilesRef}
-          />
-          <SessionStatusBar
-            status={state.status}
-            startedAt={state.startedAt}
-            endedAt={state.endedAt}
-            usage={state.usage}
-            messageCount={state.messages.length}
-          >
-            <button
-              type="button"
-              onClick={toggleDarkMode}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              title="Toggle Dark Mode"
-            >
+          <ChatInputBar dispatch={dispatch} disabled={state.status !== 'ACTIVE'} addFilesRef={addFilesRef} />
+          <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length}>
+            <button type="button" onClick={toggleDarkMode} className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80" title="Toggle Dark Mode">
               {isDark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}
             </button>
             <button
               type="button"
               onClick={toggleTestPane}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                showTestPane
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-              )}
+              className={cn('flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors', showTestPane ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}
               title="Toggle Test Pane (Ctrl+Shift+T)"
             >
-              {showTestPane ? (
-                <PanelRightCloseIcon className="size-3.5" />
-              ) : (
-                <PanelRightOpenIcon className="size-3.5" />
-              )}
+              {showTestPane ? <PanelRightCloseIcon className="size-3.5" /> : <PanelRightOpenIcon className="size-3.5" />}
               Test
             </button>
           </SessionStatusBar>

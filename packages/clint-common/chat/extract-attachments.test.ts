@@ -1,26 +1,57 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { readFileSync, existsSync, readFile } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { readFile as readFileAsync } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import type { ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
-import {
-  extensionForMediaType,
-  resolveFilename,
-  extractAttachments,
-  resetExtractedCache,
-} from './extract-attachments.js';
+import type { IAttachmentService, AttachmentRef, AttachmentHeader } from '@powerhousedao/ph-clint';
+import { extensionForMediaType, resolveFilename, extractAttachments, resetExtractedCache } from './extract-attachments.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(__dirname, '..', 'prometheus.png');
-const FIXTURE_BASE64 = readFileSync(FIXTURE_PATH).toString('base64');
+const FIXTURE_BYTES = readFileSync(FIXTURE_PATH);
+
+// A fake attachment ref used in tests.
+const TEST_REF = 'attachment://v1:deadbeef' as AttachmentRef;
+
+/** Build a ReadableStream<Uint8Array> from a Buffer. */
+function streamFromBuffer(buf: Buffer): ReadableStream<Uint8Array> {
+  return new Response(new Uint8Array(buf)).body!;
+}
+
+/** Minimal stub that returns `bytes` for any get() call. */
+function makeService(bytes: Buffer, mimeType = 'image/png'): IAttachmentService {
+  return {
+    get: (_ref: AttachmentRef): Promise<{ header: AttachmentHeader; body: ReadableStream<Uint8Array> }> =>
+      Promise.resolve({
+        header: {
+          hash: 'deadbeef',
+          mimeType,
+          fileName: 'fixture.png',
+          sizeBytes: bytes.byteLength,
+          extension: '.png',
+          status: 'available' as const,
+          source: 'local' as const,
+          createdAtUtc: new Date().toISOString(),
+          lastAccessedAtUtc: new Date().toISOString(),
+        },
+        body: streamFromBuffer(bytes),
+      }),
+    reserve: () => {
+      throw new Error('not implemented');
+    },
+    stat: () => {
+      throw new Error('not implemented');
+    },
+  };
+}
 
 function makePart(overrides: Partial<ContentPart> & { id: string; type: ContentPart['type'] }): ContentPart {
   return {
     args: null,
-    data: null,
+    attachment: null,
     error: null,
     filename: null,
     isError: null,
@@ -118,18 +149,20 @@ describe('extractAttachments', () => {
     await rm(workdir, { recursive: true, force: true });
   });
 
-  it('extracts base64 IMAGE data to downloads/ and verifies file content', async () => {
+  it('extracts IMAGE via service.get and verifies file content and bytes', async () => {
     const part = makePart({
       id: 'img001abcdef',
       type: 'IMAGE',
       mediaType: 'image/png',
-      data: FIXTURE_BASE64,
+      attachment: TEST_REF,
     });
     const message = makeMessage([part]);
+    const service = makeService(FIXTURE_BYTES);
 
     const results = await extractAttachments(message, {
       workdir,
       documentId: 'doc-1',
+      service,
     });
 
     expect(results).toHaveLength(1);
@@ -140,8 +173,28 @@ describe('extractAttachments', () => {
 
     // Verify the file was written correctly
     const written = await readFileAsync(results[0].localPath);
-    const original = readFileSync(FIXTURE_PATH);
-    expect(written.equals(original)).toBe(true);
+    expect(written.equals(FIXTURE_BYTES)).toBe(true);
+
+    // Verify bytes are returned in the result
+    expect(results[0].bytes.equals(FIXTURE_BYTES)).toBe(true);
+  });
+
+  it('skips a part with attachment ref when no service is provided', async () => {
+    const part = makePart({
+      id: 'noservice1abc',
+      type: 'IMAGE',
+      mediaType: 'image/png',
+      attachment: TEST_REF,
+    });
+    const message = makeMessage([part]);
+
+    const results = await extractAttachments(message, {
+      workdir,
+      documentId: 'doc-noservice',
+    });
+
+    expect(results).toHaveLength(0);
+    expect(existsSync(join(workdir, 'downloads'))).toBe(false);
   });
 
   it('skips TEXT parts', async () => {
@@ -166,10 +219,10 @@ describe('extractAttachments', () => {
       id: 'dup001abcdef',
       type: 'IMAGE',
       mediaType: 'image/png',
-      data: FIXTURE_BASE64,
+      attachment: TEST_REF,
     });
     const message = makeMessage([part]);
-    const opts = { workdir, documentId: 'doc-3' };
+    const opts = { workdir, documentId: 'doc-3', service: makeService(FIXTURE_BYTES) };
 
     const first = await extractAttachments(message, opts);
     expect(first).toHaveLength(1);
@@ -178,7 +231,7 @@ describe('extractAttachments', () => {
     expect(second).toHaveLength(0);
   });
 
-  it('handles parts with no data and no url gracefully', async () => {
+  it('handles parts with no attachment and no url gracefully', async () => {
     const part = makePart({
       id: 'empty1abcdef',
       type: 'FILE',
@@ -195,18 +248,19 @@ describe('extractAttachments', () => {
   });
 
   it('extracts multiple attachments from one message', async () => {
+    const fakePdfBytes = Buffer.from('fake pdf content');
     const imgPart = makePart({
       id: 'multi1abcdef',
       type: 'IMAGE',
       mediaType: 'image/png',
-      data: FIXTURE_BASE64,
+      attachment: TEST_REF,
     });
     const filePart = makePart({
       id: 'multi2abcdef',
       type: 'FILE',
       mediaType: 'application/pdf',
       filename: 'report.pdf',
-      data: Buffer.from('fake pdf content').toString('base64'),
+      attachment: 'attachment://v1:cafebabe',
     });
     const textPart = makePart({
       id: 'multi3aaaaaa',
@@ -215,9 +269,38 @@ describe('extractAttachments', () => {
     });
     const message = makeMessage([textPart, imgPart, filePart]);
 
+    // Service returns different bytes depending on the ref
+    const serviceStub: IAttachmentService = {
+      get: (ref: AttachmentRef): Promise<{ header: AttachmentHeader; body: ReadableStream<Uint8Array> }> => {
+        const refBytes = ref.includes('deadbeef') ? FIXTURE_BYTES : fakePdfBytes;
+        const mimeType = ref.includes('deadbeef') ? 'image/png' : 'application/pdf';
+        return Promise.resolve({
+          header: {
+            hash: ref,
+            mimeType,
+            fileName: 'file',
+            sizeBytes: refBytes.byteLength,
+            extension: null,
+            status: 'available' as const,
+            source: 'local' as const,
+            createdAtUtc: new Date().toISOString(),
+            lastAccessedAtUtc: new Date().toISOString(),
+          },
+          body: streamFromBuffer(refBytes),
+        });
+      },
+      reserve: () => {
+        throw new Error('not implemented');
+      },
+      stat: () => {
+        throw new Error('not implemented');
+      },
+    };
+
     const results = await extractAttachments(message, {
       workdir,
       documentId: 'doc-5',
+      service: serviceStub,
     });
 
     expect(results).toHaveLength(2);
@@ -227,5 +310,9 @@ describe('extractAttachments', () => {
     // Both files exist on disk
     expect(existsSync(results[0].localPath)).toBe(true);
     expect(existsSync(results[1].localPath)).toBe(true);
+
+    // Bytes are present
+    expect(results[0].bytes.equals(FIXTURE_BYTES)).toBe(true);
+    expect(results[1].bytes.equals(fakePdfBytes)).toBe(true);
   });
 });
