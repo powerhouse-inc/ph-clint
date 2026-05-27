@@ -167,6 +167,7 @@ describe('extractAttachments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].partId).toBe('img001abcdef');
+    expect(results[0].partType).toBe('IMAGE');
     expect(results[0].filename).toBe('attachment_img001.png');
     expect(results[0].localPath).toBe(join(workdir, 'downloads', 'attachment_img001.png'));
     expect(results[0].mediaType).toBe('image/png');
@@ -229,6 +230,29 @@ describe('extractAttachments', () => {
 
     const second = await extractAttachments(message, opts);
     expect(second).toHaveLength(0);
+  });
+
+  it('preserves partType from the original content part, not the resolved mediaType', async () => {
+    // A FILE part whose service header returns image/png should still have partType 'FILE'.
+    const part = makePart({
+      id: 'fileasimg1ab',
+      type: 'FILE',
+      mediaType: 'image/png',
+      attachment: TEST_REF,
+    });
+    const message = makeMessage([part]);
+    // Service returns image/png in the header (same as the part's declared mediaType).
+    const service = makeService(FIXTURE_BYTES, 'image/png');
+
+    const results = await extractAttachments(message, {
+      workdir,
+      documentId: 'doc-parttype',
+      service,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].partType).toBe('FILE');
+    expect(results[0].mediaType).toBe('image/png');
   });
 
   it('handles parts with no attachment and no url gracefully', async () => {
@@ -305,7 +329,9 @@ describe('extractAttachments', () => {
 
     expect(results).toHaveLength(2);
     expect(results[0].filename).toBe('attachment_multi1.png');
+    expect(results[0].partType).toBe('IMAGE');
     expect(results[1].filename).toBe('report_multi2.pdf');
+    expect(results[1].partType).toBe('FILE');
 
     // Both files exist on disk
     expect(existsSync(results[0].localPath)).toBe(true);

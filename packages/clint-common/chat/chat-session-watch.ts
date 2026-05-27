@@ -87,7 +87,7 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
         // Build multimodal prompt: include images natively so the model
         // can see them, plus file paths so agent tools can read them.
         // Image bytes come from the already-resolved attachments (no second service.get).
-        const imageAttachments = attachments.filter((a) => a.mediaType?.startsWith('image/'));
+        const imageAttachments = attachments.filter((a) => a.partType === 'IMAGE');
 
         let prompt: string | AgentContentPart[];
         if (imageAttachments.length > 0) {

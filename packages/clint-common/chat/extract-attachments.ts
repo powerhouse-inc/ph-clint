@@ -11,6 +11,8 @@ const TAG = '[extract-attachments]';
 
 export interface ExtractedAttachment {
   partId: string;
+  /** The original content part type ('IMAGE' | 'FILE'). */
+  partType: 'IMAGE' | 'FILE';
   filename: string;
   localPath: string;
   mediaType: string | null;
@@ -130,6 +132,7 @@ export async function extractAttachments(message: Message, options: ExtractAttac
       seen.add(part.id);
       results.push({
         partId: part.id,
+        partType: part.type as 'IMAGE' | 'FILE',
         filename,
         localPath,
         mediaType: resolvedMediaType,
