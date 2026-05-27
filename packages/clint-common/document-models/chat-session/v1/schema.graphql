@@ -48,9 +48,7 @@ type AgentInfo {
   name: String
   model: String
   description: String
-  image: String
-  imageMediaType: String
-  imageUrl: URL
+  attachment: String
 }
 
 type MessageUsage {
@@ -148,9 +146,7 @@ input AddSystemMessageInput {
 }
 
 input SetAgentImageInput {
-  data: String
-  mediaType: String
-  url: URL
+  attachment: String
 }
 
 input SetAgentDescriptionInput {

@@ -7,15 +7,9 @@ import {
   utils,
   type ImportSpecInput,
 } from "document-models/ph-clint-project/v1";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const PROMETHEUS_PNG = resolve(
-  import.meta.dirname,
-  "prometheus-zoomed-small.png",
-);
-const DATA_URL = `data:image/png;base64,${readFileSync(PROMETHEUS_PNG).toString("base64")}`;
+const ATTACHMENT_REF = "attachment://v1:abc123deadbeef";
 
 function baseInput(): ImportSpecInput {
   return {
@@ -52,7 +46,7 @@ function baseInput(): ImportSpecInput {
       id: "my-agent",
       name: "My Agent",
       description: null,
-      image: null,
+      attachment: null,
       modelId: "anthropic/claude-sonnet-4-5",
       profileIds: ["base"],
       skills: [],
@@ -124,19 +118,14 @@ describe("LifecycleOperations.importSpec", () => {
     expect(main.profileIds).toEqual(["base"]);
   });
 
-  it("validates main agent image — must be a data URL", () => {
+  it("stores main agent attachment ref", () => {
     const input = baseInput();
-    input.mainAgent = { ...input.mainAgent!, image: "https://x.com/a.png" };
+    input.mainAgent = { ...input.mainAgent!, attachment: ATTACHMENT_REF };
     const doc = reducer(utils.createDocument(), importSpec(input));
-    const op = doc.operations.global[0];
-    expect(op.error).toContain("data URL");
-  });
-
-  it("stores main agent image when it is a valid data URL", () => {
-    const input = baseInput();
-    input.mainAgent = { ...input.mainAgent!, image: DATA_URL };
-    const doc = reducer(utils.createDocument(), importSpec(input));
-    expect(doc.state.global.features.mastra.mainAgent!.image).toBe(DATA_URL);
+    expect(doc.operations.global[0].error).toBeUndefined();
+    expect(doc.state.global.features.mastra.mainAgent!.attachment).toBe(
+      ATTACHMENT_REF,
+    );
   });
 
   it("imports sub-agents", () => {

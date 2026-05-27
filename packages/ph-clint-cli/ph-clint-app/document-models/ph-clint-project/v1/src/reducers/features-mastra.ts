@@ -35,7 +35,7 @@ export const phClintProjectFeaturesMastraOperations: PhClintProjectFeaturesMastr
           id: action.input.agentId,
           name: trimmedName,
           description: null,
-          image: null,
+          attachment: null,
           modelId: "clint/demo-agent",
           profileIds: ["base"],
           skills: [],

@@ -1,5 +1,4 @@
 import type { PhClintProjectLifecycleOperations } from "document-models/ph-clint-project/v1";
-import { InvalidAgentImageError } from "../../gen/lifecycle/error.js";
 
 export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperations =
   {
@@ -42,20 +41,11 @@ export const phClintProjectLifecycleOperations: PhClintProjectLifecycleOperation
 
       if (action.input.mainAgent && state.features.mastra.enabled) {
         const m = action.input.mainAgent;
-        let image: string | null = null;
-        if (m.image) {
-          if (!/^data:[a-z]+\/[a-z0-9.+-]+;base64,/.test(m.image)) {
-            throw new InvalidAgentImageError(
-              "Invalid image: must be a data URL (data:<mime>;base64,...)",
-            );
-          }
-          image = m.image;
-        }
         state.features.mastra.mainAgent = {
           id: m.id,
           name: m.name,
           description: m.description || null,
-          image,
+          attachment: m.attachment || null,
           modelId: m.modelId,
           profileIds: [...m.profileIds],
           skills: [...m.skills],

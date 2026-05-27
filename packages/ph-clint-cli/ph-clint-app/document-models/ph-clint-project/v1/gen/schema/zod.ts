@@ -268,9 +268,9 @@ export function ImportMainAgentInputSchema(): z.ZodObject<
   Properties<ImportMainAgentInput>
 > {
   return z.object({
+    attachment: z.string().nullish(),
     description: z.string().nullish(),
     id: z.string(),
-    image: z.string().nullish(),
     modelId: z.string(),
     name: z.string(),
     profileIds: z.array(z.string()),
@@ -403,9 +403,9 @@ export function PhClintMainAgentSchema(): z.ZodObject<
 > {
   return z.object({
     __typename: z.literal("PhClintMainAgent").optional(),
+    attachment: z.string().nullish(),
     description: z.string().nullish(),
     id: z.string(),
-    image: z.string().nullish(),
     modelId: z.string(),
     name: z.string(),
     profileIds: z.array(z.string()),
@@ -687,7 +687,7 @@ export function SetMainAgentImageInputSchema(): z.ZodObject<
   Properties<SetMainAgentImageInput>
 > {
   return z.object({
-    image: z.string(),
+    attachment: z.string(),
   });
 }
 

@@ -45,12 +45,12 @@ export const phClintProjectMastraMainAgentOperations: PhClintProjectMastraMainAg
           "Cannot set main agent image when Mastra is disabled.",
         );
       }
-      if (!/^data:[a-z]+\/[a-z0-9.+-]+;base64,/.test(action.input.image)) {
+      if (!action.input.attachment.startsWith("attachment://")) {
         throw new InvalidAgentImageError(
-          "Agent image must be a data URL (data:image/...;base64,...)",
+          "Agent image must be an attachment ref (attachment://...)",
         );
       }
-      main.image = action.input.image;
+      main.attachment = action.input.attachment;
     },
     clearMainAgentImageOperation(state) {
       const main = state.features.mastra.mainAgent;
@@ -59,6 +59,6 @@ export const phClintProjectMastraMainAgentOperations: PhClintProjectMastraMainAg
           "Cannot clear main agent image when Mastra is disabled.",
         );
       }
-      main.image = null;
+      main.attachment = null;
     },
   };

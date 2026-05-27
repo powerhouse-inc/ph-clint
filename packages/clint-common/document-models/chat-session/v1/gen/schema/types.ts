@@ -95,11 +95,9 @@ export type AddUserMessageInput = {
 };
 
 export type AgentInfo = {
+  attachment: Maybe<Scalars['String']['output']>;
   description: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
-  image: Maybe<Scalars['String']['output']>;
-  imageMediaType: Maybe<Scalars['String']['output']>;
-  imageUrl: Maybe<Scalars['URL']['output']>;
   model: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
 };
@@ -192,9 +190,7 @@ export type SetAgentDescriptionInput = {
 };
 
 export type SetAgentImageInput = {
-  data?: InputMaybe<Scalars['String']['input']>;
-  mediaType?: InputMaybe<Scalars['String']['input']>;
-  url?: InputMaybe<Scalars['URL']['input']>;
+  attachment?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SetAgentInfoInput = {

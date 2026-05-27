@@ -102,11 +102,9 @@ export function AddUserMessageInputSchema(): z.ZodObject<Properties<AddUserMessa
 export function AgentInfoSchema(): z.ZodObject<Properties<AgentInfo>> {
   return z.object({
     __typename: z.literal('AgentInfo').optional(),
+    attachment: z.string().nullish(),
     description: z.string().nullish(),
     id: z.string().nullish(),
-    image: z.string().nullish(),
-    imageMediaType: z.string().nullish(),
-    imageUrl: z.url().nullish(),
     model: z.string().nullish(),
     name: z.string().nullish(),
   });
@@ -219,9 +217,7 @@ export function SetAgentDescriptionInputSchema(): z.ZodObject<Properties<SetAgen
 
 export function SetAgentImageInputSchema(): z.ZodObject<Properties<SetAgentImageInput>> {
   return z.object({
-    data: z.string().nullish(),
-    mediaType: z.string().nullish(),
-    url: z.url().nullish(),
+    attachment: z.string().nullish(),
   });
 }
 

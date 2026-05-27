@@ -9,15 +9,9 @@ import {
   utils,
   type PhClintProjectDocument,
 } from "document-models/ph-clint-project/v1";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const PROMETHEUS_PNG = resolve(
-  import.meta.dirname,
-  "prometheus-zoomed-small.png",
-);
-const DATA_URL = `data:image/png;base64,${readFileSync(PROMETHEUS_PNG).toString("base64")}`;
+const ATTACHMENT_REF = "attachment://v1:abc123deadbeef";
 
 function enabled(): PhClintProjectDocument {
   return reducer(
@@ -81,35 +75,43 @@ describe("MastraMainAgentOperations", () => {
   });
 
   describe("SET_MAIN_AGENT_IMAGE", () => {
-    it("stores a data URL image", () => {
-      const doc = reducer(enabled(), setMainAgentImage({ image: DATA_URL }));
-      expect(doc.state.global.features.mastra.mainAgent!.image).toBe(DATA_URL);
-    });
-
-    it("rejects a non-data URL", () => {
+    it("stores an attachment ref", () => {
       const doc = reducer(
         enabled(),
-        setMainAgentImage({ image: "https://example.com/avatar.png" }),
+        setMainAgentImage({ attachment: ATTACHMENT_REF }),
+      );
+      expect(doc.state.global.features.mastra.mainAgent!.attachment).toBe(
+        ATTACHMENT_REF,
+      );
+    });
+
+    it("rejects a non-attachment-ref string", () => {
+      const doc = reducer(
+        enabled(),
+        setMainAgentImage({ attachment: "https://example.com/avatar.png" }),
       );
       const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain("data URL");
-      expect(doc.state.global.features.mastra.mainAgent!.image).toBeNull();
+      expect(op.error).toContain("attachment://");
+      expect(doc.state.global.features.mastra.mainAgent!.attachment).toBeNull();
     });
 
     it("rejects when mastra is disabled", () => {
       const doc = reducer(
         utils.createDocument(),
-        setMainAgentImage({ image: DATA_URL }),
+        setMainAgentImage({ attachment: ATTACHMENT_REF }),
       );
       expect(doc.operations.global[0].error).toContain("Mastra is disabled");
     });
   });
 
   describe("CLEAR_MAIN_AGENT_IMAGE", () => {
-    it("clears the image to null", () => {
-      let doc = reducer(enabled(), setMainAgentImage({ image: DATA_URL }));
+    it("clears the attachment to null", () => {
+      let doc = reducer(
+        enabled(),
+        setMainAgentImage({ attachment: ATTACHMENT_REF }),
+      );
       doc = reducer(doc, clearMainAgentImage({ _: true }));
-      expect(doc.state.global.features.mastra.mainAgent!.image).toBeNull();
+      expect(doc.state.global.features.mastra.mainAgent!.attachment).toBeNull();
     });
   });
 });

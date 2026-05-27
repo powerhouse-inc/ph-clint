@@ -149,9 +149,9 @@ export type ExternalSkill = {
 };
 
 export type ImportMainAgentInput = {
+  attachment?: InputMaybe<Scalars["String"]["input"]>;
   description?: InputMaybe<Scalars["String"]["input"]>;
   id: Scalars["OID"]["input"];
-  image?: InputMaybe<Scalars["String"]["input"]>;
   modelId: Scalars["OID"]["input"];
   name: Scalars["String"]["input"];
   profileIds: Array<Scalars["OID"]["input"]>;
@@ -235,9 +235,9 @@ export type PhClintFeatures = {
 };
 
 export type PhClintMainAgent = {
+  attachment: Maybe<Scalars["String"]["output"]>;
   description: Maybe<Scalars["String"]["output"]>;
   id: Scalars["OID"]["output"];
-  image: Maybe<Scalars["String"]["output"]>;
   modelId: Scalars["OID"]["output"];
   name: Scalars["String"]["output"];
   profileIds: Array<Scalars["OID"]["output"]>;
@@ -408,7 +408,7 @@ export type SetMainAgentDescriptionInput = {
 };
 
 export type SetMainAgentImageInput = {
-  image: Scalars["String"]["input"];
+  attachment: Scalars["String"]["input"];
 };
 
 export type SetMainAgentNameInput = {
