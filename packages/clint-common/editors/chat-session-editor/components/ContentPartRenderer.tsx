@@ -15,6 +15,10 @@ export function AttachmentServiceProvider({ service, children }: { service: IAtt
   return <AttachmentServiceContext.Provider value={service}>{children}</AttachmentServiceContext.Provider>;
 }
 
+export function useAttachmentService(): IAttachmentService | undefined {
+  return useContext(AttachmentServiceContext);
+}
+
 /**
  * Resolve a displayable URL for a content part that may carry an attachment ref.
  * When `part.attachment` is set the ref is fetched via the context service and an
