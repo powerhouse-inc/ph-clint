@@ -34,9 +34,7 @@ export function useAttachmentUrl(attachment: string | null | undefined, fallback
 
     void (async () => {
       try {
-        const { body, header } = await service.get(
-          attachment as Parameters<typeof service.get>[0],
-        );
+        const { body, header } = await service.get(attachment as Parameters<typeof service.get>[0]);
         const chunks: Uint8Array[] = [];
         const reader = body.getReader();
         for (;;) {
