@@ -31,6 +31,75 @@ export interface WriteBridgeOptions<R extends ChatSessionRegistry = ChatSessionR
 const TAG = '[chat-bridge]';
 
 /**
+ * Cap on any tool text persisted to the document. The document is a mirror —
+ * the model reads the full result from its own memory — so verbose tools
+ * (command output, search) are elided rather than bloating every load.
+ */
+const MAX_TOOL_RESULT_CHARS = 1_000;
+
+/**
+ * Make tool text safe and bounded for the operation store: cap its length,
+ * then strip characters JSON-backed stores (Postgres jsonb) reject — NUL and
+ * unpaired surrogates, which otherwise fail the write with "unsupported
+ * Unicode escape sequence". Applies to every tool result, not just reads.
+ */
+function sanitizeForStore(text: string, log?: Logger, label = 'tool result'): string {
+  let capped = text;
+  if (text.length > MAX_TOOL_RESULT_CHARS) {
+    log?.warn(`${TAG} truncated ${label} from ${text.length} to ${MAX_TOOL_RESULT_CHARS} chars`);
+    capped = `${text.slice(0, MAX_TOOL_RESULT_CHARS)}\n…[truncated ${text.length - MAX_TOOL_RESULT_CHARS} chars]`;
+  }
+  let out = '';
+  for (let i = 0; i < capped.length; i++) {
+    const code = capped.charCodeAt(i);
+    if (code === 0) continue; // NUL
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = capped.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        out += capped[i] + capped[i + 1];
+        i++;
+      } else {
+        out += '�'; // unpaired high surrogate
+      }
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) {
+      out += '�'; // unpaired low surrogate
+      continue;
+    }
+    out += capped[i];
+  }
+  return out;
+}
+
+/**
+ * Tools whose result is file contents. The document never stores file bodies —
+ * the model has the full read via its own memory — so only the metadata header
+ * the tool prepends ("path (N bytes, encoding)") is persisted.
+ */
+const FILE_CONTENT_TOOLS = new Set(['mastra_workspace_read_file']);
+
+/**
+ * Build the persisted form of a tool result. Workspace media reads return a
+ * base64 blob ({ __workspaceMedia, text, mediaType, data }); keep the header
+ * and media type, drop the blob. File-content tools keep only their header
+ * line. Everything else is serialized, capped, and stripped of store-hostile
+ * characters.
+ */
+function prepareToolResult(result: unknown, toolName: string, log?: Logger): { result: string; mediaType: string | null } {
+  if (result && typeof result === 'object' && (result as { __workspaceMedia?: unknown }).__workspaceMedia) {
+    const media = result as { text?: string; mediaType?: string };
+    return { result: sanitizeForStore(media.text ?? '[media]', log, toolName), mediaType: media.mediaType ?? null };
+  }
+  const raw = typeof result === 'string' ? result : JSON.stringify(result) ?? '';
+  if (FILE_CONTENT_TOOLS.has(toolName)) {
+    // Keep the header line only; everything after the first newline is file body.
+    return { result: sanitizeForStore(raw.split('\n', 1)[0], log, toolName), mediaType: null };
+  }
+  return { result: sanitizeForStore(raw, log, toolName), mediaType: null };
+}
+
+/**
  * Consume an agent stream and write each chunk to a chat-session document.
  */
 export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(stream: AsyncGenerator<StreamChunk>, options: WriteBridgeOptions<R>): Promise<void> {
@@ -157,6 +226,8 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
           currentToolMsgId = toolMsgId;
           stats.totalMessages++;
 
+          const prepared = prepareToolResult(chunk.result, chunk.toolName, log);
+
           await dispatch(
             addToolResult({
               id: toolMsgId,
@@ -166,7 +237,8 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
                   type: 'TOOL_RESULT',
                   toolCallId: chunk.toolCallId ?? '',
                   toolName: chunk.toolName,
-                  result: typeof chunk.result === 'string' ? chunk.result : JSON.stringify(chunk.result),
+                  result: prepared.result,
+                  mediaType: prepared.mediaType,
                   isError: chunk.isError ?? false,
                 },
               ],
@@ -191,7 +263,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
                 partId,
                 toolCallId: chunk.toolCallId ?? '',
                 toolName: chunk.toolName,
-                text: chunk.text,
+                text: sanitizeForStore(chunk.text, log, `${chunk.toolName} output`),
               }),
             );
           }
