@@ -64,13 +64,20 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
         .map((p: ContentPart) => p.text!)
         .join('\n');
 
-      if (!userText) {
-        log?.info(`${TAG} ${documentId} user message has no text content, skipping`);
+      // Let image/file-only messages through — attachments are resolved below.
+      const hasAttachmentParts = lastMessage.content.some(
+        (p: ContentPart) => p.type === 'IMAGE' || p.type === 'FILE',
+      );
+
+      if (!userText && !hasAttachmentParts) {
+        log?.info(`${TAG} ${documentId} user message has no text or attachments, skipping`);
         continue;
       }
 
       inFlight.add(documentId);
-      log?.info(`${TAG} processing ${documentId}: user said "${userText.slice(0, 80)}..."`);
+      log?.info(
+        `${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`,
+      );
 
       try {
         // Lazy session init: assigns threadId if not set
@@ -103,14 +110,16 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
           if (attachments.length > 0) {
             log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
             const pathList = attachments.map((a) => `- ${a.filename}: ${a.localPath}`).join('\n');
-            text += `\n\n[Attached files saved to disk]\n${pathList}`;
+            const note = `[Attached files saved to disk]\n${pathList}`;
+            text = text ? `${text}\n\n${note}` : note;
           }
-          parts.push({ type: 'text', text });
+          if (text) parts.push({ type: 'text', text });
           prompt = parts;
         } else if (attachments.length > 0) {
           log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
           const pathList = attachments.map((a) => `- ${a.filename}: ${a.localPath}`).join('\n');
-          prompt = `${userText}\n\n[Attached files saved to disk]\n${pathList}`;
+          const note = `[Attached files saved to disk]\n${pathList}`;
+          prompt = userText ? `${userText}\n\n${note}` : note;
         } else {
           prompt = userText;
         }
