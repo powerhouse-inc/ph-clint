@@ -29,6 +29,7 @@ import type {
 import type { ProxyServerInstance } from './proxy.js';
 import { resolvePort } from '../integrations/powerhouse/ports.js';
 import { buildSwitchboardRoutes } from './proxy-routes.js';
+import { createRemoteAttachmentService } from '@powerhousedao/reactor-attachments';
 
 /**
  * Dependencies for a CLI runtime instance.
@@ -161,6 +162,15 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
     cachedReactor.switchboardUrl = switchboardInstance.switchboardUrl;
     cachedReactor.driveUrl = switchboardInstance.driveUrl;
     cachedReactor.mcpUrl = switchboardInstance.mcpUrl;
+
+    // Resolve attachment:// refs through the local switchboard. The
+    // /attachments/* routes mount at the host root, so use the origin.
+    // Skip if a service was injected externally.
+    if (!cachedReactor.attachments) {
+      cachedReactor.attachments = createRemoteAttachmentService({
+        remoteUrl: new URL(switchboardInstance.switchboardUrl).origin,
+      });
+    }
 
     context.emit?.('powerhouse:switchboard:ready', {
       switchboardUrl: switchboardInstance.switchboardUrl,
