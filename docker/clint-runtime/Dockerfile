@@ -45,9 +45,7 @@ RUN apt-get update \
        tini \
   && rm -rf /var/lib/apt/lists/*
 
-# pnpm via corepack — pinned in the user's home so global installs land
-# under HOME without needing root.
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@11.4.0 --activate
 
 # Non-root runtime user.
 RUN useradd -m -u 1001 -s /bin/bash clint
@@ -56,7 +54,8 @@ WORKDIR /home/clint
 
 ENV PNPM_HOME=/home/clint/.local/share/pnpm \
     PATH=/home/clint/.local/share/pnpm/bin:$PATH \
-    NODE_ENV=production
+    NODE_ENV=production \
+    pnpm_config_minimum_release_age=0
 
 # entrypoint.sh (the legacy install-at-start entrypoint) is retained in the
 # build context for rollback but is no longer the entrypoint. run.sh is the
