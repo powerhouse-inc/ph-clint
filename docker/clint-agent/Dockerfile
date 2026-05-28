@@ -31,9 +31,6 @@ ARG CLINT_REGISTRY=https://registry.dev.vetra.io
 RUN test -n "${CLINT_PACKAGE}" || (echo "CLINT_PACKAGE build-arg is required" >&2; exit 1) \
  && test -n "${CLINT_VERSION}" || (echo "CLINT_VERSION build-arg is required" >&2; exit 1)
 
-# --node-linker=hoisted: flat npm-style node_modules so transitive deps that
-#   under-declare can still be resolved by Node's walk (same flag the old
-#   entrypoint used).
 # --config.blockExoticSubdeps=false: pnpm 11 blocks URL-resolved subdeps by
 #   default; agent closures hit this via viem@>=2.51 -> ox (resolved via url).
 #   vetra-cli pins viem@2.49.0 through pnpm-workspace.yaml `overrides`, but
@@ -43,7 +40,6 @@ RUN test -n "${CLINT_PACKAGE}" || (echo "CLINT_PACKAGE build-arg is required" >&
 #   the legacy entrypoint, no regression. Revisit if an agent needs native builds.
 RUN pnpm add -g "${CLINT_PACKAGE}@${CLINT_VERSION}" \
       --registry "${CLINT_REGISTRY}" \
-      --node-linker=hoisted \
       --config.blockExoticSubdeps=false
 
 # Record what was baked, for debuggability / dedup sanity.
