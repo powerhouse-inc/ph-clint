@@ -17,13 +17,23 @@ export type ChatSessionRegistry = DocumentRegistry & {
   'powerhouse/chat-session': RegistryEntry<ChatSessionPHState, ChatSessionAction>;
 };
 
-export async function ensureSessionInitialized<R extends ChatSessionRegistry>(
-  reactor: ReactorContext<R>,
-  documentId: string,
-  state: ChatSessionState,
-  agent: AgentProvider,
-  log?: Logger,
-): Promise<string> {
+async function resolveImageSource(image: string): Promise<{ mimeType: string; stream: ReadableStream<Uint8Array> }> {
+  const dataUriMatch = image.match(/^data:([^;]+);base64,/);
+  if (dataUriMatch) {
+    const mimeType = dataUriMatch[1];
+    const base64Data = image.slice(dataUriMatch[0].length);
+    const bytes = Buffer.from(base64Data, 'base64');
+    const stream = new Blob([bytes]).stream() as ReadableStream<Uint8Array>;
+    return { mimeType, stream };
+  }
+  const res = await fetch(image);
+  if (!res.ok) throw new Error(`Failed to fetch agent image: ${res.status} ${res.statusText}`);
+  if (!res.body) throw new Error(`Agent image response has no body: ${image}`);
+  const mimeType = res.headers.get('content-type') ?? 'application/octet-stream';
+  return { mimeType, stream: res.body };
+}
+
+export async function ensureSessionInitialized<R extends ChatSessionRegistry>(reactor: ReactorContext<R>, documentId: string, state: ChatSessionState, agent: AgentProvider, log?: Logger): Promise<string> {
   if (state.threadId) return state.threadId;
 
   const threadId = randomUUID();
@@ -46,12 +56,14 @@ export async function ensureSessionInitialized<R extends ChatSessionRegistry>(
   ];
 
   if (agent.image) {
-    const dataUriMatch = agent.image.match(/^data:([^;]+);base64,/);
-    if (dataUriMatch) {
-      const base64Data = agent.image.slice(dataUriMatch[0].length);
-      actions.push(setAgentImage({ data: base64Data, mediaType: dataUriMatch[1] }));
+    const service = reactor.attachments;
+    if (!service) {
+      log?.warn(`${TAG} no attachment service wired; skipping agent image`);
     } else {
-      actions.push(setAgentImage({ url: agent.image }));
+      const { mimeType, stream } = await resolveImageSource(agent.image);
+      const upload = await service.reserve({ mimeType, fileName: `${agent.id}-avatar` });
+      const { ref } = await upload.send(stream);
+      actions.push(setAgentImage({ attachment: ref }));
     }
   }
 

@@ -1,6 +1,7 @@
 import type { AgentInfo } from 'document-models/chat-session';
 import { BotIcon, BrainIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { useState } from 'react';
+import { useAttachmentUrl } from './ContentPartRenderer.js';
 
 interface AgentInfoHeaderProps {
   agent: AgentInfo | null | undefined;
@@ -8,10 +9,9 @@ interface AgentInfoHeaderProps {
 
 export function AgentInfoHeader({ agent }: AgentInfoHeaderProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const avatarSrc = useAttachmentUrl(agent?.attachment) ?? null;
 
   if (!agent) return null;
-
-  const avatarSrc = agent.imageUrl ?? (agent.image ? `data:${agent.imageMediaType ?? 'image/png'};base64,${agent.image}` : null);
 
   if (collapsed) {
     return (

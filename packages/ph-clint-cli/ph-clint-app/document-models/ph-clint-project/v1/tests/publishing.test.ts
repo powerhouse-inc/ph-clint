@@ -1,4 +1,4 @@
-import { generateMock } from "document-model";
+import { generateMock } from 'document-model';
 import {
   bumpVersion,
   BumpVersionInputSchema,
@@ -13,11 +13,11 @@ import {
   setPublishStatus,
   SetPublishStatusInputSchema,
   utils,
-} from "document-models/ph-clint-project/v1";
-import { describe, expect, it } from "vitest";
+} from 'document-models/ph-clint-project/v1';
+import { describe, expect, it } from 'vitest';
 
-describe("PublishingOperations", () => {
-  it("should handle bumpVersion operation", () => {
+describe('PublishingOperations', () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -25,16 +25,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -42,16 +38,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -59,16 +51,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -76,16 +64,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -93,16 +77,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -110,16 +90,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -127,16 +103,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -144,16 +116,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -161,16 +129,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -178,16 +142,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -195,16 +155,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -212,16 +168,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -229,16 +181,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -246,16 +194,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -263,16 +207,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -280,16 +220,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -297,16 +233,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -314,16 +246,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -331,16 +259,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -348,16 +272,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -365,16 +285,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -382,16 +298,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -399,16 +311,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -416,16 +324,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -433,16 +337,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -450,16 +350,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -467,16 +363,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -484,16 +376,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -501,16 +389,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -518,16 +402,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -535,16 +415,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -552,16 +428,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -569,16 +441,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -586,16 +454,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -603,16 +467,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -620,16 +480,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -637,16 +493,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -654,16 +506,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -671,16 +519,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -688,16 +532,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -705,16 +545,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -722,16 +558,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -739,16 +571,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -756,16 +584,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -773,16 +597,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -790,16 +610,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -807,16 +623,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -824,16 +636,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -841,16 +649,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -858,16 +662,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -875,16 +675,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -892,16 +688,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -909,16 +701,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -926,16 +714,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -943,16 +727,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -960,16 +740,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -977,16 +753,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -994,16 +766,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -1011,16 +779,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -1028,16 +792,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -1045,16 +805,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -1062,16 +818,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -1079,16 +831,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -1096,16 +844,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -1113,16 +857,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle bumpVersion operation", () => {
+  it('should handle bumpVersion operation', () => {
     const document = utils.createDocument();
     const input = generateMock(BumpVersionInputSchema());
 
@@ -1130,16 +870,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "BUMP_VERSION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('BUMP_VERSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishDev operation", () => {
+  it('should handle publishDev operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishDevInputSchema());
 
@@ -1147,16 +883,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_DEV",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_DEV');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishStaging operation", () => {
+  it('should handle publishStaging operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishStagingInputSchema());
 
@@ -1164,16 +896,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_STAGING",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_STAGING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle publishProduction operation", () => {
+  it('should handle publishProduction operation', () => {
     const document = utils.createDocument();
     const input = generateMock(PublishProductionInputSchema());
 
@@ -1181,16 +909,12 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "PUBLISH_PRODUCTION",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('PUBLISH_PRODUCTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it("should handle setPublishStatus operation", () => {
+  it('should handle setPublishStatus operation', () => {
     const document = utils.createDocument();
     const input = generateMock(SetPublishStatusInputSchema());
 
@@ -1198,12 +922,8 @@ describe("PublishingOperations", () => {
 
     expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
     expect(updatedDocument.operations.global).toHaveLength(1);
-    expect(updatedDocument.operations.global[0].action.type).toBe(
-      "SET_PUBLISH_STATUS",
-    );
-    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
-      input,
-    );
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_PUBLISH_STATUS');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });

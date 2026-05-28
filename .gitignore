@@ -21,8 +21,14 @@ pnpm-lock.yaml
 /sandbox/*
 !/sandbox/.gitkeep
 
+# Hotseat
+/.hotseat/
+/HOTSEAT.md
+
 # Playwright CLI artifacts
 .playwright-cli/
 cli-test/
 clis/
 packages/tmp/
+.hotseat
+HOTSEAT.md

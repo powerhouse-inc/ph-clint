@@ -104,7 +104,7 @@ export function specToImportInput(spec: ClintProjectSpec): ImportSpecInput {
           id: main.id,
           name: main.name,
           description: main.description,
-          image: main.image,
+          attachment: main.image,
           modelId: main.modelId,
           profileIds: [...main.profileIds],
           skills: [...main.skills],

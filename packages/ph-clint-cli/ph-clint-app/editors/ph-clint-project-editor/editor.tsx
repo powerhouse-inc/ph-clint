@@ -1,6 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { generateId } from 'document-model';
 import { DocumentToolbar } from '@powerhousedao/design-system/connect';
+import { createRemoteAttachmentService, type IAttachmentService } from '@powerhousedao/reactor-attachments';
+import { DEFAULT_SWITCHBOARD_URL, getSwitchboardGatewayUrlFromDriveUrl, useSelectedDrive, usePHToast } from '@powerhousedao/reactor-browser';
 import { useSelectedPhClintProjectDocument, actions } from 'document-models/ph-clint-project';
 import type {
   PowerhouseLevel,
@@ -79,6 +81,15 @@ export default function Editor() {
   const state = document.state.global;
   const { powerhouse, mastra, routine } = state.features;
   const [activeTab, setActiveTab] = useState<Tab>('cli');
+  const [drive] = useSelectedDrive();
+  const driveRemoteUrl: string | undefined = (drive?.state?.local as { remoteUrl?: string } | undefined)?.remoteUrl;
+  const attachmentService = useMemo(
+    () =>
+      createRemoteAttachmentService({
+        remoteUrl: driveRemoteUrl ? getSwitchboardGatewayUrlFromDriveUrl(driveRemoteUrl) : DEFAULT_SWITCHBOARD_URL,
+      }),
+    [driveRemoteUrl],
+  );
 
   // identity dispatchers
   const setPackageIdentifier = (identifier: string) => dispatch(actions.setPackageIdentifier({ identifier }));
@@ -122,12 +133,11 @@ export default function Editor() {
   const setMainAgentName = (name: string) => dispatch(actions.setMainAgentName({ name }));
   const setMainAgentDescription = (description: string) => dispatch(actions.setMainAgentDescription({ description }));
   const clearMainAgentDescription = () => dispatch(actions.clearMainAgentDescription({ _: true }));
-  const setMainAgentImage = (image: string) => dispatch(actions.setMainAgentImage({ image }));
+  const setMainAgentImage = (attachment: string) => dispatch(actions.setMainAgentImage({ attachment }));
   const clearMainAgentImage = () => dispatch(actions.clearMainAgentImage({ _: true }));
 
   // sub agent dispatchers
-  const addSubAgent = (id: string, name: string, description: string, modelId: string) =>
-    dispatch(actions.addSubAgent({ id, name, description, modelId }));
+  const addSubAgent = (id: string, name: string, description: string, modelId: string) => dispatch(actions.addSubAgent({ id, name, description, modelId }));
   const removeSubAgent = (id: string) => dispatch(actions.removeSubAgent({ id }));
   const setSubAgentName = (id: string, name: string) => dispatch(actions.setSubAgentName({ id, name }));
   const setSubAgentDescription = (id: string, description: string) => dispatch(actions.setSubAgentDescription({ id, description }));
@@ -135,20 +145,16 @@ export default function Editor() {
   // library dispatchers
   const addModel = (id: string) => dispatch(actions.addModel({ id }));
   const removeModel = (id: string) => dispatch(actions.removeModel({ id }));
-  const addProfile = (id: string, title: string, content: string, insertBefore?: string) =>
-    dispatch(actions.addProfile({ id, title, content, insertBefore }));
+  const addProfile = (id: string, title: string, content: string, insertBefore?: string) => dispatch(actions.addProfile({ id, title, content, insertBefore }));
   const updateProfile = (id: string, title?: string, content?: string) => dispatch(actions.updateProfile({ id, title, content }));
   const removeProfile = (id: string) => dispatch(actions.removeProfile({ id }));
   const reorderProfiles = (ids: string[], insertBefore: string | null) => dispatch(actions.reorderProfiles({ ids, insertBefore }));
 
   // per-agent binding dispatchers
   const setAgentModel = (agentId: string, modelId: string) => dispatch(actions.setAgentModel({ agentId, modelId }));
-  const addAgentProfileRef = (agentId: string, profileId: string, insertBefore?: string) =>
-    dispatch(actions.addAgentProfileRef({ agentId, profileId, insertBefore }));
-  const removeAgentProfileRef = (agentId: string, profileId: string) =>
-    dispatch(actions.removeAgentProfileRef({ agentId, profileId }));
-  const reorderAgentProfileRefs = (agentId: string, ids: string[], insertBefore: string | null) =>
-    dispatch(actions.reorderAgentProfileRefs({ agentId, ids, insertBefore }));
+  const addAgentProfileRef = (agentId: string, profileId: string, insertBefore?: string) => dispatch(actions.addAgentProfileRef({ agentId, profileId, insertBefore }));
+  const removeAgentProfileRef = (agentId: string, profileId: string) => dispatch(actions.removeAgentProfileRef({ agentId, profileId }));
+  const reorderAgentProfileRefs = (agentId: string, ids: string[], insertBefore: string | null) => dispatch(actions.reorderAgentProfileRefs({ agentId, ids, insertBefore }));
   const addAgentSkill = (agentId: string, name: string) => dispatch(actions.addAgentSkill({ agentId, name }));
   const removeAgentSkill = (agentId: string, name: string) => dispatch(actions.removeAgentSkill({ agentId, name }));
   const addAgentToolPattern = (agentId: string, pattern: string) => dispatch(actions.addAgentToolPattern({ agentId, pattern }));
@@ -204,6 +210,7 @@ export default function Editor() {
         {activeTab === 'agents' && (
           <AgentsTab
             mastra={mastra}
+            attachments={attachmentService}
             setMainAgentName={setMainAgentName}
             setMainAgentDescription={setMainAgentDescription}
             clearMainAgentDescription={clearMainAgentDescription}
@@ -224,28 +231,11 @@ export default function Editor() {
           />
         )}
 
-        {activeTab === 'profiles' && (
-          <ProfilesTab
-            mastra={mastra}
-            addProfile={addProfile}
-            updateProfile={updateProfile}
-            removeProfile={removeProfile}
-            reorderProfiles={reorderProfiles}
-          />
-        )}
+        {activeTab === 'profiles' && <ProfilesTab mastra={mastra} addProfile={addProfile} updateProfile={updateProfile} removeProfile={removeProfile} reorderProfiles={reorderProfiles} />}
 
         {activeTab === 'skills' && <SkillsTab skills={state.externalSkills} addSkill={addSkill} removeSkill={removeSkill} />}
 
-        {activeTab === 'powerhouse' && (
-          <PowerhouseTab
-            packages={state.packages}
-            isAboveDisabled={isAboveDisabled}
-            addPackage={addPackage}
-            removePackage={removePackage}
-            addDocType={addDocType}
-            removeDocType={removeDocType}
-          />
-        )}
+        {activeTab === 'powerhouse' && <PowerhouseTab packages={state.packages} isAboveDisabled={isAboveDisabled} addPackage={addPackage} removePackage={removePackage} addDocType={addDocType} removeDocType={removeDocType} />}
 
         {activeTab === 'publish' && (
           <PublishTab
@@ -326,13 +316,7 @@ function CliTab(props: {
           <Toggle label="Mastra" checked={mastra.enabled} hint="AI agent framework" onChange={props.toggleMastra} />
           {mastra.enabled && (
             <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
-              <ModelsSection
-                models={mastra.models}
-                main={mastra.mainAgent}
-                subAgents={mastra.subAgents}
-                addModel={props.addModel}
-                removeModel={props.removeModel}
-              />
+              <ModelsSection models={mastra.models} main={mastra.mainAgent} subAgents={mastra.subAgents} addModel={props.addModel} removeModel={props.removeModel} />
               <div>
                 <h4 className="text-sm font-semibold text-gray-700">Common</h4>
                 <Toggle
@@ -359,6 +343,7 @@ function CliTab(props: {
 
 interface AgentsTabProps {
   mastra: PhClintMastraFeature;
+  attachments?: IAttachmentService;
   setMainAgentName: (name: string) => void;
   setMainAgentDescription: (description: string) => void;
   clearMainAgentDescription: () => void;
@@ -379,7 +364,7 @@ interface AgentsTabProps {
 }
 
 function AgentsTab(props: AgentsTabProps) {
-  const { mastra } = props;
+  const { mastra, attachments } = props;
   const main = mastra.mainAgent;
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -400,6 +385,7 @@ function AgentsTab(props: AgentsTabProps) {
         main={main}
         models={mastra.models}
         profiles={mastra.profiles}
+        attachments={attachments}
         setMainAgentName={props.setMainAgentName}
         setMainAgentDescription={props.setMainAgentDescription}
         clearMainAgentDescription={props.clearMainAgentDescription}
@@ -467,6 +453,7 @@ interface MainAgentCardProps {
   main: PhClintMainAgent;
   models: PhClintAgentModel[];
   profiles: PhClintAgentProfile[];
+  attachments?: IAttachmentService;
   setMainAgentName: (name: string) => void;
   setMainAgentDescription: (description: string) => void;
   clearMainAgentDescription: () => void;
@@ -504,19 +491,14 @@ function MainAgentCard(props: MainAgentCardProps) {
         <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
           <div style={{ display: 'flex', gap: '1.5rem' }}>
             <div style={{ flexShrink: 0, width: '7rem' }}>
-              <AgentImageField image={main.image ?? null} onSetImage={props.setMainAgentImage} onClearImage={props.clearMainAgentImage} />
+              <AgentImageField attachmentRef={main.attachment ?? null} attachments={props.attachments} onSetImage={props.setMainAgentImage} onClearImage={props.clearMainAgentImage} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="grid grid-cols-[1fr_2fr] gap-4">
                 <TextField compact readOnly label="Agent ID" value={main.id} onCommit={() => {}} />
                 <TextField compact label="Agent Name" value={main.name} placeholder="My Agent" onCommit={props.setMainAgentName} />
               </div>
-              <DescriptionField
-                value={main.description}
-                placeholder="A brief description of what this agent does"
-                onSet={props.setMainAgentDescription}
-                onClear={props.clearMainAgentDescription}
-              />
+              <DescriptionField value={main.description} placeholder="A brief description of what this agent does" onSet={props.setMainAgentDescription} onClear={props.clearMainAgentDescription} />
             </div>
           </div>
 
@@ -568,12 +550,7 @@ function DescriptionField(props: { value: string | null | undefined; placeholder
   );
 }
 
-function AddSubAgentForm(props: {
-  models: PhClintAgentModel[];
-  existingAgentIds: string[];
-  onAdd: (id: string, name: string, description: string, modelId: string) => void;
-  onCancel: () => void;
-}) {
+function AddSubAgentForm(props: { models: PhClintAgentModel[]; existingAgentIds: string[]; onAdd: (id: string, name: string, description: string, modelId: string) => void; onCancel: () => void }) {
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -587,49 +564,29 @@ function AddSubAgentForm(props: {
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="text-xs text-gray-600">Sub-agent ID</span>
-          <input
-            type="text"
-            value={id}
-            placeholder="summarizer"
-            onChange={(e) => setId(e.target.value.trim())}
-            className="w-full rounded border p-2 font-mono text-sm"
-          />
+          <input type="text" value={id} placeholder="summarizer" onChange={(e) => setId(e.target.value.trim())} className="w-full rounded border p-2 font-mono text-sm" />
         </label>
         <label className="block">
           <span className="text-xs text-gray-600">Display name</span>
-          <input
-            type="text"
-            value={name}
-            placeholder="Summarizer"
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border p-2 text-sm"
-          />
+          <input type="text" value={name} placeholder="Summarizer" onChange={(e) => setName(e.target.value)} className="w-full rounded border p-2 text-sm" />
         </label>
       </div>
       <label className="my-2 block">
         <span className="text-xs text-gray-600">Description (the main agent uses this to decide when to delegate)</span>
-        <input
-          type="text"
-          value={description}
-          placeholder="Summarizes long documents into bullet points"
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full rounded border p-2 text-sm"
-        />
+        <input type="text" value={description} placeholder="Summarizes long documents into bullet points" onChange={(e) => setDescription(e.target.value)} className="w-full rounded border p-2 text-sm" />
       </label>
       <label className="my-2 block">
         <span className="text-xs text-gray-600">Model</span>
         <select value={modelId} onChange={(e) => setModelId(e.target.value)} className="w-full rounded border p-2 font-mono text-sm">
           {props.models.map((m) => (
-            <option key={m.id} value={m.id}>{m.id}</option>
+            <option key={m.id} value={m.id}>
+              {m.id}
+            </option>
           ))}
         </select>
       </label>
       <div className="mt-2 flex items-center gap-2">
-        <button
-          className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!canAdd}
-          onClick={() => props.onAdd(id, name.trim(), description.trim(), modelId)}
-        >
+        <button className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canAdd} onClick={() => props.onAdd(id, name.trim(), description.trim(), modelId)}>
           Add
         </button>
         <button className="text-sm text-gray-500 hover:text-gray-700" onClick={props.onCancel}>
@@ -733,13 +690,11 @@ function AgentBindings(props: AgentBindingsProps) {
     <div className="space-y-3">
       <label className="block">
         <span className="text-xs text-gray-600">Model</span>
-        <select
-          value={props.modelId}
-          onChange={(e) => props.setAgentModel(props.agentId, e.target.value)}
-          className="mt-1 w-full rounded border p-2 font-mono text-sm"
-        >
+        <select value={props.modelId} onChange={(e) => props.setAgentModel(props.agentId, e.target.value)} className="mt-1 w-full rounded border p-2 font-mono text-sm">
           {props.models.map((m) => (
-            <option key={m.id} value={m.id}>{m.id}</option>
+            <option key={m.id} value={m.id}>
+              {m.id}
+            </option>
           ))}
         </select>
       </label>
@@ -765,11 +720,7 @@ function AgentBindings(props: AgentBindingsProps) {
 
       <ChipListEditor
         label="Tool patterns"
-        hint={
-          props.isMain
-            ? 'Glob patterns over tool names (e.g. clint-project-*, *-mcp__*). Empty = all tools.'
-            : 'Glob patterns over tool names. Empty = no tools.'
-        }
+        hint={props.isMain ? 'Glob patterns over tool names (e.g. clint-project-*, *-mcp__*). Empty = all tools.' : 'Glob patterns over tool names. Empty = no tools.'}
         values={props.toolPatterns}
         placeholder="pattern*"
         validator={(v) => v.length > 0}
@@ -826,9 +777,7 @@ function ProfileRefsEditor(props: {
             </li>
           );
         })}
-        {props.profileIds.length === 0 && (
-          <li className="px-2 py-1 text-sm italic text-gray-400">No profiles assigned</li>
-        )}
+        {props.profileIds.length === 0 && <li className="px-2 py-1 text-sm italic text-gray-400">No profiles assigned</li>}
       </ul>
       {available.length > 0 && (
         <select
@@ -850,15 +799,7 @@ function ProfileRefsEditor(props: {
   );
 }
 
-function ChipListEditor(props: {
-  label: string;
-  hint: string;
-  values: string[];
-  placeholder: string;
-  validator: (v: string) => boolean;
-  onAdd: (v: string) => void;
-  onRemove: (v: string) => void;
-}) {
+function ChipListEditor(props: { label: string; hint: string; values: string[]; placeholder: string; validator: (v: string) => boolean; onAdd: (v: string) => void; onRemove: (v: string) => void }) {
   const [input, setInput] = useState('');
   const valid = props.validator(input.trim());
 
@@ -907,17 +848,58 @@ function ChipListEditor(props: {
 
 /* ── Agent image (avatar) — main only ────────────────────────── */
 
-function AgentImageField(props: { image: string | null | undefined; onSetImage: (dataUrl: string) => void; onClearImage: () => void }) {
+function AgentImageField(props: { attachmentRef: string | null | undefined; attachments?: IAttachmentService; onSetImage: (ref: string) => void; onClearImage: () => void }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [objectUrl, setObjectUrl] = useState<string | undefined>(undefined);
   const dragDepthRef = useRef(0);
+  const toast = usePHToast();
 
-  const handleFile = (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') props.onSetImage(reader.result);
+  useEffect(() => {
+    if (!props.attachmentRef || !props.attachments) {
+      setObjectUrl(undefined);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | undefined;
+    void (async () => {
+      try {
+        const { body, header } = await props.attachments!.get(props.attachmentRef as Parameters<NonNullable<typeof props.attachments>['get']>[0]);
+        const chunks: Uint8Array[] = [];
+        const reader = body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (cancelled) break;
+          if (done) break;
+          if (value) chunks.push(value);
+        }
+        if (cancelled) return;
+        const blob = new Blob(chunks as BlobPart[], { type: header.mimeType });
+        const url = URL.createObjectURL(blob);
+        createdUrl = url;
+        setObjectUrl(url);
+      } catch {
+        // attachment not yet available or service error
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-    reader.readAsDataURL(file);
+  }, [props.attachmentRef, props.attachments]);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    if (!props.attachments) {
+      toast?.('Attachment service unavailable — cannot upload image', { type: 'error' });
+      return;
+    }
+    try {
+      const upload = await props.attachments.reserve({ mimeType: file.type, fileName: file.name });
+      const { ref } = await upload.send(file.stream());
+      props.onSetImage(ref);
+    } catch (err) {
+      toast?.(`Failed to upload image: ${err instanceof Error ? err.message : String(err)}`, { type: 'error' });
+    }
   };
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -950,7 +932,7 @@ function AgentImageField(props: { image: string | null | undefined; onSetImage: 
       dragDepthRef.current = 0;
       setIsDragOver(false);
       const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
+      if (file) void handleFile(file);
     }
   }, []);
 
@@ -958,9 +940,10 @@ function AgentImageField(props: { image: string | null | undefined; onSetImage: 
 
   return (
     <div style={{ width: SIZE, height: SIZE, flexShrink: 0 }} className="relative my-3">
-      {props.image ? (
+      {props.attachmentRef ? (
         <>
-          <img src={props.image} alt="Agent" style={{ width: SIZE, height: SIZE }} className="rounded border border-gray-200 object-cover" />
+          {objectUrl && <img src={objectUrl} alt="Agent" style={{ width: SIZE, height: SIZE }} className="rounded border border-gray-200 object-cover" />}
+          {!objectUrl && <div style={{ width: SIZE, height: SIZE }} className="rounded border border-gray-200 bg-gray-100" />}
           <div className="mt-1 flex justify-center gap-1">
             <label className="cursor-pointer rounded bg-gray-100 px-2 py-0.5 text-xs hover:bg-gray-200">
               Replace
@@ -969,7 +952,7 @@ function AgentImageField(props: { image: string | null | undefined; onSetImage: 
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => {
-                  if (e.target.files?.[0]) handleFile(e.target.files[0]);
+                  if (e.target.files?.[0]) void handleFile(e.target.files[0]);
                 }}
               />
             </label>
@@ -994,7 +977,7 @@ function AgentImageField(props: { image: string | null | undefined; onSetImage: 
               accept="image/*"
               className="hidden"
               onChange={(e) => {
-                if (e.target.files?.[0]) handleFile(e.target.files[0]);
+                if (e.target.files?.[0]) void handleFile(e.target.files[0]);
               }}
             />
           </label>
@@ -1006,13 +989,7 @@ function AgentImageField(props: { image: string | null | undefined; onSetImage: 
 
 /* ── Models library (inlined under CLI > Features > Mastra) ─── */
 
-function ModelsSection(props: {
-  models: PhClintAgentModel[];
-  main: PhClintMainAgent | null | undefined;
-  subAgents: PhClintSubAgent[];
-  addModel: (id: string) => void;
-  removeModel: (id: string) => void;
-}) {
+function ModelsSection(props: { models: PhClintAgentModel[]; main: PhClintMainAgent | null | undefined; subAgents: PhClintSubAgent[]; addModel: (id: string) => void; removeModel: (id: string) => void }) {
   const [newModelId, setNewModelId] = useState('');
 
   const usersOf = (modelId: string): string[] => {
@@ -1033,7 +1010,9 @@ function ModelsSection(props: {
   return (
     <div>
       <h4 className="text-sm font-semibold text-gray-700">Models</h4>
-      <p className="text-xs text-gray-500">Provider/model format (e.g. <code>anthropic/claude-sonnet-4-5</code>). Each agent picks one from this list.</p>
+      <p className="text-xs text-gray-500">
+        Provider/model format (e.g. <code>anthropic/claude-sonnet-4-5</code>). Each agent picks one from this list.
+      </p>
 
       {props.models.length > 0 && (
         <table className="mt-2 w-full text-sm">
@@ -1053,12 +1032,7 @@ function ModelsSection(props: {
                   <td className="py-2 font-mono">{m.id}</td>
                   <td className="py-2 text-xs text-gray-500">{users.length === 0 ? <em>—</em> : users.join(', ')}</td>
                   <td className="py-2 text-right">
-                    <button
-                      className="text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300"
-                      disabled={inUse}
-                      title={inUse ? `In use by ${users.join(', ')}` : ''}
-                      onClick={() => props.removeModel(m.id)}
-                    >
+                    <button className="text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300" disabled={inUse} title={inUse ? `In use by ${users.join(', ')}` : ''} onClick={() => props.removeModel(m.id)}>
                       Remove
                     </button>
                   </td>
@@ -1202,12 +1176,7 @@ function ProfilesSection(props: {
                 <button className="px-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" disabled={i === props.profiles.length - 1} onClick={() => moveDown(i)} title="Move down">
                   ↓
                 </button>
-                <button
-                  className="ml-2 text-sm text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300"
-                  disabled={inUse}
-                  title={inUse ? `In use by ${users.join(', ')}` : ''}
-                  onClick={() => props.removeProfile(profile.id)}
-                >
+                <button className="ml-2 text-sm text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300" disabled={inUse} title={inUse ? `In use by ${users.join(', ')}` : ''} onClick={() => props.removeProfile(profile.id)}>
                   Remove
                 </button>
               </div>
@@ -1447,8 +1416,12 @@ function PublishTab(props: {
       <section className="my-6">
         <h3 className="text-lg font-semibold">Document</h3>
         <div className="my-3 rounded border border-gray-200 bg-white p-4">
-          <p className="text-sm text-gray-600">Document ID: <span className="font-mono">{props.documentHeader.id}</span></p>
-          <p className="text-sm text-gray-600">Type: <span className="font-mono">{props.documentHeader.documentType}</span></p>
+          <p className="text-sm text-gray-600">
+            Document ID: <span className="font-mono">{props.documentHeader.id}</span>
+          </p>
+          <p className="text-sm text-gray-600">
+            Type: <span className="font-mono">{props.documentHeader.documentType}</span>
+          </p>
         </div>
       </section>
     </>
@@ -1620,9 +1593,6 @@ function PackageCard(props: { pkg: PowerhousePackage; addDocType: (packageId: st
 }
 
 function StatusBadge(props: { status: string }) {
-  const color = props.status === 'Succeeded' ? 'bg-green-100 text-green-700'
-    : props.status === 'Failed' ? 'bg-red-100 text-red-700'
-    : props.status === 'InProgress' ? 'bg-amber-100 text-amber-700'
-    : 'bg-gray-100 text-gray-700';
+  const color = props.status === 'Succeeded' ? 'bg-green-100 text-green-700' : props.status === 'Failed' ? 'bg-red-100 text-red-700' : props.status === 'InProgress' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700';
   return <span className={`rounded px-2 py-0.5 text-xs ${color}`}>{props.status}</span>;
 }

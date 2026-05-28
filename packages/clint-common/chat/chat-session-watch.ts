@@ -36,7 +36,7 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
 
     for (const doc of docs) {
       const documentId = doc.header.id;
-      const state = doc.state.global as ChatSessionState;
+      const state = doc.state.global;
       const { status, messages } = state;
 
       // Guard: skip completed/aborted/error sessions
@@ -74,48 +74,42 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
 
       try {
         // Lazy session init: assigns threadId if not set
-        const threadId = await ensureSessionInitialized(
-          reactor,
-          documentId,
-          state,
-          agent,
-          log,
-        );
+        const threadId = await ensureSessionInitialized(reactor, documentId, state, agent, log);
 
         // Extract file/image attachments to disk
         const attachments = await extractAttachments(lastMessage, {
           workdir: ctx.context.workdir,
           documentId,
           log,
+          service: reactor.attachments,
         });
 
         // Build multimodal prompt: include images natively so the model
         // can see them, plus file paths so agent tools can read them.
-        const imageParts = lastMessage.content.filter(
-          (p: ContentPart) => p.type === 'IMAGE' && p.data,
-        );
+        // Image bytes come from the already-resolved attachments (no second service.get).
+        const imageAttachments = attachments.filter((a) => a.partType === 'IMAGE');
 
         let prompt: string | AgentContentPart[];
-        if (imageParts.length > 0) {
+        if (imageAttachments.length > 0) {
           const parts: AgentContentPart[] = [];
-          for (const p of imageParts) {
+          for (const a of imageAttachments) {
             parts.push({
               type: 'image',
-              image: Buffer.from(p.data!, 'base64'),
-              mediaType: p.mediaType ?? undefined,
+              image: a.bytes,
+              mediaType: a.mediaType ?? undefined,
             });
           }
           let text = userText;
           if (attachments.length > 0) {
             log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
-            const pathList = attachments.map(a => `- ${a.filename}: ${a.localPath}`).join('\n');
+            const pathList = attachments.map((a) => `- ${a.filename}: ${a.localPath}`).join('\n');
             text += `\n\n[Attached files saved to disk]\n${pathList}`;
           }
           parts.push({ type: 'text', text });
           prompt = parts;
         } else if (attachments.length > 0) {
           log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
-          const pathList = attachments.map(a => `- ${a.filename}: ${a.localPath}`).join('\n');
+          const pathList = attachments.map((a) => `- ${a.filename}: ${a.localPath}`).join('\n');
           prompt = `${userText}\n\n[Attached files saved to disk]\n${pathList}`;
         } else {
           prompt = userText;

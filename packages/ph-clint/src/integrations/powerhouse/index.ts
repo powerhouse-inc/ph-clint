@@ -28,6 +28,12 @@ export type {
   TypedReactorClient,
   TypedDocumentChangeEvent,
   ReactorClientModule,
+  IAttachmentService,
+  AttachmentRef,
+  AttachmentResponse,
+  AttachmentUploadResult,
+  ReserveAttachmentOptions,
+  AttachmentHeader,
 } from './types.js';
 
 export type { InferRegistry, ActionOf } from './registry.js';
@@ -134,6 +140,7 @@ export async function buildDefaultReactor<
     driveId,
     personalDriveId,
     drives,
+    attachments: ctx.attachments,
     _module: reactorModule,
     async shutdown() {
       unsubscribe?.();

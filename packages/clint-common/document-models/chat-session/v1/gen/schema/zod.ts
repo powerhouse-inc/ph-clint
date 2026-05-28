@@ -102,11 +102,9 @@ export function AddUserMessageInputSchema(): z.ZodObject<Properties<AddUserMessa
 export function AgentInfoSchema(): z.ZodObject<Properties<AgentInfo>> {
   return z.object({
     __typename: z.literal('AgentInfo').optional(),
+    attachment: z.string().nullish(),
     description: z.string().nullish(),
     id: z.string().nullish(),
-    image: z.string().nullish(),
-    imageMediaType: z.string().nullish(),
-    imageUrl: z.url().nullish(),
     model: z.string().nullish(),
     name: z.string().nullish(),
   });
@@ -131,7 +129,7 @@ export function AppendAssistantContentInputSchema(): z.ZodObject<Properties<Appe
 export function AssistantContentPartInputSchema(): z.ZodObject<Properties<AssistantContentPartInput>> {
   return z.object({
     args: z.string().nullish(),
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     error: z.string().nullish(),
     filename: z.string().nullish(),
     id: z.string(),
@@ -162,7 +160,7 @@ export function ContentPartSchema(): z.ZodObject<Properties<ContentPart>> {
   return z.object({
     __typename: z.literal('ContentPart').optional(),
     args: z.string().nullish(),
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     error: z.string().nullish(),
     filename: z.string().nullish(),
     id: z.string(),
@@ -219,9 +217,7 @@ export function SetAgentDescriptionInputSchema(): z.ZodObject<Properties<SetAgen
 
 export function SetAgentImageInputSchema(): z.ZodObject<Properties<SetAgentImageInput>> {
   return z.object({
-    data: z.string().nullish(),
-    mediaType: z.string().nullish(),
-    url: z.url().nullish(),
+    attachment: z.string().nullish(),
   });
 }
 
@@ -254,7 +250,7 @@ export function StartSessionInputSchema(): z.ZodObject<Properties<StartSessionIn
 
 export function ToolResultPartInputSchema(): z.ZodObject<Properties<ToolResultPartInput>> {
   return z.object({
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     id: z.string(),
     isError: z.boolean().nullish(),
     mediaType: z.string().nullish(),
@@ -302,7 +298,7 @@ export function UsageSummarySchema(): z.ZodObject<Properties<UsageSummary>> {
 
 export function UserContentPartInputSchema(): z.ZodObject<Properties<UserContentPartInput>> {
   return z.object({
-    data: z.string().nullish(),
+    attachment: z.string().nullish(),
     filename: z.string().nullish(),
     id: z.string(),
     mediaType: z.string().nullish(),

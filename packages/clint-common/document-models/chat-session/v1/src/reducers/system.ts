@@ -9,9 +9,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       name: action.input.agent.name ?? null,
       model: action.input.agent.model ?? null,
       description: action.input.agent.description ?? null,
-      image: null,
-      imageMediaType: null,
-      imageUrl: null,
+      attachment: null,
     };
     state.status = 'ACTIVE';
     state.startedAt = action.input.startedAt;
@@ -30,7 +28,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentInfoOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, description: null, image: null, imageMediaType: null, imageUrl: null };
+      state.agent = { id: null, name: null, model: null, description: null, attachment: null };
     }
     if (action.input.id) state.agent.id = action.input.id;
     if (action.input.name) state.agent.name = action.input.name;
@@ -53,7 +51,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
           isError: null,
           mediaType: null,
           url: null,
-          data: null,
+          attachment: null,
           filename: null,
           error: null,
         },
@@ -84,15 +82,13 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentImageOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, description: null, image: null, imageMediaType: null, imageUrl: null };
+      state.agent = { id: null, name: null, model: null, description: null, attachment: null };
     }
-    state.agent.image = action.input.data ?? null;
-    state.agent.imageMediaType = action.input.mediaType ?? null;
-    state.agent.imageUrl = action.input.url ?? null;
+    state.agent.attachment = action.input.attachment ?? null;
   },
   setAgentDescriptionOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, description: null, image: null, imageMediaType: null, imageUrl: null };
+      state.agent = { id: null, name: null, model: null, description: null, attachment: null };
     }
     state.agent.description = action.input.description;
   },

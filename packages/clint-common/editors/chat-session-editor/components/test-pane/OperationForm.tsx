@@ -2,6 +2,7 @@ import { generateId } from 'document-model';
 import type { ContentPartType } from 'document-models/chat-session';
 import { useState, useCallback } from 'react';
 import { cn } from '../../lib/utils.js';
+import { useAttachmentService } from '../ContentPartRenderer.js';
 import { ContentPartBuilder } from './ContentPartBuilder.js';
 import type { OperationDef } from './operations.js';
 
@@ -26,7 +27,7 @@ export function OperationForm({ operation, onDispatch }: OperationFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Flatten composite fields (e.g. _image → { data, mediaType })
+    // Flatten composite fields (e.g. _image → { attachment })
     const output: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(values)) {
       if (k.startsWith('_') && v && typeof v === 'object' && !Array.isArray(v)) {
@@ -209,7 +210,7 @@ export interface UserContentPartFormData {
   text?: string;
   mediaType?: string;
   url?: string;
-  data?: string;
+  attachment?: string;
   filename?: string;
 }
 
@@ -223,7 +224,7 @@ export interface AssistantContentPartFormData {
   args?: string;
   mediaType?: string;
   url?: string;
-  data?: string;
+  attachment?: string;
   filename?: string;
   error?: string;
 }
@@ -239,42 +240,62 @@ export interface ToolResultPartFormData {
   text?: string;
   mediaType?: string;
   url?: string;
-  data?: string;
+  attachment?: string;
 }
 
 interface ImageFileValue {
-  data: string;
-  mediaType: string;
+  attachment: string;
 }
 
 function ImageFilePicker({ label, value, onChange }: { label: string; value: ImageFileValue | null; onChange: (v: unknown) => void }) {
-  const previewSrc = value ? `data:${value.mediaType};base64,${value.data}` : null;
+  const service = useAttachmentService();
+  const [uploading, setUploading] = useState(false);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      onChange({ data: base64, mediaType: file.type });
-    };
+    reader.onload = () => setPreviewDataUrl(reader.result as string);
     reader.readAsDataURL(file);
+
+    if (!service) return;
+
+    setUploading(true);
+    service
+      .reserve({ mimeType: file.type, fileName: file.name })
+      .then((upload) => upload.send(file.stream()))
+      .then((result) => {
+        onChange({ attachment: result.ref });
+      })
+      .catch(() => {
+        onChange(null);
+      })
+      .finally(() => setUploading(false));
+  };
+
+  const handleRemove = () => {
+    setPreviewDataUrl(null);
+    onChange(null);
   };
 
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      {!service && <p className="text-[10px] text-amber-500">No attachment service — image cannot be uploaded.</p>}
       <input
         type="file"
         accept="image/*"
         onChange={handleFile}
-        className="text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs file:text-secondary-foreground hover:file:bg-secondary/80"
+        disabled={uploading}
+        className="text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs file:text-secondary-foreground hover:file:bg-secondary/80 disabled:opacity-50"
       />
-      {previewSrc && (
+      {uploading && <p className="text-[10px] text-muted-foreground">Uploading…</p>}
+      {previewDataUrl && value && (
         <div className="mt-1 flex items-center gap-2">
-          <img src={previewSrc} alt="preview" className="size-10 rounded-md object-cover border border-border" />
-          <button type="button" onClick={() => onChange(null)} className="text-xs text-destructive hover:underline">
+          <img src={previewDataUrl} alt="preview" className="size-10 rounded-md object-cover border border-border" />
+          <button type="button" onClick={handleRemove} className="text-xs text-destructive hover:underline">
             Remove
           </button>
         </div>

@@ -53,6 +53,7 @@
     "@mastra/libsql": ">=1.7.4 <1.11.0",
     "@mastra/memory": "^1.13.1",
     "@powerhousedao/reactor": "6.0.0-dev.257",
+    "@powerhousedao/reactor-attachments": "6.0.0-dev.257",
     "@powerhousedao/shared": "6.0.0-dev.257",
     "@powerhousedao/switchboard": "6.0.0-dev.257",
     "@types/http-proxy": "^1.17.16",
@@ -73,6 +74,7 @@
     "@mastra/memory": "^1.13.1",
     "@powerhousedao/reactor": "6.0.0-dev.257",
     "@powerhousedao/reactor-api": "6.0.0-dev.257",
+    "@powerhousedao/reactor-attachments": "6.0.0-dev.257",
     "@powerhousedao/reactor-mcp": "6.0.0-dev.257",
     "@powerhousedao/switchboard": "6.0.0-dev.257",
     "@powerhousedao/shared": "6.0.0-dev.257",
@@ -94,6 +96,9 @@
       "optional": true
     },
     "@powerhousedao/reactor-api": {
+      "optional": true
+    },
+    "@powerhousedao/reactor-attachments": {
       "optional": true
     },
     "@powerhousedao/reactor-mcp": {

@@ -57,7 +57,7 @@ type PhClintMainAgent {
   id: OID!
   name: String!
   description: String
-  image: String
+  attachment: String
   modelId: OID!
   profileIds: [OID!]!
   skills: [String!]!
@@ -287,7 +287,7 @@ input ImportMainAgentInput {
   id: OID!
   name: String!
   description: String
-  image: String
+  attachment: String
   modelId: OID!
   profileIds: [OID!]!
   skills: [String!]!
@@ -386,7 +386,7 @@ input ClearMainAgentDescriptionInput {
 }
 
 input SetMainAgentImageInput {
-  image: String!
+  attachment: String!
 }
 
 input ClearMainAgentImageInput {

@@ -3,24 +3,19 @@
  * This file is auto-generated and updated by codegen
  * Factory methods for creating PhClintProjectDocument instances
  */
-import type { PHAuthState, PHBaseState, PHDocumentState } from "document-model";
-import { createBaseState, defaultBaseState } from "document-model";
-import type {
-  PhClintProjectDocument,
-  PhClintProjectGlobalState,
-  PhClintProjectLocalState,
-  PhClintProjectPHState,
-} from "./types.js";
-import { utils } from "./utils.js";
+import type { PHAuthState, PHBaseState, PHDocumentState } from 'document-model';
+import { createBaseState, defaultBaseState } from 'document-model';
+import type { PhClintProjectDocument, PhClintProjectGlobalState, PhClintProjectLocalState, PhClintProjectPHState } from './types.js';
+import { utils } from './utils.js';
 
 export function defaultGlobalState(): PhClintProjectGlobalState {
   return {
     name: null,
     scope: null,
-    version: "0.1.0",
-    description: "",
+    version: '0.1.0',
+    description: '',
     features: {
-      powerhouse: "Disabled",
+      powerhouse: 'Disabled',
       mastra: {
         enabled: false,
         mainAgent: null,
@@ -37,13 +32,7 @@ export function defaultGlobalState(): PhClintProjectGlobalState {
     deployment: {
       proxyEnabled: false,
       observabilityEnabled: false,
-      supportedResources: [
-        "vetra-agent-s",
-        "vetra-agent-m",
-        "vetra-agent-l",
-        "vetra-agent-xl",
-        "vetra-agent-xxl",
-      ],
+      supportedResources: ['vetra-agent-s', 'vetra-agent-m', 'vetra-agent-l', 'vetra-agent-xl', 'vetra-agent-xxl'],
     },
   };
 }
@@ -60,29 +49,21 @@ export function defaultPHState(): PhClintProjectPHState {
   };
 }
 
-export function createGlobalState(
-  state?: Partial<PhClintProjectGlobalState>,
-): PhClintProjectGlobalState {
+export function createGlobalState(state?: Partial<PhClintProjectGlobalState>): PhClintProjectGlobalState {
   return {
     ...defaultGlobalState(),
     ...(state || {}),
   };
 }
 
-export function createLocalState(
-  state?: Partial<PhClintProjectLocalState>,
-): PhClintProjectLocalState {
+export function createLocalState(state?: Partial<PhClintProjectLocalState>): PhClintProjectLocalState {
   return {
     ...defaultLocalState(),
     ...(state || {}),
   } as PhClintProjectLocalState;
 }
 
-export function createState(
-  baseState?: Partial<PHBaseState>,
-  globalState?: Partial<PhClintProjectGlobalState>,
-  localState?: Partial<PhClintProjectLocalState>,
-): PhClintProjectPHState {
+export function createState(baseState?: Partial<PHBaseState>, globalState?: Partial<PhClintProjectGlobalState>, localState?: Partial<PhClintProjectLocalState>): PhClintProjectPHState {
   return {
     ...createBaseState(baseState?.auth, baseState?.document),
     global: createGlobalState(globalState),
@@ -103,15 +84,7 @@ export function createPhClintProjectDocument(
     local?: Partial<PhClintProjectLocalState>;
   }>,
 ): PhClintProjectDocument {
-  const document = utils.createDocument(
-    state
-      ? createState(
-          createBaseState(state.auth, state.document),
-          state.global,
-          state.local,
-        )
-      : undefined,
-  );
+  const document = utils.createDocument(state ? createState(createBaseState(state.auth, state.document), state.global, state.local) : undefined);
 
   return document;
 }

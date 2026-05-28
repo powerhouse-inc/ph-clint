@@ -11,9 +11,7 @@ describe('SystemOperations', () => {
       name: 'TestBot',
       model: null,
       description: null,
-      image: null,
-      imageMediaType: null,
-      imageUrl: null,
+      attachment: null,
     });
 
     // agent already exists — partial update preserves other fields
@@ -24,9 +22,7 @@ describe('SystemOperations', () => {
       name: 'TestBot',
       model: 'gpt-4',
       description: null,
-      image: null,
-      imageMediaType: null,
-      imageUrl: null,
+      attachment: null,
     });
 
     // update id specifically
@@ -41,9 +37,7 @@ describe('SystemOperations', () => {
       name: 'TestBot',
       model: 'gpt-4',
       description: null,
-      image: null,
-      imageMediaType: null,
-      imageUrl: null,
+      attachment: null,
     });
 
     // startSession with minimal agent — all fields default to null
@@ -61,9 +55,7 @@ describe('SystemOperations', () => {
       name: null,
       model: null,
       description: null,
-      image: null,
-      imageMediaType: null,
-      imageUrl: null,
+      attachment: null,
     });
 
     // also verify the false branch after startSession sets agent
@@ -83,9 +75,7 @@ describe('SystemOperations', () => {
       name: 'Bot',
       model: 'm1',
       description: 'Updated desc',
-      image: null,
-      imageMediaType: null,
-      imageUrl: null,
+      attachment: null,
     });
   });
 
@@ -129,7 +119,7 @@ describe('SystemOperations', () => {
     expect(doc.state.global.usage).toStrictEqual(before);
   });
 
-  it('startSession: initializes all fields including description, image defaults to null', () => {
+  it('startSession: initializes all fields including description, attachment defaults to null', () => {
     const doc = reducer(
       utils.createDocument(),
       startSession({
@@ -149,9 +139,7 @@ describe('SystemOperations', () => {
       name: 'TestBot',
       model: null,
       description: 'My assistant',
-      image: null,
-      imageMediaType: null,
-      imageUrl: null,
+      attachment: null,
     });
     expect(doc.state.global.usage).toStrictEqual({
       totalPromptTokens: 0,
@@ -197,24 +185,16 @@ describe('SystemOperations', () => {
     expect(doc.state.global.usage!.totalMessages).toBe(1);
   });
 
-  it('setAgentImage: sets base64, URL, and clears image', () => {
-    // sets image on fresh doc (agent is null → creates agent)
-    let doc = reducer(utils.createDocument(), setAgentImage({ data: 'iVBOR...', mediaType: 'image/png' }));
-    expect(doc.state.global.agent!.image).toBe('iVBOR...');
-    expect(doc.state.global.agent!.imageMediaType).toBe('image/png');
-    expect(doc.state.global.agent!.imageUrl).toBeNull();
+  it('setAgentImage: sets and clears attachment ref', () => {
+    const REF = 'attachment://v1:abc123';
 
-    // set via URL instead — clears base64 fields
-    doc = reducer(doc, setAgentImage({ url: 'https://example.com/avatar.png' }));
-    expect(doc.state.global.agent!.image).toBeNull();
-    expect(doc.state.global.agent!.imageMediaType).toBeNull();
-    expect(doc.state.global.agent!.imageUrl).toBe('https://example.com/avatar.png');
+    // sets attachment on fresh doc (agent is null → creates agent)
+    let doc = reducer(utils.createDocument(), setAgentImage({ attachment: REF }));
+    expect(doc.state.global.agent!.attachment).toBe(REF);
 
-    // clear image entirely
+    // clear attachment entirely
     doc = reducer(doc, setAgentImage({}));
-    expect(doc.state.global.agent!.image).toBeNull();
-    expect(doc.state.global.agent!.imageMediaType).toBeNull();
-    expect(doc.state.global.agent!.imageUrl).toBeNull();
+    expect(doc.state.global.agent!.attachment).toBeNull();
   });
 
   it('setAgentDescription: sets description, creates agent if null', () => {

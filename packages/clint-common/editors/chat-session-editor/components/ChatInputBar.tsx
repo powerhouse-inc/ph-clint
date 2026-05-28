@@ -1,4 +1,6 @@
+import type { IAttachmentService } from '@powerhousedao/reactor-attachments';
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
+import { usePHToast } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, UserContentPartInput } from 'document-models/chat-session';
 import { addUserMessage } from 'document-models/chat-session';
 import { generateId } from 'document-model';
@@ -89,69 +91,86 @@ function AttachmentPreviews() {
 
 interface ChatInputBarProps {
   dispatch: DocumentDispatch<ChatSessionAction>;
+  attachments?: IAttachmentService;
   disabled?: boolean;
   addFilesRef?: MutableRefObject<((files: FileList) => void) | null>;
 }
 
-export function ChatInputBar({ dispatch, disabled, addFilesRef }: ChatInputBarProps) {
+export function ChatInputBar({ dispatch, attachments, disabled, addFilesRef }: ChatInputBarProps) {
+  const [sending, setSending] = useState(false);
+  const toast = usePHToast();
+
   const handleSubmit = useCallback(
-    (message: PromptInputMessage) => {
+    async (message: PromptInputMessage) => {
+      if (sending) return;
       const text = message.text.trim();
       if (!text && message.files.length === 0) return;
 
-      const content: UserContentPartInput[] = [];
-
-      if (text) {
-        content.push({
-          id: generateId(),
-          type: 'TEXT',
-          text,
-        });
+      // If there are files but no attachment service, block with a toast
+      if (message.files.length > 0 && !attachments) {
+        toast?.('Attachment service unavailable — cannot upload files', { type: 'error' });
+        return;
       }
 
-      for (const file of message.files) {
-        const isImage = file.mediaType.startsWith('image/');
-        // Extract base64 data from data URL (data:<mediaType>;base64,<data>)
-        let data: string | undefined;
-        let url: string | undefined;
-        if (file.url.startsWith('data:')) {
-          const commaIndex = file.url.indexOf(',');
-          if (commaIndex !== -1) {
-            data = file.url.slice(commaIndex + 1);
-          }
-        } else {
-          url = file.url;
+      setSending(true);
+      try {
+        const content: UserContentPartInput[] = [];
+
+        if (text) {
+          content.push({
+            id: generateId(),
+            type: 'TEXT',
+            text,
+          });
         }
-        content.push({
-          id: generateId(),
-          type: isImage ? 'IMAGE' : 'FILE',
-          filename: file.filename,
-          mediaType: file.mediaType,
-          url,
-          data,
-        });
-      }
 
-      dispatch(
-        addUserMessage({
-          id: generateId(),
-          content,
-          createdAt: new Date().toISOString(),
-        }),
-      );
+        for (const file of message.files) {
+          const isImage = file.mediaType.startsWith('image/');
+          const fileName = file.filename ?? 'attachment';
+          // Fetch the staged blob (blob: or data: URL) and upload to attachment service
+          const resp = await fetch(file.url);
+          if (!resp.body) throw new Error(`Could not read staged file: ${fileName}`);
+          const upload = await attachments!.reserve({
+            mimeType: file.mediaType,
+            fileName,
+          });
+          const result = await upload.send(resp.body);
+          content.push({
+            id: generateId(),
+            type: isImage ? 'IMAGE' : 'FILE',
+            filename: file.filename,
+            mediaType: file.mediaType,
+            attachment: result.ref,
+          });
+        }
+
+        dispatch(
+          addUserMessage({
+            id: generateId(),
+            content,
+            createdAt: new Date().toISOString(),
+          }),
+        );
+      } catch (err) {
+        toast?.(`Upload failed: ${err instanceof Error ? err.message : String(err)}`, { type: 'error' });
+      } finally {
+        setSending(false);
+      }
     },
-    [dispatch],
+    [dispatch, attachments, sending, toast],
   );
+
+  const isDisabled = disabled || sending;
 
   return (
     <div className="shrink-0 border-t border-border bg-background px-4 py-3">
       <PromptInput onSubmit={handleSubmit} multiple className="mx-auto max-w-[1100px]">
         <DropBridge addFilesRef={addFilesRef} />
-        <PromptInputTextarea disabled={disabled} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
+        <PromptInputTextarea disabled={isDisabled} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
         <AttachmentPreviews />
         <PromptInputFooter>
-          <AttachButton disabled={disabled} />
-          <PromptInputSubmit disabled={disabled} />
+          <AttachButton disabled={isDisabled} />
+          <PromptInputSubmit disabled={isDisabled} />
         </PromptInputFooter>
       </PromptInput>
     </div>
