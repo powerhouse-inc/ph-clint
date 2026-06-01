@@ -62,13 +62,13 @@ export interface BumpOptions {
   log?: (msg: string) => void;
 }
 
-/** Resolved info about a file: dependency. */
+/** Resolved info about a file:, workspace:, or catalog: dependency. */
 export interface FileDep {
   /** The dependency name (package name). */
   name: string;
-  /** The original file: specifier. */
+  /** The original specifier (file:, workspace:, or catalog:). */
   originalSpecifier: string;
-  /** Absolute path the file: dep resolves to. */
+  /** Absolute path the dep resolves to (the package dir or its node_modules entry). */
   resolvedPath: string;
   /** Whether this dep is in the same publish group. */
   intraGroup: boolean;

@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { FileDep, ResolvedPackage } from './types.js';
 
 /**
- * Analyze file: and workspace: dependencies in a package.json.
+ * Analyze file:, workspace:, and catalog: dependencies in a package.json.
  * Classifies each as intra-group or external.
  */
 export function analyzeFileDeps(
@@ -51,6 +51,19 @@ export function analyzeFileDeps(
           intraGroup,
           field,
         });
+      } else if (specifier.startsWith('catalog:')) {
+        // pnpm catalog: deps are resolved by pnpm at install time, but
+        // `npm publish` leaves the specifier verbatim. Pin to the concrete
+        // version pnpm installed into node_modules, treating it as external.
+        // Covers the default catalog (`catalog:`) and named catalogs
+        // (`catalog:<name>`) alike — the installed version is authoritative.
+        deps.push({
+          name,
+          originalSpecifier: specifier,
+          resolvedPath: path.resolve(packageDir, 'node_modules', name),
+          intraGroup: false,
+          field,
+        });
       }
     }
   }
@@ -82,8 +95,9 @@ export function resolveExternalDepVersion(dep: FileDep): FileDep {
 }
 
 /**
- * Resolve all file: and workspace: deps for a set of packages.
- * Sets publishVersion on all deps (intra-group uses the computed version).
+ * Resolve all file:, workspace:, and catalog: deps for a set of packages.
+ * Sets publishVersion on all deps (intra-group uses the computed version;
+ * external and catalog deps read the installed package's version).
  */
 export function resolveAllFileDeps(
   packages: ResolvedPackage[],
