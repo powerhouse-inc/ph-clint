@@ -158,6 +158,32 @@ describe('analyzeFileDeps', () => {
 
     fs.rmSync(tmp, { recursive: true });
   });
+
+  it('classifies catalog: deps as external, resolving to node_modules', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
+    const cliDir = makeTempPkg(tmp, 'mycli', {
+      'default-cat': 'catalog:',
+      'named-cat': 'catalog:foo',
+    });
+    // catalog: deps resolve to the version pnpm installed into node_modules
+    makeTempPkg(path.join(cliDir, 'node_modules'), 'default-cat');
+    makeTempPkg(path.join(cliDir, 'node_modules'), 'named-cat');
+
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(cliDir, 'package.json'), 'utf-8'),
+    );
+    const deps = analyzeFileDeps(cliDir, pkgJson, [cliDir]);
+
+    expect(deps).toHaveLength(2);
+    for (const dep of deps) {
+      expect(dep.intraGroup).toBe(false);
+      expect(dep.resolvedPath).toBe(
+        path.resolve(cliDir, 'node_modules', dep.name),
+      );
+    }
+
+    fs.rmSync(tmp, { recursive: true });
+  });
 });
 
 describe('resolveAllFileDeps', () => {
@@ -192,6 +218,38 @@ describe('resolveAllFileDeps', () => {
 
     const extDep = resolved[0].fileDeps.find((d) => d.name === 'ext-pkg');
     expect(extDep?.publishVersion).toBe('^0.0.1'); // version from makeTempPkg
+
+    fs.rmSync(tmp, { recursive: true });
+  });
+
+  it('pins catalog: deps to the installed version', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
+    const cliDir = makeTempPkg(tmp, 'mycli', { 'cat-pkg': 'catalog:' });
+    // Installed version differs from makeTempPkg's default to prove it's read
+    const nmDir = path.join(cliDir, 'node_modules', 'cat-pkg');
+    fs.mkdirSync(nmDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(nmDir, 'package.json'),
+      JSON.stringify({ name: 'cat-pkg', version: '2.3.4' }),
+    );
+
+    const entry: PackageEntry = { path: 'mycli', category: 'cli' };
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(cliDir, 'package.json'), 'utf-8'),
+    );
+    const packages: ResolvedPackage[] = [
+      {
+        entry,
+        absPath: cliDir,
+        packageJson: pkgJson,
+        name: 'mycli',
+        fileDeps: analyzeFileDeps(cliDir, pkgJson, [cliDir]),
+      },
+    ];
+
+    const resolved = resolveAllFileDeps(packages, '1.0.0-dev.0');
+    const catDep = resolved[0].fileDeps.find((d) => d.name === 'cat-pkg');
+    expect(catDep?.publishVersion).toBe('^2.3.4');
 
     fs.rmSync(tmp, { recursive: true });
   });
