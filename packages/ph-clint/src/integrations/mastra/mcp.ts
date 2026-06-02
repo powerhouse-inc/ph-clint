@@ -128,6 +128,12 @@ export async function discoverMcpTools(
       }
     } catch (err) {
       log?.warn(`[mcp-discover] Tool discovery failed for ${ep.url}: ${err instanceof Error ? err.message : err}`);
+      // Evict so the next discovery reconnects fresh. The cached client's
+      // session dies when the MCP server restarts inside a live service
+      // instance (e.g. `ph vetra --watch` reloading its switchboard), which
+      // the instanceId staleness check above cannot see.
+      try { await entry.client.disconnect(); } catch { /* ignore */ }
+      clients.delete(ep.url);
     }
   }
 
