@@ -172,10 +172,32 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       });
     }
 
+    // Route through the proxy before announcing readiness, so consumers of
+    // the event can hand out the proxied URLs immediately.
+    if (proxyInstance) {
+      const sbRoutes = buildSwitchboardRoutes(
+        switchboardInstance.switchboardUrl,
+        switchboardInstance.mcpUrl,
+      );
+      for (const route of sbRoutes) {
+        proxyInstance.addRoute(route);
+        log.debug(`  proxy: ${route.prefix} → ${route.upstream.toString()}`);
+      }
+    }
+
     context.emit?.('powerhouse:switchboard:ready', {
       switchboardUrl: switchboardInstance.switchboardUrl,
       driveUrl: switchboardInstance.driveUrl,
       mcpUrl: switchboardInstance.mcpUrl,
+      // Browser-facing equivalents through the embedded proxy, when enabled.
+      proxy: proxyInstance
+        ? {
+            url: proxyInstance.url,
+            switchboardUrl: `${proxyInstance.url}/switchboard/graphql`,
+            driveUrl: `${proxyInstance.url}/switchboard${new URL(switchboardInstance.driveUrl).pathname}`,
+            mcpUrl: `${proxyInstance.url}/switchboard/mcp`,
+          }
+        : undefined,
     });
   }
 
@@ -258,15 +280,6 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
         output(`Switchboard '${reactorConfig.switchboard.name!}' ready at ${sb.switchboardUrl}`);
         log.debug(`  drive: ${sb.driveUrl}`);
         log.debug(`  mcp:   ${sb.mcpUrl}`);
-
-        // Add switchboard routes to proxy
-        if (proxyInstance) {
-          const sbRoutes = buildSwitchboardRoutes(sb.switchboardUrl, sb.mcpUrl);
-          for (const route of sbRoutes) {
-            proxyInstance.addRoute(route);
-            log.debug(`  proxy: ${route.prefix} → ${route.upstream.toString()}`);
-          }
-        }
       }
 
       // 3. Connect (web UI child process)

@@ -169,6 +169,15 @@ export async function createProxyServer(
     get url() { return url; },
 
     addRoute(route: ProxyRoute): void {
+      // Equal-length prefixes keep insertion order after the stable sort, so
+      // an existing identical prefix shadows the new route entirely.
+      const existing = routes.find((r) => r.prefix === route.prefix);
+      if (existing) {
+        logger.warn(
+          `Proxy route conflict: '${route.prefix}' already registered by ${existing.source}; ` +
+            `route from ${route.source} will be shadowed`,
+        );
+      }
       routes.push(route);
       sortRoutes();
       logger.debug(`Proxy route added: ${route.prefix} → ${route.upstream.toString()} (${route.source})`);
