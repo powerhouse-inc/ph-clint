@@ -1195,7 +1195,9 @@ export function defineCli<
       for (const route of options.proxyRoutes ?? []) {
         try {
           proxyInstance.addRoute({
-            prefix: route.prefix,
+            // Request paths always start with '/'; normalize so a bare
+            // 'preview' prefix doesn't silently never match.
+            prefix: route.prefix.startsWith('/') ? route.prefix : `/${route.prefix}`,
             upstream: new URL(route.upstream),
             ws: route.ws ?? false,
             source: 'static',

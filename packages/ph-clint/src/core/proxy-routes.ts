@@ -118,9 +118,10 @@ export function buildServiceRoutes(
       // its own prefix; prefixed websites must serve themselves under that
       // base path.
       const proxyRoot =
-        (typeof captureDef !== 'number' && captureDef.proxyRoot === true) ||
-        (implicitRoot?.serviceId === def.id &&
-          implicitRoot.captureName === captureName);
+        captureType === 'website' &&
+        ((typeof captureDef !== 'number' && captureDef.proxyRoot === true) ||
+          (implicitRoot?.serviceId === def.id &&
+            implicitRoot.captureName === captureName));
       const prefix = proxyRoot ? '/' : `/${def.id}/${captureName}`;
       routes.push({
         prefix,

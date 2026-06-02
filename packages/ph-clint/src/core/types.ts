@@ -489,11 +489,12 @@ export interface CaptureDefinition {
   group: number;
   type?: EndpointType;
   /**
-   * Claim the proxy's `/` catch-all for this website endpoint. Exactly one
-   * capture across all services should set this — the primary SPA whose
-   * root-relative asset requests must resolve at the proxy root. Other
-   * `website` captures are routed under `/{serviceId}/{captureName}/` and
-   * must serve themselves under that base path.
+   * Claim the proxy's `/` catch-all for this website endpoint. Only honored
+   * on `website`-type captures. Exactly one capture across all services
+   * should set this — the primary SPA whose root-relative asset requests
+   * must resolve at the proxy root. Other `website` captures are routed
+   * under `/{serviceId}/{captureName}` and must serve themselves under that
+   * base path.
    */
   proxyRoot?: boolean;
 }

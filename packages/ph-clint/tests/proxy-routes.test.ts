@@ -242,6 +242,20 @@ describe('website routing and proxy root', () => {
     );
     expect(routes[0].prefix).toBe('/');
   });
+
+  it('ignores proxyRoot on non-website captures', () => {
+    const def: ServiceDefinition = {
+      id: 'svc',
+      command: 'echo',
+      readiness: {
+        pattern: /at (http:\/\/\S+)/,
+        captures: { rest: { group: 1, type: 'api-rest', proxyRoot: true } },
+        timeout: 5000,
+      },
+    };
+    const routes = buildServiceRoutes(def, readyInstance('svc', 'rest', 'http://localhost:3000/api'));
+    expect(routes[0].prefix).toBe('/svc/rest');
+  });
 });
 
 describe('resolveImplicitProxyRoot', () => {
