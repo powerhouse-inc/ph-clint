@@ -58,6 +58,35 @@ export function buildSwitchboardRoutes(
   ];
 }
 
+/** A (serviceId, captureName) pair identifying the proxy-root website. */
+export interface ProxyRootCapture {
+  serviceId: string;
+  captureName: string;
+}
+
+/**
+ * Resolve which website capture implicitly owns the proxy root when none
+ * sets `proxyRoot` explicitly. Exactly one website capture across all
+ * definitions → that capture (preserves single-SPA behavior for CLIs that
+ * predate the flag). Zero, several, or any explicit root → undefined.
+ */
+export function resolveImplicitProxyRoot(
+  defs: ServiceDefinition[],
+): ProxyRootCapture | undefined {
+  let single: ProxyRootCapture | undefined;
+  let count = 0;
+  for (const def of defs) {
+    for (const [captureName, captureDef] of getCapturesForDef(def)) {
+      if (typeof captureDef === 'number') continue;
+      if (captureDef.type !== 'website') continue;
+      if (captureDef.proxyRoot) return undefined;
+      count++;
+      single ??= { serviceId: def.id, captureName };
+    }
+  }
+  return count === 1 ? single : undefined;
+}
+
 /**
  * Build proxy routes from a service definition's readiness captures.
  * Only captures with announceable endpoint types produce routes.
@@ -65,6 +94,7 @@ export function buildSwitchboardRoutes(
 export function buildServiceRoutes(
   def: ServiceDefinition,
   instance: ServiceInstanceStatus,
+  implicitRoot?: ProxyRootCapture,
 ): ProxyRoute[] {
   const routes: ProxyRoute[] = [];
   const captures = getCapturesForDef(def);
@@ -80,11 +110,18 @@ export function buildServiceRoutes(
 
     try {
       const upstream = new URL(url);
-      // Website endpoints act as catch-all fallback at '/' — they serve
-      // SPAs with root-relative asset paths (/assets/*, /icon.ico, etc.)
-      const prefix = captureType === 'website'
-        ? '/'
-        : `/${def.id}/${captureName}`;
+      // Only the proxy-root capture claims the '/' catch-all — the primary
+      // SPA whose root-relative asset requests (/assets/*, /icon.ico) must
+      // resolve at the proxy root. Either flagged `proxyRoot` explicitly, or
+      // the implicit fallback when it is the only website across all
+      // services. Every other endpoint, websites included, is routed under
+      // its own prefix; prefixed websites must serve themselves under that
+      // base path.
+      const proxyRoot =
+        (typeof captureDef !== 'number' && captureDef.proxyRoot === true) ||
+        (implicitRoot?.serviceId === def.id &&
+          implicitRoot.captureName === captureName);
+      const prefix = proxyRoot ? '/' : `/${def.id}/${captureName}`;
       routes.push({
         prefix,
         upstream,

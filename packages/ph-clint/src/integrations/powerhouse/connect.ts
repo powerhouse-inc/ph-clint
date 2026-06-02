@@ -72,7 +72,7 @@ export function connectServiceDefinition(
         {
           name: 'connect',
           pattern: /Local:\s*(https?:\/\/[^\s]+)/,
-          captures: { 'connect-studio': { group: 1, type: 'website' as const } },
+          captures: { 'connect-studio': { group: 1, type: 'website' as const, proxyRoot: true } },
         },
       ],
       timeout: 30_000,

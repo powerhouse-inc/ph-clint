@@ -51,7 +51,7 @@ import { createReplSession } from '../interactive/session.js';
 import { formatZodError } from './errors.js';
 import { createLogger } from './logger.js';
 import { createProxyServer, type ProxyServerInstance } from './proxy.js';
-import { buildServiceRoutes } from './proxy-routes.js';
+import { buildServiceRoutes, resolveImplicitProxyRoot } from './proxy-routes.js';
 import { createCliRuntime } from './runtime.js';
 import { initLifecycle } from './lifecycle.js';
 import type { BootTimings, LifecycleInitContext } from './types.js';
@@ -912,6 +912,17 @@ export function defineCli<
 
     // Proxy route wiring via event bus
     if (proxyInstance) {
+      // All definitions (including the reactor-config Connect, pushed into
+      // options.services by configureReactor) are known here, so the implicit
+      // root resolves deterministically regardless of startup order.
+      const implicitRoot = resolveImplicitProxyRoot(
+        (options.services ?? []) as ServiceDefinition[],
+      );
+      if (implicitRoot) {
+        log.debug(
+          `Proxy: '${implicitRoot.serviceId}/${implicitRoot.captureName}' is the only website capture — serving it at '/' (set proxyRoot to make this explicit)`,
+        );
+      }
       const bus = getEventBus();
       bus.on('service:ready', (data: any) => {
         if (!data?.id || !context.services) return;
@@ -920,7 +931,7 @@ export function defineCli<
         const instances = context.services.list(data.id);
         const inst = instances.find(i => i.instanceId === data.instanceId);
         if (!inst) return;
-        const routes = buildServiceRoutes(def, inst);
+        const routes = buildServiceRoutes(def, inst, implicitRoot);
         for (const route of routes) {
           proxyInstance.addRoute(route);
         }
@@ -938,7 +949,7 @@ export function defineCli<
           if (inst.status !== 'ready' || !inst.endpoints) continue;
           const def = context.services.getDefinition(inst.serviceId);
           if (!def) continue;
-          const routes = buildServiceRoutes(def, inst);
+          const routes = buildServiceRoutes(def, inst, implicitRoot);
           for (const route of routes) {
             proxyInstance.addRoute(route);
           }
@@ -1181,6 +1192,30 @@ export function defineCli<
       const proxyPort = (config as any).proxyPort ?? 0;
       const proxyHost = (config as any).proxyHost ?? '0.0.0.0';
       proxyInstance = await createProxyServer({ port: proxyPort, host: proxyHost, logger: log });
+      for (const route of options.proxyRoutes ?? []) {
+        try {
+          proxyInstance.addRoute({
+            prefix: route.prefix,
+            upstream: new URL(route.upstream),
+            ws: route.ws ?? false,
+            source: 'static',
+          });
+        } catch (err) {
+          log.warn(`Invalid proxyRoutes entry '${route.prefix}': ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      const proxy = proxyInstance;
+      context.proxy = {
+        url: proxy.url,
+        port: proxy.port,
+        routes: () =>
+          proxy.getRoutes().map((r) => ({
+            prefix: r.prefix,
+            upstream: r.upstream.toString(),
+            ws: r.ws,
+            source: r.source,
+          })),
+      };
     }
 
     wireServices(context, config, log, proxyInstance);
