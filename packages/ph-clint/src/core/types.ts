@@ -114,6 +114,19 @@ export interface CommandContext<
   routine?: Routine;
   processes?: ProcessManager;
   services?: ServiceManager;
+  /** Embedded reverse proxy, when `proxyEnabled`. Read-only view. */
+  proxy?: {
+    /** Public base URL of the proxy (e.g. 'http://localhost:8090'). */
+    url: string;
+    port: number;
+    /** Current route table snapshot. */
+    routes(): ReadonlyArray<{
+      prefix: string;
+      upstream: string;
+      ws: boolean;
+      source: string;
+    }>;
+  };
   emit?: EmitFn<R>;
   on?: OnFn<R>;
   /** Folder operations on the agent's personal drive. Available when a personal drive is configured. */
@@ -475,6 +488,15 @@ export type EndpointType = 'other' | 'api-mcp' | 'api-rest' | 'api-graphql' | 'w
 export interface CaptureDefinition {
   group: number;
   type?: EndpointType;
+  /**
+   * Claim the proxy's `/` catch-all for this website endpoint. Only honored
+   * on `website`-type captures. Exactly one capture across all services
+   * should set this — the primary SPA whose root-relative asset requests
+   * must resolve at the proxy root. Other `website` captures are routed
+   * under `/{serviceId}/{captureName}` and must serve themselves under that
+   * base path.
+   */
+  proxyRoot?: boolean;
 }
 
 /**
@@ -963,6 +985,19 @@ export interface CliOptions<
    * are auto-injected into the config schema.
    */
   proxyEnabled?: boolean;
+  /**
+   * Extra proxy routes registered at startup, alongside the service-derived
+   * ones. For in-process HTTP servers on fixed ports (e.g. a trigger-owned
+   * API) that the ServiceManager doesn't know about. Requires `proxyEnabled`.
+   */
+  proxyRoutes?: Array<{
+    /** URL path prefix matched against incoming requests (e.g. '/preview'). */
+    prefix: string;
+    /** Upstream target URL (e.g. 'http://127.0.0.1:5180'). */
+    upstream: string;
+    /** Forward WebSocket upgrades on this route. */
+    ws?: boolean;
+  }>;
   /**
    * Lifecycle hooks registered with this CLI. Each hook may contribute a
    * config schema fragment (merged into the effective schema, so its fields

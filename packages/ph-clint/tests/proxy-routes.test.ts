@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import {
   buildSwitchboardRoutes,
   buildServiceRoutes,
+  resolveImplicitProxyRoot,
   isWsEndpointType,
 } from '../src/core/proxy-routes.js';
 import type { ServiceDefinition, ServiceInstanceStatus } from '../src/core/types.js';
@@ -192,5 +193,99 @@ describe('buildServiceRoutes', () => {
 
     const routes = buildServiceRoutes(def, instance);
     expect(routes).toHaveLength(0);
+  });
+});
+
+function websiteDef(id: string, captureName: string, proxyRoot?: boolean): ServiceDefinition {
+  return {
+    id,
+    command: 'echo',
+    readiness: {
+      pattern: /Local: (http:\/\/\S+)/,
+      captures: { [captureName]: { group: 1, type: 'website', proxyRoot } },
+      timeout: 5000,
+    },
+  };
+}
+
+function readyInstance(id: string, captureName: string, url: string): ServiceInstanceStatus {
+  return {
+    serviceId: id,
+    instanceId: 'i1',
+    name: id,
+    status: 'ready',
+    endpoints: { [captureName]: url },
+  };
+}
+
+describe('website routing and proxy root', () => {
+  it('routes a website with proxyRoot at /', () => {
+    const def = websiteDef('studio', 'ui', true);
+    const routes = buildServiceRoutes(def, readyInstance('studio', 'ui', 'http://localhost:3000'));
+    expect(routes).toHaveLength(1);
+    expect(routes[0].prefix).toBe('/');
+  });
+
+  it('routes a website without proxyRoot under its prefix', () => {
+    const def = websiteDef('project', 'ui');
+    const routes = buildServiceRoutes(def, readyInstance('project', 'ui', 'http://localhost:3001'));
+    expect(routes).toHaveLength(1);
+    expect(routes[0].prefix).toBe('/project/ui');
+  });
+
+  it('routes the implicit root website at /', () => {
+    const def = websiteDef('studio', 'ui');
+    const routes = buildServiceRoutes(
+      def,
+      readyInstance('studio', 'ui', 'http://localhost:3000'),
+      { serviceId: 'studio', captureName: 'ui' },
+    );
+    expect(routes[0].prefix).toBe('/');
+  });
+
+  it('ignores proxyRoot on non-website captures', () => {
+    const def: ServiceDefinition = {
+      id: 'svc',
+      command: 'echo',
+      readiness: {
+        pattern: /at (http:\/\/\S+)/,
+        captures: { rest: { group: 1, type: 'api-rest', proxyRoot: true } },
+        timeout: 5000,
+      },
+    };
+    const routes = buildServiceRoutes(def, readyInstance('svc', 'rest', 'http://localhost:3000/api'));
+    expect(routes[0].prefix).toBe('/svc/rest');
+  });
+});
+
+describe('resolveImplicitProxyRoot', () => {
+  it('picks the only website capture across all definitions', () => {
+    const defs = [
+      websiteDef('studio', 'ui'),
+      {
+        id: 'api',
+        command: 'echo',
+        readiness: {
+          pattern: /at (http:\/\/\S+)/,
+          captures: { rest: { group: 1, type: 'api-rest' as const } },
+          timeout: 5000,
+        },
+      },
+    ];
+    expect(resolveImplicitProxyRoot(defs)).toEqual({ serviceId: 'studio', captureName: 'ui' });
+  });
+
+  it('returns undefined when several websites exist', () => {
+    const defs = [websiteDef('studio', 'ui'), websiteDef('project', 'ui')];
+    expect(resolveImplicitProxyRoot(defs)).toBeUndefined();
+  });
+
+  it('returns undefined when any capture sets proxyRoot explicitly', () => {
+    const defs = [websiteDef('studio', 'ui', true)];
+    expect(resolveImplicitProxyRoot(defs)).toBeUndefined();
+  });
+
+  it('returns undefined when no websites exist', () => {
+    expect(resolveImplicitProxyRoot([{ id: 'svc', command: 'echo' }])).toBeUndefined();
   });
 });

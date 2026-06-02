@@ -28,7 +28,7 @@ import type {
 } from '../integrations/powerhouse/types.js';
 import type { ProxyServerInstance } from './proxy.js';
 import { resolvePort } from '../integrations/powerhouse/ports.js';
-import { buildSwitchboardRoutes } from './proxy-routes.js';
+import { buildSwitchboardRoutes, buildSwitchboardProxyUrls } from './proxy-routes.js';
 import { createRemoteAttachmentService } from '@powerhousedao/reactor-attachments';
 
 /**
@@ -172,10 +172,30 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       });
     }
 
+    // Route through the proxy before announcing readiness, so consumers of
+    // the event can hand out the proxied URLs immediately.
+    if (proxyInstance) {
+      const sbRoutes = buildSwitchboardRoutes(
+        switchboardInstance.switchboardUrl,
+        switchboardInstance.mcpUrl,
+      );
+      for (const route of sbRoutes) {
+        proxyInstance.addRoute(route);
+        log.debug(`  proxy: ${route.prefix} → ${route.upstream.toString()}`);
+      }
+    }
+
     context.emit?.('powerhouse:switchboard:ready', {
       switchboardUrl: switchboardInstance.switchboardUrl,
       driveUrl: switchboardInstance.driveUrl,
       mcpUrl: switchboardInstance.mcpUrl,
+      // Browser-facing equivalents through the embedded proxy, when enabled.
+      proxy: proxyInstance
+        ? {
+            url: proxyInstance.url,
+            ...buildSwitchboardProxyUrls(proxyInstance.url, switchboardInstance),
+          }
+        : undefined,
     });
   }
 
@@ -258,15 +278,6 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
         output(`Switchboard '${reactorConfig.switchboard.name!}' ready at ${sb.switchboardUrl}`);
         log.debug(`  drive: ${sb.driveUrl}`);
         log.debug(`  mcp:   ${sb.mcpUrl}`);
-
-        // Add switchboard routes to proxy
-        if (proxyInstance) {
-          const sbRoutes = buildSwitchboardRoutes(sb.switchboardUrl, sb.mcpUrl);
-          for (const route of sbRoutes) {
-            proxyInstance.addRoute(route);
-            log.debug(`  proxy: ${route.prefix} → ${route.upstream.toString()}`);
-          }
-        }
       }
 
       // 3. Connect (web UI child process)
