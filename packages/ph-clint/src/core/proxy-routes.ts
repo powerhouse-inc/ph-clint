@@ -20,9 +20,13 @@ export interface ProxyRoute {
   source: string;
 }
 
-/** Endpoint types that imply WebSocket transport. */
+/**
+ * Endpoint types that imply WebSocket transport. Websites need upgrades
+ * forwarded for dev-server HMR sockets (Vite connects on the page's own
+ * origin/path).
+ */
 export function isWsEndpointType(type: EndpointType): boolean {
-  return type === 'api-mcp';
+  return type === 'api-mcp' || type === 'website';
 }
 
 /**

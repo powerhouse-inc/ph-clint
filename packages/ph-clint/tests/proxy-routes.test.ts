@@ -12,10 +12,13 @@ describe('isWsEndpointType', () => {
     expect(isWsEndpointType('api-mcp')).toBe(true);
   });
 
+  it('returns true for website (dev-server HMR sockets)', () => {
+    expect(isWsEndpointType('website')).toBe(true);
+  });
+
   it('returns false for other types', () => {
     expect(isWsEndpointType('api-rest')).toBe(false);
     expect(isWsEndpointType('api-graphql')).toBe(false);
-    expect(isWsEndpointType('website')).toBe(false);
     expect(isWsEndpointType('other')).toBe(false);
   });
 });
