@@ -58,6 +58,23 @@ export function buildSwitchboardRoutes(
   ];
 }
 
+/**
+ * Browser-facing switchboard URLs through the proxy. Kept next to
+ * `buildSwitchboardRoutes` so the `/switchboard` prefix scheme has a single
+ * owner — a prefix change here updates both the routes and the URLs handed
+ * out to consumers.
+ */
+export function buildSwitchboardProxyUrls(
+  proxyUrl: string,
+  switchboard: { driveUrl: string },
+): { switchboardUrl: string; driveUrl: string; mcpUrl: string } {
+  return {
+    switchboardUrl: `${proxyUrl}/switchboard/graphql`,
+    driveUrl: `${proxyUrl}/switchboard${new URL(switchboard.driveUrl).pathname}`,
+    mcpUrl: `${proxyUrl}/switchboard/mcp`,
+  };
+}
+
 /** A (serviceId, captureName) pair identifying the proxy-root website. */
 export interface ProxyRootCapture {
   serviceId: string;
