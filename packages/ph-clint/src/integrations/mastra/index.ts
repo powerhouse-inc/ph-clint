@@ -129,7 +129,7 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       });
     },
 
-    async createMemory() {
+    async createMemory(options?: Record<string, unknown>) {
       const { Memory } = await import('@mastra/memory');
       const { LibSQLStore } = await import('@mastra/libsql');
 
@@ -137,7 +137,7 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       mkdirSync(paths.dbFolder, { recursive: true });
 
       const libsqlStore = new LibSQLStore({ id: 'ph-clint-storage', url: `file:${paths.dbPath}` });
-      return new Memory({ storage: libsqlStore });
+      return new Memory({ storage: libsqlStore, ...(options ? { options } : {}) });
     },
 
     wrapAgent(agent: any, options?: WrapAgentOptions): AgentProvider {

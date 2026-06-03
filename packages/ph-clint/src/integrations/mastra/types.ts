@@ -63,8 +63,14 @@ export interface MastraHelpers {
   getAgentInstructions(agentId: string): string;
   /** Create a Mastra Workspace rooted at ctx.workdir. */
   createWorkspace(): Promise<any>;
-  /** Create Memory with LibSQL at .ph/{cliName}/mastra/mastra.db. */
-  createMemory(): Promise<any>;
+  /**
+   * Create Memory with LibSQL at .ph/{cliName}/mastra/mastra.db.
+   *
+   * `options` is forwarded to Mastra's `new Memory({ options })` — memory
+   * behavior config such as `lastMessages`, `workingMemory`, `semanticRecall`,
+   * or `observationalMemory` (background compression of long histories).
+   */
+  createMemory(options?: Record<string, unknown>): Promise<any>;
   /** Wrap a Mastra Agent as an AgentProvider (handles stream mapping). */
   wrapAgent(agent: any, options?: WrapAgentOptions): AgentProvider;
 }
