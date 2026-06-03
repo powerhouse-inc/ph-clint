@@ -42,6 +42,8 @@ interface ServiceStateFile {
   restartAttempt?: number;
   workdir?: string;
   params?: Record<string, unknown>;
+  /** Active log file for the current run, relative to the service dir. */
+  logFile?: string;
 }
 
 export interface ServiceManagerOptions {
@@ -61,8 +63,92 @@ function stateFilePath(servicesDir: string, serviceId: string, instanceId: strin
   return path.join(serviceDir(servicesDir, serviceId), `${instanceId}.json`);
 }
 
+/** Base (run-less) log name, kept as a final fallback for older state. */
 function logFilePath(servicesDir: string, serviceId: string, instanceId: string): string {
   return path.join(serviceDir(servicesDir, serviceId), `${instanceId}.log`);
+}
+
+/** Number of per-run log files kept per instance. */
+const MAX_RUN_LOGS = 5;
+
+/** Match a per-run log file for an instance: `<instanceId>.<runId>.log`. */
+function runLogPattern(instanceId: string): RegExp {
+  return new RegExp(`^${instanceId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(\\d+)\\.log$`);
+}
+
+/** Allocate a fresh per-run log file name for an instance, unique within the dir. */
+function newRunLogFile(servicesDir: string, serviceId: string, instanceId: string): string {
+  const dir = serviceDir(servicesDir, serviceId);
+  let runId = Date.now();
+  let name = `${instanceId}.${runId}.log`;
+  while (fs.existsSync(path.join(dir, name))) {
+    runId += 1;
+    name = `${instanceId}.${runId}.log`;
+  }
+  return name;
+}
+
+/** List an instance's per-run log files, newest first by runId. */
+function listRunLogs(servicesDir: string, serviceId: string, instanceId: string): string[] {
+  const dir = serviceDir(servicesDir, serviceId);
+  const re = runLogPattern(instanceId);
+  try {
+    return fs.readdirSync(dir)
+      .filter((f) => re.test(f))
+      .sort((a, b) => Number(re.exec(b)![1]) - Number(re.exec(a)![1]));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Resolve the active log path for an instance: the run recorded in the state
+ * file, else the newest per-run log, else the base log name.
+ */
+function activeLogPath(servicesDir: string, serviceId: string, instanceId: string): string {
+  const dir = serviceDir(servicesDir, serviceId);
+  const state = readStateFile(stateFilePath(servicesDir, serviceId, instanceId));
+  if (state?.logFile && fs.existsSync(path.join(dir, state.logFile))) {
+    return path.join(dir, state.logFile);
+  }
+  const runs = listRunLogs(servicesDir, serviceId, instanceId);
+  if (runs.length > 0) return path.join(dir, runs[0]!);
+  return logFilePath(servicesDir, serviceId, instanceId);
+}
+
+/** Keep only the newest `MAX_RUN_LOGS` per-run logs for an instance. */
+function pruneRunLogs(servicesDir: string, serviceId: string, instanceId: string): void {
+  const dir = serviceDir(servicesDir, serviceId);
+  const runs = listRunLogs(servicesDir, serviceId, instanceId);
+  for (const f of runs.slice(MAX_RUN_LOGS)) {
+    try { fs.unlinkSync(path.join(dir, f)); } catch { /* already gone */ }
+  }
+}
+
+const MAX_LINE_CHARS = 2_000;
+const MAX_TOTAL_CHARS = 16_000;
+
+/**
+ * Strip NUL bytes and non-printable control chars (keeping \n and \t), then
+ * cap each line and the total length. Keeps the tail when over the total cap,
+ * since recent log lines matter most. Guards against truncate-while-open gaps
+ * that fill the file with NUL runs containing no newlines.
+ */
+export function sanitizeLogText(text: string, maxTotal = MAX_TOTAL_CHARS): string {
+  // Drop control chars except \t (\x09) and \n (\x0A).
+  // eslint-disable-next-line no-control-regex
+  const cleaned = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  const lines = cleaned.split('\n').map(line => {
+    if (line.length <= MAX_LINE_CHARS) return line;
+    const dropped = line.length - MAX_LINE_CHARS;
+    return line.slice(0, MAX_LINE_CHARS) + `…[truncated ${dropped} chars]`;
+  });
+  let out = lines.join('\n');
+  if (out.length > maxTotal) {
+    const dropped = out.length - maxTotal;
+    out = `…[truncated ${dropped} chars]\n` + out.slice(out.length - maxTotal);
+  }
+  return out;
 }
 
 /**
@@ -71,7 +157,7 @@ function logFilePath(servicesDir: string, serviceId: string, instanceId: string)
 function tailLogFile(filePath: string, lines = 20): string {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const allLines = content.split('\n').filter(l => l.length > 0);
+    const allLines = sanitizeLogText(content).split('\n').filter(l => l.length > 0);
     return allLines.slice(-lines).join('\n');
   } catch {
     return '';
@@ -169,6 +255,11 @@ function scanInstances(servicesDir: string, serviceId: string): ServiceStateFile
   }
 }
 
+/** Strip the `.<runId>.log` or `.log` suffix from a log file name to get its instance ID. */
+function instanceIdFromLogFile(name: string): string {
+  return name.replace(/(?:\.\d+)?\.log$/, '');
+}
+
 /**
  * Find the instance ID of the most recently modified .log file in a service directory.
  * Used as a fallback when no .json state files exist (e.g. after stop).
@@ -185,7 +276,7 @@ function mostRecentLogInstance(servicesDir: string, serviceId: string): string |
         best = { name: f, mtime: stat.mtimeMs };
       }
     }
-    return best ? best.name.slice(0, -4) : undefined; // strip .log
+    return best ? instanceIdFromLogFile(best.name) : undefined;
   } catch {
     return undefined;
   }
@@ -257,8 +348,12 @@ export function createServiceManager(
       }
     }
 
-    const logPath = logFilePath(servicesDir, id, instanceId);
+    // Fresh log file per start, so a late write from a dying child can't
+    // corrupt the new run's log. Prune older runs to bound accumulation.
+    const logFile = newRunLogFile(servicesDir, id, instanceId);
+    const logPath = path.join(serviceDir(servicesDir, id), logFile);
     const logFd = fs.openSync(logPath, 'w');
+    pruneRunLogs(servicesDir, id, instanceId);
 
     const env = { ...process.env, ...(def.env ? def.env(config, params) : {}) };
 
@@ -288,6 +383,7 @@ export function createServiceManager(
       restartAttempt,
       workdir: startOpts?.workdir,
       params,
+      logFile,
     };
     writeStateFile(stateFilePath(servicesDir, id, instanceId), state);
 
@@ -727,7 +823,7 @@ export function createServiceManager(
         resolvedInstanceId = mostRecentLogInstance(servicesDir, id) ?? id;
       }
     }
-    const logPath = logFilePath(servicesDir, id, resolvedInstanceId);
+    const logPath = activeLogPath(servicesDir, id, resolvedInstanceId);
 
     // Build informational footer showing which instance log was printed
     const instances = instanceId ? null : scanInstances(servicesDir, id);
@@ -739,9 +835,9 @@ export function createServiceManager(
 
     try {
       const content = fs.readFileSync(logPath, 'utf-8');
-      const allLines = content.split('\n');
-      // Return last N lines
-      return warning + allLines.slice(-lines).join('\n') + footer;
+      const allLines = sanitizeLogText(content).split('\n');
+      const body = sanitizeLogText(allLines.slice(-lines).join('\n'));
+      return warning + body + footer;
     } catch {
       return warning;
     }
@@ -751,7 +847,7 @@ export function createServiceManager(
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
 
-    const logPath = logFilePath(servicesDir, id, instanceId);
+    const logPath = activeLogPath(servicesDir, id, instanceId);
     let lastPos = 0;
 
     // Initialize position to end of file
@@ -808,9 +904,12 @@ export function createServiceManager(
       if (state.status === 'stopped') {
         const statePath = stateFilePath(servicesDir, id, state.instanceId);
         removeStateFile(statePath);
-        // Also remove the log file
-        const logPath = logFilePath(servicesDir, id, state.instanceId);
-        try { fs.unlinkSync(logPath); } catch { /* Already gone */ }
+        // Remove the base log and every per-run log for this instance.
+        const dir = serviceDir(servicesDir, id);
+        try { fs.unlinkSync(logFilePath(servicesDir, id, state.instanceId)); } catch { /* Already gone */ }
+        for (const f of listRunLogs(servicesDir, id, state.instanceId)) {
+          try { fs.unlinkSync(path.join(dir, f)); } catch { /* Already gone */ }
+        }
       }
     }
   }

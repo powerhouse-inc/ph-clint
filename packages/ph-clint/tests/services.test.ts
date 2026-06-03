@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { defineService, createServiceManager } from '../src/core/services.js';
+import { defineService, createServiceManager, sanitizeLogText } from '../src/core/services.js';
 import { createEventBus } from '../src/core/events.js';
 import type { ServiceDefinition, EventBus } from '../src/core/types.js';
 import {
@@ -134,20 +134,23 @@ describe('createServiceManager', () => {
       trackedPids.push(statuses[0]!.pid!);
     });
 
-    it('creates state file and log file in service subdir', async () => {
+    it('creates state file and per-run log file in service subdir', async () => {
       const mgr = createManager([readyDef]);
       await mgr.start('test-svc');
 
       const statePath = path.join(servicesDir, 'test-svc', 'test-svc.json');
-      const logPath = path.join(servicesDir, 'test-svc', 'test-svc.log');
 
       expect(fs.existsSync(statePath)).toBe(true);
-      expect(fs.existsSync(logPath)).toBe(true);
 
       const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
       expect(state.status).toBe('ready');
       expect(state.pid).toBeGreaterThan(0);
       trackedPids.push(state.pid);
+
+      // State records the active per-run log file name.
+      expect(state.logFile).toMatch(/^test-svc\.\d+\.log$/);
+      const logPath = path.join(servicesDir, 'test-svc', state.logFile);
+      expect(fs.existsSync(logPath)).toBe(true);
 
       const logContent = fs.readFileSync(logPath, 'utf-8');
       expect(logContent).toContain('listening');
@@ -505,6 +508,75 @@ describe('createServiceManager', () => {
     });
   });
 
+  describe('per-run log files', () => {
+    function runLogs(): string[] {
+      const dir = path.join(servicesDir, 'test-svc');
+      try {
+        return fs.readdirSync(dir).filter((f) => /^test-svc\.\d+\.log$/.test(f));
+      } catch {
+        return [];
+      }
+    }
+
+    it('writes a fresh log file on each start and preserves the previous run', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+      const firstRun = JSON.parse(
+        fs.readFileSync(path.join(servicesDir, 'test-svc', 'test-svc.json'), 'utf-8'),
+      ).logFile as string;
+
+      await mgr.stop('test-svc');
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+      const secondRun = JSON.parse(
+        fs.readFileSync(path.join(servicesDir, 'test-svc', 'test-svc.json'), 'utf-8'),
+      ).logFile as string;
+
+      expect(secondRun).not.toBe(firstRun);
+      const all = runLogs();
+      expect(all).toContain(firstRun);
+      expect(all).toContain(secondRun);
+    }, SERVICE_TEST_TIMEOUT);
+
+    it('logs() returns the current run output after restart', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+      await mgr.stop('test-svc');
+
+      // Poison the previous run's log so a stale read would be detectable.
+      const firstRun = runLogs()[0]!;
+      fs.writeFileSync(path.join(servicesDir, 'test-svc', firstRun), 'STALE_RUN_MARKER\n');
+
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      const out = mgr.logs('test-svc');
+      expect(out).toContain('listening');
+      expect(out).not.toContain('STALE_RUN_MARKER');
+    }, SERVICE_TEST_TIMEOUT);
+
+    it('prunes to the 5 most recent runs per instance', async () => {
+      const mgr = createManager([readyDef]);
+      const dir = path.join(servicesDir, 'test-svc');
+      fs.mkdirSync(dir, { recursive: true });
+      // Seed 6 old run logs with ascending runIds.
+      for (let i = 1; i <= 6; i++) {
+        fs.writeFileSync(path.join(dir, `test-svc.${i}.log`), `old ${i}\n`);
+      }
+
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      const remaining = runLogs();
+      expect(remaining.length).toBe(5);
+      // Oldest seeded runs are pruned; the newest start is kept.
+      expect(remaining).not.toContain('test-svc.1.log');
+      expect(remaining).not.toContain('test-svc.2.log');
+    }, SERVICE_TEST_TIMEOUT);
+  });
+
   describe('watchLogs()', () => {
     it('calls onLine when new log data appears', async () => {
       const mgr = createManager([readyDef]);
@@ -512,7 +584,9 @@ describe('createServiceManager', () => {
       trackedPids.push(mgr.list()[0]!.pid!);
 
       const lines: string[] = [];
-      const logPath = path.join(servicesDir, 'test-svc', 'test-svc.log');
+      const statePath = path.join(servicesDir, 'test-svc', 'test-svc.json');
+      const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+      const logPath = path.join(servicesDir, 'test-svc', state.logFile);
       const cleanup = mgr.watchLogs('test-svc', 'test-svc', (line) => lines.push(line));
 
       // Append to log file to trigger watcher
@@ -1015,6 +1089,42 @@ describe('createServiceManager', () => {
     it('throws for unknown service', () => {
       const mgr = createManager([readyDef]);
       expect(() => mgr.scanProjects('nonexistent', '/tmp')).toThrow(/Unknown service/);
+    });
+  });
+
+  describe('sanitizeLogText', () => {
+    it('strips a NUL run while preserving surrounding text', () => {
+      const input = 'before\n' + '\0'.repeat(13_300) + '\nafter';
+      const out = sanitizeLogText(input);
+      expect(out).not.toContain('\0');
+      expect(out).toContain('before');
+      expect(out).toContain('after');
+      expect(out.length).toBeLessThan(100);
+    });
+
+    it('strips other control chars but keeps \\n and \\t', () => {
+      const out = sanitizeLogText('a\tb\nc\x07\x1b\x7fd');
+      expect(out).toBe('a\tb\ncd');
+    });
+
+    it('caps an overlong single line with a marker', () => {
+      const out = sanitizeLogText('x'.repeat(5_000));
+      expect(out.length).toBeLessThan(5_000);
+      expect(out).toMatch(/…\[truncated 3000 chars\]$/);
+    });
+
+    it('caps total length keeping the tail', () => {
+      const lines = Array.from({ length: 5_000 }, (_, i) => `line-${i}`);
+      const out = sanitizeLogText(lines.join('\n'));
+      expect(out.length).toBeLessThanOrEqual(16_000 + 64);
+      expect(out.startsWith('…[truncated')).toBe(true);
+      expect(out.endsWith('line-4999')).toBe(true);
+      expect(out).not.toContain('line-0\n');
+    });
+
+    it('passes plain short input through unchanged', () => {
+      const input = 'hello\nworld\n\ttabbed';
+      expect(sanitizeLogText(input)).toBe(input);
     });
   });
 });
