@@ -127,6 +127,11 @@ export function defineCli<
     const proxySchema = z.object({
       proxyPort: z.coerce.number().default(0),
       proxyHost: z.string().default('0.0.0.0'),
+      // Browser-facing base URL when deployed behind an ingress
+      // (env: {CLINAME}_PROXY_PUBLIC_URL). See ProxyServerOptions.publicUrl.
+      // Validated as a URL so a scheme-less value fails at startup rather
+      // than silently propagating into every composed URL.
+      proxyPublicUrl: z.string().url().optional(),
     });
     const configObj = options.configSchema as any;
     options = { ...options, configSchema: configObj.merge(proxySchema) as unknown as TSchema };
@@ -1191,7 +1196,13 @@ export function defineCli<
     if (options.proxyEnabled) {
       const proxyPort = (config as any).proxyPort ?? 0;
       const proxyHost = (config as any).proxyHost ?? '0.0.0.0';
-      proxyInstance = await createProxyServer({ port: proxyPort, host: proxyHost, logger: log });
+      const proxyPublicUrl = (config as any).proxyPublicUrl as string | undefined;
+      proxyInstance = await createProxyServer({
+        port: proxyPort,
+        host: proxyHost,
+        publicUrl: proxyPublicUrl,
+        logger: log,
+      });
       for (const route of options.proxyRoutes ?? []) {
         try {
           proxyInstance.addRoute({
