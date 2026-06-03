@@ -60,6 +60,18 @@ describe('createProxyServer', () => {
     expect(p.url).toContain(`http://127.0.0.1:${p.port}`);
   });
 
+  it('url returns publicUrl when set, trailing slash stripped', async () => {
+    proxy = await createProxyServer({
+      port: 0,
+      host: '127.0.0.1',
+      publicUrl: 'https://vetra-agent.tenant.vetra.io/',
+      logger,
+    });
+    servers.push({ close: () => proxy.stop() });
+    expect(proxy.url).toBe('https://vetra-agent.tenant.vetra.io');
+    expect(proxy.port).toBeGreaterThan(0);
+  });
+
   it('health endpoint returns ok', async () => {
     const p = await startProxy();
     const res = await httpGet(`${p.url}/_proxy/health`);

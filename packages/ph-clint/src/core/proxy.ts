@@ -12,6 +12,14 @@ export interface ProxyServerOptions {
   port: number;
   /** Bind address (default '0.0.0.0'). */
   host: string;
+  /**
+   * Browser-facing base URL when the proxy sits behind an ingress /
+   * reverse proxy (e.g. `https://vetra-agent.<tenant>.vetra.io`). When
+   * set, `url` returns this instead of the local listen address, so
+   * everything composed from it (the ready event's proxied switchboard /
+   * drive / mcp URLs) is reachable from outside the pod.
+   */
+  publicUrl?: string;
   logger: Logger;
 }
 
@@ -161,7 +169,18 @@ export async function createProxyServer(
     });
   });
 
-  const url = `http://${host === '0.0.0.0' ? 'localhost' : host}:${assignedPort}`;
+  // publicUrl is assumed origin-only (scheme + host, no base path) and
+  // governs only the advertised `url`, not the forwarded headers: `xfwd`
+  // above relies on the fronting ingress to set X-Forwarded-Proto/Host.
+  // Supporting a public base path (e.g. https://host/agent) would require
+  // prepending it to X-Forwarded-Prefix and stripping it at the ingress —
+  // not handled here.
+  // `|| fallback` (not `??`) so an empty/whitespace-only publicUrl is treated
+  // as unset rather than producing an empty `url`. The CLI also validates this
+  // as a URL, but createProxyServer is callable directly so we guard here too.
+  const url =
+    options.publicUrl?.trim().replace(/\/+$/, '') ||
+    `http://${host === '0.0.0.0' ? 'localhost' : host}:${assignedPort}`;
 
   const instance: ProxyServerInstance = {
     get port() { return assignedPort; },
