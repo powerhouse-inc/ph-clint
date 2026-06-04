@@ -51,6 +51,14 @@ export { createDocumentChangeTrigger } from './change-trigger.js';
 export type { DocumentChangeTriggerOptions } from './change-trigger.js';
 export { isDocType } from './type-guard.js';
 export { createFolderOperations, createFolderCommands } from './folders.js';
+export { createAttachmentCommands } from './attachment-commands.js';
+export {
+  getAttachmentService,
+  asRef,
+  inferMimeType,
+  fileToBlob,
+  isAttachmentAlreadyExists,
+} from './attachment.js';
 
 import type { DocumentModelModule } from 'document-model';
 import type {
