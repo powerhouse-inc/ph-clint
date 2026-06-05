@@ -38,6 +38,7 @@ export interface ProxyServerInstance {
    * Compute the X-Forwarded-Prefix value to send upstream.
    */
   function computeForwardedPrefix(route: ProxyRoute): string | undefined {
+    if (!route.upstream) return undefined;
     const strip = (s: string) => s.replace(/\/$/, '');
     const prefix = strip(route.prefix);
     const upstreamPath = strip(route.upstream.pathname);
@@ -67,8 +68,17 @@ export async function createProxyServer(
   });
 
   function matchRoute(pathname: string): ProxyRoute | undefined {
-    // Routes are kept sorted longest-prefix-first
+    // Exact routes win first, so a `'/'` exact redirect fires only on the bare
+    // root while `/assets/*`, `/d/<id>`, etc. fall through to prefix routes
+    // (including a `'/'` catch-all).
     for (const route of routes) {
+      if (route.exact && pathname === route.prefix) {
+        return route;
+      }
+    }
+    // Routes are kept sorted longest-prefix-first.
+    for (const route of routes) {
+      if (route.exact) continue;
       if (pathname === route.prefix || pathname.startsWith(route.prefix)) {
         return route;
       }
@@ -80,9 +90,9 @@ export async function createProxyServer(
     routes.sort((a, b) => b.prefix.length - a.prefix.length);
   }
 
-  function rewriteTarget(route: ProxyRoute, requestPath: string): string {
+  function rewriteTarget(route: ProxyRoute, upstream: URL, requestPath: string): string {
     const suffix = requestPath.slice(route.prefix.length);
-    const upstreamPath = route.upstream.pathname;
+    const upstreamPath = upstream.pathname;
     // Avoid double slashes when both upstream ends with / and suffix starts with /
     if (upstreamPath.endsWith('/') && suffix.startsWith('/')) {
       return upstreamPath + suffix.slice(1);
@@ -109,9 +119,11 @@ export async function createProxyServer(
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(routes.map(r => ({
             prefix: r.prefix,
-            upstream: r.upstream.toString(),
+            upstream: r.upstream?.toString(),
             ws: r.ws,
             source: r.source,
+            ...(r.redirectTo ? { redirectTo: r.redirectTo } : {}),
+            ...(r.exact ? { exact: true } : {}),
       }))));
       return;
     }
@@ -123,8 +135,21 @@ export async function createProxyServer(
       return;
     }
 
-    const targetPath = rewriteTarget(route, pathname);
-    const target = `${route.upstream.protocol}//${route.upstream.host}`;
+    if (route.redirectTo) {
+      res.writeHead(302, { Location: route.redirectTo });
+      res.end();
+      return;
+    }
+
+    if (!route.upstream) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Bad Gateway', message: 'route has no upstream' }));
+      return;
+    }
+
+    const upstream = route.upstream;
+    const targetPath = rewriteTarget(route, upstream, pathname);
+    const target = `${upstream.protocol}//${upstream.host}`;
 
     const forwardedPrefix = computeForwardedPrefix(route);
     if (forwardedPrefix) {
@@ -141,13 +166,14 @@ export async function createProxyServer(
     const pathname = req.url ?? '/';
     const route = matchRoute(pathname);
 
-    if (!route || !route.ws) {
+    if (!route || !route.ws || !route.upstream) {
       socket.destroy();
       return;
     }
 
-    const targetPath = rewriteTarget(route, pathname);
-    const target = `${route.upstream.protocol}//${route.upstream.host}`;
+    const upstream = route.upstream;
+    const targetPath = rewriteTarget(route, upstream, pathname);
+    const target = `${upstream.protocol}//${upstream.host}`;
 
     const forwardedPrefix = computeForwardedPrefix(route);
     if (forwardedPrefix) {
@@ -188,18 +214,24 @@ export async function createProxyServer(
     get url() { return url; },
 
     addRoute(route: ProxyRoute): void {
-      // Equal-length prefixes keep insertion order after the stable sort, so
-      // an existing identical prefix shadows the new route entirely.
-      const existing = routes.find((r) => r.prefix === route.prefix);
+      // Same prefix only conflicts when both match the same way: an exact
+      // route and a prefix route on the same prefix (e.g. a `'/'` redirect vs
+      // Connect's `'/'` catch-all) coexist — matchRoute dispatches exact first.
+      const existing = routes.find(
+        (r) => r.prefix === route.prefix && !!r.exact === !!route.exact,
+      );
       if (existing) {
         logger.warn(
-          `Proxy route conflict: '${route.prefix}' already registered by ${existing.source}; ` +
+          `Proxy route conflict: '${route.prefix}'${route.exact ? ' (exact)' : ''} already registered by ${existing.source}; ` +
             `route from ${route.source} will be shadowed`,
         );
       }
       routes.push(route);
       sortRoutes();
-      logger.debug(`Proxy route added: ${route.prefix} → ${route.upstream.toString()} (${route.source})`);
+      const dest = route.redirectTo
+        ? `redirect → ${route.redirectTo}`
+        : route.upstream?.toString() ?? '(no upstream)';
+      logger.debug(`Proxy route added: ${route.prefix} → ${dest} (${route.source})`);
     },
 
     removeRoutesBySource(source: string): void {

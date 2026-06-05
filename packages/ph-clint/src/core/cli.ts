@@ -1224,10 +1224,13 @@ export function defineCli<
         routes: () =>
           proxy.getRoutes().map((r) => ({
             prefix: r.prefix,
-            upstream: r.upstream.toString(),
+            upstream: r.upstream?.toString(),
             ws: r.ws,
             source: r.source,
+            redirectTo: r.redirectTo,
+            exact: r.exact,
           })),
+        addRoute: (route) => proxy.addRoute(route),
       };
     }
 

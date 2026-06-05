@@ -114,7 +114,7 @@ export interface CommandContext<
   routine?: Routine;
   processes?: ProcessManager;
   services?: ServiceManager;
-  /** Embedded reverse proxy, when `proxyEnabled`. Read-only view. */
+  /** Embedded reverse proxy, when `proxyEnabled`. */
   proxy?: {
     /** Public base URL of the proxy (e.g. 'http://localhost:8090'). */
     url: string;
@@ -122,10 +122,17 @@ export interface CommandContext<
     /** Current route table snapshot. */
     routes(): ReadonlyArray<{
       prefix: string;
-      upstream: string;
+      upstream?: string;
       ws: boolean;
       source: string;
+      redirectTo?: string;
+      exact?: boolean;
     }>;
+    /**
+     * Register a proxy route at runtime — used by embedding CLIs to add
+     * redirects or announce extra endpoints once a service is ready.
+     */
+    addRoute(route: import('./proxy-routes.js').ProxyRoute): void;
   };
   emit?: EmitFn<R>;
   on?: OnFn<R>;

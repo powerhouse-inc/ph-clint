@@ -12,12 +12,26 @@ import type {
 export interface ProxyRoute {
   /** URL path prefix matched against incoming requests (e.g. '/switchboard/graphql'). */
   prefix: string;
-  /** Upstream target URL (e.g. new URL('http://localhost:4001/graphql')). */
-  upstream: URL;
+  /**
+   * Upstream target URL (e.g. new URL('http://localhost:4001/graphql')).
+   * Optional only for pure redirect routes (`redirectTo` set).
+   */
+  upstream?: URL;
   /** Whether WebSocket upgrade should be forwarded on this route. */
   ws: boolean;
   /** Origin label for route management (e.g. 'switchboard', 'service:my-svc'). */
   source: string;
+  /**
+   * When set, matching requests get a 302 to this location instead of being
+   * proxied. No upstream connection is made.
+   */
+  redirectTo?: string;
+  /**
+   * Match the prefix exactly rather than as a `startsWith` prefix. Exact
+   * routes are matched before prefix routes so a `'/'` redirect can coexist
+   * with a `'/'` catch-all without shadowing longer prefixes.
+   */
+  exact?: boolean;
 }
 
 /**

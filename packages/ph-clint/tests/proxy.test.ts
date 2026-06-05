@@ -188,6 +188,63 @@ describe('createProxyServer', () => {
     });
   });
 
+  it('exact redirect route fires only on bare root; longer prefixes and assets pass through', async () => {
+    const upstream = await createUpstream('catch-all');
+    const p = await startProxy();
+
+    // Connect-style '/' catch-all.
+    p.addRoute({
+      prefix: '/',
+      upstream: new URL(upstream.url),
+      ws: false,
+      source: 'connect',
+    });
+    // Always-on root redirect to the drive.
+    p.addRoute({
+      prefix: '/',
+      exact: true,
+      redirectTo: '/d/drive-123',
+      ws: false,
+      source: 'studio-redirect',
+    });
+    // Drive announce route (longer prefix must win over '/').
+    p.addRoute({
+      prefix: '/d/drive-123',
+      upstream: new URL('/switchboard/d/drive-123', upstream.url),
+      ws: false,
+      source: 'studio-announce',
+    });
+
+    // Bare root → 302 to the drive.
+    const root = await new Promise<{ status: number; location?: string }>((resolve, reject) => {
+      http.get(`${p.url}/`, (res) => {
+        res.resume();
+        resolve({ status: res.statusCode!, location: res.headers.location });
+      }).on('error', reject);
+    });
+    expect(root.status).toBe(302);
+    expect(root.location).toBe('/d/drive-123');
+
+    // Root-relative asset still reaches the catch-all upstream.
+    const asset = await httpGet(`${p.url}/assets/app.js`);
+    expect(asset.status).toBe(200);
+    expect(JSON.parse(asset.body).body).toBe('catch-all');
+    expect(JSON.parse(asset.body).path).toBe('/assets/app.js');
+
+    // /d/<id> hits the longer-prefix announce route, not the redirect or catch-all.
+    const drive = await httpGet(`${p.url}/d/drive-123`);
+    expect(drive.status).toBe(200);
+    expect(JSON.parse(drive.body).path).toBe('/switchboard/d/drive-123');
+
+    // Debug endpoint surfaces the redirect + exact flags.
+    const routesRes = await httpGet(`${p.url}/_proxy/routes`);
+    const table = JSON.parse(routesRes.body) as Array<Record<string, unknown>>;
+    const redirect = table.find((r) => r.source === 'studio-redirect');
+    expect(redirect).toMatchObject({ prefix: '/', redirectTo: '/d/drive-123', exact: true });
+    const announce = table.find((r) => r.source === 'studio-announce');
+    expect(announce?.prefix).toBe('/d/drive-123');
+  });
+
   it('stop closes the server', async () => {
     const p = await createProxyServer({ port: 0, host: '127.0.0.1', logger });
     await p.stop();
