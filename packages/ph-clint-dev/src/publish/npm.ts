@@ -24,8 +24,8 @@ export async function checkNpmAuth(registry: string): Promise<void> {
 
 /**
  * Fetch package metadata directly from the registry HTTP API.
- * Bypasses `npm view` which aggressively caches 404 responses for new
- * packages, causing verification failures during first-time publishes.
+ * Bypasses `npm view`'s 404 caching. Rides the registry HTTP cache; a 15s
+ * timeout guards against a slow or hung upstream blocking the caller.
  */
 export async function fetchPackageMetadata(
   packageName: string,
@@ -38,6 +38,7 @@ export async function fetchPackageMetadata(
   const url = `${base}/${encoded}`;
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(15_000),
   });
   if (res.status === 404) return null;
   if (!res.ok) return null;

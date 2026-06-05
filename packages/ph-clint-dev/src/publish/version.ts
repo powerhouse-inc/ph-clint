@@ -1,4 +1,5 @@
 import type { PublishTag } from './types.js';
+import { fetchPackageMetadata } from './npm.js';
 
 const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const SEMVER_PRE_RE =
@@ -90,23 +91,14 @@ export async function queryLatestPrerelease(
   registry: string,
 ): Promise<number | null> {
   try {
-    const base = registry.replace(/\/$/, '');
-    const encoded = packageName.startsWith('@')
-      ? packageName.replace('/', '%2f')
-      : encodeURIComponent(packageName);
-    const url = `${base}/${encoded}`;
-    const res = await fetch(url, {
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) return null;
-
-    const data = (await res.json()) as { versions?: Record<string, unknown> };
-    if (!data.versions) return null;
+    const data = await fetchPackageMetadata(packageName, registry);
+    const versions = data?.versions as Record<string, unknown> | undefined;
+    if (!versions) return null;
 
     const prefix = `${baseVersion}-${tag}.`;
     let max: number | null = null;
 
-    for (const v of Object.keys(data.versions)) {
+    for (const v of Object.keys(versions)) {
       if (v.startsWith(prefix)) {
         const n = Number(v.slice(prefix.length));
         if (!Number.isNaN(n) && (max === null || n > max)) {
