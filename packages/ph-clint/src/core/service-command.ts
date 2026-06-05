@@ -199,8 +199,11 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
 
   // ── logs ──
   const logsFields: Record<string, z.ZodTypeAny> = {
-    lines: z.coerce.number().default(50).describe('Number of log lines to show'),
+    lines: z.coerce.number().default(50).describe('Max log lines to return (tail, applied after grep)'),
     instance: z.string().optional().describe('Instance ID (use -ps to find it)'),
+    grep: z.string().optional().describe('Only show lines matching this pattern (case-insensitive regex; falls back to literal match if not valid regex)'),
+    context: z.coerce.number().optional().describe('Lines of surrounding context to include around each grep match (like grep -C)'),
+    since: z.string().optional().describe('Cursor from a previous call: return only log content written since. Pass the "cursor <token>" value printed in a prior logs output to fetch just new lines.'),
   };
 
   commands.push({
@@ -211,7 +214,13 @@ export function createServiceCommands(def: ServiceDefinition<any>): Command[] {
       const input = rawInput as Record<string, unknown>;
       const services = context.services;
       if (!services) throw new Error('No services configured');
-      return { text: services.logs(id, input.instance as string | undefined, input.lines as number) || 'No logs available' };
+      const text = services.logs(id, input.instance as string | undefined, {
+        lines: input.lines as number,
+        grep: input.grep as string | undefined,
+        context: input.context as number | undefined,
+        since: input.since as string | undefined,
+      });
+      return { text: text || 'No logs available' };
     },
   });
 

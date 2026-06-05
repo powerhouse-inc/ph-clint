@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import type { CaptureDefinition, EndpointType, EventBus, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
+import type { CaptureDefinition, EndpointType, EventBus, LogsOptions, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
 import { isPortFree } from './preflight.js';
 import { scanProjects as scanProjectsImpl } from './project-scanner.js';
 import { slugToTitle } from './schema.js';
@@ -150,6 +150,52 @@ export function sanitizeLogText(text: string, maxTotal = MAX_TOTAL_CHARS): strin
     out = `…[truncated ${dropped} chars]\n` + out.slice(out.length - maxTotal);
   }
   return out;
+}
+
+/**
+ * Compile a grep pattern as a case-insensitive RegExp, falling back to a
+ * literal (escaped) match when the pattern isn't valid regex.
+ */
+export function compileLogGrep(pattern: string): RegExp {
+  try {
+    return new RegExp(pattern, 'i');
+  } catch {
+    return new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  }
+}
+
+/**
+ * Keep only lines matching `grep` plus `context` neighbours on each side,
+ * inserting a `--` separator between non-adjacent groups (like grep -C).
+ * matchCount is null when no grep was applied.
+ */
+export function filterLogLines(
+  lines: string[],
+  grep?: string,
+  context = 0,
+): { lines: string[]; matchCount: number | null } {
+  if (!grep) return { lines, matchCount: null };
+  const re = compileLogGrep(grep);
+  const ctx = Math.max(0, context);
+  const keep = new Array<boolean>(lines.length).fill(false);
+  let matchCount = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (re.test(lines[i]!)) {
+      matchCount++;
+      for (let j = Math.max(0, i - ctx); j <= Math.min(lines.length - 1, i + ctx); j++) {
+        keep[j] = true;
+      }
+    }
+  }
+  const out: string[] = [];
+  let prev = -2;
+  for (let i = 0; i < lines.length; i++) {
+    if (!keep[i]) continue;
+    if (prev >= 0 && i - prev > 1) out.push('--');
+    out.push(lines[i]!);
+    prev = i;
+  }
+  return { lines: out, matchCount };
 }
 
 /**
@@ -805,9 +851,11 @@ export function createServiceManager(
     return results;
   }
 
-  function logs(id: string, instanceId?: string, lines = 50): string {
+  function logs(id: string, instanceId?: string, opts: number | LogsOptions = {}): string {
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
+    const { lines = 50, grep, context, since } =
+      typeof opts === 'number' ? { lines: opts, grep: undefined, context: undefined, since: undefined } : opts;
 
     // Resolve instance ID: if not provided, prefer running instances
     let resolvedInstanceId = instanceId;
@@ -838,16 +886,52 @@ export function createServiceManager(
     const statusTag = instanceState ? ` [${instanceState.status}]` : '';
     const instanceTag = resolvedInstanceId !== id ? ` (${resolvedInstanceId})` : '';
     const workdirLine = instanceState?.workdir ? `\n  (dir: ${instanceState.workdir})` : '';
-    const footer = `\n— ${resolveServiceName(def)}${instanceTag}${statusTag} log${workdirLine}`;
 
+    let buf: Buffer;
+    let ino = 0;
     try {
-      const content = fs.readFileSync(logPath, 'utf-8');
-      const allLines = sanitizeLogText(content).split('\n');
-      const body = sanitizeLogText(allLines.slice(-lines).join('\n'));
-      return warning + body + footer;
+      buf = fs.readFileSync(logPath);
+      ino = fs.statSync(logPath).ino;
     } catch {
       return warning;
     }
+
+    // Incremental read: `since` is an opaque `<inode>.<byteOffset>` cursor from a
+    // prior call. A different inode means the file was replaced (e.g. a restart
+    // rolled to a new run log); an offset past EOF means it was truncated. Either
+    // way, re-read from the start so new content isn't silently skipped.
+    let startByte = 0;
+    let rotated = false;
+    if (since) {
+      const dot = since.indexOf('.');
+      const sinceIno = Number(since.slice(0, dot));
+      const sinceOffset = Number(since.slice(dot + 1));
+      if (dot < 0 || !Number.isFinite(sinceIno) || !Number.isFinite(sinceOffset)) {
+        // Unparseable cursor — treat as a fresh read.
+      } else if (sinceIno !== ino || sinceOffset > buf.length) {
+        rotated = true;
+      } else {
+        startByte = sinceOffset;
+      }
+    }
+    const cursor = `${ino}.${buf.length}`;
+
+    // Strip control chars and cap per-line, but filter before tailing/total-cap.
+    const slice = sanitizeLogText(buf.toString('utf-8', startByte), Number.POSITIVE_INFINITY);
+    const { lines: filtered, matchCount } = filterLogLines(slice.split('\n'), grep, context);
+    const body = sanitizeLogText(filtered.slice(-lines).join('\n'));
+
+    const notes: string[] = [];
+    if (matchCount !== null) {
+      notes.push(matchCount > 0
+        ? `${matchCount} line${matchCount === 1 ? '' : 's'} match /${grep}/i`
+        : `no lines match /${grep}/i`);
+    }
+    if (rotated) notes.push('log rotated, re-read from start');
+    notes.push(`cursor ${cursor}`);
+    const footer = `\n— ${resolveServiceName(def)}${instanceTag}${statusTag} log · ${notes.join(' · ')}${workdirLine}`;
+
+    return warning + body + footer;
   }
 
   function watchLogs(id: string, instanceId: string, onLine: (line: string) => void): () => void {

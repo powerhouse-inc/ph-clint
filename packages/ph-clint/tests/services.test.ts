@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { defineService, createServiceManager, sanitizeLogText } from '../src/core/services.js';
+import { defineService, createServiceManager, sanitizeLogText, filterLogLines } from '../src/core/services.js';
 import { createEventBus } from '../src/core/events.js';
 import type { ServiceDefinition, EventBus } from '../src/core/types.js';
 import {
@@ -505,6 +505,107 @@ describe('createServiceManager', () => {
     it('throws for unknown service', () => {
       const mgr = createManager([readyDef]);
       expect(() => mgr.logs('nonexistent')).toThrow(/Unknown service/);
+    });
+  });
+
+  describe('filterLogLines()', () => {
+    const sample = ['info startup', 'ERROR refused', 'info retry', 'warn slow', 'Error timeout', 'info done'];
+
+    it('returns all lines with null matchCount when no grep', () => {
+      const { lines, matchCount } = filterLogLines(sample);
+      expect(lines).toEqual(sample);
+      expect(matchCount).toBeNull();
+    });
+
+    it('keeps only case-insensitive matches and counts them', () => {
+      const { lines, matchCount } = filterLogLines(sample, 'error');
+      expect(matchCount).toBe(2);
+      expect(lines.filter((l) => l !== '--')).toEqual(['ERROR refused', 'Error timeout']);
+    });
+
+    it('inserts a -- separator between non-adjacent match groups', () => {
+      const { lines } = filterLogLines(sample, 'error', 0);
+      expect(lines).toEqual(['ERROR refused', '--', 'Error timeout']);
+    });
+
+    it('expands context around matches and merges overlapping groups', () => {
+      const { lines } = filterLogLines(sample, 'error', 1);
+      // matches at idx 1 and 4 with ±1 cover idx 0-2 and 3-5 → all six, contiguous
+      expect(lines).toEqual(sample);
+    });
+
+    it('falls back to a literal match for invalid regex', () => {
+      const { lines, matchCount } = filterLogLines(['a(b', 'cd'], '(');
+      expect(matchCount).toBe(1);
+      expect(lines).toEqual(['a(b']);
+    });
+  });
+
+  describe('logs() grep + cursor', () => {
+    const body = [
+      'info startup',
+      'ERROR connection refused',
+      'info retry',
+      'warn slow response',
+      'ERROR request timeout',
+      'info done',
+    ].join('\n') + '\n';
+
+    function writeLog(content: string): void {
+      const dir = path.join(servicesDir, 'test-svc');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'test-svc.log'), content);
+    }
+
+    it('filters to grep matches and reports the count in the footer', () => {
+      const mgr = createManager([readyDef]);
+      writeLog(body);
+      const out = mgr.logs('test-svc', undefined, { grep: 'ERROR' });
+      expect(out).toContain('connection refused');
+      expect(out).toContain('request timeout');
+      expect(out).not.toContain('info startup');
+      expect(out).toMatch(/2 lines match \/ERROR\/i/);
+    });
+
+    it('notes when nothing matches the grep pattern', () => {
+      const mgr = createManager([readyDef]);
+      writeLog(body);
+      const out = mgr.logs('test-svc', undefined, { grep: 'nonexistent-token' });
+      expect(out).toMatch(/no lines match/);
+    });
+
+    it('returns an inode.offset cursor and reads only new content on the next call', () => {
+      const mgr = createManager([readyDef]);
+      writeLog(body);
+      const first = mgr.logs('test-svc');
+      const cursor = first.match(/cursor (\d+\.\d+)/)![1]!;
+      expect(Number(cursor.split('.')[1])).toBe(Buffer.byteLength(body));
+
+      fs.appendFileSync(path.join(servicesDir, 'test-svc', 'test-svc.log'), 'info fresh line\n');
+      const next = mgr.logs('test-svc', undefined, { since: cursor });
+      expect(next).toContain('fresh line');
+      expect(next).not.toContain('connection refused');
+      const nextCursor = next.match(/cursor (\d+\.\d+)/)![1]!;
+      expect(Number(nextCursor.split('.')[1])).toBeGreaterThan(Number(cursor.split('.')[1]));
+    });
+
+    it('re-reads from the start and flags rotation when the cursor offset is past EOF', () => {
+      const mgr = createManager([readyDef]);
+      writeLog(body);
+      const ino = fs.statSync(path.join(servicesDir, 'test-svc', 'test-svc.log')).ino;
+      const out = mgr.logs('test-svc', undefined, { since: `${ino}.10000000` });
+      expect(out).toMatch(/log rotated, re-read from start/);
+      expect(out).toContain('info startup');
+    });
+
+    it('re-reads from the start when the cursor inode no longer matches (file replaced)', () => {
+      const mgr = createManager([readyDef]);
+      writeLog(body);
+      // A stale inode (from a previous run log) must not be applied to a new file.
+      const out = mgr.logs('test-svc', undefined, { since: '999999999.5' });
+      expect(out).toMatch(/log rotated, re-read from start/);
+      expect(out).toContain('info startup');
+      expect(out).toContain('info done');
     });
   });
 
