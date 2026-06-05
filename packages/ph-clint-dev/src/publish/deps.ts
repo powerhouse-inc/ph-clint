@@ -72,8 +72,21 @@ export function analyzeFileDeps(
 }
 
 /**
+ * Caret over a prerelease admits a higher stable release at the same x.y.z
+ * (e.g. ^6.1.0-dev.21 matches 6.1.0), which can resolve to an unrelated
+ * build. Pin prereleases exactly; carets are fine for stable releases.
+ */
+function pinSpec(version: string): string {
+  return version.includes('-') ? version : `^${version}`;
+}
+
+/**
  * Resolve external file: dep versions by reading their package.json.
  * Returns the dep with publishVersion set.
+ *
+ * catalog: deps are already pinned to a specific version in the catalog, so
+ * they publish exact (no caret) — matching pnpm's own catalog publish. Other
+ * external file: deps keep the prerelease-aware caret.
  */
 export function resolveExternalDepVersion(dep: FileDep): FileDep {
   const pkgJsonPath = path.join(dep.resolvedPath, 'package.json');
@@ -91,7 +104,8 @@ export function resolveExternalDepVersion(dep: FileDep): FileDep {
     );
   }
 
-  return { ...dep, publishVersion: `^${version}` };
+  const isCatalog = dep.originalSpecifier.startsWith('catalog:');
+  return { ...dep, publishVersion: isCatalog ? version : pinSpec(version) };
 }
 
 /**
@@ -107,7 +121,7 @@ export function resolveAllFileDeps(
     ...pkg,
     fileDeps: pkg.fileDeps.map((dep) => {
       if (dep.intraGroup) {
-        return { ...dep, publishVersion: `^${computedVersion}` };
+        return { ...dep, publishVersion: pinSpec(computedVersion) };
       }
       return resolveExternalDepVersion(dep);
     }),

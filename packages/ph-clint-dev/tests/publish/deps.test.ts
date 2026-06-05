@@ -213,11 +213,44 @@ describe('resolveAllFileDeps', () => {
 
     const resolved = resolveAllFileDeps(packages, '1.0.0-dev.0');
 
+    // Prerelease computed version pins exact (no caret).
     const intraDep = resolved[0].fileDeps.find((d) => d.name === 'mylib');
-    expect(intraDep?.publishVersion).toBe('^1.0.0-dev.0');
+    expect(intraDep?.publishVersion).toBe('1.0.0-dev.0');
 
     const extDep = resolved[0].fileDeps.find((d) => d.name === 'ext-pkg');
-    expect(extDep?.publishVersion).toBe('^0.0.1'); // version from makeTempPkg
+    expect(extDep?.publishVersion).toBe('^0.0.1'); // stable version from makeTempPkg
+
+    fs.rmSync(tmp, { recursive: true });
+  });
+
+  it('pins prerelease intra-group deps exactly, stable with caret', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
+    const libDir = makeTempPkg(tmp, 'mylib');
+    const cliDir = makeTempPkg(tmp, 'mycli', { mylib: 'workspace:*' });
+
+    const entry: PackageEntry = { path: 'mycli', category: 'cli' };
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(cliDir, 'package.json'), 'utf-8'),
+    );
+    const packages: ResolvedPackage[] = [
+      {
+        entry,
+        absPath: cliDir,
+        packageJson: pkgJson,
+        name: 'mycli',
+        fileDeps: analyzeFileDeps(cliDir, pkgJson, [libDir, cliDir]),
+      },
+    ];
+
+    const prerelease = resolveAllFileDeps(packages, '6.1.0-dev.21');
+    expect(
+      prerelease[0].fileDeps.find((d) => d.name === 'mylib')?.publishVersion,
+    ).toBe('6.1.0-dev.21');
+
+    const stable = resolveAllFileDeps(packages, '6.1.0');
+    expect(
+      stable[0].fileDeps.find((d) => d.name === 'mylib')?.publishVersion,
+    ).toBe('^6.1.0');
 
     fs.rmSync(tmp, { recursive: true });
   });
@@ -249,7 +282,40 @@ describe('resolveAllFileDeps', () => {
 
     const resolved = resolveAllFileDeps(packages, '1.0.0-dev.0');
     const catDep = resolved[0].fileDeps.find((d) => d.name === 'cat-pkg');
-    expect(catDep?.publishVersion).toBe('^2.3.4');
+    // catalog: deps publish exact (no caret), even for a stable version —
+    // the catalog already pins the version, so ph-publish must not widen it.
+    expect(catDep?.publishVersion).toBe('2.3.4');
+
+    fs.rmSync(tmp, { recursive: true });
+  });
+
+  it('pins prerelease catalog: deps exactly', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'deps-test-'));
+    const cliDir = makeTempPkg(tmp, 'mycli', { 'cat-pkg': 'catalog:' });
+    const nmDir = path.join(cliDir, 'node_modules', 'cat-pkg');
+    fs.mkdirSync(nmDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(nmDir, 'package.json'),
+      JSON.stringify({ name: 'cat-pkg', version: '6.1.0-dev.21' }),
+    );
+
+    const entry: PackageEntry = { path: 'mycli', category: 'cli' };
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(cliDir, 'package.json'), 'utf-8'),
+    );
+    const packages: ResolvedPackage[] = [
+      {
+        entry,
+        absPath: cliDir,
+        packageJson: pkgJson,
+        name: 'mycli',
+        fileDeps: analyzeFileDeps(cliDir, pkgJson, [cliDir]),
+      },
+    ];
+
+    const resolved = resolveAllFileDeps(packages, '1.0.0-dev.0');
+    const catDep = resolved[0].fileDeps.find((d) => d.name === 'cat-pkg');
+    expect(catDep?.publishVersion).toBe('6.1.0-dev.21');
 
     fs.rmSync(tmp, { recursive: true });
   });
