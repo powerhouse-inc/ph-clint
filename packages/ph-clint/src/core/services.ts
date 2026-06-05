@@ -135,9 +135,10 @@ const MAX_TOTAL_CHARS = 16_000;
  * that fill the file with NUL runs containing no newlines.
  */
 export function sanitizeLogText(text: string, maxTotal = MAX_TOTAL_CHARS): string {
-  // Drop control chars except \t (\x09) and \n (\x0A).
+  // Drop control chars except \t (\x09) and \n (\x0A); \x0B-\x1F covers
+  // \r (\x0D) so Windows-style \r\n logs don't leak carriage returns.
   // eslint-disable-next-line no-control-regex
-  const cleaned = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  const cleaned = text.replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '');
   const lines = cleaned.split('\n').map(line => {
     if (line.length <= MAX_LINE_CHARS) return line;
     const dropped = line.length - MAX_LINE_CHARS;
@@ -255,9 +256,15 @@ function scanInstances(servicesDir: string, serviceId: string): ServiceStateFile
   }
 }
 
-/** Strip the `.<runId>.log` or `.log` suffix from a log file name to get its instance ID. */
+/**
+ * Strip the `.<runId>.log` or `.log` suffix from a log file name to get its
+ * instance ID. The runId is a `Date.now()` millisecond timestamp (see
+ * newRunLogFile), so we only treat a timestamp-width digit run (>=10) as a
+ * runId — otherwise a legacy `<instanceId>.log` whose instance name ends in
+ * `.<digits>` (e.g. `svc:agent.1`) would have that suffix wrongly stripped.
+ */
 function instanceIdFromLogFile(name: string): string {
-  return name.replace(/(?:\.\d+)?\.log$/, '');
+  return name.replace(/(?:\.\d{10,})?\.log$/, '');
 }
 
 /**
@@ -862,9 +869,14 @@ export function createServiceManager(
     try {
       watcher = fs.watch(logPath, () => {
         try {
-          const content = fs.readFileSync(logPath, 'utf-8');
-          const newContent = content.slice(lastPos);
-          lastPos = content.length;
+          // Read as a Buffer and slice by byte offset: lastPos is seeded from
+          // stat.size (bytes), so slicing the decoded string by char index
+          // would drift on any multi-byte UTF-8 content and drop new lines.
+          const buf = fs.readFileSync(logPath);
+          // File shrank (truncated/rotated) — re-read from the start.
+          if (buf.length < lastPos) lastPos = 0;
+          const newContent = buf.toString('utf-8', lastPos);
+          lastPos = buf.length;
           if (newContent) {
             const lines = newContent.split('\n').filter((l) => l.length > 0);
             for (const line of lines) {

@@ -589,12 +589,42 @@ describe('createServiceManager', () => {
       const logPath = path.join(servicesDir, 'test-svc', state.logFile);
       const cleanup = mgr.watchLogs('test-svc', 'test-svc', (line) => lines.push(line));
 
+      // fs.watch (FSEvents on macOS) isn't armed synchronously when watch()
+      // returns — let it register before writing, or the append lands in the
+      // gap and the change event is missed.
+      await new Promise((r) => setTimeout(r, LOG_WATCH_WAIT));
+
       // Append to log file to trigger watcher
       fs.appendFileSync(logPath, 'new log line\n');
       await new Promise((r) => setTimeout(r, LOG_WATCH_WAIT));
 
       cleanup();
       expect(lines.some((l) => l.includes('new log line'))).toBe(true);
+    });
+
+    it('does not drop or mangle lines after multi-byte content', async () => {
+      const mgr = createManager([readyDef]);
+      await mgr.start('test-svc');
+      trackedPids.push(mgr.list()[0]!.pid!);
+
+      const lines: string[] = [];
+      const statePath = path.join(servicesDir, 'test-svc', 'test-svc.json');
+      const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+      const logPath = path.join(servicesDir, 'test-svc', state.logFile);
+
+      // Seed multi-byte content so the file's byte size exceeds its char
+      // length before watching — a char-indexed slice would then misalign.
+      fs.appendFileSync(logPath, 'café ☕ progress…\n');
+
+      const cleanup = mgr.watchLogs('test-svc', 'test-svc', (line) => lines.push(line));
+      await new Promise((r) => setTimeout(r, LOG_WATCH_WAIT)); // let watcher arm
+
+      fs.appendFileSync(logPath, 'new log line\n');
+      await new Promise((r) => setTimeout(r, LOG_WATCH_WAIT));
+
+      cleanup();
+      // The line must arrive intact, not shifted by the multi-byte byte/char gap.
+      expect(lines).toContain('new log line');
     });
 
     it('throws for unknown service', () => {
