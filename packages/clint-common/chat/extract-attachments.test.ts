@@ -36,6 +36,7 @@ function makeService(bytes: Buffer, mimeType = 'image/png'): IAttachmentService 
           source: 'local' as const,
           createdAtUtc: new Date().toISOString(),
           lastAccessedAtUtc: new Date().toISOString(),
+          expiresAtUtc: null,
         },
         body: streamFromBuffer(bytes),
       }),
@@ -309,6 +310,7 @@ describe('extractAttachments', () => {
             source: 'local' as const,
             createdAtUtc: new Date().toISOString(),
             lastAccessedAtUtc: new Date().toISOString(),
+            expiresAtUtc: null,
           },
           body: streamFromBuffer(refBytes),
         });

@@ -24,3 +24,9 @@ allowBuilds:
   protobufjs: true
   sqlite3: true
   unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - '@powerhousedao/reactor-attachments@6.1.0-dev.19'
+  - '@powerhousedao/reactor@6.1.0-dev.19'
+  - '@powerhousedao/shared@6.1.0-dev.19'
+  - document-model@6.1.0-dev.19
