@@ -663,6 +663,21 @@ export interface ServiceStatus {
 }
 
 /**
+ * Options for reading service logs. A bare number is accepted as a shorthand
+ * for `{ lines }` for backward compatibility.
+ */
+export interface LogsOptions {
+  /** Max number of (post-filter) lines to return, tailed. Defaults to 50. */
+  lines?: number;
+  /** Only return lines matching this pattern (case-insensitive regex, literal fallback). */
+  grep?: string;
+  /** Lines of surrounding context to keep around each grep match (like grep -C). */
+  context?: number;
+  /** Opaque cursor from a prior read (`<inode>.<byteOffset>`): return only content written since. */
+  since?: string;
+}
+
+/**
  * Manager for long-running background services.
  */
 export interface ServiceManager {
@@ -671,7 +686,7 @@ export interface ServiceManager {
   list(serviceId?: string): ServiceInstanceStatus[];
   /** Get the static definition for a service. */
   getDefinition(id: string): ServiceDefinition | undefined;
-  logs(id: string, instanceId?: string, lines?: number): string;
+  logs(id: string, instanceId?: string, opts?: number | LogsOptions): string;
   /** Watch a service's log file for new lines. Returns cleanup function. */
   watchLogs(id: string, instanceId: string, onLine: (line: string) => void): () => void;
   /** Watch a service for structured stream chunks. Returns cleanup function. */

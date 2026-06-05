@@ -1,5 +1,6 @@
 import type {
   EventBus,
+  LogsOptions,
   Routine,
   RoutineConfig,
   ServiceDefinition,
@@ -9,6 +10,7 @@ import type {
   StreamChunk,
 } from './types.js';
 import { scanProjects as scanProjectsImpl } from './project-scanner.js';
+import { filterLogLines } from './services.js';
 import { slugToTitle } from './schema.js';
 
 const DEFAULT_LOG_BUFFER_SIZE = 500;
@@ -99,9 +101,12 @@ export function createRoutineServiceAdapter(
     return _id === id ? syntheticDef : undefined;
   }
 
-  function logs(_id: string, _instanceId?: string, lines = 50): string {
+  function logs(_id: string, _instanceId?: string, opts: number | LogsOptions = {}): string {
     if (_id !== id) throw new Error(`Unknown service: ${_id}`);
-    return logBuffer.slice(-lines).join('\n');
+    const { lines = 50, grep, context } = typeof opts === 'number' ? { lines: opts, grep: undefined, context: undefined } : opts;
+    // `since` is file-offset based and doesn't apply to this in-memory buffer.
+    const { lines: filtered } = filterLogLines(logBuffer, grep, context);
+    return filtered.slice(-lines).join('\n');
   }
 
   function watchLogs(_id: string, _instanceId: string, onLine: (line: string) => void): () => void {
@@ -181,8 +186,8 @@ export function createCompositeServiceManager(
     return mgr?.getDefinition(id);
   }
 
-  function logs(id: string, instanceId?: string, lines?: number): string {
-    return getManager(id).logs(id, instanceId, lines);
+  function logs(id: string, instanceId?: string, opts?: number | LogsOptions): string {
+    return getManager(id).logs(id, instanceId, opts);
   }
 
   function watchLogs(id: string, instanceId: string, onLine: (line: string) => void): () => void {
