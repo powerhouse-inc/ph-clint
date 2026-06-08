@@ -516,7 +516,7 @@ describe('generateProject — framework files', () => {
     expect(content).toContain("- 'foo-cli'");
     // Carries the Powerhouse-stack overrides block.
     expect(content).toContain('overrides:');
-    expect(content).toContain("'mastra>@mastra/deployer': '1.22.0'");
+    expect(content).toContain("'mastra>@mastra/deployer': '1.41.0'");
     expect(content).toContain("zod: '4.3.6'");
     // No nested pnpm-workspace.yaml inside members (would shadow the root).
     expect(await exists(path.join(tmp, 'foo-cli/pnpm-workspace.yaml'))).toBe(false);

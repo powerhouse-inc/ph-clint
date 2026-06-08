@@ -41,7 +41,7 @@ export function buildPnpmWorkspaceYaml(
     }
     lines.push('');
     lines.push('overrides:');
-    lines.push("  'mastra>@mastra/deployer': '1.22.0'");
+    lines.push("  'mastra>@mastra/deployer': '1.41.0'");
     lines.push("  zod: '4.3.6'");
     lines.push('');
   }
