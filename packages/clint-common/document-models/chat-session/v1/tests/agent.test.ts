@@ -1,16 +1,24 @@
+import { generateMock } from 'document-model';
 import {
   addAssistantMessage,
+  AddAssistantMessageInputSchema,
   addSystemMessage,
   addToolOutput,
   addToolResult,
   addUserMessage,
   appendAssistantContent,
+  AppendAssistantContentInputSchema,
   deleteUserMessage,
   endSession,
+  isChatSessionDocument,
   reducer,
   setMessageUsage,
+  SetMessageUsageInputSchema,
+  setResponding,
+  SetRespondingInputSchema,
   startSession,
   updateAssistantContent,
+  UpdateAssistantContentInputSchema,
   updateUsageSummary,
   utils,
 } from 'document-models/chat-session/v1';
@@ -438,5 +446,70 @@ describe('AgentOperations', () => {
     const t = doc.state.global.messages[1];
     expect(t.stepIndex).toBe(0);
     expect(t.content[0].isError).toBe(false);
+  });
+
+  it('should handle addAssistantMessage operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddAssistantMessageInputSchema());
+
+    const updatedDocument = reducer(document, addAssistantMessage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_ASSISTANT_MESSAGE');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle appendAssistantContent operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(AppendAssistantContentInputSchema());
+
+    const updatedDocument = reducer(document, appendAssistantContent(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('APPEND_ASSISTANT_CONTENT');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle updateAssistantContent operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(UpdateAssistantContentInputSchema());
+
+    const updatedDocument = reducer(document, updateAssistantContent(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('UPDATE_ASSISTANT_CONTENT');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle setMessageUsage operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetMessageUsageInputSchema());
+
+    const updatedDocument = reducer(document, setMessageUsage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_MESSAGE_USAGE');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle setResponding operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetRespondingInputSchema());
+
+    const updatedDocument = reducer(document, setResponding(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_RESPONDING');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });

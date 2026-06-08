@@ -17,6 +17,7 @@ import type {
   ContentPartType,
   DeleteUserMessageInput,
   EndSessionInput,
+  InterruptAgentInput,
   Message,
   MessageRole,
   MessageUsage,
@@ -25,6 +26,7 @@ import type {
   SetAgentImageInput,
   SetAgentInfoInput,
   SetMessageUsageInput,
+  SetRespondingInput,
   StartSessionInput,
   ToolResultPartInput,
   UpdateAssistantContentInput,
@@ -147,8 +149,10 @@ export function ChatSessionStateSchema(): z.ZodObject<Properties<ChatSessionStat
     __typename: z.literal('ChatSessionState').optional(),
     agent: z.lazy(() => AgentInfoSchema().nullish()),
     endedAt: z.iso.datetime().nullish(),
+    interruptRequested: z.boolean().nullish(),
     messages: z.array(z.lazy(() => MessageSchema())),
     resourceId: z.string().nullish(),
+    responding: z.boolean().nullish(),
     startedAt: z.iso.datetime().nullish(),
     status: SessionStatusSchema,
     threadId: z.string().nullish(),
@@ -185,6 +189,12 @@ export function EndSessionInputSchema(): z.ZodObject<Properties<EndSessionInput>
   return z.object({
     endedAt: z.iso.datetime(),
     status: SessionStatusSchema,
+  });
+}
+
+export function InterruptAgentInputSchema(): z.ZodObject<Properties<InterruptAgentInput>> {
+  return z.object({
+    _: z.boolean().nullish(),
   });
 }
 
@@ -236,6 +246,12 @@ export function SetMessageUsageInputSchema(): z.ZodObject<Properties<SetMessageU
     messageId: z.string(),
     promptTokens: z.number().nullish(),
     totalTokens: z.number().nullish(),
+  });
+}
+
+export function SetRespondingInputSchema(): z.ZodObject<Properties<SetRespondingInput>> {
+  return z.object({
+    responding: z.boolean(),
   });
 }
 

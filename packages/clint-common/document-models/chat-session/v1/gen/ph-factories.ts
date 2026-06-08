@@ -18,6 +18,8 @@ export function defaultGlobalState(): ChatSessionGlobalState {
     endedAt: null,
     messages: [],
     usage: null,
+    interruptRequested: false,
+    responding: false,
   };
 }
 

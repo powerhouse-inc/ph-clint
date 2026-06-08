@@ -131,8 +131,10 @@ export type AssistantContentPartInput = {
 export type ChatSessionState = {
   agent: Maybe<AgentInfo>;
   endedAt: Maybe<Scalars['DateTime']['output']>;
+  interruptRequested: Maybe<Scalars['Boolean']['output']>;
   messages: Array<Message>;
   resourceId: Maybe<Scalars['String']['output']>;
+  responding: Maybe<Scalars['Boolean']['output']>;
   startedAt: Maybe<Scalars['DateTime']['output']>;
   status: SessionStatus;
   threadId: Maybe<Scalars['String']['output']>;
@@ -164,6 +166,10 @@ export type DeleteUserMessageInput = {
 export type EndSessionInput = {
   endedAt: Scalars['DateTime']['input'];
   status: SessionStatus;
+};
+
+export type InterruptAgentInput = {
+  _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type Message = {
@@ -205,6 +211,10 @@ export type SetMessageUsageInput = {
   messageId: Scalars['OID']['input'];
   promptTokens?: InputMaybe<Scalars['Int']['input']>;
   totalTokens?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type SetRespondingInput = {
+  responding: Scalars['Boolean']['input'];
 };
 
 export type StartSessionInput = {

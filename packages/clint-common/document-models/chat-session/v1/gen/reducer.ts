@@ -19,10 +19,12 @@ import {
   AppendAssistantContentInputSchema,
   DeleteUserMessageInputSchema,
   EndSessionInputSchema,
+  InterruptAgentInputSchema,
   SetAgentDescriptionInputSchema,
   SetAgentImageInputSchema,
   SetAgentInfoInputSchema,
   SetMessageUsageInputSchema,
+  SetRespondingInputSchema,
   StartSessionInputSchema,
   UpdateAssistantContentInputSchema,
   UpdateUsageSummaryInputSchema,
@@ -113,6 +115,14 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
       break;
     }
 
+    case 'INTERRUPT_AGENT': {
+      InterruptAgentInputSchema().parse(action.input);
+
+      chatSessionUserOperations.interruptAgentOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
     case 'ADD_ASSISTANT_MESSAGE': {
       AddAssistantMessageInputSchema().parse(action.input);
 
@@ -141,6 +151,14 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
       SetMessageUsageInputSchema().parse(action.input);
 
       chatSessionAgentOperations.setMessageUsageOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'SET_RESPONDING': {
+      SetRespondingInputSchema().parse(action.input);
+
+      chatSessionAgentOperations.setRespondingOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }

@@ -4,10 +4,11 @@
  */
 import { type SignalDispatch } from 'document-model';
 import type { ChatSessionGlobalState } from '../types.js';
-import type { AbortSessionAction, AddUserMessageAction, DeleteUserMessageAction } from './actions.js';
+import type { AbortSessionAction, AddUserMessageAction, DeleteUserMessageAction, InterruptAgentAction } from './actions.js';
 
 export interface ChatSessionUserOperations {
   addUserMessageOperation: (state: ChatSessionGlobalState, action: AddUserMessageAction, dispatch?: SignalDispatch) => void;
   deleteUserMessageOperation: (state: ChatSessionGlobalState, action: DeleteUserMessageAction, dispatch?: SignalDispatch) => void;
   abortSessionOperation: (state: ChatSessionGlobalState, action: AbortSessionAction, dispatch?: SignalDispatch) => void;
+  interruptAgentOperation: (state: ChatSessionGlobalState, action: InterruptAgentAction, dispatch?: SignalDispatch) => void;
 }

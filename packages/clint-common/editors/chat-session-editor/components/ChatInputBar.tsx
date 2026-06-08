@@ -2,9 +2,9 @@ import type { IAttachmentService } from '@powerhousedao/reactor-attachments';
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import { usePHToast } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, UserContentPartInput } from 'document-models/chat-session';
-import { addUserMessage } from 'document-models/chat-session';
+import { addUserMessage, interruptAgent } from 'document-models/chat-session';
 import { generateId } from 'document-model';
-import { useCallback, useEffect, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useState, type KeyboardEventHandler, type MutableRefObject } from 'react';
 import type { PromptInputMessage } from './ai-elements/prompt-input.js';
 import { PromptInput, PromptInputTextarea, PromptInputFooter, PromptInputSubmit, usePromptInputAttachments } from './ai-elements/prompt-input.js';
 import { FileIcon, ImageIcon, XIcon } from 'lucide-react';
@@ -93,16 +93,37 @@ interface ChatInputBarProps {
   dispatch: DocumentDispatch<ChatSessionAction>;
   attachments?: IAttachmentService;
   disabled?: boolean;
+  /** True while the agent is actively generating a response — swaps send for stop. */
+  responding?: boolean;
   addFilesRef?: MutableRefObject<((files: FileList) => void) | null>;
 }
 
-export function ChatInputBar({ dispatch, attachments, disabled, addFilesRef }: ChatInputBarProps) {
+export function ChatInputBar({ dispatch, attachments, disabled, responding, addFilesRef }: ChatInputBarProps) {
   const [sending, setSending] = useState(false);
   const toast = usePHToast();
 
+  const handleStop = useCallback(() => {
+    dispatch(interruptAgent({}));
+  }, [dispatch]);
+
+  // The user can keep composing the next message while the agent responds, but
+  // Enter must not submit it mid-turn. Intercept Enter before PromptInputTextarea's
+  // own handler (which would call form.requestSubmit() and clear the draft);
+  // Shift+Enter still inserts a newline.
+  const handleKeyDown = useCallback<KeyboardEventHandler<HTMLTextAreaElement>>(
+    (e) => {
+      if (responding && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+        e.preventDefault();
+      }
+    },
+    [responding],
+  );
+
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
-      if (sending) return;
+      // Never accept a new message while sending or while the agent is mid-turn
+      // (the textarea is disabled below, this guards the Enter-key path too).
+      if (sending || responding) return;
       const text = message.text.trim();
       if (!text && message.files.length === 0) return;
 
@@ -157,7 +178,7 @@ export function ChatInputBar({ dispatch, attachments, disabled, addFilesRef }: C
         setSending(false);
       }
     },
-    [dispatch, attachments, sending, toast],
+    [dispatch, attachments, sending, responding, toast],
   );
 
   const isDisabled = disabled || sending;
@@ -166,11 +187,13 @@ export function ChatInputBar({ dispatch, attachments, disabled, addFilesRef }: C
     <div className="shrink-0 border-t border-border bg-background px-4 py-3">
       <PromptInput onSubmit={handleSubmit} multiple className="mx-auto max-w-[1100px]">
         <DropBridge addFilesRef={addFilesRef} />
-        <PromptInputTextarea disabled={isDisabled} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
+        <PromptInputTextarea disabled={isDisabled} onKeyDown={handleKeyDown} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
         <AttachmentPreviews />
         <PromptInputFooter>
           <AttachButton disabled={isDisabled} />
-          <PromptInputSubmit disabled={isDisabled} />
+          {/* While responding, render the stop control (enabled even though the
+              session is "busy") so the user can interrupt the current turn. */}
+          <PromptInputSubmit disabled={responding ? false : isDisabled} status={responding ? 'streaming' : undefined} onStop={handleStop} />
         </PromptInputFooter>
       </PromptInput>
     </div>

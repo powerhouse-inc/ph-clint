@@ -100,7 +100,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
           <div className="flex flex-1 flex-col min-w-0">
             <AgentInfoHeader agent={state.agent} />
             <ConversationView messages={state.messages} />
-            <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} addFilesRef={addFilesRef} />
+            <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={!!state.responding} addFilesRef={addFilesRef} />
             <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length}>
               <button type="button" onClick={toggleDarkMode} className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80" title="Toggle Dark Mode">
                 {isDark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}

@@ -8,17 +8,59 @@
  * 4. Extract user text from the last message
  * 5. Stream agent response, writing each chunk back to the document
  */
-import { createDocumentChangeTrigger, type AgentContentPart, type ReactorContext } from '@powerhousedao/ph-clint';
+import { createDocumentChangeTrigger, type AgentContentPart, type ReactorContext, type TriggerContext } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
 import { writeAgentStreamToDocument } from './chat-bridge.js';
 import { extractAttachments } from './extract-attachments.js';
 import type { ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
+import { setResponding } from '@powerhousedao/clint-common/document-models/chat-session';
 
 const DOCUMENT_TYPE = 'powerhouse/chat-session' as const;
 const TAG = '[chat-session-watch]';
 
 /** Track documents currently being processed to prevent re-entrancy. */
 const inFlight = new Set<string>();
+
+/**
+ * AbortControllers for in-flight agent streams, keyed by document id. The
+ * interrupt listener (below) aborts the matching controller when the user
+ * requests an interrupt mid-turn.
+ */
+const abortControllers = new Map<string, AbortController>();
+
+/** Ensures the document-change listener that watches for interrupts is registered once. */
+let interruptListenerRegistered = false;
+
+/**
+ * Register a single, process-wide listener for the interrupt signal.
+ *
+ * The trigger serializes its `onChange` polling, so while a stream is in
+ * flight the trigger cannot observe a freshly-dispatched INTERRUPT_AGENT
+ * operation until the stream finishes — too late to interrupt. The event bus,
+ * however, fires synchronously on every document change regardless of the
+ * blocked poll loop, so we subscribe to it directly and abort the in-flight
+ * stream the moment `interruptRequested` flips to true.
+ */
+function ensureInterruptListener(ctx: TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>): void {
+  if (interruptListenerRegistered) return;
+  const on = ctx.context.on;
+  if (!on) return;
+  interruptListenerRegistered = true;
+  const log = ctx.context.log;
+
+  on('powerhouse:document:changed', (payload) => {
+    for (const doc of payload.documents) {
+      const documentId = doc.header.id;
+      const controller = abortControllers.get(documentId);
+      if (!controller || controller.signal.aborted) continue;
+      const global = (doc.state as { global?: ChatSessionState }).global;
+      if (global?.interruptRequested) {
+        log?.info(`${TAG} interrupt requested for ${documentId}, aborting agent stream`);
+        controller.abort();
+      }
+    }
+  });
+}
 
 export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRegistry, 'powerhouse/chat-session'>({
   id: 'chat-session-watch',
@@ -33,6 +75,8 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
       log?.info(`${TAG} reactor or agent not available, skipping`);
       return null;
     }
+
+    ensureInterruptListener(ctx);
 
     for (const doc of docs) {
       const documentId = doc.header.id;
@@ -65,9 +109,7 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
         .join('\n');
 
       // Let image/file-only messages through — attachments are resolved below.
-      const hasAttachmentParts = lastMessage.content.some(
-        (p: ContentPart) => p.type === 'IMAGE' || p.type === 'FILE',
-      );
+      const hasAttachmentParts = lastMessage.content.some((p: ContentPart) => p.type === 'IMAGE' || p.type === 'FILE');
 
       if (!userText && !hasAttachmentParts) {
         log?.info(`${TAG} ${documentId} user message has no text or attachments, skipping`);
@@ -75,9 +117,7 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
       }
 
       inFlight.add(documentId);
-      log?.info(
-        `${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`,
-      );
+      log?.info(`${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`);
 
       try {
         // Lazy session init: assigns threadId if not set
@@ -124,8 +164,15 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
           prompt = userText;
         }
 
-        // Stream agent response and write to document
-        const stream = agent.stream(prompt, { threadId });
+        // Stream agent response and write to document. The abort signal lets
+        // the interrupt listener stop this turn mid-stream; the underlying
+        // agent treats an abort as a clean end, so the partial assistant
+        // message is preserved and the session stays ACTIVE.
+        const abortController = new AbortController();
+        abortControllers.set(documentId, abortController);
+        // Mark the session as responding so clients can show a stop control.
+        await reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [setResponding({ responding: true })]);
+        const stream = agent.stream(prompt, { threadId, abortSignal: abortController.signal });
         await writeAgentStreamToDocument(stream, {
           reactor,
           documentId,
@@ -134,7 +181,10 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
       } catch (err) {
         log?.error(`${TAG} agent invocation failed for ${documentId}:`, err);
       } finally {
+        abortControllers.delete(documentId);
         inFlight.delete(documentId);
+        // Clear the responding flag whether the turn finished or was interrupted.
+        await reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [setResponding({ responding: false })]).catch((e: unknown) => log?.error(`${TAG} failed to clear responding flag for ${documentId}:`, e));
       }
     }
 

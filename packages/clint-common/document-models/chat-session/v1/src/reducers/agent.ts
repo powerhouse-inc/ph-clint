@@ -94,4 +94,7 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       totalTokens: action.input.totalTokens ?? null,
     };
   },
+  setRespondingOperation(state, action) {
+    state.responding = action.input.responding;
+  },
 };

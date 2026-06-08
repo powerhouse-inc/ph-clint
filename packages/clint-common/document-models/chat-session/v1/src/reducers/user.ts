@@ -3,6 +3,9 @@ import { InvalidContentPartError, MessageNotFoundError, NotUserMessageError } fr
 
 export const chatSessionUserOperations: ChatSessionUserOperations = {
   addUserMessageOperation(state, action) {
+    // A new user turn clears any pending interrupt from the previous turn,
+    // so the watcher does not abort the fresh stream it is about to start.
+    state.interruptRequested = false;
     for (const p of action.input.content) {
       if (p.type === 'TEXT' && !p.text) {
         throw new InvalidContentPartError('TEXT part requires text');
@@ -43,5 +46,8 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
   abortSessionOperation(state, action) {
     state.status = 'ABORTED';
     state.endedAt = action.input.endedAt;
+  },
+  interruptAgentOperation(state) {
+    state.interruptRequested = true;
   },
 };

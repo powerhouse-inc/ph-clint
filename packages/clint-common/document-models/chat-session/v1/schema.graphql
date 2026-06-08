@@ -100,6 +100,8 @@ type ChatSessionState {
   endedAt: DateTime
   messages: [Message!]!
   usage: UsageSummary
+  interruptRequested: Boolean
+  responding: Boolean
 }
 
 # system
@@ -179,6 +181,10 @@ input AbortSessionInput {
   endedAt: DateTime!
 }
 
+input InterruptAgentInput {
+  _: Boolean
+}
+
 # agent
 
 input AssistantContentPartInput {
@@ -220,6 +226,10 @@ input SetMessageUsageInput {
   promptTokens: Int
   completionTokens: Int
   totalTokens: Int
+}
+
+input SetRespondingInput {
+  responding: Boolean!
 }
 
 # tool
