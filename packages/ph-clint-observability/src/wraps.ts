@@ -1,4 +1,5 @@
-import { context as otelContext, metrics as otelMetrics, trace, SpanStatusCode, type Tracer, type Counter, type Histogram } from '@opentelemetry/api';
+import { context as otelContext, metrics as otelMetrics, trace, SpanStatusCode, type Tracer, type Span, type Counter, type Histogram } from '@opentelemetry/api';
+import { logs, SeverityNumber } from '@opentelemetry/api-logs';
 import type { BootTimings, WrapRegistry } from '@powerhousedao/ph-clint';
 import type { OtelHandle } from './otel.js';
 import type { SentryHandle } from './sentry.js';
@@ -53,8 +54,24 @@ interface ToolLike {
  * Returns partial — when a slot is omitted, the framework's composition
  * falls through to identity.
  */
-export function buildWraps(metrics: MetricInstruments, _sentry: SentryHandle | null): Partial<WrapRegistry> {
+export function buildWraps(metrics: MetricInstruments, sentry: SentryHandle | null): Partial<WrapRegistry> {
   const tracer: Tracer = trace.getTracer('ph-clint');
+  // No-op when no global LoggerProvider is registered (OTel off / tests).
+  const logger = logs.getLogger('ph-clint');
+
+  // Report a wrap failure to both sinks: Sentry (captureException) and an OTel
+  // log record carrying the failing span's trace context, so Tempo's
+  // traces-to-logs (filterByTraceID) drills straight from the span into Loki.
+  const reportError = (span: Span, err: unknown, attributes: Record<string, string | number>): void => {
+    sentry?.captureException(err);
+    logger.emit({
+      severityNumber: SeverityNumber.ERROR,
+      severityText: 'ERROR',
+      body: (err as Error).message,
+      attributes: { 'exception.type': (err as Error).name, ...attributes },
+      context: trace.setSpan(otelContext.active(), span),
+    });
+  };
 
   const command = async <R,>(id: string, inner: () => Promise<R>): Promise<R> => {
     const span = tracer.startSpan('command.execute', { attributes: { 'command.id': id } });
@@ -69,6 +86,7 @@ export function buildWraps(metrics: MetricInstruments, _sentry: SentryHandle | n
       span.recordException(err as Error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
       span.setAttribute('command.duration_ms', Date.now() - start);
+      reportError(span, err, { 'command.id': id });
       throw err;
     } finally {
       span.end();
@@ -116,6 +134,7 @@ export function buildWraps(metrics: MetricInstruments, _sentry: SentryHandle | n
         streamSpan.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
         llmSpan.recordException(err as Error);
         llmSpan.setStatus({ code: SpanStatusCode.ERROR });
+        reportError(streamSpan, err, { 'agent.id': attrs.agentId });
         throw err;
       } finally {
         llmSpan.end();
@@ -142,6 +161,7 @@ export function buildWraps(metrics: MetricInstruments, _sentry: SentryHandle | n
           span.recordException(err as Error);
           span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
           span.setAttribute('tool.duration_ms', Date.now() - start);
+          reportError(span, err, { 'tool.name': name });
           throw err;
         } finally {
           span.end();
@@ -161,6 +181,7 @@ export function buildWraps(metrics: MetricInstruments, _sentry: SentryHandle | n
     } catch (err) {
       span.recordException(err as Error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+      reportError(span, err, { 'routine.index': attrs.index });
       throw err;
     } finally {
       span.end();
