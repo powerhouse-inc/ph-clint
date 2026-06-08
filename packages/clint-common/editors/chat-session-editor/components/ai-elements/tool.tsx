@@ -2,6 +2,7 @@
 
 import { Badge } from '../ui/badge.js';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible.js';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip.js';
 import { cn } from '../../lib/utils.js';
 import type { DynamicToolUIPart, ToolUIPart } from 'ai';
 import { CheckCircleIcon, ChevronDownIcon, CircleIcon, ClockIcon, WrenchIcon, XCircleIcon } from 'lucide-react';
@@ -58,12 +59,20 @@ export const getStatusBadge = (status: ToolPart['state']) => (
 
 export const ToolHeader = ({ className, title, type, state, toolName, preview, ...props }: ToolHeaderProps) => {
   const derivedName = type === 'dynamic-tool' ? toolName : type.split('-').slice(1).join('-');
+  const name = title ?? derivedName;
 
   return (
     <CollapsibleTrigger className={cn('flex w-full items-center justify-between gap-4 p-3', className)} {...props}>
       <div className="flex items-center gap-2 min-w-0">
         <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="font-medium text-sm shrink-0">{title ?? derivedName}</span>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="min-w-0 truncate font-medium text-sm">{name}</span>
+            </TooltipTrigger>
+            <TooltipContent>{name}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         {getStatusBadge(state)}
         {preview && <span className="truncate text-xs text-muted-foreground max-w-[200px] group-data-[state=open]:hidden">{preview}</span>}
       </div>
