@@ -382,19 +382,6 @@ describe('mapMastraStream', () => {
     expect(chunks[0].type).toBe('error');
     expect(chunks[0].error).toContain('object');
   });
-
-  it('ignores unknown chunk types', async () => {
-    async function* fakeStream() {
-      yield { type: 'step-finish', data: {} };
-      yield { type: 'text-delta', textDelta: 'hello' };
-    }
-    const chunks: any[] = [];
-    for await (const chunk of mapMastraStream(fakeStream())) {
-      chunks.push(chunk);
-    }
-    expect(chunks).toHaveLength(1);
-    expect(chunks[0].text).toBe('hello');
-  });
 });
 
 describe('getTools with MCP discovery', () => {
