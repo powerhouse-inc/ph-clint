@@ -18,6 +18,11 @@ export interface ProxyServerOptions {
    * set, `url` returns this instead of the local listen address, so
    * everything composed from it (the ready event's proxied switchboard /
    * drive / mcp URLs) is reachable from outside the pod.
+   *
+   * A non-root pathname mounts the whole proxy surface under that base
+   * path (e.g. `https://host/myagent` → base path `/myagent`): incoming
+   * requests carry the prefix, it is stripped before route matching, and
+   * redirect Locations are re-prefixed with it.
    */
   publicUrl?: string;
   logger: Logger;
@@ -35,14 +40,36 @@ export interface ProxyServerInstance {
 
 
   /**
-   * Compute the X-Forwarded-Prefix value to send upstream.
+   * Derive the mount base path from publicUrl's pathname. Returns '' for an
+   * absent/invalid/root pathname, otherwise a leading-slash, no-trailing-slash
+   * form ('/myagent'). Mirrors the trailing-slash stripping the advertised
+   * `url` applies, so the base path and `url` stay aligned.
    */
-  function computeForwardedPrefix(route: ProxyRoute): string | undefined {
+  function deriveBasePath(publicUrl: string | undefined): string {
+    const trimmed = publicUrl?.trim();
+    if (!trimmed) return '';
+    let pathname: string;
+    try {
+      pathname = new URL(trimmed).pathname;
+    } catch {
+      return '';
+    }
+    const normalized = pathname.replace(/\/+$/, '');
+    return normalized === '' ? '' : normalized;
+  }
+
+  /**
+   * Compute the X-Forwarded-Prefix value to send upstream. `base` is the
+   * mount base path ('' | '/x') prepended so upstreams emitting absolute
+   * paths reconstruct the externally-visible prefix.
+   */
+  function computeForwardedPrefix(route: ProxyRoute, base: string): string | undefined {
     if (!route.upstream) return undefined;
     const strip = (s: string) => s.replace(/\/$/, '');
     const prefix = strip(route.prefix);
     const upstreamPath = strip(route.upstream.pathname);
-    const result = upstreamPath && prefix.endsWith(upstreamPath) ? prefix.slice(0, -upstreamPath.length) : prefix;
+    const routePrefix = upstreamPath && prefix.endsWith(upstreamPath) ? prefix.slice(0, -upstreamPath.length) : prefix;
+    const result = base + routePrefix;
     return result || undefined;
   }
 
@@ -54,6 +81,31 @@ export async function createProxyServer(
 ): Promise<ProxyServerInstance> {
   const { host, logger } = options;
   let routes: ProxyRoute[] = [];
+
+  // Base path the whole proxy surface is mounted under, derived from a
+  // non-root pathname on publicUrl. Empty when serving from the origin
+  // root. Normalized to a leading-slash, no-trailing-slash form ('' | '/x').
+  const basePath = deriveBasePath(options.publicUrl);
+
+  // Strip the base path from an incoming request path before route
+  // matching. Requests that don't carry the prefix yield undefined so the
+  // caller can 404 rather than mismatch a root route.
+  function stripBase(pathname: string): string | undefined {
+    if (!basePath) return pathname;
+    if (pathname === basePath) return '/';
+    if (pathname.startsWith(basePath + '/')) return pathname.slice(basePath.length);
+    return undefined;
+  }
+
+  // Re-prefix a root-relative redirect Location with the base path so the
+  // browser stays under the mount. Absolute URLs and other-prefixed paths
+  // pass through untouched.
+  function prefixRedirect(location: string): string {
+    if (!basePath) return location;
+    if (!location.startsWith('/') || location.startsWith('//')) return location;
+    if (location === basePath || location.startsWith(basePath + '/')) return location;
+    return basePath + location;
+  }
 
   const proxy = httpProxy.createProxyServer({
     xfwd: true,
@@ -105,7 +157,14 @@ export async function createProxyServer(
   }
 
   const server = http.createServer((req, res) => {
-    const pathname = req.url ?? '/';
+    const rawPath = req.url ?? '/';
+    const stripped = stripBase(rawPath);
+    if (stripped === undefined) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not Found', path: rawPath }));
+      return;
+    }
+    const pathname = stripped;
 
     // Built-in health endpoint
     if (pathname === '/_proxy/health') {
@@ -136,7 +195,7 @@ export async function createProxyServer(
     }
 
     if (route.redirectTo) {
-      res.writeHead(302, { Location: route.redirectTo });
+      res.writeHead(302, { Location: prefixRedirect(route.redirectTo) });
       res.end();
       return;
     }
@@ -151,7 +210,7 @@ export async function createProxyServer(
     const targetPath = rewriteTarget(route, upstream, pathname);
     const target = `${upstream.protocol}//${upstream.host}`;
 
-    const forwardedPrefix = computeForwardedPrefix(route);
+    const forwardedPrefix = computeForwardedPrefix(route, basePath);
     if (forwardedPrefix) {
       req.headers['x-forwarded-prefix'] = forwardedPrefix;
     } else {
@@ -163,7 +222,12 @@ export async function createProxyServer(
 
   // WebSocket upgrade handling
   server.on('upgrade', (req, socket, head) => {
-    const pathname = req.url ?? '/';
+    const stripped = stripBase(req.url ?? '/');
+    if (stripped === undefined) {
+      socket.destroy();
+      return;
+    }
+    const pathname = stripped;
     const route = matchRoute(pathname);
 
     if (!route || !route.ws || !route.upstream) {
@@ -175,7 +239,7 @@ export async function createProxyServer(
     const targetPath = rewriteTarget(route, upstream, pathname);
     const target = `${upstream.protocol}//${upstream.host}`;
 
-    const forwardedPrefix = computeForwardedPrefix(route);
+    const forwardedPrefix = computeForwardedPrefix(route, basePath);
     if (forwardedPrefix) {
       req.headers['x-forwarded-prefix'] = forwardedPrefix;
     } else {
@@ -195,12 +259,10 @@ export async function createProxyServer(
     });
   });
 
-  // publicUrl is assumed origin-only (scheme + host, no base path) and
-  // governs only the advertised `url`, not the forwarded headers: `xfwd`
-  // above relies on the fronting ingress to set X-Forwarded-Proto/Host.
-  // Supporting a public base path (e.g. https://host/agent) would require
-  // prepending it to X-Forwarded-Prefix and stripping it at the ingress —
-  // not handled here.
+  // `url` advertises the browser-facing base, including any base path on
+  // publicUrl. `xfwd` relies on the fronting ingress to set
+  // X-Forwarded-Proto/Host; the base path is folded into X-Forwarded-Prefix
+  // here so upstreams emitting absolute paths reconstruct the full prefix.
   // `|| fallback` (not `??`) so an empty/whitespace-only publicUrl is treated
   // as unset rather than producing an empty `url`. The CLI also validates this
   // as a URL, but createProxyServer is callable directly so we guard here too.

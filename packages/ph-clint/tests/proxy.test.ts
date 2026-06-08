@@ -245,6 +245,112 @@ describe('createProxyServer', () => {
     expect(announce?.prefix).toBe('/d/drive-123');
   });
 
+  it('mounts the whole surface under publicUrl base path', async () => {
+    const upstream = await createUpstream('svc');
+    const proxy = await createProxyServer({
+      port: 0,
+      host: '127.0.0.1',
+      publicUrl: 'https://host.example/myagent/',
+      logger,
+    });
+    servers.push({ close: () => proxy.stop() });
+
+    // url advertises the full base, trailing slash stripped.
+    expect(proxy.url).toBe('https://host.example/myagent');
+
+    proxy.addRoute({
+      prefix: '/api',
+      upstream: new URL(upstream.url),
+      ws: false,
+      source: 'test',
+    });
+
+    const local = `http://127.0.0.1:${proxy.port}`;
+
+    // Prefixed request strips the base before matching/forwarding.
+    const ok = await httpGet(`${local}/myagent/api/some/path`);
+    expect(ok.status).toBe(200);
+    expect(JSON.parse(ok.body).path).toBe('/some/path');
+
+    // Built-in endpoints live under the base path.
+    const health = await httpGet(`${local}/myagent/_proxy/health`);
+    expect(health.status).toBe(200);
+    expect(JSON.parse(health.body)).toEqual({ ok: true, routes: 1 });
+
+    // Bare base path maps to root.
+    const routesRes = await httpGet(`${local}/myagent/_proxy/routes`);
+    expect(routesRes.status).toBe(200);
+    expect(JSON.parse(routesRes.body)).toHaveLength(1);
+
+    // A request without the base prefix 404s rather than matching root routes.
+    const unprefixed = await httpGet(`${local}/api/some/path`);
+    expect(unprefixed.status).toBe(404);
+  });
+
+  it('redirect Location includes the base path under a subpath mount', async () => {
+    const upstream = await createUpstream('catch-all');
+    const proxy = await createProxyServer({
+      port: 0,
+      host: '127.0.0.1',
+      publicUrl: 'https://host.example/myagent',
+      logger,
+    });
+    servers.push({ close: () => proxy.stop() });
+
+    proxy.addRoute({
+      prefix: '/',
+      exact: true,
+      redirectTo: '/d/drive-123',
+      ws: false,
+      source: 'studio-redirect',
+    });
+    proxy.addRoute({
+      prefix: '/',
+      upstream: new URL(upstream.url),
+      ws: false,
+      source: 'connect',
+    });
+
+    const local = `http://127.0.0.1:${proxy.port}`;
+
+    // Bare base path → 302 with the base path re-prefixed onto the Location.
+    const root = await new Promise<{ status: number; location?: string }>((resolve, reject) => {
+      http.get(`${local}/myagent`, (res) => {
+        res.resume();
+        resolve({ status: res.statusCode!, location: res.headers.location });
+      }).on('error', reject);
+    });
+    expect(root.status).toBe(302);
+    expect(root.location).toBe('/myagent/d/drive-123');
+
+    // Root-relative asset under the base still reaches the catch-all upstream.
+    const asset = await httpGet(`${local}/myagent/assets/app.js`);
+    expect(asset.status).toBe(200);
+    expect(JSON.parse(asset.body).path).toBe('/assets/app.js');
+  });
+
+  it('root-mount redirect Location is unchanged without a base path', async () => {
+    const proxy = await createProxyServer({ port: 0, host: '127.0.0.1', logger });
+    servers.push({ close: () => proxy.stop() });
+
+    proxy.addRoute({
+      prefix: '/',
+      exact: true,
+      redirectTo: '/d/drive-123',
+      ws: false,
+      source: 'studio-redirect',
+    });
+
+    const root = await new Promise<{ status: number; location?: string }>((resolve, reject) => {
+      http.get(`${proxy.url}/`, (res) => {
+        res.resume();
+        resolve({ status: res.statusCode!, location: res.headers.location });
+      }).on('error', reject);
+    });
+    expect(root.status).toBe(302);
+    expect(root.location).toBe('/d/drive-123');
+  });
+
   it('stop closes the server', async () => {
     const p = await createProxyServer({ port: 0, host: '127.0.0.1', logger });
     await p.stop();
