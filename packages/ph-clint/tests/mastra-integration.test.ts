@@ -226,6 +226,37 @@ describe('createMastraHelpers', () => {
     expect(provider.id).toBe('default');
   });
 
+  function createCapturingAgent() {
+    const calls: any[] = [];
+    return {
+      calls,
+      agent: {
+        id: 'capture-agent',
+        async stream(_prompt: string, opts?: unknown) {
+          calls.push(opts);
+          return { fullStream: (async function* () { /* empty */ })() };
+        },
+      },
+    };
+  }
+
+  it('wrapAgent forwards untilIdle to agent.stream when set', async () => {
+    const helpers = createMastraHelpers(makeAgentSetupContext());
+    const { calls, agent } = createCapturingAgent();
+    const provider = helpers.wrapAgent(agent, { untilIdle: { maxIdleMs: 1000 } });
+    for await (const _ of provider.stream('hi', { threadId: 't1' })) { /* drain */ }
+    expect(calls[0].untilIdle).toEqual({ maxIdleMs: 1000 });
+    expect(calls[0].maxSteps).toBe(30);
+  });
+
+  it('wrapAgent omits untilIdle from stream opts by default', async () => {
+    const helpers = createMastraHelpers(makeAgentSetupContext());
+    const { calls, agent } = createCapturingAgent();
+    const provider = helpers.wrapAgent(agent);
+    for await (const _ of provider.stream('hi')) { /* drain */ }
+    expect('untilIdle' in calls[0]).toBe(false);
+  });
+
   describe('wrapAgent with logging', () => {
     let logDir: string;
 

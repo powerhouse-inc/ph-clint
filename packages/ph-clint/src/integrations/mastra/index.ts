@@ -142,6 +142,7 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
 
     wrapAgent(agent: any, options?: WrapAgentOptions): AgentProvider {
       const maxSteps = options?.maxSteps ?? 30;
+      const untilIdle = options?.untilIdle;
       const agentId = agent.id ?? 'default';
       const agentName = agent.name ?? agentId;
 
@@ -168,6 +169,9 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       ): AsyncGenerator<StreamChunk> {
         const streamOpts: Record<string, unknown> = { maxSteps };
         if (providerOptions) streamOpts.providerOptions = providerOptions;
+        // Keep the stream open across background-task continuations. Mastra
+        // falls through to a regular stream() when no memory/thread is set.
+        if (untilIdle) streamOpts.untilIdle = untilIdle;
 
         if (opts?.threadId) {
           streamOpts.memory = {
