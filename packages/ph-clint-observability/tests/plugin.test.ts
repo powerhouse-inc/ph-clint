@@ -146,4 +146,58 @@ describe('observability plugin — onInit decision tree', () => {
       await receiver.close();
     }
   });
+
+  it('telemetryConsent: granted in config → contributes without prompting and without writing a consent file', async () => {
+    const receiver = await startDummyReceiver();
+    try {
+      const hook = observability({
+        promptOverride: async () => { throw new Error('should not prompt'); },
+      });
+      const handle = await hook.onInit(makeCtx({
+        userStoreFolder: store,
+        isInteractive: false,
+        config: { otelExporterOtlpEndpoint: receiver.url, telemetryConsent: 'granted' },
+      }));
+      expect(handle.contribute).toBeDefined();
+      await handle.shutdown?.();
+      // Config consent is authoritative per-run — nothing persisted.
+      await expect(readFile(join(store, 'observability-consent.json'), 'utf-8')).rejects.toThrow();
+    } finally {
+      await receiver.close();
+    }
+  });
+
+  it('telemetryConsent: denied in config → identity even when interactive, no prompt, no file', async () => {
+    const hook = observability({
+      promptOverride: async () => { throw new Error('should not prompt'); },
+    });
+    const handle = await hook.onInit(makeCtx({
+      userStoreFolder: store,
+      isInteractive: true,
+      config: { sentryDsn: 'https://abc@host/1', telemetryConsent: 'denied' },
+    }));
+    expect(handle.contribute).toBeUndefined();
+    await expect(readFile(join(store, 'observability-consent.json'), 'utf-8')).rejects.toThrow();
+  });
+
+  it('telemetryConsent in config overrides a persisted denied decision', async () => {
+    const receiver = await startDummyReceiver();
+    try {
+      const { writeConsent } = await import('../src/consent.js');
+      await writeConsent(store, { consent: 'denied', promptedAt: new Date().toISOString() });
+      const hook = observability();
+      const handle = await hook.onInit(makeCtx({
+        userStoreFolder: store,
+        isInteractive: false,
+        config: { otelExporterOtlpEndpoint: receiver.url, telemetryConsent: 'granted' },
+      }));
+      expect(handle.contribute).toBeDefined();
+      await handle.shutdown?.();
+      // Stored decision untouched by the per-run override.
+      const raw = await readFile(join(store, 'observability-consent.json'), 'utf-8');
+      expect(JSON.parse(raw).consent).toBe('denied');
+    } finally {
+      await receiver.close();
+    }
+  });
 });

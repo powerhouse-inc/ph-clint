@@ -5,6 +5,8 @@ import {
   InMemorySpanExporter,
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
+import { logs } from '@opentelemetry/api-logs';
+import { LoggerProvider, SimpleLogRecordProcessor, InMemoryLogRecordExporter } from '@opentelemetry/sdk-logs';
 import { buildMetricInstruments, buildWraps, emitBootstrapSpan } from '../src/wraps.js';
 import type { MetricInstruments } from '../src/wraps.js';
 import type { OtelHandle } from '../src/otel.js';
@@ -12,10 +14,15 @@ import type { BootTimings } from '@powerhousedao/ph-clint';
 
 const exporter = new InMemorySpanExporter();
 const provider = new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] });
+const logExporter = new InMemoryLogRecordExporter();
+const loggerProvider = new LoggerProvider({ processors: [new SimpleLogRecordProcessor(logExporter)] });
 
-beforeAll(() => { trace.setGlobalTracerProvider(provider); });
+beforeAll(() => {
+  trace.setGlobalTracerProvider(provider);
+  logs.setGlobalLoggerProvider(loggerProvider);
+});
 
-beforeEach(() => { exporter.reset(); });
+beforeEach(() => { exporter.reset(); logExporter.reset(); });
 
 function mockMetrics(): MetricInstruments {
   return {
@@ -57,6 +64,20 @@ describe('wraps.command', () => {
     expect(span.status.code).toBe(2 /* ERROR */);
     expect(span.events.some(e => e.name === 'exception')).toBe(true);
     expect((metrics.commandExecutions.add as jest.Mock)).toHaveBeenCalledWith(1, { command: 'boom', result: 'error' });
+  });
+
+  it('normalizes a non-Error throw instead of TypeErroring mid-catch', async () => {
+    const metrics = mockMetrics();
+    const { command } = buildWraps(metrics, null);
+    await expect(command!('boom', async () => { throw 'plain string'; })).rejects.toBe('plain string');
+    const span = exporter.getFinishedSpans().find(s => s.name === 'command.execute')!;
+    expect(span.status.code).toBe(2 /* ERROR */);
+    expect(span.status.message).toBe('plain string');
+    const exception = span.events.find(e => e.name === 'exception')!;
+    expect(exception.attributes!['exception.message']).toBe('plain string');
+    const rec = logExporter.getFinishedLogRecords().find(r => r.attributes['command.id'] === 'boom')!;
+    expect(String(rec.body)).toBe('plain string');
+    expect(rec.attributes['exception.type']).toBe('NonError');
   });
 });
 
@@ -140,6 +161,40 @@ describe('wraps.agentStream', () => {
       expect.any(Number),
       expect.objectContaining({ result: 'error' }),
     );
+  });
+});
+
+describe('wraps error reporting', () => {
+  it('emits an ERROR log record correlated to the failing span', async () => {
+    const metrics = mockMetrics();
+    const { command } = buildWraps(metrics, null);
+    await expect(command!('boom', async () => { throw new Error('nope'); })).rejects.toThrow('nope');
+
+    const rec = logExporter.getFinishedLogRecords().find(r => r.attributes['command.id'] === 'boom')!;
+    expect(rec).toBeDefined();
+    expect(rec.severityText).toBe('ERROR');
+    expect(String(rec.body)).toBe('nope');
+    expect(rec.attributes['exception.type']).toBe('Error');
+    // Same trace id as the command.execute span so traces-to-logs can drill in.
+    const span = exporter.getFinishedSpans().find(s => s.name === 'command.execute')!;
+    expect(rec.spanContext?.traceId).toBe(span.spanContext().traceId);
+  });
+
+  it('forwards the error to Sentry captureException when a handle is present', async () => {
+    const metrics = mockMetrics();
+    const captureException = jest.fn();
+    const { tool } = buildWraps(metrics, { captureException, flush: async () => true });
+    const wrapped = tool!('failing', { execute: jest.fn().mockRejectedValue(new Error('x') as never) });
+    await expect((wrapped.execute as (a: unknown) => Promise<unknown>)({})).rejects.toThrow('x');
+    expect(captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not throw when no Sentry handle and no logger provider effects are needed', async () => {
+    const metrics = mockMetrics();
+    const { routineIteration } = buildWraps(metrics, null);
+    await expect(routineIteration!({ index: 3 }, async () => { throw new Error('iter'); })).rejects.toThrow('iter');
+    const rec = logExporter.getFinishedLogRecords().find(r => r.attributes['routine.index'] === 3)!;
+    expect(rec.severityText).toBe('ERROR');
   });
 });
 
