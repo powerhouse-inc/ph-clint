@@ -65,19 +65,21 @@ export function buildCliPackageJson(spec: ClintProjectSpec, ctx: CodegenContext)
     zod: '^4.3.6',
   };
   if (mastra.enabled) {
-    // Mastra 1.32.x has `agents: Record<string, Agent>` — a freshly-constructed
-    // `new Agent({...})` is directly assignable. 1.33+ re-introduces a
-    // `Record<string, SubAgent>` constraint whose `TOutput` default (`unknown`)
-    // doesn't match `Agent`'s default (`undefined`) without an explicit generic
-    // or a cast, neither of which fits our type-strictness rule. Pin to 1.32.x.
-    // Tilde-pin every mastra package: mastra ships breaking changes between
-    // minors (e.g. libsql 1.11.0 requires core >=1.34, which would conflict
-    // with the core 1.32.x pin above). `~` keeps us on a known-good minor
-    // and still accepts patch fixes.
-    dependencies['@mastra/core'] = '~1.32.0';
-    dependencies['@mastra/libsql'] = '~1.10.1';
-    dependencies['@mastra/mcp'] = '~1.7.0';
-    dependencies['@mastra/memory'] = '~1.18.2';
+    // Pin every mastra package to a known-good minor with `~`: mastra ships
+    // breaking changes between minors, and the packages are cross-coupled
+    // (e.g. libsql >=1.12 requires core >=1.34). `~` accepts patch fixes while
+    // keeping the set on the minors verified against `@powerhousedao/ph-clint`'s
+    // own `@mastra/core ^1.41.0` peer requirement — `~1.41.0` satisfies it.
+    //
+    // The generated `agent.ts` passes `agents: Record<string, Agent>` to the
+    // supervisor `Agent`. This is type-safe from core 1.41 onward because
+    // `Agent` now `implements SubAgent`, so `Record<string, Agent>` is
+    // assignable to the field's `Record<string, SubAgent>` constraint without
+    // a cast (verified by compiling the generated patterns under `strict`).
+    dependencies['@mastra/core'] = '~1.41.0';
+    dependencies['@mastra/libsql'] = '~1.12.1';
+    dependencies['@mastra/mcp'] = '~1.9.1';
+    dependencies['@mastra/memory'] = '~1.20.2';
   }
   if (observabilityEnabled) {
     dependencies['@powerhousedao/ph-clint-observability'] = PH_CLINT_VERSION;

@@ -113,6 +113,32 @@ describe('MarkdownConversationLogger', () => {
     expect(content).toContain('**Error**: connection failed');
   });
 
+  it('summarizes large base64 payloads in multimodal tool results', () => {
+    logger.startSession('s1', 'a');
+    const bigB64 = 'A'.repeat(5000);
+    logger.logToolResult('s1', 'screenshot', {
+      content: [
+        { type: 'text', text: 'here is the image' },
+        { type: 'image', mimeType: 'image/png', data: bigB64 },
+      ],
+    });
+
+    const content = readLogContent(dir);
+    // Small text part is preserved verbatim…
+    expect(content).toContain('here is the image');
+    // …while the base64 blob is collapsed to a size placeholder, not dumped.
+    expect(content).not.toContain(bigB64);
+    expect(content).toContain('KB omitted]');
+  });
+
+  it('extracts the media type from a data: URI tool result', () => {
+    logger.startSession('s1', 'a');
+    logger.logToolResult('s1', 'render', `data:image/jpeg;base64,${'B'.repeat(1000)}`);
+
+    const content = readLogContent(dir);
+    expect(content).toContain('[image/jpeg, ~');
+  });
+
   it('logs errors', () => {
     logger.startSession('s1', 'a');
     logger.logError('s1', 'Something went wrong');

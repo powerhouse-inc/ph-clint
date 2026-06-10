@@ -44,7 +44,7 @@ interface UsageBearingChunk {
 }
 
 interface ToolLike {
-  execute: (args: unknown) => unknown;
+  execute: (...args: unknown[]) => unknown;
   [k: string]: unknown;
 }
 
@@ -129,11 +129,11 @@ export function buildWraps(metrics: MetricInstruments, _sentry: SentryHandle | n
   const tool = <T extends ToolLike>(name: string, t: T): T => {
     return {
       ...t,
-      execute: async (args: unknown) => {
+      execute: async (...args: unknown[]) => {
         const span = tracer.startSpan('tool.execute', { attributes: { 'tool.name': name } });
         const start = Date.now();
         try {
-          const result = await t.execute(args);
+          const result = await t.execute(...args);
           metrics.toolExecutions.add(1, { tool: name, result: 'success' });
           span.setAttribute('tool.duration_ms', Date.now() - start);
           return result;

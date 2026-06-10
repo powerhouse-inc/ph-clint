@@ -37,6 +37,18 @@ export interface GetToolsOptions {
 export interface WrapAgentOptions {
   /** Maximum number of tool-call steps per stream() invocation. Default: 30 */
   maxSteps?: number;
+  /**
+   * Keep the stream open across background-task continuations (Mastra's
+   * `stream({ untilIdle })`). The fullStream stays open and emits follow-up
+   * turns as the agent's background tasks complete, closing only once none
+   * remain. `true` uses the default 5-minute idle timeout; pass
+   * `{ maxIdleMs }` to override it.
+   *
+   * Only takes effect when the agent has memory configured and a `threadId`
+   * is passed to stream() (continuations need conversation persistence);
+   * otherwise Mastra falls through to a regular stream() call. Default: off.
+   */
+  untilIdle?: boolean | { maxIdleMs?: number };
   /** Enable conversation logging to disk. Default: false */
   enableLogging?: boolean;
   /** Directory to write log files. Required when enableLogging is true. */
