@@ -26,19 +26,19 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "0.3.15",
-    "@mastra/core": "^1.22.0",
-    "@mastra/libsql": ">=1.7.4 <1.11.0",
-    "@mastra/memory": "^1.13.1",
+    "@mastra/core": "catalog:",
+    "@mastra/libsql": "catalog:",
+    "@mastra/memory": "catalog:",
     "@powerhousedao/ph-clint": "workspace:*",
     "@powerhousedao/ph-clint-app": "workspace:*",
     "@powerhousedao/ph-clint-dev": "workspace:*",
-    "@powerhousedao/reactor": "6.0.0-dev.257",
-    "@powerhousedao/reactor-api": "6.0.0-dev.257",
-    "@powerhousedao/shared": "6.0.0-dev.257",
-    "document-model": "6.0.0-dev.257",
+    "@powerhousedao/reactor": "catalog:",
+    "@powerhousedao/reactor-api": "catalog:",
+    "@powerhousedao/shared": "catalog:",
+    "document-model": "catalog:",
     "kysely": "^0.27.0",
     "kysely-pglite-dialect": "^1.3.0",
-    "zod": "^4.3.6"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",

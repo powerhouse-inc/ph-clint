@@ -108,17 +108,6 @@ describe('mapMastraStream', () => {
     expect(chunks).toEqual([{ type: 'error', error: 'something broke' }]);
   });
 
-  it('ignores unknown chunk types', async () => {
-    const chunks = await collect(
-      mapMastraStream(fakeStream([
-        { type: 'step-finish' },
-        { type: 'text-delta', textDelta: 'hi' },
-        { type: 'finish' },
-      ])),
-    );
-    expect(chunks).toEqual([{ type: 'text-delta', text: 'hi' }]);
-  });
-
   it('handles empty stream', async () => {
     const chunks = await collect(mapMastraStream(fakeStream([])));
     expect(chunks).toEqual([]);

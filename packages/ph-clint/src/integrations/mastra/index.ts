@@ -84,7 +84,7 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       // lifecycle hook (e.g. observability) contributes wrap.tool.
       const wrapped: Record<string, any> = {};
       for (const [name, tool] of Object.entries(filtered)) {
-        wrapped[name] = ctx.wraps.tool(name, tool as { execute: (args: unknown) => unknown });
+        wrapped[name] = ctx.wraps.tool(name, tool as { execute: (...args: unknown[]) => unknown });
       }
       return wrapped;
     },
@@ -141,7 +141,29 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
     },
 
     wrapAgent(agent: any, options?: WrapAgentOptions): AgentProvider {
+      // Workspace tools never pass through getTools(): the Mastra Agent
+      // builds them at stream time (listWorkspaceTools → createWorkspaceTools)
+      // and the Workspace itself exposes no tool accessor. Patch the listing
+      // on this instance so the wrap registry applies to workspace tools too.
+      const listWorkspaceTools = typeof agent.listWorkspaceTools === 'function'
+        ? agent.listWorkspaceTools.bind(agent)
+        : undefined;
+      if (listWorkspaceTools) {
+        agent.listWorkspaceTools = async (...listArgs: unknown[]) => {
+          const tools = await listWorkspaceTools(...listArgs);
+          const wrapped: Record<string, any> = {};
+          for (const [name, tool] of Object.entries(tools ?? {})) {
+            const t = tool as { execute?: (...args: unknown[]) => unknown };
+            wrapped[name] = typeof t.execute === 'function'
+              ? ctx.wraps.tool(name, t as { execute: (...args: unknown[]) => unknown })
+              : tool;
+          }
+          return wrapped;
+        };
+      }
+
       const maxSteps = options?.maxSteps ?? 30;
+      const untilIdle = options?.untilIdle;
       const agentId = agent.id ?? 'default';
       const agentName = agent.name ?? agentId;
 
@@ -168,6 +190,9 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
       ): AsyncGenerator<StreamChunk> {
         const streamOpts: Record<string, unknown> = { maxSteps };
         if (providerOptions) streamOpts.providerOptions = providerOptions;
+        // Keep the stream open across background-task continuations. Mastra
+        // falls through to a regular stream() when no memory/thread is set.
+        if (untilIdle) streamOpts.untilIdle = untilIdle;
 
         if (opts?.threadId) {
           streamOpts.memory = {

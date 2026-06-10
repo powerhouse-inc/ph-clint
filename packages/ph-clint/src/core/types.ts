@@ -804,8 +804,11 @@ export interface WrapRegistry {
     inner: (prompt: P, opts?: O) => AsyncGenerator<T>,
     attrs: { agentId: string },
   ): (prompt: P, opts?: O) => AsyncGenerator<T>;
-  /** Wraps each agent tool's execute function. */
-  tool<T extends { execute: (args: unknown) => unknown }>(name: string, tool: T): T;
+  /**
+   * Wraps each agent tool's execute function. Implementations must forward
+   * every invocation argument — Mastra invokes `execute(args, toolContext)`.
+   */
+  tool<T extends { execute: (...args: unknown[]) => unknown }>(name: string, tool: T): T;
   /** Wraps a routine iteration body. */
   routineIteration<R>(attrs: { index: number }, inner: () => Promise<R>): Promise<R>;
 }

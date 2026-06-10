@@ -2,6 +2,40 @@ import { mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { StreamChunk } from '../../core/types.js';
 
+/**
+ * Strings longer than this in a tool result are summarized rather than
+ * written verbatim. Multimodal MCP tool results (mcp >=1.9) carry image /
+ * audio payloads as base64 content parts; dumping them raw would bloat the
+ * markdown log with unreadable blobs.
+ */
+const MAX_LOGGED_STRING = 512;
+
+/**
+ * Serialize a tool result for the markdown log, collapsing large binary /
+ * base64 payloads (e.g. multimodal content parts) into a compact placeholder.
+ * Falls back to `String(result)` if the value isn't JSON-serializable.
+ */
+function summarizeToolResult(result: unknown): string {
+  try {
+    return JSON.stringify(
+      result,
+      (_key, value) => {
+        if (value instanceof Uint8Array) {
+          return `[binary, ~${(value.byteLength / 1024).toFixed(1)} KB omitted]`;
+        }
+        if (typeof value === 'string' && value.length > MAX_LOGGED_STRING) {
+          const mediaType = /^data:([^;,]+)/.exec(value)?.[1] ?? 'string';
+          return `[${mediaType}, ~${(value.length / 1024).toFixed(1)} KB omitted]`;
+        }
+        return value;
+      },
+      2,
+    );
+  } catch {
+    return String(result);
+  }
+}
+
 // ── Types ────────────────────────────────────────────────────────
 
 /**
@@ -159,7 +193,7 @@ export class MarkdownConversationLogger implements IConversationLogger {
     if (isError) {
       content += `**Error**: ${String(result)}\n`;
     } else {
-      content += `**Output**:\n\`\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\`\n`;
+      content += `**Output**:\n\`\`\`\`json\n${summarizeToolResult(result)}\n\`\`\`\`\n`;
     }
     appendFileSync(s.filePath, content + '\n');
   }
