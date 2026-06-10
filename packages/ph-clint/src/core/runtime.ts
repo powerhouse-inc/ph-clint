@@ -28,7 +28,7 @@ import type {
 } from '../integrations/powerhouse/types.js';
 import type { ProxyServerInstance } from './proxy.js';
 import { resolvePort } from '../integrations/powerhouse/ports.js';
-import { buildSwitchboardRoutes, buildSwitchboardProxyUrls } from './proxy-routes.js';
+import { buildSwitchboardRoutes, buildSwitchboardProxyUrls, deriveBasePath } from './proxy-routes.js';
 import { createRemoteAttachmentService } from '@powerhousedao/reactor-attachments';
 
 /**
@@ -302,6 +302,10 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
           const connectParams: Record<string, unknown> = {};
           if (reactorConfig.connect!.port) connectParams.port = reactorConfig.connect!.port;
           if (cachedReactor?.driveUrl) connectParams.driveUrl = cachedReactor.driveUrl;
+          // Deploy base for the dynamic-base Connect bundle: the proxy mount
+          // derived from the resolved proxyPublicUrl ('/' at root). The mount
+          // only — never X-Forwarded-Prefix, which is per-route.
+          connectParams.base = `${deriveBasePath(config.proxyPublicUrl as string | undefined)}/`;
           const instanceId = await context.services.start(connectName, {
             workdir: connectWorkdir,
             cwd: connectWorkdir,

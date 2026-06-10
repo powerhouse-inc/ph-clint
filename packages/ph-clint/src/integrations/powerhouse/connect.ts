@@ -44,7 +44,13 @@ export function connectServiceDefinition(
 
       if (isStaticMode) {
         const serverScript = resolveConnectServerScript();
-        return `node ${serverScript} --dir ${connectConfig.assetsDir} --port ${p}`;
+        // Deploy base for the dynamic-base Connect bundle — the proxy mount
+        // path, substituted once at connect-server startup.
+        const base = typeof params?.base === 'string' ? params.base : undefined;
+        // Quote interpolated values — the command runs via shell:true and
+        // paths may contain spaces.
+        const baseFlag = base && base !== '/' ? ` --base ${JSON.stringify(base)}` : '';
+        return `node ${JSON.stringify(serverScript)} --dir ${JSON.stringify(connectConfig.assetsDir)} --port ${p}${baseFlag}`;
       }
 
       return `ph connect --port ${p}`;
