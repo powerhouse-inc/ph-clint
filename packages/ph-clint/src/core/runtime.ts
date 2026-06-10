@@ -181,7 +181,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       );
       for (const route of sbRoutes) {
         proxyInstance.addRoute(route);
-        log.debug(`  proxy: ${route.prefix} → ${route.upstream.toString()}`);
+        log.debug(`  proxy: ${route.prefix} → ${route.upstream?.toString() ?? route.redirectTo ?? ''}`);
       }
     }
 

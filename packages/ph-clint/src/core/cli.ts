@@ -129,6 +129,7 @@ export function defineCli<
       proxyHost: z.string().default('0.0.0.0'),
       // Browser-facing base URL when deployed behind an ingress
       // (env: {CLINAME}_PROXY_PUBLIC_URL). See ProxyServerOptions.publicUrl.
+      // A non-root pathname mounts the whole surface under that base path.
       // Validated as a URL so a scheme-less value fails at startup rather
       // than silently propagating into every composed URL.
       proxyPublicUrl: z.string().url().optional(),
@@ -1224,10 +1225,13 @@ export function defineCli<
         routes: () =>
           proxy.getRoutes().map((r) => ({
             prefix: r.prefix,
-            upstream: r.upstream.toString(),
+            upstream: r.upstream?.toString(),
             ws: r.ws,
             source: r.source,
+            redirectTo: r.redirectTo,
+            exact: r.exact,
           })),
+        addRoute: (route) => proxy.addRoute(route),
       };
     }
 
