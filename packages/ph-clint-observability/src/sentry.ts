@@ -9,6 +9,11 @@ export interface SentryInitInput {
    * commonly set it to a git SHA. We must not override that.
    */
   fallbackRelease?: string;
+  /**
+   * When set, OTel spans are exported to this collector instead of Sentry's
+   * DSN-derived OTLP endpoint. Leave unset to send spans to Sentry.
+   */
+  collectorUrl?: string;
 }
 
 export interface SentryHandle {
@@ -17,49 +22,34 @@ export interface SentryHandle {
 }
 
 /**
- * Dynamic-imported Sentry initialization. Loaded only when a SENTRY_DSN-equivalent
- * is configured — keeps the SDK out of memory when telemetry is off.
+ * Lightweight Sentry init via `@sentry/node-core/light`. The framework owns the
+ * OpenTelemetry SDK (otel.ts), so the light build is paired with
+ * `otlpIntegration`: it attaches its own span processor to the already-registered
+ * global tracer provider and forwards finished spans to Sentry over OTLP. No
+ * auto-instrumentation, no Sentry-owned OTel setup, no Node stdlib patching.
  *
- * Default integrations and Sentry's own OTel setup are disabled:
- *   - defaultIntegrations: false  → no console patching, no HTTP breadcrumbs,
- *                                   no Express integration, no global uncaught
- *                                   handlers we didn't ask for.
- *   - integrations: []             → explicit empty list.
- *   - skipOpenTelemetrySetup: true → our otel.ts owns the tracer + meter
- *                                    providers; SentrySpanProcessor bridges
- *                                    spans to Sentry from there.
+ * Call AFTER initOtel — the integration needs the global provider to exist so it
+ * can attach to it rather than spin up its own minimal one.
  *
- * Standard Sentry env vars are read natively by `@sentry/node`:
- *   - SENTRY_RELEASE          → release identifier (we fall back to
- *                               cliVersion only when this is unset)
- *   - SENTRY_ENVIRONMENT      → environment label (we don't override)
- *   - SENTRY_TRACES_SAMPLE_RATE → sample rate (we don't override)
- *
- * Anything we don't pass to Sentry.init() the SDK reads from process.env.
- * That keeps the operator CI pipeline in control — `SENTRY_RELEASE=$GIT_SHA`
- * works without any code change here.
+ * Standard Sentry env vars are read natively by the SDK (`SENTRY_RELEASE`,
+ * `SENTRY_ENVIRONMENT`). We set `release` only as a fallback when
+ * `SENTRY_RELEASE` is unset, and `serverName` for host attribution.
  */
 export async function initSentry(opts: SentryInitInput): Promise<SentryHandle> {
-  const Sentry = await import('@sentry/node');
+  const Sentry = await import('@sentry/node-core/light');
+  const { otlpIntegration } = await import('@sentry/node-core/light/otlp');
+
   const initOpts: Parameters<typeof Sentry.init>[0] = {
     dsn: opts.dsn,
-    // Explicitly set the host name. With `defaultIntegrations: false` we
-    // disable Sentry's `NodeContext` integration, which is what normally
-    // populates `event.server_name`. Without this, errors in Sentry have no
-    // host attribution — which makes multi-host/multi-pod deployments
-    // impossible to triage. Operators can still override via
-    // `SENTRY_SERVER_NAME` env (Sentry SDK reads it natively when serverName
-    // is not passed, but ours wins if both are set — see below).
     serverName: process.env.SENTRY_SERVER_NAME ?? hostname(),
-    defaultIntegrations: false,
-    integrations: [],
-    skipOpenTelemetrySetup: true,
+    integrations: [otlpIntegration({ collectorUrl: opts.collectorUrl })],
   };
   // Only set release as a fallback — never override an env-provided value.
   if (!process.env.SENTRY_RELEASE && opts.fallbackRelease) {
     initOpts.release = opts.fallbackRelease;
   }
   Sentry.init(initOpts);
+
   return {
     captureException: (err) => { Sentry.captureException(err); },
     flush: (timeoutMs = 2000) => Sentry.flush(timeoutMs),

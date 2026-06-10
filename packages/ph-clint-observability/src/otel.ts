@@ -7,7 +7,6 @@ export interface OtelInitInput {
   endpoint: string;
   serviceName: string;
   version: string;
-  sentryEnabled: boolean;
 }
 
 /**
@@ -55,25 +54,34 @@ function stripTrailingSlash(s: string): string {
  * BatchSpanProcessor + PeriodicExportingMetricReader against the configured
  * OTLP HTTP endpoint, and stops.
  *
- * If Sentry is also enabled, SentrySpanProcessor is added so spans flow to
- * both Tempo/OTLP backend AND Sentry — single source, two sinks, matching
- * trace IDs.
+ * Three signals are exported to the same OTLP/HTTP base: traces to
+ * `/v1/traces` (Tempo), metrics to `/v1/metrics` (Prometheus via the
+ * collector), and logs to `/v1/logs` (Loki). A global LoggerProvider is
+ * registered so callers reach it through the OTel logs API. Sentry, when
+ * enabled, attaches its own span processor to the global tracer provider via
+ * `otlpIntegration` (see sentry.ts) — initOtel knows nothing about it.
  */
 export async function initOtel(opts: OtelInitInput): Promise<OtelHandle> {
   const [
     { NodeSDK },
     { OTLPTraceExporter },
     { OTLPMetricExporter },
+    { OTLPLogExporter },
     sdkMetrics,
     sdkTraceBase,
+    sdkLogs,
+    apiLogs,
     resourcesMod,
     apiMod,
   ] = await Promise.all([
     import('@opentelemetry/sdk-node'),
     import('@opentelemetry/exporter-trace-otlp-http'),
     import('@opentelemetry/exporter-metrics-otlp-http'),
+    import('@opentelemetry/exporter-logs-otlp-http'),
     import('@opentelemetry/sdk-metrics'),
     import('@opentelemetry/sdk-trace-base'),
+    import('@opentelemetry/sdk-logs'),
+    import('@opentelemetry/api-logs'),
     import('@opentelemetry/resources'),
     import('@opentelemetry/api'),
   ]);
@@ -93,13 +101,6 @@ export async function initOtel(opts: OtelInitInput): Promise<OtelHandle> {
   const spanProcessors: SpanProcessor[] = [
     new sdkTraceBase.BatchSpanProcessor(new OTLPTraceExporter({ url: `${base}/v1/traces` })),
   ];
-  if (opts.sentryEnabled) {
-    const { SentrySpanProcessor } = await import('@sentry/opentelemetry');
-    // SentrySpanProcessor extends SpanProcessor but its declared type from
-    // @sentry/opentelemetry can drift from the host @opentelemetry/sdk-trace-base
-    // version. Cast is intentional — confirmed working at runtime.
-    spanProcessors.push(new SentrySpanProcessor() as unknown as SpanProcessor);
-  }
 
   const metricReader = new sdkMetrics.PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({ url: `${base}/v1/metrics` }),
@@ -114,9 +115,22 @@ export async function initOtel(opts: OtelInitInput): Promise<OtelHandle> {
   });
   sdk.start();
 
+  // Logs ride a separate LoggerProvider (NodeSDK does not own logs) registered
+  // as the global provider, so `logs.getLogger()` anywhere in the process emits
+  // to it. The wraps emit trace-correlated error records (see wraps.ts).
+  const loggerProvider = new sdkLogs.LoggerProvider({
+    resource,
+    processors: [
+      new sdkLogs.BatchLogRecordProcessor(new OTLPLogExporter({ url: `${base}/v1/logs` })),
+    ],
+  });
+  apiLogs.logs.setGlobalLoggerProvider(loggerProvider);
+
   return {
     tracer: apiMod.trace.getTracer(opts.serviceName, opts.version),
     meter: apiMod.metrics.getMeter(opts.serviceName, opts.version),
-    shutdown: () => sdk.shutdown(),
+    shutdown: async () => {
+      await Promise.all([sdk.shutdown(), loggerProvider.shutdown()]);
+    },
   };
 }

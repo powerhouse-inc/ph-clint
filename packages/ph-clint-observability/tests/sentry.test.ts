@@ -8,8 +8,8 @@ describe('initSentry', () => {
   });
 
   it('returns a handle with captureException and flush', async () => {
-    // Use a syntactically valid DSN. Sentry.init with defaultIntegrations:false
-    // does not make network calls during init itself — only when events/flush fire.
+    // Use a syntactically valid DSN. The light SDK + otlpIntegration make no
+    // network calls during init itself — only when events/flush fire.
     const handle = await initSentry({
       dsn: 'https://abc@o0.ingest.example.invalid/0',
       fallbackRelease: '1.2.3',
