@@ -1,7 +1,7 @@
 /**
  * Standalone static file server for pre-built Connect SPA assets.
  *
- * Usage: node connect-server.js --dir <path> --port <port>
+ * Usage: node connect-server.js --dir <path> --port <port> [--base </deploy/base/>]
  *
  * Exposes a `/__packages` channel so external publishers (e.g. ph-clint's
  * publish-reload trigger) can push the live package list to running SPA
@@ -30,10 +30,19 @@
  *                              the merged baked + dynamic list, so a fresh
  *                              page load picks up newly-published packages.
  *
- * Every served HTML response is rewritten to include a small `<script>` that
- * hooks `window.error` and `unhandledrejection`, filters to CDN-loaded
- * module URLs (those matching `/-/cdn/`), and POSTs the error to
- * /__packages/error so observers (e.g. the publish-reload trigger) see it.
+ * HTML documents get two startup-time transforms, applied once per file and
+ * cached:
+ *   - Dynamic-base substitution: a dynamic-base Connect build bakes the
+ *     literal token `/__PH_DYNAMIC_BASE__/` into its entry tags and resolves
+ *     runtime asset URLs against `globalThis.__PH_DYNAMIC_BASE__`. When the
+ *     document carries the token, every occurrence is replaced with the
+ *     deploy base (`--base`) and a `<script>` setting the global is injected
+ *     right after `<head>`. A token-free (concrete-base) document is left
+ *     untouched by this step.
+ *   - An error-report `<script>` that hooks `window.error` and
+ *     `unhandledrejection`, filters to CDN-loaded module URLs (those matching
+ *     `/-/cdn/`), and POSTs the error to /__packages/error so observers
+ *     (e.g. the publish-reload trigger) see it.
  * The SPA itself is expected to open its own `EventSource('/__packages')`
  * and call `packageManager.addPackage` / `removePackage` on each
  * `packages-changed` event — full page reloads are no longer used.
@@ -42,11 +51,12 @@
  * dist/integrations/powerhouse/connect-server.js and invoked as a child process.
  */
 
-import { createServer, type ServerResponse } from 'node:http';
+import { createServer, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
+import { pathToFileURL } from 'node:url';
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -60,69 +70,44 @@ const MIME_TYPES: Record<string, string> = {
   '.wasm': 'application/wasm',
 };
 
-const { values } = parseArgs({
-  options: {
-    dir: { type: 'string' },
-    port: { type: 'string' },
-  },
-});
-
-const dir = values.dir;
-const port = parseInt(values.port ?? '3000', 10);
-
-if (!dir) {
-  console.error('Usage: node connect-server.js --dir <path> --port <port>');
-  process.exit(1);
+export interface ConnectServerOptions {
+  /** Directory containing the built SPA (must hold an index.html). */
+  dir: string;
+  /**
+   * Deploy base path the SPA is mounted under — the proxy mount, not any
+   * per-route prefix. Normalized to leading+trailing-slash form ('/' or
+   * '/myagent/'). Default '/'.
+   */
+  base?: string;
 }
 
-const indexPath = join(dir, 'index.html');
-const phPackagesPath = join(dir, 'ph-packages.json');
-
-if (!existsSync(indexPath)) {
-  console.error(`index.html not found in ${dir}`);
-  process.exit(1);
+/** Normalize a deploy base to leading+trailing-slash form ('/' | '/x/'). */
+function normalizeBase(base: string | undefined): string {
+  const trimmed = base?.trim().replace(/^\/+|\/+$/g, '') ?? '';
+  return trimmed === '' ? '/' : `/${trimmed}/`;
 }
 
-interface PhPackagesConfig {
-  packages: string[];
-  registryUrl?: string | null;
-  localPackage?: { name: string; version: string };
-  [key: string]: unknown;
-}
+const DYNAMIC_BASE_TOKEN = '/__PH_DYNAMIC_BASE__/';
 
-function readBakedPhPackages(): PhPackagesConfig {
-  try {
-    const raw = readFileSync(phPackagesPath, 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<PhPackagesConfig>;
-    return {
-      ...parsed,
-      packages: Array.isArray(parsed.packages) ? parsed.packages : [],
-    };
-  } catch {
-    return { packages: [] };
+/**
+ * Substitute the dynamic-base token with the deploy base and inject the
+ * `globalThis.__PH_DYNAMIC_BASE__` global right after `<head>`, so it is set
+ * before the entry bundle executes. A token-free (concrete-base) document is
+ * returned unchanged; a document that already sets the global keeps it.
+ * At the root mount the base is '/', so the token collapses to '/' (no double
+ * slash) and the global is "/".
+ */
+function substituteDynamicBase(html: string, base: string): string {
+  if (!html.includes(DYNAMIC_BASE_TOKEN)) return html;
+  const replaced = html.split(DYNAMIC_BASE_TOKEN).join(base);
+  if (/globalThis\.__PH_DYNAMIC_BASE__\s*=/.test(replaced)) return replaced;
+  const inject = `<script>globalThis.__PH_DYNAMIC_BASE__=${JSON.stringify(base)};</script>`;
+  const headOpen = replaced.match(/<head[^>]*>/i);
+  if (headOpen?.index !== undefined) {
+    const at = headOpen.index + headOpen[0].length;
+    return replaced.slice(0, at) + inject + replaced.slice(at);
   }
-}
-
-// The baked config is read once at startup and represents the always-on
-// state (packages configured at vetra-app build time, registry URL, local
-// package metadata). `dynamicPackages` is the overlay pushed by
-// `POST /__packages` for packages published after startup; it accumulates
-// without ever evicting baked entries. `GET /ph-packages.json` returns
-// `bakedConfig` with `.packages` replaced by the merged-and-deduped list,
-// so the response path has no synchronous disk I/O.
-const bakedConfig: PhPackagesConfig = readBakedPhPackages();
-const bakedPackages: string[] = bakedConfig.packages.slice();
-let dynamicPackages: string[] = [];
-
-function mergedPackages(): string[] {
-  const seen = new Set<string>();
-  const merged: string[] = [];
-  for (const name of [...bakedPackages, ...dynamicPackages]) {
-    if (seen.has(name)) continue;
-    seen.add(name);
-    merged.push(name);
-  }
-  return merged;
+  return inject + replaced;
 }
 
 const INJECTED_SCRIPT = `
@@ -168,24 +153,6 @@ function injectScript(html: string): string {
   return html + INJECTED_SCRIPT;
 }
 
-const sseClients = new Set<ServerResponse>();
-
-function broadcast(eventName: string, data: string): number {
-  const payload = `event: ${eventName}\ndata: ${data}\n\n`;
-  for (const client of sseClients) {
-    try {
-      client.write(payload);
-    } catch {
-      // Drop broken clients; their `close` handler will clean up.
-    }
-  }
-  return sseClients.size;
-}
-
-function broadcastPackages(): number {
-  return broadcast('packages-changed', JSON.stringify({ packages: mergedPackages() }));
-}
-
 async function readJsonBody(
   req: import('node:http').IncomingMessage,
   maxBytes = 64 * 1024,
@@ -213,25 +180,148 @@ async function readJsonBody(
   });
 }
 
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url ?? '/', `http://localhost:${port}`);
+interface PhPackagesConfig {
+  packages: string[];
+  registryUrl?: string | null;
+  localPackage?: { name: string; version: string };
+  [key: string]: unknown;
+}
 
-  if (url.pathname === '/__packages') {
-    if (req.method === 'GET') {
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      });
-      res.write(`event: connected\ndata: {}\n\n`);
-      res.write(
-        `event: packages-changed\ndata: ${JSON.stringify({ packages: mergedPackages() })}\n\n`,
-      );
-      sseClients.add(res);
-      req.on('close', () => sseClients.delete(res));
+/**
+ * Create the Connect static server (not yet listening). Throws when `dir`
+ * holds no index.html.
+ */
+export function createConnectServer(options: ConnectServerOptions): Server {
+  const { dir } = options;
+  const base = normalizeBase(options.base);
+  const indexPath = join(dir, 'index.html');
+  const phPackagesPath = join(dir, 'ph-packages.json');
+
+  if (!existsSync(indexPath)) {
+    throw new Error(`index.html not found in ${dir}`);
+  }
+
+  function readBakedPhPackages(): PhPackagesConfig {
+    try {
+      const raw = readFileSync(phPackagesPath, 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<PhPackagesConfig>;
+      return {
+        ...parsed,
+        packages: Array.isArray(parsed.packages) ? parsed.packages : [],
+      };
+    } catch {
+      return { packages: [] };
+    }
+  }
+
+  // The baked config is read once at startup and represents the always-on
+  // state (packages configured at vetra-app build time, registry URL, local
+  // package metadata). `dynamicPackages` is the overlay pushed by
+  // `POST /__packages` for packages published after startup; it accumulates
+  // without ever evicting baked entries. `GET /ph-packages.json` returns
+  // `bakedConfig` with `.packages` replaced by the merged-and-deduped list,
+  // so the response path has no synchronous disk I/O.
+  const bakedConfig: PhPackagesConfig = readBakedPhPackages();
+  const bakedPackages: string[] = bakedConfig.packages.slice();
+  let dynamicPackages: string[] = [];
+
+  function mergedPackages(): string[] {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    for (const name of [...bakedPackages, ...dynamicPackages]) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      merged.push(name);
+    }
+    return merged;
+  }
+
+  // HTML documents are transformed (dynamic-base substitution + error-report
+  // inject) once per file path and cached; the assets dir is a static build.
+  const htmlCache = new Map<string, string>();
+
+  async function loadHtmlDocument(path: string): Promise<string> {
+    let doc = htmlCache.get(path);
+    if (doc === undefined) {
+      const raw = await readFile(path, 'utf-8');
+      doc = injectScript(substituteDynamicBase(raw, base));
+      htmlCache.set(path, doc);
+    }
+    return doc;
+  }
+
+  const sseClients = new Set<ServerResponse>();
+
+  function broadcast(eventName: string, data: string): number {
+    const payload = `event: ${eventName}\ndata: ${data}\n\n`;
+    for (const client of sseClients) {
+      try {
+        client.write(payload);
+      } catch {
+        // Drop broken clients; their `close` handler will clean up.
+      }
+    }
+    return sseClients.size;
+  }
+
+  function broadcastPackages(): number {
+    return broadcast('packages-changed', JSON.stringify({ packages: mergedPackages() }));
+  }
+
+  return createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+
+    if (url.pathname === '/__packages') {
+      if (req.method === 'GET') {
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        });
+        res.write(`event: connected\ndata: {}\n\n`);
+        res.write(
+          `event: packages-changed\ndata: ${JSON.stringify({ packages: mergedPackages() })}\n\n`,
+        );
+        sseClients.add(res);
+        req.on('close', () => sseClients.delete(res));
+        return;
+      }
+      if (req.method === 'POST') {
+        let body: unknown;
+        try {
+          body = await readJsonBody(req);
+        } catch {
+          res.writeHead(400);
+          res.end();
+          return;
+        }
+        if (
+          !body ||
+          typeof body !== 'object' ||
+          !Array.isArray((body as { packages?: unknown }).packages) ||
+          !(body as { packages: unknown[] }).packages.every((p) => typeof p === 'string')
+        ) {
+          res.writeHead(400);
+          res.end('expected { packages: string[] }');
+          return;
+        }
+        dynamicPackages = (body as { packages: string[] }).packages.slice();
+        const count = broadcastPackages();
+        res.writeHead(204, { 'X-Subscribers': String(count) });
+        res.end();
+        return;
+      }
+      res.writeHead(405);
+      res.end();
       return;
     }
-    if (req.method === 'POST') {
+
+    if (url.pathname === '/__packages/error') {
+      if (req.method !== 'POST') {
+        res.writeHead(405);
+        res.end();
+        return;
+      }
       let body: unknown;
       try {
         body = await readJsonBody(req);
@@ -240,85 +330,103 @@ const server = createServer(async (req, res) => {
         res.end();
         return;
       }
-      if (
-        !body ||
-        typeof body !== 'object' ||
-        !Array.isArray((body as { packages?: unknown }).packages) ||
-        !(body as { packages: unknown[] }).packages.every((p) => typeof p === 'string')
-      ) {
-        res.writeHead(400);
-        res.end('expected { packages: string[] }');
+      const data = JSON.stringify(body ?? {});
+      broadcast('package-error', data);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (url.pathname === '/ph-packages.json') {
+      if (req.method !== 'GET') {
+        res.writeHead(405);
+        res.end();
         return;
       }
-      dynamicPackages = (body as { packages: string[] }).packages.slice();
-      const count = broadcastPackages();
-      res.writeHead(204, { 'X-Subscribers': String(count) });
-      res.end();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ...bakedConfig, packages: mergedPackages() }));
       return;
     }
-    res.writeHead(405);
-    res.end();
-    return;
-  }
 
-  if (url.pathname === '/__packages/error') {
-    if (req.method !== 'POST') {
-      res.writeHead(405);
-      res.end();
+    const filePath = join(dir, url.pathname);
+    const ext = extname(filePath);
+
+    // A missing file under /assets/ is a 404, not the SPA shell — serving
+    // HTML as a .js/.css masks broken asset references.
+    if (url.pathname.startsWith('/assets/') && !existsSync(filePath)) {
+      res.writeHead(404);
+      res.end('Not Found');
       return;
     }
-    let body: unknown;
+
+    if (ext && ext !== '.html' && existsSync(filePath)) {
+      try {
+        const content = await readFile(filePath);
+        // Vite content-hashes filenames under /assets/, so they're immutable;
+        // other top-level static files (e.g. /icon.ico) aren't, cache modestly.
+        const cacheControl = url.pathname.startsWith('/assets/')
+          ? 'public, max-age=31536000, immutable'
+          : 'public, max-age=3600';
+        res.writeHead(200, {
+          'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream',
+          'Cache-Control': cacheControl,
+        });
+        res.end(content);
+        return;
+      } catch {
+        // Fall through to SPA fallback
+      }
+    }
+
     try {
-      body = await readJsonBody(req);
+      const target = ext === '.html' && existsSync(filePath) ? filePath : indexPath;
+      const body = await loadHtmlDocument(target);
+      // SPA shell carries the per-deployment dynamic base, must revalidate.
+      res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
+      res.end(body);
     } catch {
-      res.writeHead(400);
-      res.end();
-      return;
+      res.writeHead(500);
+      res.end('Internal Server Error');
     }
-    const data = JSON.stringify(body ?? {});
-    broadcast('package-error', data);
-    res.writeHead(204);
-    res.end();
-    return;
-  }
+  });
+}
 
-  if (url.pathname === '/ph-packages.json') {
-    if (req.method !== 'GET') {
-      res.writeHead(405);
-      res.end();
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ...bakedConfig, packages: mergedPackages() }));
-    return;
-  }
-
-  const filePath = join(dir, url.pathname);
-  const ext = extname(filePath);
-
-  if (ext && ext !== '.html' && existsSync(filePath)) {
-    try {
-      const content = await readFile(filePath);
-      res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream' });
-      res.end(content);
-      return;
-    } catch {
-      // Fall through to SPA fallback
-    }
-  }
-
+function isMain(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
   try {
-    const target = ext === '.html' && existsSync(filePath) ? filePath : indexPath;
-    const content = await readFile(target, 'utf-8');
-    const body = injectScript(content);
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(body);
+    return import.meta.url === pathToFileURL(entry).href;
   } catch {
-    res.writeHead(500);
-    res.end('Internal Server Error');
+    return false;
   }
-});
+}
 
-server.listen(port, () => {
-  console.log(`  Local: http://localhost:${port}/`);
-});
+if (isMain()) {
+  const { values } = parseArgs({
+    options: {
+      dir: { type: 'string' },
+      port: { type: 'string' },
+      base: { type: 'string' },
+    },
+  });
+
+  const dir = values.dir;
+  const port = parseInt(values.port ?? '3000', 10);
+
+  if (!dir) {
+    console.error('Usage: node connect-server.js --dir <path> --port <port> [--base </deploy/base/>]');
+    process.exit(1);
+  }
+
+  let server: Server;
+  try {
+    server = createConnectServer({ dir, base: values.base });
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exit(1);
+  }
+
+  server.listen(port, () => {
+    console.log(`  Local: http://localhost:${port}/`);
+  });
+}

@@ -101,7 +101,7 @@ describe('connectServiceDefinition', () => {
       : svc.command;
     expect(cmd).toContain('node ');
     expect(cmd).toContain('connect-server.js');
-    expect(cmd).toContain('--dir /path/to/assets');
+    expect(cmd).toContain('--dir "/path/to/assets"');
     expect(cmd).toContain('--port 3000');
     // Static mode should NOT include ph connect or driveUrl
     expect(cmd).not.toContain('ph connect');
