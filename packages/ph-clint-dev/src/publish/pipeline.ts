@@ -33,6 +33,7 @@ import { buildAll } from './build.js';
 import {
   checkNpmAuth,
   verifyVersionOnRegistry,
+  verifyWithRetry,
   verifyAllPublished,
   packDryRun,
   publishAll,
@@ -165,10 +166,16 @@ export async function resolvePublishPlan(options: PublishOptions): Promise<Publi
     for (const dep of pkg.fileDeps) {
       if (!dep.intraGroup && dep.publishVersion) {
         const depVersion = dep.publishVersion.replace(/^\^/, '');
-        const exists = await verifyVersionOnRegistry(
+        // The registry is a serve-stale-while-revalidating cache: the first
+        // read of a lapsed packument returns stale (missing a just-published
+        // version) and triggers a background refresh. Retry with backoff so
+        // the spacing outlasts that refresh instead of failing the race.
+        const exists = await verifyWithRetry(
           dep.name,
           depVersion,
           registry,
+          log,
+          4,
         );
         if (!exists) {
           throw new Error(
