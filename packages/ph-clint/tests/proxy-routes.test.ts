@@ -4,6 +4,8 @@ import {
   buildServiceRoutes,
   resolveImplicitProxyRoot,
   isWsEndpointType,
+  normalizeLoopbackHost,
+  prefixMatches,
 } from '../src/core/proxy-routes.js';
 import type { ServiceDefinition, ServiceInstanceStatus } from '../src/core/types.js';
 
@@ -23,16 +25,52 @@ describe('isWsEndpointType', () => {
   });
 });
 
+describe('prefixMatches', () => {
+  it('matches on segment boundaries, not bare startsWith', () => {
+    expect(prefixMatches('/foo', '/foo')).toBe(true);
+    expect(prefixMatches('/foo', '/foo/x')).toBe(true);
+    expect(prefixMatches('/foo', '/foobar')).toBe(false);
+    expect(prefixMatches('/d', '/d/drive-123')).toBe(true);
+    expect(prefixMatches('/d', '/drive-export')).toBe(false);
+  });
+
+  it('root prefix matches everything', () => {
+    expect(prefixMatches('/', '/')).toBe(true);
+    expect(prefixMatches('/', '/anything/here')).toBe(true);
+  });
+
+  it('trailing-slash prefix matches the bare prefix and any continuation', () => {
+    expect(prefixMatches('/switchboard/attachments/', '/switchboard/attachments')).toBe(true);
+    expect(prefixMatches('/switchboard/attachments/', '/switchboard/attachments/abc')).toBe(true);
+    expect(prefixMatches('/switchboard/attachments/', '/switchboard/attachmentsX')).toBe(false);
+  });
+});
+
+describe('normalizeLoopbackHost', () => {
+  it('rewrites localhost to 127.0.0.1, preserving the port', () => {
+    expect(normalizeLoopbackHost('localhost')).toBe('127.0.0.1');
+    expect(normalizeLoopbackHost('localhost:4001')).toBe('127.0.0.1:4001');
+    expect(normalizeLoopbackHost('LOCALHOST:8080')).toBe('127.0.0.1:8080');
+  });
+
+  it('leaves non-loopback and already-numeric hosts untouched', () => {
+    expect(normalizeLoopbackHost('127.0.0.1:3001')).toBe('127.0.0.1:3001');
+    expect(normalizeLoopbackHost('example.com:443')).toBe('example.com:443');
+    expect(normalizeLoopbackHost('upstream.internal')).toBe('upstream.internal');
+  });
+});
+
 describe('buildSwitchboardRoutes', () => {
-  it('produces 3 routes under /switchboard/', () => {
+  it('produces 4 routes under /switchboard/', () => {
     const routes = buildSwitchboardRoutes(
       'http://localhost:4001',
       'http://localhost:4002',
     );
-    expect(routes).toHaveLength(3);
+    expect(routes).toHaveLength(4);
     expect(routes.map(r => r.prefix)).toEqual([
       '/switchboard/graphql',
       '/switchboard/d/',
+      '/switchboard/attachments/',
       '/switchboard/mcp',
     ]);
   });
@@ -44,7 +82,23 @@ describe('buildSwitchboardRoutes', () => {
     );
     expect(routes[0].upstream.toString()).toBe('http://localhost:4001/graphql');
     expect(routes[1].upstream.toString()).toBe('http://localhost:4001/d/');
-    expect(routes[2].upstream.toString()).toBe('http://localhost:4002/mcp');
+    expect(routes[2].upstream.toString()).toBe('http://localhost:4001/attachments/');
+    expect(routes[3].upstream.toString()).toBe('http://localhost:4002/mcp');
+  });
+
+  it('maps /switchboard/attachments/<hash> to the switchboard /attachments/<hash> upstream', () => {
+    const routes = buildSwitchboardRoutes(
+      'http://localhost:4001',
+      'http://localhost:4002',
+    );
+    const attachments = routes.find(r => r.prefix === '/switchboard/attachments/');
+    expect(attachments).toBeDefined();
+    expect(attachments!.upstream.toString()).toBe('http://localhost:4001/attachments/');
+    // suffix beyond the prefix is the bare hash, appended to the upstream path
+    const hash = 'abc123';
+    const requestPath = `/switchboard/attachments/${hash}`;
+    const suffix = requestPath.slice(attachments!.prefix.length);
+    expect(attachments!.upstream.pathname + suffix).toBe(`/attachments/${hash}`);
   });
 
   it('only marks MCP route as ws-enabled', () => {
@@ -54,7 +108,8 @@ describe('buildSwitchboardRoutes', () => {
     );
     expect(routes[0].ws).toBe(false);
     expect(routes[1].ws).toBe(false);
-    expect(routes[2].ws).toBe(true);
+    expect(routes[2].ws).toBe(false);
+    expect(routes[3].ws).toBe(true);
   });
 
   it('sets source to switchboard', () => {
