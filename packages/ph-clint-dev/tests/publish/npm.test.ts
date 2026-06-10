@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import http from 'node:http';
-import { shouldSetLatest } from '../../src/publish/npm.js';
+import { shouldSetLatest, verifyVersionOnRegistry } from '../../src/publish/npm.js';
 
 /**
  * Create a minimal local npm-registry-like server that serves package metadata.
@@ -117,5 +117,56 @@ describe('shouldSetLatest', () => {
       versions: { '0.1.0-dev.0': {} },
     });
     expect(await shouldSetLatest('test-pkg', 'dev', registryUrl)).toBe(true);
+  });
+});
+
+describe('verifyVersionOnRegistry', () => {
+  const registry = createMockRegistry();
+  let registryUrl: string;
+
+  beforeAll(async () => {
+    registryUrl = await registry.start();
+  });
+
+  afterAll(async () => {
+    await registry.stop();
+  });
+
+  it('returns true when the version is present in the registry metadata', async () => {
+    registry.setResponse({
+      'dist-tags': { dev: '6.1.0-dev.21' },
+      versions: { '6.1.0-dev.20': {}, '6.1.0-dev.21': {} },
+    });
+    expect(
+      await verifyVersionOnRegistry('@powerhousedao/connect', '6.1.0-dev.21', registryUrl),
+    ).toBe(true);
+  });
+
+  it('returns false when the version is absent from the metadata', async () => {
+    // Simulates a stale-cache proxy registry: dev.20 visible, dev.21 not yet.
+    registry.setResponse({
+      'dist-tags': { dev: '6.1.0-dev.20' },
+      versions: { '6.1.0-dev.20': {} },
+    });
+    expect(
+      await verifyVersionOnRegistry('@powerhousedao/connect', '6.1.0-dev.21', registryUrl),
+    ).toBe(false);
+  });
+
+  it('returns false when the package itself is unknown (404)', async () => {
+    registry.setResponse(null);
+    expect(
+      await verifyVersionOnRegistry('@nope/missing', '1.0.0', registryUrl),
+    ).toBe(false);
+  });
+
+  it('encodes scoped package names correctly', async () => {
+    // Catches the @scope/name → @scope%2fname URL-encoding the function does.
+    registry.setResponse({
+      versions: { '1.0.0': {} },
+    });
+    expect(
+      await verifyVersionOnRegistry('@scope/name', '1.0.0', registryUrl),
+    ).toBe(true);
   });
 });

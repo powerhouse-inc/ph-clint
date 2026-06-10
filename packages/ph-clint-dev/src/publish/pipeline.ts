@@ -160,7 +160,22 @@ export async function resolvePublishPlan(options: PublishOptions): Promise<Publi
   // Resolve all file: deps
   packages = resolveAllFileDeps(packages, computedVer);
 
-  // Verify external deps exist on registry
+  // Verify external deps exist on the upstream source-of-truth registry.
+  //
+  // External (non-intraGroup) deps aren't published as part of this group
+  // — they live upstream (npmjs by default). When `registry` points at a
+  // mirror/proxy (e.g. a self-hosted verdaccio with `proxy: npmjs`), that
+  // mirror's view of the upstream is bounded by its uplink cache TTL (often
+  // ~2 min). Hitting it for verification produces false-negative 404s right
+  // after the dep was published to npm, blocking otherwise-valid publishes.
+  // Query the upstream directly instead. The dep WILL resolve at install
+  // time via the same mirror's normal proxy path.
+  //
+  // Override with PH_PUBLISH_EXTERNAL_DEP_REGISTRY if your external deps
+  // live on a private registry instead of npmjs.
+  const externalDepRegistry =
+    process.env.PH_PUBLISH_EXTERNAL_DEP_REGISTRY ??
+    'https://registry.npmjs.org';
   for (const pkg of packages) {
     for (const dep of pkg.fileDeps) {
       if (!dep.intraGroup && dep.publishVersion) {
@@ -168,11 +183,11 @@ export async function resolvePublishPlan(options: PublishOptions): Promise<Publi
         const exists = await verifyVersionOnRegistry(
           dep.name,
           depVersion,
-          registry,
+          externalDepRegistry,
         );
         if (!exists) {
           throw new Error(
-            `External dependency ${dep.name}@${depVersion} not found on registry ${registry}. Publish it first.`,
+            `External dependency ${dep.name}@${depVersion} not found on registry ${externalDepRegistry}. Publish it first.`,
           );
         }
       }
