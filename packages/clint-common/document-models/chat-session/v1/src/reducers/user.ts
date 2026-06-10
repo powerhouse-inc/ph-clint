@@ -3,6 +3,9 @@ import { InvalidContentPartError, MessageNotFoundError, NotUserMessageError } fr
 
 export const chatSessionUserOperations: ChatSessionUserOperations = {
   addUserMessageOperation(state, action) {
+    // Only place interruptRequested resets: a set flag tombstones a stopped
+    // turn until the next user message.
+    state.interruptRequested = false;
     for (const p of action.input.content) {
       if (p.type === 'TEXT' && !p.text) {
         throw new InvalidContentPartError('TEXT part requires text');
@@ -43,5 +46,8 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
   abortSessionOperation(state, action) {
     state.status = 'ABORTED';
     state.endedAt = action.input.endedAt;
+  },
+  interruptAgentOperation(state) {
+    state.interruptRequested = true;
   },
 };

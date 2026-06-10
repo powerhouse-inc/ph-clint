@@ -19,6 +19,7 @@ import {
   AppendAssistantContentInputSchema,
   DeleteUserMessageInputSchema,
   EndSessionInputSchema,
+  InterruptAgentInputSchema,
   SetAgentDescriptionInputSchema,
   SetAgentImageInputSchema,
   SetAgentInfoInputSchema,
@@ -109,6 +110,14 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
       AbortSessionInputSchema().parse(action.input);
 
       chatSessionUserOperations.abortSessionOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'INTERRUPT_AGENT': {
+      InterruptAgentInputSchema().parse(action.input);
+
+      chatSessionUserOperations.interruptAgentOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }

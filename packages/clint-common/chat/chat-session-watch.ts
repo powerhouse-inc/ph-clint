@@ -3,22 +3,68 @@
  *
  * Flow:
  * 1. Trigger fires on any chat-session document change
- * 2. For each doc, guard: skip unless last message is USER, session is ACTIVE, and not in-flight
+ * 2. For each doc, guard: skip unless last message is a non-empty USER message,
+ *    session is ACTIVE, not in-flight, and no interrupt is pending. Skips write
+ *    nothing — they are recomputable from document state on every pass.
  * 3. Lazily initialize session (START_SESSION) if threadId is not set
  * 4. Extract user text from the last message
  * 5. Stream agent response, writing each chunk back to the document
+ * 6. On agent failure, append an assistant ERROR message to close the turn
  */
-import { createDocumentChangeTrigger, type AgentContentPart, type ReactorContext } from '@powerhousedao/ph-clint';
+import { createDocumentChangeTrigger, type AgentContentPart, type TriggerContext } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
 import { writeAgentStreamToDocument } from './chat-bridge.js';
 import { extractAttachments } from './extract-attachments.js';
 import type { ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
+import { addAssistantMessage, hasMessageContent } from '@powerhousedao/clint-common/document-models/chat-session';
+import { randomUUID } from 'node:crypto';
 
 const DOCUMENT_TYPE = 'powerhouse/chat-session' as const;
 const TAG = '[chat-session-watch]';
 
 /** Track documents currently being processed to prevent re-entrancy. */
 const inFlight = new Set<string>();
+
+/**
+ * AbortControllers for in-flight agent streams, keyed by document id. The
+ * interrupt listener (below) aborts the matching controller when the user
+ * requests an interrupt mid-turn.
+ */
+const abortControllers = new Map<string, AbortController>();
+
+/** Ensures the document-change listener that watches for interrupts is registered once. */
+let interruptListenerRegistered = false;
+
+/**
+ * Register a single, process-wide listener for the interrupt signal.
+ *
+ * The trigger serializes its `onChange` polling, so while a stream is in
+ * flight the trigger cannot observe a freshly-dispatched INTERRUPT_AGENT
+ * operation until the stream finishes — too late to interrupt. The event bus,
+ * however, fires synchronously on every document change regardless of the
+ * blocked poll loop, so we subscribe to it directly and abort the in-flight
+ * stream the moment `interruptRequested` flips to true.
+ */
+function ensureInterruptListener(ctx: TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>): void {
+  if (interruptListenerRegistered) return;
+  const on = ctx.context.on;
+  if (!on) return;
+  interruptListenerRegistered = true;
+  const log = ctx.context.log;
+
+  on('powerhouse:document:changed', (payload) => {
+    for (const doc of payload.documents) {
+      const documentId = doc.header.id;
+      const controller = abortControllers.get(documentId);
+      if (!controller || controller.signal.aborted) continue;
+      const global = (doc.state as { global?: ChatSessionState }).global;
+      if (global?.interruptRequested) {
+        log?.info(`${TAG} interrupt requested for ${documentId}, aborting agent stream`);
+        controller.abort();
+      }
+    }
+  });
+}
 
 export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRegistry, 'powerhouse/chat-session'>({
   id: 'chat-session-watch',
@@ -33,6 +79,8 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
       log?.info(`${TAG} reactor or agent not available, skipping`);
       return null;
     }
+
+    ensureInterruptListener(ctx);
 
     for (const doc of docs) {
       const documentId = doc.header.id;
@@ -58,26 +106,30 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
         continue;
       }
 
+      // Guard: a set interruptRequested means the user stopped this turn.
+      // The flag tombstones the message as unanswered until the next user
+      // message clears it (addUserMessage). Skipping writes nothing, so no
+      // re-trigger loop.
+      if (state.interruptRequested) {
+        log?.info(`${TAG} ${documentId} interrupt requested, skipping turn`);
+        continue;
+      }
+
+      // Guard: empty message (no text, no attachment parts). Recomputable
+      // from content on every pass, so the skip is stateless.
+      if (!hasMessageContent(lastMessage)) {
+        log?.info(`${TAG} ${documentId} user message has no text or attachments, skipping`);
+        continue;
+      }
+
       // Extract user text from content parts
       const userText = lastMessage.content
         .filter((p: ContentPart) => p.type === 'TEXT' && p.text)
         .map((p: ContentPart) => p.text!)
         .join('\n');
 
-      // Let image/file-only messages through — attachments are resolved below.
-      const hasAttachmentParts = lastMessage.content.some(
-        (p: ContentPart) => p.type === 'IMAGE' || p.type === 'FILE',
-      );
-
-      if (!userText && !hasAttachmentParts) {
-        log?.info(`${TAG} ${documentId} user message has no text or attachments, skipping`);
-        continue;
-      }
-
       inFlight.add(documentId);
-      log?.info(
-        `${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`,
-      );
+      log?.info(`${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`);
 
       try {
         // Lazy session init: assigns threadId if not set
@@ -124,8 +176,13 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
           prompt = userText;
         }
 
-        // Stream agent response and write to document
-        const stream = agent.stream(prompt, { threadId });
+        // Stream agent response and write to document. The abort signal lets
+        // the interrupt listener stop this turn mid-stream; the underlying
+        // agent treats an abort as a clean end, so the partial assistant
+        // message is preserved and the session stays ACTIVE.
+        const abortController = new AbortController();
+        abortControllers.set(documentId, abortController);
+        const stream = agent.stream(prompt, { threadId, abortSignal: abortController.signal });
         await writeAgentStreamToDocument(stream, {
           reactor,
           documentId,
@@ -133,7 +190,21 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
         });
       } catch (err) {
         log?.error(`${TAG} agent invocation failed for ${documentId}:`, err);
+        // Surface the failure as an assistant ERROR message. This also closes
+        // the turn: the last message is no longer USER, so the watcher guard
+        // and the derived responding state both see the turn as ended.
+        const reason = err instanceof Error ? err.message : String(err);
+        await reactor.client
+          .execute<'powerhouse/chat-session'>(documentId, 'main', [
+            addAssistantMessage({
+              id: randomUUID(),
+              content: [{ id: randomUUID(), type: 'ERROR', error: `Agent failed to respond: ${reason}` }],
+              createdAt: new Date().toISOString(),
+            }),
+          ])
+          .catch((e: unknown) => log?.error(`${TAG} failed to record agent error for ${documentId}:`, e));
       } finally {
+        abortControllers.delete(documentId);
         inFlight.delete(documentId);
       }
     }

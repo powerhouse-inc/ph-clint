@@ -1,6 +1,7 @@
 import type { IAttachmentService } from '@powerhousedao/reactor-attachments';
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, ChatSessionDocument } from 'document-models/chat-session';
+import { hasMessageContent } from 'document-models/chat-session';
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { MoonIcon, PanelRightCloseIcon, PanelRightOpenIcon, PaperclipIcon, SunIcon } from 'lucide-react';
 import { AgentInfoHeader } from './components/AgentInfoHeader.js';
@@ -30,6 +31,13 @@ export function ChatSession({ document, dispatch, attachments, className, header
   const { isDark, toggle: toggleDarkMode } = useDarkMode(rootRef);
 
   const state = document.state.global;
+
+  // Derived rather than persisted: the agent is responding while the active
+  // session's last message is a non-empty user message and no interrupt is
+  // pending. Mirrors the watcher's guards — any message the watcher would
+  // answer reads as responding; anything it skips does not.
+  const lastMessage = state.messages.length > 0 ? state.messages[state.messages.length - 1] : undefined;
+  const responding = state.status === 'ACTIVE' && lastMessage?.role === 'USER' && hasMessageContent(lastMessage) && !state.interruptRequested;
 
   const toggleTestPane = useCallback(() => {
     setShowTestPane((prev) => !prev);
@@ -100,7 +108,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
           <div className="flex flex-1 flex-col min-w-0">
             <AgentInfoHeader agent={state.agent} />
             <ConversationView messages={state.messages} />
-            <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} addFilesRef={addFilesRef} />
+            <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={responding} addFilesRef={addFilesRef} />
             <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length}>
               <button type="button" onClick={toggleDarkMode} className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80" title="Toggle Dark Mode">
                 {isDark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}

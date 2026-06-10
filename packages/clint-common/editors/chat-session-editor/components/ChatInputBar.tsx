@@ -2,9 +2,10 @@ import type { IAttachmentService } from '@powerhousedao/reactor-attachments';
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import { usePHToast } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, UserContentPartInput } from 'document-models/chat-session';
-import { addUserMessage } from 'document-models/chat-session';
+import { addUserMessage, interruptAgent } from 'document-models/chat-session';
 import { generateId } from 'document-model';
-import { useCallback, useEffect, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useState, type KeyboardEventHandler, type MutableRefObject } from 'react';
+import { useOptimisticStop } from '../hooks/useOptimisticStop.js';
 import type { PromptInputMessage } from './ai-elements/prompt-input.js';
 import { PromptInput, PromptInputTextarea, PromptInputFooter, PromptInputSubmit, usePromptInputAttachments } from './ai-elements/prompt-input.js';
 import { FileIcon, ImageIcon, XIcon } from 'lucide-react';
@@ -93,16 +94,53 @@ interface ChatInputBarProps {
   dispatch: DocumentDispatch<ChatSessionAction>;
   attachments?: IAttachmentService;
   disabled?: boolean;
+  /** True while the agent is actively generating a response — swaps send for stop. */
+  responding?: boolean;
   addFilesRef?: MutableRefObject<((files: FileList) => void) | null>;
 }
 
-export function ChatInputBar({ dispatch, attachments, disabled, addFilesRef }: ChatInputBarProps) {
+export function ChatInputBar({ dispatch, attachments, disabled, responding, addFilesRef }: ChatInputBarProps) {
   const [sending, setSending] = useState(false);
   const toast = usePHToast();
 
+  // Optimistic stop: the button flips to stop the moment a message is sent,
+  // before the server `responding` signal arrives. The hook owns the
+  // optimistic window, the revert timeout, and the handoff to `responding`.
+  const { status, markSubmitted, requestInterrupt } = useOptimisticStop({ responding: !!responding });
+  const isActive = status !== 'idle';
+  const isInterrupting = status === 'interrupting';
+
+  const handleStop = useCallback(() => {
+    // Sticky interrupt: works in both the optimistic window and the confirmed
+    // turn. Request the interrupt (the watcher aborts any in-flight stream) and
+    // move to the sticky `interrupting` state. The button stays the stop
+    // control and is inert until the turn actually ends (responding=false) or
+    // the hook's fallback timeout fires — so a late responding=true can't flip
+    // it back.
+    if (isInterrupting) return;
+    dispatch(interruptAgent({}));
+    requestInterrupt();
+  }, [dispatch, requestInterrupt, isInterrupting]);
+
+  // The user can keep composing the next message while the agent responds, but
+  // Enter must not submit it mid-turn. Intercept Enter before PromptInputTextarea's
+  // own handler (which would call form.requestSubmit() and clear the draft);
+  // Shift+Enter still inserts a newline.
+  const handleKeyDown = useCallback<KeyboardEventHandler<HTMLTextAreaElement>>(
+    (e) => {
+      if (isActive && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+        e.preventDefault();
+      }
+    },
+    [isActive],
+  );
+
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
-      if (sending) return;
+      // Never accept a new message while sending or while a turn is active
+      // (optimistic or confirmed); the textarea is disabled below, this guards
+      // the Enter-key path too.
+      if (sending || isActive) return;
       const text = message.text.trim();
       if (!text && message.files.length === 0) return;
 
@@ -151,26 +189,38 @@ export function ChatInputBar({ dispatch, attachments, disabled, addFilesRef }: C
             createdAt: new Date().toISOString(),
           }),
         );
+        // Flip to the optimistic stop state immediately on dispatch.
+        markSubmitted();
       } catch (err) {
         toast?.(`Upload failed: ${err instanceof Error ? err.message : String(err)}`, { type: 'error' });
       } finally {
         setSending(false);
       }
     },
-    [dispatch, attachments, sending, toast],
+    [dispatch, attachments, sending, isActive, markSubmitted, toast],
   );
 
   const isDisabled = disabled || sending;
 
   return (
-    <div className="shrink-0 border-t border-border bg-background px-4 py-3">
+    <div className="shrink-0 border-t border-border bg-background px-4 py-3" aria-busy={isActive || undefined}>
       <PromptInput onSubmit={handleSubmit} multiple className="mx-auto max-w-[1100px]">
         <DropBridge addFilesRef={addFilesRef} />
-        <PromptInputTextarea disabled={isDisabled} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
+        <PromptInputTextarea disabled={isDisabled} onKeyDown={handleKeyDown} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
         <AttachmentPreviews />
         <PromptInputFooter>
           <AttachButton disabled={isDisabled} />
-          <PromptInputSubmit disabled={isDisabled} />
+          {/* While a turn is active, render the stop control (stop square).
+              The optimistic 'submitted', confirmed 'streaming', and
+              'interrupting' phases all render the SAME stop visual, so a
+              normal turn shows no flip when responding flips true.
+              'interrupting' disables the button (the stop is already in
+              flight). */}
+          <PromptInputSubmit
+            disabled={isActive ? isInterrupting : isDisabled}
+            status={isActive ? 'streaming' : undefined}
+            onStop={handleStop}
+          />
         </PromptInputFooter>
       </PromptInput>
     </div>
