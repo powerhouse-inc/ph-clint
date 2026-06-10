@@ -17,6 +17,7 @@ import type {
   ContentPartType,
   DeleteUserMessageInput,
   EndSessionInput,
+  InterruptAgentInput,
   Message,
   MessageRole,
   MessageUsage,
@@ -147,6 +148,7 @@ export function ChatSessionStateSchema(): z.ZodObject<Properties<ChatSessionStat
     __typename: z.literal('ChatSessionState').optional(),
     agent: z.lazy(() => AgentInfoSchema().nullish()),
     endedAt: z.iso.datetime().nullish(),
+    interruptRequested: z.boolean().nullish(),
     messages: z.array(z.lazy(() => MessageSchema())),
     resourceId: z.string().nullish(),
     startedAt: z.iso.datetime().nullish(),
@@ -185,6 +187,12 @@ export function EndSessionInputSchema(): z.ZodObject<Properties<EndSessionInput>
   return z.object({
     endedAt: z.iso.datetime(),
     status: SessionStatusSchema,
+  });
+}
+
+export function InterruptAgentInputSchema(): z.ZodObject<Properties<InterruptAgentInput>> {
+  return z.object({
+    _: z.boolean().nullish(),
   });
 }
 

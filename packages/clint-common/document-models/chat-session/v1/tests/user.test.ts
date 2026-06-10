@@ -1,4 +1,23 @@
-import { abortSession, addAssistantMessage, addToolOutput, addUserMessage, appendAssistantContent, deleteUserMessage, reducer, setMessageUsage, startSession, updateAssistantContent, utils } from 'document-models/chat-session/v1';
+import { generateMock } from 'document-model';
+import {
+  abortSession,
+  AbortSessionInputSchema,
+  addAssistantMessage,
+  addToolOutput,
+  addUserMessage,
+  AddUserMessageInputSchema,
+  appendAssistantContent,
+  deleteUserMessage,
+  DeleteUserMessageInputSchema,
+  interruptAgent,
+  InterruptAgentInputSchema,
+  isChatSessionDocument,
+  reducer,
+  setMessageUsage,
+  startSession,
+  updateAssistantContent,
+  utils,
+} from 'document-models/chat-session/v1';
 import { describe, expect, it } from 'vitest';
 
 describe('UserOperations', () => {
@@ -202,5 +221,78 @@ describe('UserOperations', () => {
     doc = reducer(doc, abortSession({ endedAt: '2025-01-01T00:01:00Z' }));
     expect(doc.state.global.status).toBe('ABORTED');
     expect(doc.state.global.endedAt).toBe('2025-01-01T00:01:00Z');
+  });
+
+  it('should handle addUserMessage operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddUserMessageInputSchema());
+
+    const updatedDocument = reducer(document, addUserMessage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_USER_MESSAGE');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle deleteUserMessage operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(DeleteUserMessageInputSchema());
+
+    const updatedDocument = reducer(document, deleteUserMessage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('DELETE_USER_MESSAGE');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle abortSession operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(AbortSessionInputSchema());
+
+    const updatedDocument = reducer(document, abortSession(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('ABORT_SESSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle interruptAgent operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(InterruptAgentInputSchema());
+
+    const updatedDocument = reducer(document, interruptAgent(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('INTERRUPT_AGENT');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('interruptAgent sets interruptRequested, and a new user message clears it', () => {
+    let doc = utils.createDocument();
+    expect(doc.state.global.interruptRequested).toBeFalsy();
+
+    // User interrupts the in-flight turn.
+    doc = reducer(doc, interruptAgent({}));
+    expect(doc.state.global.interruptRequested).toBe(true);
+
+    // Sending a new user message starts a fresh turn and must clear the flag,
+    // otherwise the watcher would immediately abort the new stream.
+    doc = reducer(
+      doc,
+      addUserMessage({
+        id: 'msg-after-interrupt',
+        content: [{ id: 'p', type: 'TEXT', text: 'continue please' }],
+        createdAt: '2025-01-01T00:00:00Z',
+      }),
+    );
+    expect(doc.state.global.interruptRequested).toBe(false);
   });
 });
