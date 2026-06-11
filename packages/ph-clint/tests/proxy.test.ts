@@ -388,6 +388,56 @@ describe('createProxyServer', () => {
     expect(p.getRoutes()[0].prefix).toBe('/a');
   });
 
+  it('re-adding a prefix from the same source replaces the route in place', async () => {
+    const warnings: string[] = [];
+    const p = await createProxyServer({
+      port: 0,
+      host: '127.0.0.1',
+      logger: createLogger('warn', (msg) => warnings.push(msg)),
+    });
+    servers.push({ close: () => p.stop() });
+
+    p.addRoute({
+      prefix: '/a',
+      upstream: new URL('http://localhost:1234'),
+      ws: false,
+      source: 'svc',
+    });
+    // Same-prefix route from another source: shadowed behind 'svc'.
+    p.addRoute({
+      prefix: '/a',
+      upstream: new URL('http://localhost:9999'),
+      ws: false,
+      source: 'other',
+    });
+    warnings.length = 0;
+    p.addRoute({
+      prefix: '/a',
+      upstream: new URL('http://localhost:5678'),
+      ws: false,
+      source: 'svc',
+    });
+
+    const routes = p.getRoutes();
+    expect(routes).toHaveLength(2);
+    // In-place replace keeps 'svc' ahead of the shadowed 'other' route.
+    expect(routes[0].source).toBe('svc');
+    expect(routes[0].upstream!.toString()).toBe('http://localhost:5678/');
+    expect(routes[1].source).toBe('other');
+    // A replace that changes the upstream warns.
+    expect(warnings.some((w) => w.includes('Proxy route replaced'))).toBe(true);
+
+    // A replace with the same upstream is silent.
+    warnings.length = 0;
+    p.addRoute({
+      prefix: '/a',
+      upstream: new URL('http://localhost:5678'),
+      ws: false,
+      source: 'svc',
+    });
+    expect(warnings.some((w) => w.includes('Proxy route replaced'))).toBe(false);
+  });
+
   it('health endpoint reflects route count', async () => {
     const p = await startProxy();
     p.addRoute({

@@ -938,7 +938,7 @@ export function defineCli<
         const instances = context.services.list(data.id);
         const inst = instances.find(i => i.instanceId === data.instanceId);
         if (!inst) return;
-        const routes = buildServiceRoutes(def, inst, implicitRoot);
+        const routes = buildServiceRoutes(def, inst, implicitRoot, log);
         for (const route of routes) {
           proxyInstance.addRoute(route);
         }
@@ -956,7 +956,7 @@ export function defineCli<
           if (inst.status !== 'ready' || !inst.endpoints) continue;
           const def = context.services.getDefinition(inst.serviceId);
           if (!def) continue;
-          const routes = buildServiceRoutes(def, inst, implicitRoot);
+          const routes = buildServiceRoutes(def, inst, implicitRoot, log);
           for (const route of routes) {
             proxyInstance.addRoute(route);
           }

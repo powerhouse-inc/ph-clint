@@ -616,6 +616,19 @@ export interface ServiceBuildContext<TConfig = Record<string, unknown>> {
 }
 
 /**
+ * A proxy route declared by a service, relative to its mount. The framework
+ * mounts `prefix` under `/{serviceId}/` and manages the route's lifecycle
+ * alongside capture-derived routes (added on ready, removed on stop/failure,
+ * re-wired for instances adopted at boot).
+ */
+export interface ServiceProxyRouteSpec {
+  /** Path prefix relative to the service mount (leading '/' ignored). */
+  prefix: string;
+  upstream: string | URL;
+  ws?: boolean;
+}
+
+/**
  * Definition for a long-running background service.
  * Services are spawned as detached processes that survive CLI exit.
  */
@@ -627,6 +640,11 @@ export interface ServiceDefinition<TConfig = Record<string, unknown>> {
   description?: string;
   command: string | ((ctx: ServiceBuildContext<TConfig>) => string);
   env?: (ctx: ServiceBuildContext<TConfig>) => Record<string, string>;
+  /**
+   * Proxy routes derived from a ready instance's endpoints, mounted under
+   * `/{serviceId}/`. Invalid specs (bad upstream URL) are skipped.
+   */
+  proxyRoutes?: (instance: ServiceInstanceStatus) => ServiceProxyRouteSpec[];
   /** Zod schema for typed start parameters (merged into start command flags). */
   paramsSchema?: import('zod').ZodType;
   /** Maximum concurrent instances (default 1). */

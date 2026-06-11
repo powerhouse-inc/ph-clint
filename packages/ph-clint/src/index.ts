@@ -33,7 +33,7 @@ export { formatStreamChunk, renderStream } from './core/stream.js';
 export type { RenderedChunk } from './core/stream.js';
 export { createProxyServer } from './core/proxy.js';
 export type { ProxyServerOptions, ProxyServerInstance } from './core/proxy.js';
-export { buildSwitchboardRoutes, buildServiceRoutes, isWsEndpointType } from './core/proxy-routes.js';
+export { buildSwitchboardRoutes, buildSwitchboardRouteSpecs, buildServiceRoutes, captureRoutePrefix, isWsEndpointType } from './core/proxy-routes.js';
 export type { ProxyRoute } from './core/proxy-routes.js';
 export { createReplSession } from './interactive/session.js';
 export { parseReplInput, tokenizeArgs } from './interactive/router.js';
@@ -134,6 +134,7 @@ export type {
   ReadinessConfig,
   ServiceBuildContext,
   ServiceDefinition,
+  ServiceProxyRouteSpec,
   ServiceStartOptions,
   ServiceInstanceStatus,
   ServiceStatus,

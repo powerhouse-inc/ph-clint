@@ -5,6 +5,7 @@
 import type {
   ServiceDefinition,
   ServiceInstanceStatus,
+  ServiceProxyRouteSpec,
   CaptureDefinition,
   EndpointType,
 } from './types.js';
@@ -121,42 +122,59 @@ export function isWsEndpointType(type: EndpointType): boolean {
 }
 
 /**
- * Build proxy routes for the Powerhouse Switchboard layer.
- * Groups all Switchboard endpoints under `/switchboard/`.
+ * Relative-prefix route specs for a Powerhouse Switchboard, usable as
+ * `ServiceDefinition.proxyRoutes` specs (mounted under `/{serviceId}/`).
+ * The MCP route is included only when `mcpUrl` is provided.
+ */
+export function buildSwitchboardRouteSpecs(
+  switchboardUrl: string,
+  mcpUrl?: string,
+  basePrefix = 'switchboard',
+): Array<ServiceProxyRouteSpec & { upstream: URL }> {
+  const sbBase = new URL(switchboardUrl);
+
+  const specs: Array<ServiceProxyRouteSpec & { upstream: URL }> = [
+    {
+      prefix: `${basePrefix}/graphql`,
+      upstream: new URL('/graphql', sbBase),
+      ws: false,
+    },
+    {
+      prefix: `${basePrefix}/d/`,
+      upstream: new URL('/d/', sbBase),
+      ws: false,
+    },
+    {
+      prefix: `${basePrefix}/attachments/`,
+      upstream: new URL('/attachments/', sbBase),
+      ws: false,
+    },
+  ];
+  if (mcpUrl) {
+    specs.push({
+      prefix: `${basePrefix}/mcp`,
+      upstream: new URL('/mcp', new URL(mcpUrl)),
+      ws: true,
+    });
+  }
+  return specs;
+}
+
+/**
+ * Absolute proxy routes for the embedded Switchboard, mounted under
+ * `/switchboard` with source `'switchboard'`. The MCP route is included
+ * only when `mcpUrl` is provided.
  */
 export function buildSwitchboardRoutes(
   switchboardUrl: string,
-  mcpUrl: string,
-): ProxyRoute[] {
-  const sbBase = new URL(switchboardUrl);
-  const mcpBase = new URL(mcpUrl);
-
-  return [
-    {
-      prefix: '/switchboard/graphql',
-      upstream: new URL('/graphql', sbBase),
-      ws: false,
-      source: 'switchboard',
-    },
-    {
-      prefix: '/switchboard/d/',
-      upstream: new URL('/d/', sbBase),
-      ws: false,
-      source: 'switchboard',
-    },
-    {
-      prefix: '/switchboard/attachments/',
-      upstream: new URL('/attachments/', sbBase),
-      ws: false,
-      source: 'switchboard',
-    },
-    {
-      prefix: '/switchboard/mcp',
-      upstream: new URL('/mcp', mcpBase),
-      ws: true,
-      source: 'switchboard',
-    },
-  ];
+  mcpUrl?: string,
+): Array<ProxyRoute & { upstream: URL }> {
+  return buildSwitchboardRouteSpecs(switchboardUrl, mcpUrl).map((spec) => ({
+    prefix: `/${spec.prefix}`,
+    upstream: spec.upstream,
+    ws: spec.ws ?? false,
+    source: 'switchboard',
+  }));
 }
 
 /**
@@ -206,13 +224,24 @@ export function resolveImplicitProxyRoot(
 }
 
 /**
- * Build proxy routes from a service definition's readiness captures.
- * Only captures with announceable endpoint types produce routes.
+ * Proxy mount prefix for a service route: `/{serviceId}/{name}`. Single
+ * owner of the convention used for capture routes and for mounting
+ * `ServiceDefinition.proxyRoutes` specs.
+ */
+export function captureRoutePrefix(serviceId: string, captureName: string): string {
+  return `/${serviceId}/${captureName}`;
+}
+
+/**
+ * Build proxy routes from a service definition's readiness captures and its
+ * `proxyRoutes` hook. Only captures with announceable endpoint types produce
+ * routes; hook specs are mounted under `/{serviceId}/`.
  */
 export function buildServiceRoutes(
   def: ServiceDefinition,
   instance: ServiceInstanceStatus,
   implicitRoot?: ProxyRootCapture,
+  log?: { warn(msg: string): void },
 ): ProxyRoute[] {
   const routes: ProxyRoute[] = [];
   const captures = getCapturesForDef(def);
@@ -240,7 +269,7 @@ export function buildServiceRoutes(
         ((typeof captureDef !== 'number' && captureDef.proxyRoot === true) ||
           (implicitRoot?.serviceId === def.id &&
             implicitRoot.captureName === captureName));
-      const prefix = proxyRoot ? '/' : `/${def.id}/${captureName}`;
+      const prefix = proxyRoot ? '/' : captureRoutePrefix(def.id, captureName);
       routes.push({
         prefix,
         upstream,
@@ -249,6 +278,35 @@ export function buildServiceRoutes(
       });
     } catch {
       // Skip invalid URLs
+    }
+  }
+
+  if (def.proxyRoutes) {
+    let specs: ServiceProxyRouteSpec[] = [];
+    try {
+      specs = def.proxyRoutes(instance) ?? [];
+    } catch (err) {
+      // Skip a throwing hook — capture routes still apply
+      log?.warn(
+        `proxyRoutes hook failed for service '${def.id}': ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    for (const spec of specs) {
+      try {
+        const upstream =
+          spec.upstream instanceof URL ? spec.upstream : new URL(spec.upstream);
+        routes.push({
+          prefix: captureRoutePrefix(def.id, spec.prefix.replace(/^\/+/, '')),
+          upstream,
+          ws: spec.ws ?? false,
+          source: `service:${def.id}`,
+        });
+      } catch (err) {
+        // Skip invalid upstream URLs — other specs still apply
+        log?.warn(
+          `Invalid proxyRoutes spec '${spec.prefix}' for service '${def.id}': ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
   }
 

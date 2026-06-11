@@ -390,17 +390,37 @@ export async function createProxyServer(
       // Same prefix only conflicts when both match the same way: an exact
       // route and a prefix route on the same prefix (e.g. a `'/'` redirect vs
       // Connect's `'/'` catch-all) coexist — matchRoute dispatches exact first.
-      const existing = routes.find(
-        (r) => r.prefix === route.prefix && !!r.exact === !!route.exact,
+      // Re-adding from the same source replaces the existing route, so
+      // repeated registration (boot-adoption + service:ready) is idempotent.
+      const sameMatch = (r: ProxyRoute) =>
+        r.prefix === route.prefix && !!r.exact === !!route.exact;
+      const ownIdx = routes.findIndex(
+        (r) => sameMatch(r) && r.source === route.source,
       );
-      if (existing) {
-        logger.warn(
-          `Proxy route conflict: '${route.prefix}'${route.exact ? ' (exact)' : ''} already registered by ${existing.source}; ` +
-            `route from ${route.source} will be shadowed`,
-        );
+      if (ownIdx !== -1) {
+        // Replace in place: equal prefix length means the sorted position is
+        // unchanged, and re-sorting must not let a previously-shadowed
+        // same-prefix route from another source jump ahead.
+        const prev = routes[ownIdx];
+        routes[ownIdx] = route;
+        const prevDest = prev.redirectTo ?? prev.upstream?.toString() ?? '(no upstream)';
+        const newDest = route.redirectTo ?? route.upstream?.toString() ?? '(no upstream)';
+        if (prevDest !== newDest) {
+          logger.warn(
+            `Proxy route replaced: '${route.prefix}' (${route.source}) upstream ${prevDest} → ${newDest}`,
+          );
+        }
+      } else {
+        const existing = routes.find(sameMatch);
+        if (existing) {
+          logger.warn(
+            `Proxy route conflict: '${route.prefix}'${route.exact ? ' (exact)' : ''} already registered by ${existing.source}; ` +
+              `route from ${route.source} will be shadowed`,
+          );
+        }
+        routes.push(route);
+        sortRoutes();
       }
-      routes.push(route);
-      sortRoutes();
       const dest = route.redirectTo
         ? `redirect → ${route.redirectTo}`
         : route.upstream?.toString() ?? '(no upstream)';

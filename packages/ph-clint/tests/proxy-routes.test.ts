@@ -1,8 +1,12 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   buildSwitchboardRoutes,
+  buildSwitchboardRouteSpecs,
   buildServiceRoutes,
+  captureRoutePrefix,
+  deriveBasePath,
   resolveImplicitProxyRoot,
+  resolveServiceProxyContext,
   isWsEndpointType,
   normalizeLoopbackHost,
   prefixMatches,
@@ -345,5 +349,198 @@ describe('resolveImplicitProxyRoot', () => {
 
   it('returns undefined when no websites exist', () => {
     expect(resolveImplicitProxyRoot([{ id: 'svc', command: 'echo' }])).toBeUndefined();
+  });
+});
+
+describe('captureRoutePrefix', () => {
+  it('returns /{serviceId}/{captureName}', () => {
+    expect(captureRoutePrefix('my-svc', 'mcp')).toBe('/my-svc/mcp');
+    expect(captureRoutePrefix('reactor-project', 'vetra-studio')).toBe('/reactor-project/vetra-studio');
+  });
+});
+
+describe('buildSwitchboardRouteSpecs', () => {
+  it('produces relative-prefix specs under the default base prefix', () => {
+    const specs = buildSwitchboardRouteSpecs(
+      'http://localhost:4001',
+      'http://localhost:4002',
+    );
+    expect(specs.map(s => s.prefix)).toEqual([
+      'switchboard/graphql',
+      'switchboard/d/',
+      'switchboard/attachments/',
+      'switchboard/mcp',
+    ]);
+    expect(specs[0].upstream.toString()).toBe('http://localhost:4001/graphql');
+    expect(specs[3].upstream.toString()).toBe('http://localhost:4002/mcp');
+    expect(specs.map(s => s.ws)).toEqual([false, false, false, true]);
+  });
+
+  it('supports a custom base prefix', () => {
+    const specs = buildSwitchboardRouteSpecs(
+      'http://localhost:4001',
+      undefined,
+      'sb',
+    );
+    expect(specs.map(s => s.prefix)).toEqual([
+      'sb/graphql',
+      'sb/d/',
+      'sb/attachments/',
+    ]);
+  });
+
+  it('omits the mcp spec when mcpUrl is absent', () => {
+    const specs = buildSwitchboardRouteSpecs('http://localhost:4001');
+    expect(specs).toHaveLength(3);
+    expect(specs.find(s => s.prefix.endsWith('/mcp'))).toBeUndefined();
+    expect(specs.every(s => !s.ws)).toBe(true);
+  });
+});
+
+describe('resolveServiceProxyContext', () => {
+  it('passes through an origin-only URL with empty basePath', () => {
+    expect(resolveServiceProxyContext('http://localhost:8090')).toEqual({
+      publicUrl: 'http://localhost:8090',
+      basePath: '',
+    });
+  });
+
+  it('derives basePath from a subpath', () => {
+    expect(resolveServiceProxyContext('https://example.com/sub')).toEqual({
+      publicUrl: 'https://example.com/sub',
+      basePath: '/sub',
+    });
+  });
+
+  it('strips trailing slashes from both publicUrl and basePath', () => {
+    expect(resolveServiceProxyContext('https://example.com/sub///')).toEqual({
+      publicUrl: 'https://example.com/sub',
+      basePath: '/sub',
+    });
+  });
+
+  it('treats a scheme-less value as unset', () => {
+    // new URL('localhost:8090') parses with protocol 'localhost:'.
+    expect(resolveServiceProxyContext('localhost:8090')).toEqual({
+      publicUrl: undefined,
+      basePath: '',
+    });
+  });
+
+  it('treats a garbage string as unset', () => {
+    expect(resolveServiceProxyContext('not a url')).toEqual({
+      publicUrl: undefined,
+      basePath: '',
+    });
+  });
+
+  it('treats undefined and whitespace as unset', () => {
+    expect(resolveServiceProxyContext(undefined)).toEqual({
+      publicUrl: undefined,
+      basePath: '',
+    });
+    expect(resolveServiceProxyContext('   ')).toEqual({
+      publicUrl: undefined,
+      basePath: '',
+    });
+  });
+});
+
+describe('deriveBasePath', () => {
+  it('returns empty for a scheme-less value', () => {
+    expect(deriveBasePath('localhost:8090')).toBe('');
+  });
+});
+
+describe('buildServiceRoutes proxyRoutes hook', () => {
+  const instance: ServiceInstanceStatus = {
+    serviceId: 'proj',
+    instanceId: 'i1',
+    name: 'proj',
+    status: 'ready',
+    endpoints: { sb: 'http://localhost:4001' },
+  };
+
+  it('mounts relative prefixes under /{serviceId}/ with service source', () => {
+    const def: ServiceDefinition = {
+      id: 'proj',
+      command: 'echo',
+      proxyRoutes: (inst) => [
+        { prefix: 'switchboard/graphql', upstream: new URL('/graphql', inst.endpoints!.sb) },
+        { prefix: 'switchboard/mcp', upstream: 'http://localhost:4002/mcp', ws: true },
+      ],
+    };
+
+    const routes = buildServiceRoutes(def, instance);
+    expect(routes.map(r => r.prefix)).toEqual([
+      '/proj/switchboard/graphql',
+      '/proj/switchboard/mcp',
+    ]);
+    expect(routes[0].upstream!.toString()).toBe('http://localhost:4001/graphql');
+    expect(routes[0].ws).toBe(false);
+    expect(routes[1].upstream!.toString()).toBe('http://localhost:4002/mcp');
+    expect(routes[1].ws).toBe(true);
+    for (const r of routes) {
+      expect(r.source).toBe('service:proj');
+    }
+  });
+
+  it('strips a leading slash from spec prefixes', () => {
+    const def: ServiceDefinition = {
+      id: 'proj',
+      command: 'echo',
+      proxyRoutes: () => [
+        { prefix: '/api', upstream: 'http://localhost:5000' },
+      ],
+    };
+    const routes = buildServiceRoutes(def, instance);
+    expect(routes[0].prefix).toBe('/proj/api');
+  });
+
+  it('skips specs with invalid upstream URLs', () => {
+    const def: ServiceDefinition = {
+      id: 'proj',
+      command: 'echo',
+      proxyRoutes: () => [
+        { prefix: 'bad', upstream: 'not a url' },
+        { prefix: 'good', upstream: 'http://localhost:5000' },
+      ],
+    };
+    const routes = buildServiceRoutes(def, instance);
+    expect(routes.map(r => r.prefix)).toEqual(['/proj/good']);
+  });
+
+  it('keeps capture routes when the hook throws', () => {
+    const def: ServiceDefinition = {
+      id: 'proj',
+      command: 'echo',
+      readiness: {
+        pattern: /at (http:\/\/\S+)/,
+        captures: { sb: { group: 1, type: 'api-graphql' } },
+        timeout: 5000,
+      },
+      proxyRoutes: () => {
+        throw new Error('boom');
+      },
+    };
+    const routes = buildServiceRoutes(def, instance);
+    expect(routes.map(r => r.prefix)).toEqual(['/proj/sb']);
+  });
+
+  it('combines capture routes and hook routes', () => {
+    const def: ServiceDefinition = {
+      id: 'proj',
+      command: 'echo',
+      readiness: {
+        pattern: /at (http:\/\/\S+)/,
+        captures: { sb: { group: 1, type: 'api-graphql' } },
+        timeout: 5000,
+      },
+      proxyRoutes: () => [
+        { prefix: 'extra', upstream: 'http://localhost:5000' },
+      ],
+    };
+    const routes = buildServiceRoutes(def, instance);
+    expect(routes.map(r => r.prefix)).toEqual(['/proj/sb', '/proj/extra']);
   });
 });
