@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/clint-common",
-  "version": "0.1.0-dev.85",
+  "version": "0.1.0-dev.86",
   "license": "AGPL-3.0-only",
   "type": "module",
   "files": [
@@ -110,11 +110,11 @@
     }
   },
   "devDependencies": {
-    "@powerhousedao/ph-clint": "workspace:*",
     "@electric-sql/pglite": "0.3.15",
     "@electric-sql/pglite-tools": "0.2.20",
     "@eslint/js": "^9.38.0",
     "@powerhousedao/ph-cli": "catalog:",
+    "@powerhousedao/ph-clint": "workspace:*",
     "@powerhousedao/reactor": "catalog:",
     "@tailwindcss/cli": "^4.1.18",
     "@types/node": "^24.9.2",

@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint",
-  "version": "0.1.0-dev.85",
+  "version": "0.1.0-dev.86",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -37,8 +37,8 @@
   "dependencies": {
     "cli-highlight": "^2.1.11",
     "commander": "^12.1.0",
-    "http-proxy": "^1.18.1",
     "handlebars": "^4.7.9",
+    "http-proxy": "^1.18.1",
     "ink": "^6.8.0",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
@@ -79,8 +79,8 @@
     "@powerhousedao/reactor-api": "6.0.0-dev.257",
     "@powerhousedao/reactor-attachments": ">=6.1.0-dev.18",
     "@powerhousedao/reactor-mcp": "6.0.0-dev.257",
-    "@powerhousedao/switchboard": "6.0.0-dev.257",
     "@powerhousedao/shared": "6.0.0-dev.257",
+    "@powerhousedao/switchboard": "6.0.0-dev.257",
     "document-model": "6.0.0-dev.257",
     "kysely": "^0.27.0",
     "kysely-pglite-dialect": "^1.2.0"
