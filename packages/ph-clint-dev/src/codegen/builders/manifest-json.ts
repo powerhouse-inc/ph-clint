@@ -41,6 +41,8 @@ interface Manifest {
   serviceCommand: string;
   proxyEnabled: boolean;
   supportedResources: string[];
+  dockerfile?: string;
+  dockerTarget?: string;
 }
 
 /** Convert a kebab-case spec.name like 'foo-bar-cli' into an env-var prefix 'FOO_BAR_CLI'. */
@@ -86,6 +88,8 @@ export function buildManifestJson(spec: ClintProjectSpec): string {
     serviceCommand: getBinName(spec),
     proxyEnabled: spec.deployment.proxyEnabled,
     supportedResources: spec.deployment.supportedResources,
+    ...(spec.deployment.dockerfile ? { dockerfile: spec.deployment.dockerfile } : {}),
+    ...(spec.deployment.dockerTarget ? { dockerTarget: spec.deployment.dockerTarget } : {}),
   };
 
   return JSON.stringify(manifest, null, 2) + '\n';
