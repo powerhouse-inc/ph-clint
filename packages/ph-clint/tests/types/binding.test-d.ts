@@ -74,7 +74,7 @@ defineTrigger<{ count: number }>({
 defineService({
   id: 's',
   command: 'my-cmd',
-  env: (config) => {
+  env: ({ config }) => {
     expectTypeOf(config).toEqualTypeOf<{ port: number; host: string }>();
     return { PORT: String(config.port) };
   },

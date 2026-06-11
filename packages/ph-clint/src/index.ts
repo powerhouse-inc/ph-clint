@@ -132,6 +132,7 @@ export type {
   CaptureDefinition,
   ReadinessPattern,
   ReadinessConfig,
+  ServiceBuildContext,
   ServiceDefinition,
   ServiceStartOptions,
   ServiceInstanceStatus,

@@ -39,7 +39,7 @@ export function connectServiceDefinition(
     id: serviceName,
     name: serviceName,
     description: 'Powerhouse Connect web interface',
-    command: (params?: Record<string, unknown>) => {
+    command: ({ params }) => {
       const p = (params?.port as number) ?? servicePort;
 
       if (isStaticMode) {
@@ -55,7 +55,7 @@ export function connectServiceDefinition(
 
       return `ph connect --port ${p}`;
     },
-    env: (_config: Record<string, unknown>, params?: Record<string, unknown>) => ({
+    env: ({ params }) => ({
       PH_CONNECT_DEFAULT_DRIVES_URL: (params?.driveUrl as string) ?? '',
       PH_CONNECT_DRIVES_PRESERVE_STRATEGY: 'preserve-all',
       ...(connectConfig.registryUrl

@@ -2,8 +2,9 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import type { CaptureDefinition, EndpointType, EventBus, PreflightContext, ReadinessPattern, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
+import type { CaptureDefinition, EndpointType, EventBus, PreflightContext, ReadinessPattern, ServiceBuildContext, ServiceDefinition, ServiceInstanceStatus, ServiceManager, ServiceStartOptions } from './types.js';
 import { isPortFree } from './preflight.js';
+import { resolveServiceProxyContext } from './proxy-routes.js';
 import { scanProjects as scanProjectsImpl } from './project-scanner.js';
 import { slugToTitle } from './schema.js';
 
@@ -237,8 +238,8 @@ function resolveInstanceId(serviceId: string, opts?: ServiceStartOptions): strin
 /**
  * Resolve a service command — supports static string or dynamic function.
  */
-function resolveCommand(def: ServiceDefinition<any>, params?: Record<string, unknown>): string {
-  return typeof def.command === 'function' ? def.command(params) : def.command;
+function resolveCommand(def: ServiceDefinition<any>, ctx: ServiceBuildContext): string {
+  return typeof def.command === 'function' ? def.command(ctx) : def.command;
 }
 
 /**
@@ -306,6 +307,14 @@ export function createServiceManager(
     fs.mkdirSync(serviceDir(servicesDir, serviceId), { recursive: true });
   }
 
+  function buildContext(params?: Record<string, unknown>): ServiceBuildContext {
+    return {
+      params,
+      config,
+      proxy: resolveServiceProxyContext(config.proxyPublicUrl as string | undefined),
+    };
+  }
+
   async function start(id: string, startOpts?: ServiceStartOptions): Promise<string> {
     const def = defMap.get(id);
     if (!def) throw new Error(`Unknown service: ${id}`);
@@ -334,7 +343,8 @@ export function createServiceManager(
     ensureServiceDir(id);
 
     const params = startOpts?.params;
-    const commandStr = resolveCommand(def, params);
+    const buildCtx = buildContext(params);
+    const commandStr = resolveCommand(def, buildCtx);
     const spawnCwd = startOpts?.cwd ?? startOpts?.workdir;
 
     // Run preflight checks before any side effects (log file, state file, spawn)
@@ -362,7 +372,7 @@ export function createServiceManager(
     const logFd = fs.openSync(logPath, 'w');
     pruneRunLogs(servicesDir, id, instanceId);
 
-    const env = { ...process.env, ...(def.env ? def.env(config, params) : {}) };
+    const env = { ...process.env, ...(def.env ? def.env(buildCtx) : {}) };
 
     const child = spawn(commandStr, {
       shell: true,
@@ -710,7 +720,7 @@ export function createServiceManager(
                 removeStateFile(statePath);
                 // Write a temp state so start() knows the attempt count
                 ensureServiceDir(def.id);
-                const commandStr = resolveCommand(def, restartParams);
+                const commandStr = resolveCommand(def, buildContext(restartParams));
                 const tempState: ServiceStateFile = {
                   serviceId: def.id,
                   instanceId: state.instanceId,

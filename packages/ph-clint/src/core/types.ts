@@ -599,6 +599,23 @@ export type PreflightCheck<TConfig = Record<string, unknown>> =
   (ctx: PreflightContext<TConfig>) => PreflightResult | Promise<PreflightResult>;
 
 /**
+ * Context passed to `ServiceDefinition.command` / `env` builders.
+ */
+export interface ServiceBuildContext<TConfig = Record<string, unknown>> {
+  /** Start params (from paramsSchema). */
+  params?: Record<string, unknown>;
+  /** Resolved CLI config. */
+  config: TConfig;
+  /** Embedded-proxy mount info derived from `config.proxyPublicUrl`. */
+  proxy: {
+    /** Validated public URL, trailing slashes stripped. Undefined when unset/invalid. */
+    publicUrl?: string;
+    /** Mount base path: '' at root, else leading-slash no-trailing-slash ('/myagent'). */
+    basePath: string;
+  };
+}
+
+/**
  * Definition for a long-running background service.
  * Services are spawned as detached processes that survive CLI exit.
  */
@@ -608,8 +625,8 @@ export interface ServiceDefinition<TConfig = Record<string, unknown>> {
   name?: string;
   /** Human-readable description of the service. */
   description?: string;
-  command: string | ((params?: Record<string, unknown>) => string);
-  env?: (config: TConfig, params?: Record<string, unknown>) => Record<string, string>;
+  command: string | ((ctx: ServiceBuildContext<TConfig>) => string);
+  env?: (ctx: ServiceBuildContext<TConfig>) => Record<string, string>;
   /** Zod schema for typed start parameters (merged into start command flags). */
   paramsSchema?: import('zod').ZodType;
   /** Maximum concurrent instances (default 1). */

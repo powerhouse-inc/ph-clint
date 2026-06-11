@@ -59,14 +59,42 @@ export function prefixMatches(prefix: string, pathname: string): boolean {
 export function deriveBasePath(publicUrl: string | undefined): string {
   const trimmed = publicUrl?.trim();
   if (!trimmed) return '';
-  let pathname: string;
   try {
-    pathname = new URL(trimmed).pathname;
+    const url = new URL(trimmed);
+    // `new URL('localhost:8090')` parses with protocol 'localhost:' —
+    // anything but http(s) is treated as invalid.
+    if (!/^https?:$/.test(url.protocol)) return '';
+    return url.pathname.replace(/\/+$/, '');
   } catch {
     return '';
   }
-  const normalized = pathname.replace(/\/+$/, '');
-  return normalized === '' ? '' : normalized;
+}
+
+/**
+ * Resolve the proxy info handed to service command/env builders from the
+ * configured publicUrl. Single owner of the publicUrl normalization:
+ * `publicUrl` must parse as an http(s) URL and is stripped of trailing
+ * slashes, undefined when unset/invalid; `basePath` is the URL's pathname
+ * normalized like `deriveBasePath`.
+ */
+export function resolveServiceProxyContext(
+  publicUrl: string | undefined,
+): { publicUrl?: string; basePath: string } {
+  const trimmed = publicUrl?.trim();
+  if (trimmed) {
+    try {
+      const url = new URL(trimmed);
+      if (/^https?:$/.test(url.protocol)) {
+        return {
+          publicUrl: trimmed.replace(/\/+$/, ''),
+          basePath: url.pathname.replace(/\/+$/, ''),
+        };
+      }
+    } catch {
+      // invalid publicUrl — treat as unset
+    }
+  }
+  return { publicUrl: undefined, basePath: '' };
 }
 
 /**

@@ -130,8 +130,9 @@ export function defineCli<
       // Browser-facing base URL when deployed behind an ingress
       // (env: {CLINAME}_PROXY_PUBLIC_URL). See ProxyServerOptions.publicUrl.
       // A non-root pathname mounts the whole surface under that base path.
-      // Validated as a URL so a scheme-less value fails at startup rather
-      // than silently propagating into every composed URL.
+      // The .url() check accepts scheme-less values like 'localhost:8090'
+      // (parsed with protocol 'localhost:'); resolveServiceProxyContext
+      // requires http(s) and treats anything else as unset.
       proxyPublicUrl: z.string().url().optional(),
     });
     const configObj = options.configSchema as any;

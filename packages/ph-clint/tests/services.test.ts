@@ -303,7 +303,7 @@ describe('createServiceManager', () => {
         id: 'params-svc',
         name: 'Params Service',
         command: `node ${TEST_SERVICE}`,
-        env: (_config, params) => ({
+        env: ({ params }) => ({
           TEST_SERVICE_MODE: 'ready',
           TEST_SERVICE_PORT: String(params?.port ?? 4567),
         }),
@@ -326,7 +326,7 @@ describe('createServiceManager', () => {
       const dynDef: ServiceDefinition = {
         id: 'dyn-svc',
         name: 'Dynamic Service',
-        command: (params) => `node ${TEST_SERVICE}`,
+        command: () => `node ${TEST_SERVICE}`,
         env: () => ({ TEST_SERVICE_MODE: 'ready', TEST_SERVICE_PORT: '4567' }),
         readiness: {
           pattern: /Server listening on http:\/\/localhost:(\d+)/,
@@ -1006,7 +1006,7 @@ describe('createServiceManager', () => {
         id: 'env-svc',
         name: 'Env Service',
         command: `node ${TEST_SERVICE}`,
-        env: (config) => ({
+        env: ({ config }) => ({
           TEST_SERVICE_MODE: 'ready',
           TEST_SERVICE_PORT: String(config.apiPort),
         }),

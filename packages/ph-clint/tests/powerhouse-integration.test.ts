@@ -27,7 +27,7 @@ describe('connectServiceDefinition', () => {
   it('generates command string with port (no --default-drives-url flag)', () => {
     const svc = connectServiceDefinition({ enabled: true, port: 3001, name: 'test-connect' });
     const cmd = typeof svc.command === 'function'
-      ? svc.command({ port: 3001, driveUrl: 'http://localhost:4001/d/abc' })
+      ? svc.command({ config: {}, proxy: { basePath: '' }, params: { port: 3001, driveUrl: 'http://localhost:4001/d/abc' } })
       : svc.command;
     expect(cmd).toContain('--port 3001');
     expect(cmd).not.toContain('--default-drives-url');
@@ -36,14 +36,14 @@ describe('connectServiceDefinition', () => {
   it('uses stamped port when no params override', () => {
     const svc = connectServiceDefinition({ enabled: true, port: 4500, name: 'my-connect' });
     const cmd = typeof svc.command === 'function'
-      ? svc.command({ driveUrl: 'http://test' })
+      ? svc.command({ config: {}, proxy: { basePath: '' }, params: { driveUrl: 'http://test' } })
       : svc.command;
     expect(cmd).toContain('--port 4500');
   });
 
   it('sets env vars for Connect', () => {
     const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
-    const env = svc.env?.({}, { driveUrl: 'http://localhost:4001/d/abc' });
+    const env = svc.env?.({ config: {}, proxy: { basePath: '' }, params: { driveUrl: 'http://localhost:4001/d/abc' } });
     expect(env).toEqual({
       PH_CONNECT_DEFAULT_DRIVES_URL: 'http://localhost:4001/d/abc',
       PH_CONNECT_DRIVES_PRESERVE_STRATEGY: 'preserve-all',
@@ -52,7 +52,7 @@ describe('connectServiceDefinition', () => {
 
   it('omits PH_CONNECT_PACKAGES_REGISTRY when registryUrl is not set', () => {
     const svc = connectServiceDefinition({ enabled: true, port: 3000, name: 'test-connect' });
-    const env = svc.env?.({}, { driveUrl: 'http://localhost:4001/d/abc' }) ?? {};
+    const env = svc.env?.({ config: {}, proxy: { basePath: '' }, params: { driveUrl: 'http://localhost:4001/d/abc' } }) ?? {};
     expect(env).not.toHaveProperty('PH_CONNECT_PACKAGES_REGISTRY');
   });
 
@@ -63,7 +63,7 @@ describe('connectServiceDefinition', () => {
       name: 'test-connect',
       registryUrl: 'https://registry.example.com',
     });
-    const env = svc.env?.({}, { driveUrl: 'http://localhost:4001/d/abc' });
+    const env = svc.env?.({ config: {}, proxy: { basePath: '' }, params: { driveUrl: 'http://localhost:4001/d/abc' } });
     expect(env).toEqual({
       PH_CONNECT_DEFAULT_DRIVES_URL: 'http://localhost:4001/d/abc',
       PH_CONNECT_DRIVES_PRESERVE_STRATEGY: 'preserve-all',
@@ -97,7 +97,7 @@ describe('connectServiceDefinition', () => {
       assetsDir: '/path/to/assets',
     });
     const cmd = typeof svc.command === 'function'
-      ? svc.command({ port: 3000 })
+      ? svc.command({ config: {}, proxy: { basePath: '' }, params: { port: 3000 } })
       : svc.command;
     expect(cmd).toContain('node ');
     expect(cmd).toContain('connect-server.js');
