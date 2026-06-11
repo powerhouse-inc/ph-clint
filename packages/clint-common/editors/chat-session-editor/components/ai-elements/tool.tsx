@@ -122,13 +122,14 @@ export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutpu
     Output = <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />;
   } else if (typeof output === 'string') {
     Output = <CodeBlock code={output} language="json" />;
+  } else if (output === undefined && errorText) {
+    Output = <div className="p-2">{errorText}</div>;
   }
 
   return (
     <div className={cn('space-y-2', className)} {...props}>
       <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{errorText ? 'Error' : 'Result'}</h4>
       <div className={cn('overflow-x-auto rounded-md text-xs [&_table]:w-full', errorText ? 'bg-destructive/10 text-destructive' : 'bg-muted/50 text-foreground')}>
-        {errorText && <div>{errorText}</div>}
         {Output}
       </div>
     </div>
