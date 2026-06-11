@@ -107,7 +107,13 @@ export function observability(opts: ObservabilityOptions = {}): LifecycleHook {
             version: ctx.cliVersion,
           })
         : null;
-      const sentry = sentryDsn ? await initSentry({ dsn: sentryDsn, fallbackRelease: ctx.cliVersion }) : null;
+      const sentry = sentryDsn
+        ? await initSentry({
+            dsn: sentryDsn,
+            fallbackRelease: ctx.cliVersion,
+            log: (m) => ctx.log.info(m),
+          })
+        : null;
 
       const metricInstruments = buildMetricInstruments(otel, ctx.cliName, ctx.cliVersion);
       const wraps = buildWraps(metricInstruments, sentry);

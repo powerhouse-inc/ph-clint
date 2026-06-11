@@ -14,6 +14,8 @@ export interface SentryInitInput {
    * DSN-derived OTLP endpoint. Leave unset to send spans to Sentry.
    */
   collectorUrl?: string;
+  /** Diagnostic sink for init-time decisions (e.g. OTLP span export skipped). */
+  log?: (message: string) => void;
 }
 
 export interface SentryHandle {
@@ -37,13 +39,36 @@ export interface SentryHandle {
  */
 export async function initSentry(opts: SentryInitInput): Promise<SentryHandle> {
   const Sentry = await import('@sentry/node-core/light');
-  const { otlpIntegration } = await import('@sentry/node-core/light/otlp');
 
   const initOpts: Parameters<typeof Sentry.init>[0] = {
     dsn: opts.dsn,
     serverName: process.env.SENTRY_SERVER_NAME ?? hostname(),
-    integrations: [otlpIntegration({ collectorUrl: opts.collectorUrl })],
+    integrations: [],
   };
+
+  // The span exporter is only safe to attach when its OTLP traces endpoint
+  // actually accepts ingestion. A self-hosted Sentry without the OTLP-traces
+  // feature answers 403 on every batch, surfacing as a flood of unhandled
+  // OTLPExporterError rejections (which Sentry itself then captures). Probe
+  // once and only import/attach the integration when the endpoint is live.
+  // An explicit collectorUrl is trusted as-is — it targets an operator's own
+  // collector, not the DSN-derived endpoint this guard is about.
+  const tracesEndpoint = opts.collectorUrl
+    ? null
+    : deriveOtlpTracesEndpoint(opts.dsn);
+  const otlpEnabled =
+    !!opts.collectorUrl ||
+    (!!tracesEndpoint &&
+      (await otlpTracesEndpointAccepts(tracesEndpoint.url, tracesEndpoint.publicKey)));
+  if (otlpEnabled) {
+    const { otlpIntegration } = await import('@sentry/node-core/light/otlp');
+    initOpts.integrations = [otlpIntegration({ collectorUrl: opts.collectorUrl })];
+  } else {
+    opts.log?.(
+      `[observability] OTLP span export disabled — traces endpoint ${tracesEndpoint?.url ?? '(unresolved)'} not reachable/accepted. Error capture is unaffected.`,
+    );
+  }
+
   // Only set release as a fallback — never override an env-provided value.
   if (!process.env.SENTRY_RELEASE && opts.fallbackRelease) {
     initOpts.release = opts.fallbackRelease;
@@ -54,4 +79,61 @@ export async function initSentry(opts: SentryInitInput): Promise<SentryHandle> {
     captureException: (err) => { Sentry.captureException(err); },
     flush: (timeoutMs = 2000) => Sentry.flush(timeoutMs),
   };
+}
+
+/**
+ * Rebuild the DSN-derived OTLP traces endpoint the Sentry light integration
+ * targets (`…/api/<projectId>/integration/otlp/v1/traces/`) so we can probe
+ * the exact URL before attaching the exporter. Mirrors otlpIntegration's own
+ * derivation. Returns null on an unparseable DSN.
+ */
+export function deriveOtlpTracesEndpoint(
+  dsn: string,
+): { url: string; publicKey: string } | null {
+  try {
+    const u = new URL(dsn);
+    const segments = u.pathname.split('/').filter(Boolean);
+    const projectId = segments.pop();
+    if (!projectId) return null;
+    const basePath = segments.length ? `/${segments.join('/')}` : '';
+    const portStr = u.port ? `:${u.port}` : '';
+    const protocol = u.protocol.replace(/:$/, '');
+    return {
+      url: `${protocol}://${u.hostname}${portStr}${basePath}/api/${projectId}/integration/otlp/v1/traces/`,
+      publicKey: u.username,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One-shot reachability probe. Treats 403/404 (feature disabled / not routed)
+ * and any network failure as "do not attach"; any other response means the
+ * endpoint is live (a 400 on the empty probe body still confirms ingestion is
+ * reachable). Bounded by a short timeout so a dead host can't stall startup.
+ */
+async function otlpTracesEndpointAccepts(
+  url: string,
+  publicKey: string,
+  timeoutMs = 1500,
+): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-protobuf',
+        'X-Sentry-Auth': `Sentry sentry_version=7, sentry_key=${publicKey}`,
+      },
+      body: new Uint8Array(),
+      signal: controller.signal,
+    });
+    return res.status !== 403 && res.status !== 404;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
