@@ -2,9 +2,9 @@ import type { IAttachmentService } from '@powerhousedao/reactor-attachments';
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, ChatSessionDocument } from 'document-models/chat-session';
 import { hasMessageContent } from 'document-models/chat-session';
-import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentType, type DragEvent, type ReactNode } from 'react';
 import { MoonIcon, PanelRightCloseIcon, PanelRightOpenIcon, PaperclipIcon, SunIcon } from 'lucide-react';
-import { AgentInfoHeader } from './components/AgentInfoHeader.js';
+import { AgentInfoHeader, type AgentAvatarProps } from './components/AgentInfoHeader.js';
 import { ChatInputBar } from './components/ChatInputBar.js';
 import { AttachmentServiceProvider } from './components/ContentPartRenderer.js';
 import { ConversationView } from './components/ConversationView.js';
@@ -23,21 +23,97 @@ export type ChatSessionProps = {
    *  root so file drops over this region are still captured (e.g. a Connect
    *  DocumentToolbar). */
   header?: ReactNode;
+  /** Override the agent avatar in the info header (e.g. an animated logo). */
+  agentAvatar?: ComponentType<AgentAvatarProps>;
 };
 
-export function ChatSession({ document, dispatch, attachments, className, header }: ChatSessionProps) {
+/** How long to keep the responding state lit after trailing assistant text
+ *  stops growing, so the final streamed answer animates to its end. */
+const RESPONDING_GRACE_MS = 1000;
+
+export function ChatSession({ document, dispatch, attachments, className, header, agentAvatar }: ChatSessionProps) {
   const [showTestPane, setShowTestPane] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const { isDark, toggle: toggleDarkMode } = useDarkMode(rootRef);
 
   const state = document.state.global;
 
-  // Derived rather than persisted: the agent is responding while the active
-  // session's last message is a non-empty user message and no interrupt is
-  // pending. Mirrors the watcher's guards — any message the watcher would
-  // answer reads as responding; anything it skips does not.
-  const lastMessage = state.messages.length > 0 ? state.messages[state.messages.length - 1] : undefined;
-  const responding = state.status === 'ACTIVE' && lastMessage?.role === 'USER' && hasMessageContent(lastMessage) && !state.interruptRequested;
+  // Whether the agent is mid-turn — derived from message shape, no persisted
+  // per-turn op (the document is append-only and shouldn't carry UI state).
+  //
+  // Definite "working" shapes animate immediately: a non-empty USER message
+  // (turn started), a TOOL result (a tool returned, agent continues), or an
+  // ASSISTANT message with a pending TOOL_CALL (tool dispatched). Trailing
+  // assistant text is ambiguous — streaming and finished look identical in the
+  // document — so a grace timer keeps it lit while that text keeps growing and
+  // releases shortly after it goes quiet.
+  const [responding, setResponding] = useState(false);
+  const respondingRef = useRef(false);
+  const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSeenRef = useRef<{ id: string; size: number } | null>(null);
+
+  useEffect(() => {
+    const setResp = (v: boolean) => {
+      respondingRef.current = v;
+      setResponding(v);
+    };
+    const clearGrace = () => {
+      if (graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+      }
+    };
+    const armGrace = () => {
+      clearGrace();
+      graceTimerRef.current = setTimeout(() => {
+        graceTimerRef.current = null;
+        setResp(false);
+      }, RESPONDING_GRACE_MS);
+    };
+
+    const messages = state.messages;
+    const last = messages.length > 0 ? messages[messages.length - 1] : undefined;
+
+    if (state.status !== 'ACTIVE' || state.interruptRequested || !last) {
+      clearGrace();
+      setResp(false);
+      lastSeenRef.current = null;
+      return;
+    }
+
+    const working =
+      (last.role === 'USER' && hasMessageContent(last)) ||
+      last.role === 'TOOL' ||
+      (last.role === 'ASSISTANT' && last.content.some((p) => p.type === 'TOOL_CALL'));
+    if (working) {
+      clearGrace();
+      setResp(true);
+      lastSeenRef.current = null;
+      return;
+    }
+
+    // Ambiguous trailing assistant text: keep lit while it grows (streaming) or
+    // at the moment we leave a working phase still lit; wind down once quiet.
+    const size =
+      last.role === 'ASSISTANT'
+        ? last.content.reduce((n, p) => n + (p.type === 'TEXT' && p.text ? p.text.length : 0), 0)
+        : 0;
+    const prev = lastSeenRef.current;
+    lastSeenRef.current = { id: last.id, size };
+    const grew = !!prev && prev.id === last.id && size > prev.size;
+    const leftWorkingPhase = !prev && respondingRef.current;
+    if (grew || leftWorkingPhase) {
+      setResp(true);
+      armGrace();
+    }
+  }, [state]);
+
+  useEffect(
+    () => () => {
+      if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
+    },
+    [],
+  );
 
   const toggleTestPane = useCallback(() => {
     setShowTestPane((prev) => !prev);
@@ -106,7 +182,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
             </div>
           )}
           <div className="flex flex-1 flex-col min-w-0">
-            <AgentInfoHeader agent={state.agent} />
+            <AgentInfoHeader agent={state.agent} responding={responding} avatar={agentAvatar} />
             <ConversationView messages={state.messages} />
             <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={responding} addFilesRef={addFilesRef} />
             <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length}>
