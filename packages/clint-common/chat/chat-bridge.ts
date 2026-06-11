@@ -86,10 +86,43 @@ const FILE_CONTENT_TOOLS = new Set(['mastra_workspace_read_file']);
  * line. Everything else is serialized, capped, and stripped of store-hostile
  * characters.
  */
+/** Mastra wraps a tool throw in an error envelope that triples the message
+ *  (message, details.errorMessage, cause) alongside generic domain/category/
+ *  code/argsJson fields. Only the message is actionable, so collapse to it —
+ *  keeps the stored result small for the reader and the model's context. The
+ *  result reaches here either as the object or already JSON-stringified. */
+function condenseErrorEnvelope(result: unknown): string | null {
+  // Thrown error instance (MastraError and subclasses): the fields show via a
+  // toJSON, not own properties, so read the message directly.
+  if (result instanceof Error) {
+    return typeof result.message === 'string' && result.message ? result.message : null;
+  }
+  let obj: unknown = result;
+  if (typeof obj === 'string') {
+    const s = obj.trim();
+    if (!(s.startsWith('{') && s.includes('"code"') && s.includes('"domain"'))) return null;
+    try {
+      obj = JSON.parse(s);
+    } catch {
+      return null;
+    }
+  }
+  if (!obj || typeof obj !== 'object') return null;
+  const e = obj as { message?: unknown; code?: unknown; domain?: unknown; details?: unknown };
+  if (typeof e.message === 'string' && (typeof e.code === 'string' || typeof e.domain === 'string' || e.details !== undefined)) {
+    return e.message;
+  }
+  return null;
+}
+
 function prepareToolResult(result: unknown, toolName: string, log?: Logger): { result: string; mediaType: string | null } {
   if (result && typeof result === 'object' && (result as { __workspaceMedia?: unknown }).__workspaceMedia) {
     const media = result as { text?: string; mediaType?: string };
     return { result: sanitizeForStore(media.text ?? '[media]', log, toolName), mediaType: media.mediaType ?? null };
+  }
+  const condensed = condenseErrorEnvelope(result);
+  if (condensed !== null) {
+    return { result: sanitizeForStore(condensed, log, toolName), mediaType: null };
   }
   const raw = typeof result === 'string' ? result : JSON.stringify(result) ?? '';
   if (FILE_CONTENT_TOOLS.has(toolName)) {
