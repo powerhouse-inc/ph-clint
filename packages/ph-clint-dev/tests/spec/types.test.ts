@@ -41,6 +41,19 @@ describe('clintProjectSpecSchema', () => {
     expect(parsed.features.mastra.enabled).toBe(true);
     expect(parsed.features.routine.enabled).toBe(false);
   });
+
+  it('defaults dockerfile/dockerTarget to undefined and accepts them when set', () => {
+    const base = clintProjectSpecSchema.parse({ name: 'myproj-cli' });
+    expect(base.deployment.dockerfile).toBeUndefined();
+    expect(base.deployment.dockerTarget).toBeUndefined();
+
+    const withDocker = clintProjectSpecSchema.parse({
+      name: 'myproj-cli',
+      deployment: { dockerfile: 'Dockerfile', dockerTarget: 'runtime' },
+    });
+    expect(withDocker.deployment.dockerfile).toBe('Dockerfile');
+    expect(withDocker.deployment.dockerTarget).toBe('runtime');
+  });
 });
 
 describe('spec name helpers', () => {

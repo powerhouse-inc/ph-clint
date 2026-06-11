@@ -161,6 +161,15 @@ export const clintProjectSpecSchema = z.object({
     proxyEnabled: z.boolean().default(false),
     observabilityEnabled: z.boolean().default(false),
     supportedResources: z.array(z.string()).default([]),
+    /**
+     * Path (relative to the package root) of a Dockerfile shipped inside the
+     * published package. When set, clint-image-builder builds this Dockerfile
+     * with the package contents as build context instead of the generic
+     * clint-agent template. Must be listed in package.json `files`.
+     */
+    dockerfile: z.string().optional(),
+    /** Optional multi-stage build target (defaults to the last stage). */
+    dockerTarget: z.string().optional(),
   }).default({ proxyEnabled: false, observabilityEnabled: false, supportedResources: [] }),
   /** ID of the source specification document (if backed by a Powerhouse document). */
   documentId: z.string().optional(),
