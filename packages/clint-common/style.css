@@ -1,7 +1,19 @@
-@import 'tailwindcss';
+/* Package stylesheet. The compiled dist/style.css is loaded INTO a Connect
+   host (bundled by ph-cli connect build or injected by the runtime package
+   manager), so it must only ship what this package's own components need:
+   Tailwind utilities for the classes used here, the shadcn token set the
+   chat editor consumes, and chat-scoped fixes. No host-level styling: no
+   body/html rules, no global element overrides, no @import of the Connect
+   app bundle (the host ships its own). Dark mode follows the host's `.dark`
+   class on <html> (Connect's theme switcher / ph:theme). Preflight is
+   deliberately not imported: every host (Connect app, embedded studio)
+   already ships it, and a second copy resets elements out from under the
+   host's utilities. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
 @import '@powerhousedao/design-system/theme.css';
-@import '@powerhousedao/connect/style.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -123,12 +135,13 @@
   --color-ring: oklch(0.439 0 0);
 }
 
+/* shadcn base defaults, scoped to the chat editor root so they never
+   restyle the host application. */
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
+  .clint-chat-root,
+  .clint-chat-root * {
+    border-color: var(--color-border);
+    outline-color: color-mix(in oklab, var(--color-ring) 50%, transparent);
   }
 }
 
@@ -136,56 +149,35 @@
    overlap the language label, but in flex-col it still occupies flow space,
    creating a visible blank row. Make the wrapper relative and position the
    actions absolutely so they overlay without affecting layout. */
-.rounded-xl.bg-sidebar.flex-col {
+.clint-chat-root .rounded-xl.bg-sidebar.flex-col {
   position: relative;
 }
-.rounded-xl.bg-sidebar.flex-col > .sticky.-mt-10 {
+.clint-chat-root .rounded-xl.bg-sidebar.flex-col > .sticky.-mt-10 {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
   margin-top: 0;
 }
 
-/* Force Streamdown / markdown elements inside .dark to inherit theme colors
-   instead of using the library's hardcoded light-mode values. */
-.dark h1,
-.dark h2,
-.dark h3,
-.dark h4,
-.dark h5,
-.dark h6,
-.dark p,
-.dark li,
-.dark td,
-.dark th,
-.dark blockquote,
-.dark figcaption,
-.dark strong,
-.dark em,
-.dark code:not(pre code),
-.dark span {
+/* Force Streamdown / markdown elements inside the chat to inherit theme
+   colors in dark mode instead of the library's hardcoded light-mode values. */
+.dark .clint-chat-root h1,
+.dark .clint-chat-root h2,
+.dark .clint-chat-root h3,
+.dark .clint-chat-root h4,
+.dark .clint-chat-root h5,
+.dark .clint-chat-root h6,
+.dark .clint-chat-root p,
+.dark .clint-chat-root li,
+.dark .clint-chat-root td,
+.dark .clint-chat-root th,
+.dark .clint-chat-root blockquote,
+.dark .clint-chat-root figcaption,
+.dark .clint-chat-root strong,
+.dark .clint-chat-root em,
+.dark .clint-chat-root code:not(pre code),
+.dark .clint-chat-root span {
   color: inherit;
-}
-
-/* Override DocumentToolbar's hardcoded light-mode colors in dark mode.
-   The component uses bg-slate-50, bg-white, border-gray-200, text-gray-500/900. */
-.dark .bg-slate-50 {
-  background-color: oklch(0.205 0 0) !important;
-}
-.dark .bg-slate-50 .bg-white {
-  background-color: oklch(0.269 0 0) !important;
-}
-.dark .bg-slate-50 .border-gray-200 {
-  border-color: oklch(0.371 0 0) !important;
-}
-.dark .bg-slate-50 .text-gray-500 {
-  color: oklch(0.708 0 0) !important;
-}
-.dark .bg-slate-50 .text-gray-900 {
-  color: oklch(0.985 0 0) !important;
-}
-.dark .bg-slate-50.border-gray-200 {
-  border-color: oklch(0.371 0 0) !important;
 }
 
 /* Allow horizontal scroll in the attachment gallery despite InputGroup's overflow-hidden */
@@ -193,21 +185,21 @@
   overflow: visible;
 }
 
-/* Dark scrollbar for dark mode */
-.dark * {
+/* Dark scrollbar for the chat editor in dark mode */
+.dark .clint-chat-root * {
   scrollbar-color: oklch(0.4 0 0) transparent;
 }
-.dark ::-webkit-scrollbar {
+.dark .clint-chat-root ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-.dark ::-webkit-scrollbar-track {
+.dark .clint-chat-root ::-webkit-scrollbar-track {
   background: transparent;
 }
-.dark ::-webkit-scrollbar-thumb {
+.dark .clint-chat-root ::-webkit-scrollbar-thumb {
   background: oklch(0.4 0 0);
   border-radius: 4px;
 }
-.dark ::-webkit-scrollbar-thumb:hover {
+.dark .clint-chat-root ::-webkit-scrollbar-thumb:hover {
   background: oklch(0.5 0 0);
 }

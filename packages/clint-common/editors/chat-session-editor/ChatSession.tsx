@@ -3,14 +3,13 @@ import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, ChatSessionDocument } from 'document-models/chat-session';
 import { hasMessageContent } from 'document-models/chat-session';
 import { useCallback, useEffect, useRef, useState, type ComponentType, type DragEvent, type ReactNode } from 'react';
-import { MoonIcon, PanelRightCloseIcon, PanelRightOpenIcon, PaperclipIcon, SunIcon } from 'lucide-react';
+import { PanelRightCloseIcon, PanelRightOpenIcon, PaperclipIcon } from 'lucide-react';
 import { AgentInfoHeader, type AgentAvatarProps } from './components/AgentInfoHeader.js';
 import { ChatInputBar } from './components/ChatInputBar.js';
 import { AttachmentServiceProvider } from './components/ContentPartRenderer.js';
 import { ConversationView } from './components/ConversationView.js';
 import { SessionStatusBar } from './components/SessionStatusBar.js';
 import { TestPane } from './components/test-pane/TestPane.js';
-import { useDarkMode } from './hooks/useDarkMode.js';
 import { cn } from './lib/utils.js';
 
 export type ChatSessionProps = {
@@ -33,8 +32,6 @@ const RESPONDING_GRACE_MS = 1000;
 
 export function ChatSession({ document, dispatch, attachments, className, header, agentAvatar }: ChatSessionProps) {
   const [showTestPane, setShowTestPane] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const { isDark, toggle: toggleDarkMode } = useDarkMode(rootRef);
 
   const state = document.state.global;
 
@@ -169,7 +166,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
 
   return (
     <AttachmentServiceProvider service={attachments}>
-      <div ref={rootRef} className={cn('flex h-full w-full flex-col overflow-hidden bg-background text-foreground', className)} onDragOver={onDragOver} onDrop={onDrop} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
+      <div className={cn('clint-chat-root flex h-full w-full flex-col overflow-hidden bg-background text-foreground', className)} onDragOver={onDragOver} onDrop={onDrop} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
         {header}
         <div className="relative flex flex-1 overflow-hidden">
           {isDragOver && (
@@ -186,9 +183,6 @@ export function ChatSession({ document, dispatch, attachments, className, header
             <ConversationView messages={state.messages} />
             <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={responding} addFilesRef={addFilesRef} />
             <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length}>
-              <button type="button" onClick={toggleDarkMode} className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80" title="Toggle Dark Mode">
-                {isDark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}
-              </button>
               <button
                 type="button"
                 onClick={toggleTestPane}
