@@ -145,4 +145,21 @@ describe('buildManifestJson', () => {
       expect(m.features.observability.envVars.otelExporterOtlpEndpoint).toBe('MULTI_WORD_CLI_OTEL_EXPORTER_OTLP_ENDPOINT');
     });
   });
+
+  describe('dockerfile', () => {
+    it('omits dockerfile/dockerTarget when unset', () => {
+      const m = parseManifest({ name: 'foo-cli' });
+      expect('dockerfile' in m).toBe(false);
+      expect('dockerTarget' in m).toBe(false);
+    });
+
+    it('emits dockerfile/dockerTarget at the top level when set', () => {
+      const m = parseManifest({
+        name: 'foo-cli',
+        deployment: { dockerfile: 'Dockerfile', dockerTarget: 'runtime' },
+      });
+      expect(m.dockerfile).toBe('Dockerfile');
+      expect(m.dockerTarget).toBe('runtime');
+    });
+  });
 });
