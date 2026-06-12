@@ -3,7 +3,9 @@ name: Build and Publish clint-runtime Docker Image
 # Generic clint runtime BASE image — provides node/pnpm/tini and the
 # non-installing run.sh entrypoint. Per-agent images (built in-cluster by
 # clint-image-builder) derive FROM this base and bake the package in.
-# See docker/clint-runtime/Dockerfile and docker/clint-agent/Dockerfile.
+# See docker/clint-runtime/Dockerfile. The per-agent Dockerfile that derives
+# FROM this base lives in powerhouse-k8s-hosting
+# (infrastructure/clint-image-builder/k8s/05-build-context-configmap.yaml).
 
 on:
   workflow_dispatch:
