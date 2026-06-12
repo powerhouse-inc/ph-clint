@@ -111,7 +111,7 @@ export function observability(opts: ObservabilityOptions = {}): LifecycleHook {
         ? await initSentry({
             dsn: sentryDsn,
             fallbackRelease: ctx.cliVersion,
-            log: (m) => ctx.log.info(m),
+            log: (m) => ctx.log.debug(m)
           })
         : null;
 
