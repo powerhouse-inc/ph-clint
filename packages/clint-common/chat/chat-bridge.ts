@@ -307,6 +307,17 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
           await flushText();
           log?.error(`${TAG} stream error for ${documentId}: ${chunk.error}`);
 
+          // Persist the error in the conversation so the UI can show what
+          // failed, not just the ERROR status badge.
+          await dispatch(
+            addAssistantMessage({
+              id: randomUUID(),
+              content: [{ id: randomUUID(), type: 'ERROR', error: chunk.error || 'Agent stream failed with an unknown error' }],
+              stepIndex,
+              createdAt: now(),
+            }),
+          );
+
           await dispatch(
             endSession({
               status: 'ERROR',
