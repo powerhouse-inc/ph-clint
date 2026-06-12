@@ -1,7 +1,9 @@
 #!/bin/sh
 # Runtime entrypoint for prebuilt clint-agent images.
-# The agent package is ALREADY installed (baked at image-build time by
-# docker/clint-agent/Dockerfile), so this script does NOT install anything.
+# The agent package is ALREADY installed (baked at image-build time by the
+# per-agent Dockerfile the clint-image-builder renders — the generic template
+# lives in powerhouse-k8s-hosting, infrastructure/clint-image-builder/k8s/
+# 05-build-context-configmap.yaml), so this script does NOT install anything.
 # It only validates the service command, surfaces announce wiring in logs,
 # and exec's the agent. See docker/clint-runtime/Dockerfile.
 
