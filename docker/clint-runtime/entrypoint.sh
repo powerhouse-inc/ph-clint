@@ -19,7 +19,7 @@ require CLINT_REGISTRY
 require SERVICE_COMMAND
 
 echo "==> clint-runtime: installing ${CLINT_PACKAGE}@${CLINT_VERSION} from ${CLINT_REGISTRY}"
-pnpm add -g "${CLINT_PACKAGE}@${CLINT_VERSION}" --registry "${CLINT_REGISTRY}"
+pnpm add -g "${CLINT_PACKAGE}@${CLINT_VERSION}" --registry "${CLINT_REGISTRY}" --config.minimumReleaseAge=0
 
 # Surface key env so logs show the announce URL is wired (or that it
 # isn't, when serviceAnnouncement is off in the package manifest).
