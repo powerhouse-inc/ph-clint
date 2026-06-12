@@ -41,6 +41,7 @@ RUN test -n "${CLINT_PACKAGE}" || (echo "CLINT_PACKAGE build-arg is required" >&
 RUN pnpm add -g "${CLINT_PACKAGE}@${CLINT_VERSION}" \
       --registry "${CLINT_REGISTRY}" \
       --config.blockExoticSubdeps=false
+      --config.minimumReleaseAge=0
 
 # Record what was baked, for debuggability / dedup sanity.
 LABEL io.vetra.clint.package="${CLINT_PACKAGE}" \
