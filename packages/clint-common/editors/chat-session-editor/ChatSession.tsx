@@ -3,7 +3,7 @@ import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, ChatSessionDocument } from 'document-models/chat-session';
 import { hasMessageContent } from 'document-models/chat-session';
 import { useCallback, useEffect, useRef, useState, type ComponentType, type DragEvent, type ReactNode } from 'react';
-import { PanelRightCloseIcon, PanelRightOpenIcon, PaperclipIcon } from 'lucide-react';
+import { PaperclipIcon } from 'lucide-react';
 import { AgentInfoHeader, type AgentAvatarProps } from './components/AgentInfoHeader.js';
 import { ChatInputBar } from './components/ChatInputBar.js';
 import { AttachmentServiceProvider } from './components/ContentPartRenderer.js';
@@ -182,17 +182,8 @@ export function ChatSession({ document, dispatch, attachments, className, header
             <AgentInfoHeader agent={state.agent} responding={responding} avatar={agentAvatar} />
             <ConversationView messages={state.messages} />
             <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={responding} addFilesRef={addFilesRef} />
-            <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length}>
-              <button
-                type="button"
-                onClick={toggleTestPane}
-                className={cn('flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors', showTestPane ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}
-                title="Toggle Test Pane (Ctrl+Shift+T)"
-              >
-                {showTestPane ? <PanelRightCloseIcon className="size-3.5" /> : <PanelRightOpenIcon className="size-3.5" />}
-                Test
-              </button>
-            </SessionStatusBar>
+            {/* Test pane has no visible toggle; Ctrl/Cmd+Shift+T opens it for development. */}
+            <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length} />
           </div>
 
           {showTestPane && (
