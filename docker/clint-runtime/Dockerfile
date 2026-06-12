@@ -52,7 +52,11 @@ RUN useradd -m -u 1001 -s /bin/bash clint
 USER clint
 WORKDIR /home/clint
 
-ENV PNPM_HOME=/home/clint/.local/share/pnpm \
+# HOME is not set by the tini exec path (no login shell), leaving it empty.
+# An empty HOME makes os.homedir() return "", which breaks Vite's FSWatcher
+# init (spurious ENOSPC). Pin it to the clint user's home explicitly.
+ENV HOME=/home/clint \
+    PNPM_HOME=/home/clint/.local/share/pnpm \
     PATH=/home/clint/.local/share/pnpm/bin:$PATH \
     NODE_ENV=production \
     pnpm_config_minimum_release_age=0
