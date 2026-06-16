@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint-observability",
-  "version": "0.1.0-dev.87",
+  "version": "0.1.0-dev.88",
   "type": "module",
   "publishConfig": {
     "access": "public"
