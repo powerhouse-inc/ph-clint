@@ -28,6 +28,7 @@ import {
   restorePackageJson,
   restoreFileDepPaths,
   removeBackup,
+  stampVersion,
 } from './rewrite.js';
 import { buildAll } from './build.js';
 import {
@@ -213,10 +214,24 @@ export async function buildPackages(
     return;
   }
 
-  log('Building...');
-  await buildAll(plan.packages, options?.verbose ?? false, log, {
-    verifyConnect: options?.verifyConnect,
-  });
+  // Stamp the new version before building so version-stamping steps (Connect
+  // runtime-config) read it; file: deps stay intact for build-time resolution
+  // (publishPackages does the full rewrite later). Restore on any exit —
+  // restorePackageJson is a no-op without a backup, so a mid-stamp throw is safe.
+  try {
+    for (const pkg of plan.packages) {
+      backupPackageJson(pkg.absPath);
+      stampVersion(pkg.absPath, plan.version);
+    }
+    log('Building...');
+    await buildAll(plan.packages, options?.verbose ?? false, log, {
+      verifyConnect: options?.verifyConnect,
+    });
+  } finally {
+    for (const pkg of plan.packages) {
+      restorePackageJson(pkg.absPath);
+    }
+  }
 }
 
 /**

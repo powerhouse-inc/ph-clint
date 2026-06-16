@@ -34,6 +34,14 @@ export function removeBackup(packageDir: string): void {
   }
 }
 
+/** Set only the version field, leaving file: deps intact for build-time resolution. */
+export function stampVersion(packageDir: string, version: string): void {
+  const pkgJsonPath = path.join(packageDir, 'package.json');
+  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
+  pkgJson.version = version;
+  fs.writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
+}
+
 /**
  * Rewrite package.json: set version and replace file: deps with resolved versions.
  */
