@@ -1193,9 +1193,18 @@ export function defineCli<
     const log = createLogger(logLevel, stderr);
     const context = buildContext({ workdir, workspace, config, stdout: writeRaw, log });
 
-    // Create embedded proxy when enabled
+    // One-shot detection — before the proxy bind so one-shot invocations skip
+    // it (they take the lazy dispatch and start no services).
+    const postCmdArgs = userArgs.slice(subcommandIdx);
+    const firstSubcmd = postCmdArgs[0];
+    const isSubcommand = firstSubcmd && (commandMap.has(firstSubcmd) || firstSubcmd === 'help');
+    // --help/--version are Commander built-ins.
+    const isBuiltinFlag = preCommandArgs.some(a => a === '--help' || a === '-h' || a === '--version' || a === '-V');
+    const willRunOneShot = !interactiveFlag && (isSubcommand || isBuiltinFlag || metaFlag);
+
+    // Embedded proxy — skipped for one-shot invocations.
     let proxyInstance: ProxyServerInstance | undefined;
-    if (options.proxyEnabled) {
+    if (options.proxyEnabled && !willRunOneShot) {
       const proxyPort = (config as any).proxyPort ?? 0;
       const proxyHost = (config as any).proxyHost ?? '0.0.0.0';
       const proxyPublicUrl = (config as any).proxyPublicUrl as string | undefined;
@@ -1297,14 +1306,6 @@ export function defineCli<
       exit(0);
       return;
     }
-
-    // ── Detect subcommand or agent prompt ────────────────────────────
-    const postCmdArgs = userArgs.slice(subcommandIdx);
-    const firstSubcmd = postCmdArgs[0];
-    const isSubcommand = firstSubcmd && (commandMap.has(firstSubcmd) || firstSubcmd === 'help');
-
-    // --help and --version are Commander built-ins — route to Commander, not startup
-    const isBuiltinFlag = preCommandArgs.some(a => a === '--help' || a === '-h' || a === '--version' || a === '-V');
 
     // Collect non-flag, non-framework-value pre-command args as agent prompt words
     const promptArgs: string[] = [];
