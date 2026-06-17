@@ -16,6 +16,27 @@ import type { ChatSessionRegistry } from './chat-session-init.js';
 
 const FLUSH_INTERVAL_MS = 500;
 
+/**
+ * Transient stream failure raised before any content was committed, so the
+ * caller can re-run the turn without duplicating content. The bridge leaves
+ * the session ACTIVE; mid-stream failures end as a normal ERROR instead.
+ */
+export interface RetryableStreamErrorOptions {
+  retryAfterMs?: number;
+  statusCode?: number;
+}
+
+export class RetryableStreamError extends Error {
+  readonly retryAfterMs?: number;
+  readonly statusCode?: number;
+  constructor(message: string, opts?: RetryableStreamErrorOptions) {
+    super(message);
+    this.name = 'RetryableStreamError';
+    this.retryAfterMs = opts?.retryAfterMs;
+    this.statusCode = opts?.statusCode;
+  }
+}
+
 interface BridgeStats {
   totalMessages: number;
   totalSteps: number;
@@ -305,6 +326,16 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
 
         case 'error': {
           await flushText();
+
+          // Transient failure, nothing written yet → let the caller retry; keep session ACTIVE.
+          if (chunk.retryable && stats.totalMessages === 0) {
+            log?.warn(`${TAG} retryable stream error for ${documentId} before any content: ${chunk.error}`);
+            throw new RetryableStreamError(chunk.error || 'Agent stream failed with a retryable error', {
+              retryAfterMs: chunk.retryAfterMs,
+              statusCode: chunk.statusCode,
+            });
+          }
+
           log?.error(`${TAG} stream error for ${documentId}: ${chunk.error}`);
 
           // Persist the error in the conversation so the UI can show what
@@ -342,6 +373,12 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
     log?.info(`${TAG} stream complete for ${documentId}: ` + `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls`);
   } catch (err) {
     await flushText().catch(() => {});
+
+    // Retryable pre-content failure: leave the session ACTIVE for the caller's retry.
+    if (err instanceof RetryableStreamError) {
+      throw err;
+    }
+
     log?.error(`${TAG} fatal error for ${documentId}:`, err);
 
     await dispatch(

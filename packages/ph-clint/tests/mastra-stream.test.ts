@@ -105,7 +105,29 @@ describe('mapMastraStream', () => {
     const chunks = await collect(
       mapMastraStream(fakeStream([{ type: 'error', error: 'something broke' }])),
     );
-    expect(chunks).toEqual([{ type: 'error', error: 'something broke' }]);
+    expect(chunks).toEqual([{ type: 'error', error: 'something broke', retryable: false }]);
+  });
+
+  it('marks provider errors retryable and surfaces status + retry-after', async () => {
+    const apiError = {
+      isRetryable: true,
+      statusCode: 520,
+      responseHeaders: { 'retry-after': '60' },
+      toString: () => 'AI_APICallError: <none>',
+    };
+    const chunks = await collect(
+      mapMastraStream(fakeStream([{ type: 'error', error: apiError }])),
+    );
+    expect(chunks).toEqual([
+      { type: 'error', error: 'AI_APICallError: <none>', retryable: true, statusCode: 520, retryAfterMs: 60000 },
+    ]);
+  });
+
+  it('classifies transient status codes as retryable even without isRetryable', async () => {
+    const chunks = await collect(
+      mapMastraStream(fakeStream([{ type: 'error', error: { statusCode: 503 } }])),
+    );
+    expect(chunks[0]).toMatchObject({ type: 'error', retryable: true, statusCode: 503 });
   });
 
   it('handles empty stream', async () => {

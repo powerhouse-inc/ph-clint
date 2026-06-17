@@ -13,7 +13,7 @@
  */
 import { createDocumentChangeTrigger, type AgentContentPart, type TriggerContext } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
-import { writeAgentStreamToDocument } from './chat-bridge.js';
+import { writeAgentStreamToDocument, RetryableStreamError } from './chat-bridge.js';
 import { extractAttachments } from './extract-attachments.js';
 import type { ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
 import { addAssistantMessage, hasMessageContent } from '@powerhousedao/clint-common/document-models/chat-session';
@@ -21,6 +21,18 @@ import { randomUUID } from 'node:crypto';
 
 const DOCUMENT_TYPE = 'powerhouse/chat-session' as const;
 const TAG = '[chat-session-watch]';
+
+const STREAM_MAX_RETRIES = 3;
+const STREAM_RETRY_CAP_MS = 30_000;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Honor `retry-after`, else exponential backoff with full jitter; capped. */
+function streamRetryDelayMs(err: RetryableStreamError, attempt: number): number {
+  if (err.retryAfterMs !== undefined) return Math.min(err.retryAfterMs, STREAM_RETRY_CAP_MS);
+  const backoff = Math.min(1000 * 2 ** attempt, STREAM_RETRY_CAP_MS);
+  return Math.round(Math.random() * backoff);
+}
 
 /** Track documents currently being processed to prevent re-entrancy. */
 const inFlight = new Set<string>();
@@ -180,14 +192,29 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
         // the interrupt listener stop this turn mid-stream; the underlying
         // agent treats an abort as a clean end, so the partial assistant
         // message is preserved and the session stays ACTIVE.
-        const abortController = new AbortController();
-        abortControllers.set(documentId, abortController);
-        const stream = agent.stream(prompt, { threadId, abortSignal: abortController.signal });
-        await writeAgentStreamToDocument(stream, {
-          reactor,
-          documentId,
-          log,
-        });
+        // Retry transient upstream failures; the bridge only raises this before
+        // any content is written, so a re-run can't duplicate. Interrupts aren't retried.
+        for (let attempt = 0; ; attempt++) {
+          const abortController = new AbortController();
+          abortControllers.set(documentId, abortController);
+          try {
+            const stream = agent.stream(prompt, { threadId, abortSignal: abortController.signal });
+            await writeAgentStreamToDocument(stream, {
+              reactor,
+              documentId,
+              log,
+            });
+            break;
+          } catch (streamErr) {
+            const canRetry = streamErr instanceof RetryableStreamError && attempt < STREAM_MAX_RETRIES && !abortController.signal.aborted;
+            if (!canRetry) throw streamErr;
+            const delay = streamRetryDelayMs(streamErr, attempt);
+            log?.warn(`${TAG} retryable stream error for ${documentId} (attempt ${attempt + 1}/${STREAM_MAX_RETRIES}), retrying in ${delay}ms: ${streamErr.message}`);
+            await sleep(delay);
+          } finally {
+            abortControllers.delete(documentId);
+          }
+        }
       } catch (err) {
         log?.error(`${TAG} agent invocation failed for ${documentId}:`, err);
         // Surface the failure as an assistant ERROR message. This also closes

@@ -259,6 +259,11 @@ export interface ToolOutputChunk {
 export interface ErrorChunk {
   type: 'error';
   error: string;
+  /** Transient failure worth re-attempting (provider 429/5xx, dropped connection). */
+  retryable?: boolean;
+  statusCode?: number;
+  /** Suggested wait before retry, ms (from `retry-after`). */
+  retryAfterMs?: number;
 }
 
 /**
