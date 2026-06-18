@@ -22,18 +22,18 @@ catalog:
   '@mastra/memory': ^1.20.2
   # Powerhouse stack — prerelease, bumped in lockstep. (reactor-attachments is
   # intentionally excluded: it tracks a different line, 6.1.0-dev.x.)
-  '@powerhousedao/analytics-engine-core': 6.2.0-dev.18
-  '@powerhousedao/connect': 6.2.0-dev.18
-  '@powerhousedao/design-system': 6.2.0-dev.18
+  '@powerhousedao/analytics-engine-core': 6.2.0-dev.23
+  '@powerhousedao/connect': 6.2.0-dev.23
+  '@powerhousedao/design-system': 6.2.0-dev.23
   '@powerhousedao/document-engineering': 1.40.1
-  '@powerhousedao/ph-cli': 6.2.0-dev.18
-  '@powerhousedao/reactor': 6.2.0-dev.18
-  '@powerhousedao/reactor-api': 6.2.0-dev.18
-  '@powerhousedao/reactor-browser': 6.2.0-dev.18
-  '@powerhousedao/reactor-mcp': 6.2.0-dev.18
-  '@powerhousedao/shared': 6.2.0-dev.18
-  '@powerhousedao/switchboard': 6.2.0-dev.18
-  document-model: 6.2.0-dev.18
+  '@powerhousedao/ph-cli': 6.2.0-dev.23
+  '@powerhousedao/reactor': 6.2.0-dev.23
+  '@powerhousedao/reactor-api': 6.2.0-dev.23
+  '@powerhousedao/reactor-browser': 6.2.0-dev.23
+  '@powerhousedao/reactor-mcp': 6.2.0-dev.23
+  '@powerhousedao/shared': 6.2.0-dev.23
+  '@powerhousedao/switchboard': 6.2.0-dev.23
+  document-model: 6.2.0-dev.23
   # zod — unified across the workspace. Exact, to match the `overrides` pin
   # above (the override forces 4.3.6 transitively anyway).
   zod: 4.3.6
