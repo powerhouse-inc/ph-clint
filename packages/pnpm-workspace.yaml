@@ -20,8 +20,7 @@ catalog:
   '@mastra/core': ^1.41.0
   '@mastra/libsql': ^1.12.1
   '@mastra/memory': ^1.20.2
-  # Powerhouse stack — prerelease, bumped in lockstep. (reactor-attachments is
-  # intentionally excluded: it tracks a different line, 6.1.0-dev.x.)
+  '@powerhousedao/reactor-attachments': 6.2.0-dev.23
   '@powerhousedao/analytics-engine-core': 6.2.0-dev.23
   '@powerhousedao/connect': 6.2.0-dev.23
   '@powerhousedao/design-system': 6.2.0-dev.23
