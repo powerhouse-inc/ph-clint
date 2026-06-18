@@ -64,9 +64,9 @@ const MAX_TOOL_RESULT_CHARS = 1_000;
  * unpaired surrogates, which otherwise fail the write with "unsupported
  * Unicode escape sequence". Applies to every tool result, not just reads.
  */
-function sanitizeForStore(text: string, log?: Logger, label = 'tool result', cap = true): string {
+function sanitizeForStore(text: string, log?: Logger, label = 'tool result'): string {
   let capped = text;
-  if (cap && text.length > MAX_TOOL_RESULT_CHARS) {
+  if (text.length > MAX_TOOL_RESULT_CHARS) {
     log?.warn(`${TAG} truncated ${label} from ${text.length} to ${MAX_TOOL_RESULT_CHARS} chars`);
     capped = `${text.slice(0, MAX_TOOL_RESULT_CHARS)}\n…[truncated ${text.length - MAX_TOOL_RESULT_CHARS} chars]`;
   }
@@ -99,10 +99,6 @@ function sanitizeForStore(text: string, log?: Logger, label = 'tool result', cap
  * the tool prepends ("path (N bytes, encoding)") is persisted.
  */
 const FILE_CONTENT_TOOLS = new Set(['mastra_workspace_read_file']);
-
-// Reference tools whose result is rehydrated from the document on later turns;
-// persist whole (cap would drop the back half), still stripped for the store.
-const FULL_RESULT_TOOLS = new Set(['skill', 'skill_read']);
 
 /**
  * Build the persisted form of a tool result. Workspace media reads return a
@@ -141,21 +137,20 @@ function condenseErrorEnvelope(result: unknown): string | null {
 }
 
 function prepareToolResult(result: unknown, toolName: string, log?: Logger): { result: string; mediaType: string | null } {
-  const cap = !FULL_RESULT_TOOLS.has(toolName);
   if (result && typeof result === 'object' && (result as { __workspaceMedia?: unknown }).__workspaceMedia) {
     const media = result as { text?: string; mediaType?: string };
-    return { result: sanitizeForStore(media.text ?? '[media]', log, toolName, cap), mediaType: media.mediaType ?? null };
+    return { result: sanitizeForStore(media.text ?? '[media]', log, toolName), mediaType: media.mediaType ?? null };
   }
   const condensed = condenseErrorEnvelope(result);
   if (condensed !== null) {
-    return { result: sanitizeForStore(condensed, log, toolName, cap), mediaType: null };
+    return { result: sanitizeForStore(condensed, log, toolName), mediaType: null };
   }
-  const raw = typeof result === 'string' ? result : (JSON.stringify(result) ?? '');
+  const raw = typeof result === 'string' ? result : JSON.stringify(result) ?? '';
   if (FILE_CONTENT_TOOLS.has(toolName)) {
     // Keep the header line only; everything after the first newline is file body.
-    return { result: sanitizeForStore(raw.split('\n', 1)[0], log, toolName, cap), mediaType: null };
+    return { result: sanitizeForStore(raw.split('\n', 1)[0], log, toolName), mediaType: null };
   }
-  return { result: sanitizeForStore(raw, log, toolName, cap), mediaType: null };
+  return { result: sanitizeForStore(raw, log, toolName), mediaType: null };
 }
 
 /**
@@ -322,7 +317,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
                 partId,
                 toolCallId: chunk.toolCallId ?? '',
                 toolName: chunk.toolName,
-                text: sanitizeForStore(chunk.text, log, `${chunk.toolName} output`, !FULL_RESULT_TOOLS.has(chunk.toolName)),
+                text: sanitizeForStore(chunk.text, log, `${chunk.toolName} output`),
               }),
             );
           }
