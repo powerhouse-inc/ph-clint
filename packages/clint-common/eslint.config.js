@@ -8,7 +8,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 /** These files are typically ignored by eslint by default, so there is no need to investigate why they are ignored. */
-const ignoredFiles = ['**/node_modules/', '**/dist/', '**/.ph/', '**/storybook-static/', '**/.vite/', '**/.playwright-cli/'];
+const ignoredFiles = ['**/node_modules/', '**/dist/', '**/.ph/', '**/storybook-static/', '**/.vite/'];
 
 /** Global configs for eslint ignores */
 const ignored = globalIgnores(ignoredFiles);
@@ -67,7 +67,7 @@ const typescriptLanguageOptions = {
   },
   parserOptions: {
     projectService: {
-      allowDefaultProject: ['eslint.config.js', 'vitest.config.ts'],
+      allowDefaultProject: ['eslint.config.js', 'vitest.config.ts', 'main.tsx'],
     },
     tsconfigRootDir: import.meta.dirname,
     ecmaFeatures: {

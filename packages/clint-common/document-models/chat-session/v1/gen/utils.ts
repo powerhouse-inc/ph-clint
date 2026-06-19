@@ -2,8 +2,9 @@
  * WARNING: DO NOT EDIT
  * This file is auto-generated and updated by codegen
  */
-import type { DocumentModelUtils } from 'document-model';
-import { baseCreateDocument, baseLoadFromInput, baseSaveToFileHandle, defaultBaseState, generateId } from 'document-model';
+import type { DocumentModelUtils, PHBaseState, Reducer } from 'document-model';
+import { baseCreateDocument, baseLoadFromInputVersioned, baseSaveToFileHandle, defaultBaseState } from 'document-model';
+import { chatSessionUpgradeManifest } from '../../upgrades/upgrade-manifest.js';
 import { assertIsChatSessionDocument, assertIsChatSessionState, isChatSessionDocument, isChatSessionState } from './document-schema.js';
 import { chatSessionDocumentType } from './document-type.js';
 import { reducer } from './reducer.js';
@@ -32,20 +33,16 @@ export const utils: DocumentModelUtils<ChatSessionPHState> = {
     };
   },
   createDocument(state) {
-    const document = baseCreateDocument(utils.createState, state);
-
-    document.header.documentType = chatSessionDocumentType;
-
-    // for backwards compatibility, but this is NOT a valid signed document id
-    document.header.id = generateId();
-
-    return document;
+    return baseCreateDocument(utils.createState, state, chatSessionDocumentType);
   },
   saveToFileHandle(document, input) {
     return baseSaveToFileHandle(document, input);
   },
   loadFromInput(input) {
-    return baseLoadFromInput(input, reducer);
+    return baseLoadFromInputVersioned(input, {
+      reducers: { 1: reducer as unknown as Reducer<PHBaseState> },
+      upgradeManifest: chatSessionUpgradeManifest,
+    });
   },
   isStateOfType(state) {
     return isChatSessionState(state);

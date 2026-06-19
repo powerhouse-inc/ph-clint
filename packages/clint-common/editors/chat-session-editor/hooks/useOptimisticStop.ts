@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import {
-  initialOptimisticStopState,
-  optimisticStopReducer,
-  selectStopStatus,
-  OPTIMISTIC_STOP_TIMEOUT_MS,
-  INTERRUPTING_TIMEOUT_MS,
-  type StopStatus,
-} from './optimistic-stop-machine.js';
+import { initialOptimisticStopState, optimisticStopReducer, selectStopStatus, OPTIMISTIC_STOP_TIMEOUT_MS, INTERRUPTING_TIMEOUT_MS, type StopStatus } from './optimistic-stop-machine.js';
 
 export { OPTIMISTIC_STOP_TIMEOUT_MS, INTERRUPTING_TIMEOUT_MS } from './optimistic-stop-machine.js';
 export type { StopStatus } from './optimistic-stop-machine.js';
@@ -42,11 +35,7 @@ type UseOptimisticStopResult = {
  *     → responding=false      → idle (turn aborted/ended)
  *     → fallback timeout       → idle (turn never started)
  */
-export function useOptimisticStop({
-  responding,
-  timeoutMs = OPTIMISTIC_STOP_TIMEOUT_MS,
-  interruptingTimeoutMs = INTERRUPTING_TIMEOUT_MS,
-}: UseOptimisticStopOptions): UseOptimisticStopResult {
+export function useOptimisticStop({ responding, timeoutMs = OPTIMISTIC_STOP_TIMEOUT_MS, interruptingTimeoutMs = INTERRUPTING_TIMEOUT_MS }: UseOptimisticStopOptions): UseOptimisticStopResult {
   const [state, dispatch] = useReducer(optimisticStopReducer, initialOptimisticStopState);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks the previous `responding` so interrupting resolves on the real

@@ -145,7 +145,7 @@ function prepareToolResult(result: unknown, toolName: string, log?: Logger): { r
   if (condensed !== null) {
     return { result: sanitizeForStore(condensed, log, toolName), mediaType: null };
   }
-  const raw = typeof result === 'string' ? result : JSON.stringify(result) ?? '';
+  const raw = typeof result === 'string' ? result : (JSON.stringify(result) ?? '');
   if (FILE_CONTENT_TOOLS.has(toolName)) {
     // Keep the header line only; everything after the first newline is file body.
     return { result: sanitizeForStore(raw.split('\n', 1)[0], log, toolName), mediaType: null };

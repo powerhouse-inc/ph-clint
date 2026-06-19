@@ -129,9 +129,7 @@ export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutpu
   return (
     <div className={cn('space-y-2', className)} {...props}>
       <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{errorText ? 'Error' : 'Result'}</h4>
-      <div className={cn('overflow-x-auto rounded-md text-xs [&_table]:w-full', errorText ? 'bg-destructive/10 text-destructive' : 'bg-muted/50 text-foreground')}>
-        {Output}
-      </div>
+      <div className={cn('overflow-x-auto rounded-md text-xs [&_table]:w-full', errorText ? 'bg-destructive/10 text-destructive' : 'bg-muted/50 text-foreground')}>{Output}</div>
     </div>
   );
 };

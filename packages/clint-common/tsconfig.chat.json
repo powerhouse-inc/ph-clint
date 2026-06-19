@@ -1,9 +1,18 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "rootDir": "./chat",
     "outDir": "./dist/chat",
-    "rootDir": ".",
-    "emitDeclarationOnly": false
+    "declarationDir": "./dist/chat",
+    "emitDeclarationOnly": false,
+    "incremental": false,
+    // document-models is an already-built external for this sub-build; point the
+    // alias at emitted declarations so tsc doesn't pull source in (TS6059).
+    "paths": {
+      "document-models": ["./dist/types/document-models/index.d.ts"],
+      "document-models/*": ["./dist/types/document-models/*/index.d.ts"]
+    }
   },
-  "include": ["chat/**/*.ts"]
+  "include": ["chat/**/*.ts"],
+  "exclude": ["chat/**/*.test.ts"]
 }

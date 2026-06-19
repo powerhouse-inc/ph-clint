@@ -11,10 +11,10 @@ import type { ChatSessionPHState } from './gen/types.js';
 import { utils } from './utils.js';
 
 /** Document model module for the ChatSession document type */
-export const ChatSession: DocumentModelModule<ChatSessionPHState> = {
+export const ChatSession = {
   version: 1,
   reducer,
   actions,
   utils,
   documentModel: createState(defaultBaseState(), documentModel),
-};
+} as const satisfies DocumentModelModule<ChatSessionPHState>;

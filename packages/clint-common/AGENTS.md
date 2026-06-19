@@ -73,6 +73,22 @@ After doing changes to the code, or after creating a new document model or a new
 
 - **TypeScript Check**: Run `npm run tsc` to validate type safety
 - **ESLint Check**: Run `npm run lint:fix` to check for errors with ESLint
+- **Reducer Test Coverage**: Run `npm run test:coverage` after any change to a document model reducer. Document model reducers are pure synchronous functions and **MUST** stay at or above **95%** coverage on lines, branches, functions, and statements. If coverage drops below the threshold, add tests in `document-models/<name>/v<n>/tests/` until the threshold is restored — **DO NOT** lower the threshold or exclude files to make the check pass. Cover the happy path _and_ every error code defined via `ADD_OPERATION_ERROR` (each error is a branch that needs explicit test coverage). Push toward 100% by following the strategy below.
+
+#### Strategy: reaching 100% reducer coverage
+
+95% is the enforced floor — push toward 100% when feasible. Statements and lines reach high coverage quickly; the real challenge is **branch coverage** (every `||`, `??`, `if`, `&&` is two branches).
+
+Write a small number of **scenario tests** first — each chaining many operations the way a real consumer would. One "full conversation flow" test that exercises 14 ops is more valuable than 14 isolated unit tests. Then categorize each remaining uncovered branch before writing a test for it:
+
+1. **Wrong nullability** — type allows `null` but the value is always initialized. Fix the type (e.g. `Int!` in the schema via `SET_STATE_SCHEMA` / `SET_OPERATION_SCHEMA`); the fallback branch disappears.
+2. **Missing validation** — the field is genuinely required for a variant but the reducer silently accepts its absence. Add a named error via `ADD_OPERATION_ERROR` and reject; the new branch is reachable and worth testing.
+3. **Wrong coercion operator** — `||` used where `??` is needed; falsy-but-valid values (`0`, `false`, `""`) get coerced to the fallback. Fix the operator and add a test with a falsy-but-valid value.
+4. **Legitimate optionality** — both sides reachable through valid inputs. Fold both into existing scenario tests by varying inputs.
+
+Then extend scenario tests to hit remaining branches: skip initialization to hit "not yet initialized" branches; chain invalid operations using the operation-index pattern from "Testing Reducer Errors" (never `.toThrow()`); use minimal/empty inputs for fallback-to-null branches; vary inputs so both sides of legitimate `||` / `??` are hit.
+
+**Principle: don't test around bad types — fix them.** When a branch is untestable, it's almost always a type that's too loose, missing validation, or a wrong operator. Coverage follows naturally from correct types and realistic scenarios.
 
 ## Document editor creation flow
 
@@ -96,7 +112,7 @@ After doing changes to the code, or after creating a new document model or a new
 Only **after** the codegen has produced the boilerplate files, proceed with the UI implementation:
 
 - Inspect the generated files in the `editors/` folder — do NOT create new files for the main editor component; edit the generated one
-- Inspect the hooks in `editors/hooks` as they should be useful
+- Hooks for each document model are auto-generated at `document-models/<name>/v<n>/hooks.ts` and re-exported through the top-level barrel `document-models/<name>` (which always points at the latest version). Import them from the barrel — there is **no** `editors/hooks/` folder.
 - Read the schema of the document model that the editor is for to know how to interact with it
 - Every editor **MUST** include `<DocumentToolbar />` imported from `@powerhousedao/design-system/connect/index`. Place it at the top of the editor component — do not put anything next to it.
 - Style the editor using tailwind classes or a style tag. If using a style tag, make sure to make the selectors specific to only apply to the editor component.
@@ -125,26 +141,200 @@ The following section is valid for editors that edit a single document type.
 Using a "Todo" document model as example:
 
 ```typescript
-import { generateId } from "document-model";
-import { useSelectedTodoDocument } from "../hooks/useTodoDocument.js";
-import {
-  addTodo,
-} from "../../document-models/todo/gen/creators.js";
+import { generateId } from 'document-model';
+import { actions, useSelectedTodoDocument } from 'document-models/todo';
 
 export default function Editor() {
   const [document, dispatch] = useSelectedTodoDocument();
 
   function handleAddTodo(values: { title: string }) {
     if (values.title) {
-      dispatch(addTodo({ id: generateId(), title: values.title }));
+      dispatch(actions.addTodo({ id: generateId(), title: values.title }));
     }
-  };
+  }
 
-// Note: The `useSelectedTodoDocument` hook is auto-generated. Check the `editors/hooks` folder for the exact hook name.
-// Action creators like `addTodo` are exported from the document model's `gen/creators.js` file.
+  // ...
+}
+
+// Note: The `useSelectedTodoDocument` hook is auto-generated at
+// `document-models/todo/v<n>/hooks.ts` and re-exported via the top-level
+// barrel `document-models/todo` (which always points at the latest version).
+// Action creators are exposed as `actions.<actionName>` from the same barrel
+// (e.g. `actions.addTodo(...)`) — never import from a deep `gen/creators.js` path.
 ```
 
-The `useSelectedTodoDocument` gets generated automatically so you don't need to implement it yourself.
+The `useSelectedTodoDocument` (and every other document hook) is auto-generated and re-exported from the `document-models/<name>` top-level barrel, so you don't need to implement it yourself. See the "Editor code conventions" section below for the full import-path rules.
+
+### Editor code conventions (TypeScript & module resolution)
+
+These rules apply to **every** editor regardless of which UI library you use. They come from the project's `tsconfig` (`module: nodenext`, `strict`, `verbatimModuleSyntax`) and ESLint config — they are constraints, not stylistic preferences.
+
+#### Always use the top-level barrel for document-model imports
+
+Every document model exposes a single public surface via its top-level barrel. Use it for **all** document-model symbols (types, actions, hooks, utils):
+
+```typescript
+// ✅ GOOD — barrel always points at the latest version
+import { actions, useSelectedTodoDocument } from 'document-models/todo';
+import type { TodoAction, TodoDocument } from 'document-models/todo';
+
+// ❌ BAD — deep paths bypass the barrel and break when the version increments
+import { useSelectedTodoDocument } from '../hooks/useTodoDocument.js';
+import { addTodo } from '../../document-models/todo/gen/creators.js';
+import type { Todo } from 'document-models/todo/v1/gen/schema/types.js';
+```
+
+The barrel re-exports types, `actions.<actionName>` action creators, the four generated hooks (`useSelected<Name>Document`, `use<Name>DocumentById`, `use<Name>DocumentsInSelectedDrive`, `use<Name>DocumentsInSelectedFolder`), and `utils`. There is **no** `editors/hooks/` folder — that path does not exist in generated projects.
+
+#### Use the configured tsconfig path aliases — do NOT add `@/*`
+
+The boilerplate `tsconfig.json` already exposes the following path aliases:
+
+- `document-models`, `document-models/<name>`
+- `editors`, `editors/<name>`
+- `processors/<name>`
+- `subgraphs`, `subgraphs/<name>`
+
+Use these directly. **Do NOT** introduce a `@/*` alias — `baseUrl` is not configured in the boilerplate, and any `@/...` import will fail to resolve under `nodenext`.
+
+#### Relative imports MUST include `.js` extensions
+
+The boilerplate uses `"module": "nodenext"`, which requires explicit `.js` extensions on every relative import (even when the source file is `.ts` / `.tsx`):
+
+```typescript
+// ✅ GOOD
+import { Button } from './components/ui/button.js';
+import { cn } from '../lib/utils.js';
+
+// ❌ BAD — fails at compile time
+import { Button } from './components/ui/button';
+import { cn } from '../lib/utils';
+```
+
+When a third-party CLI generates extensionless imports, do a bulk find-and-replace after install to add `.js` to every relative path.
+
+#### Stringifying `unknown` values
+
+The boilerplate ESLint config enables `@typescript-eslint/no-base-to-string` (via `recommendedTypeChecked`). `String(value ?? "")` on a value typed as `unknown` will trip the rule because the default `Object.prototype.toString` produces `"[object Object]"`. Use a small helper:
+
+```typescript
+function str(v: unknown): string {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return JSON.stringify(v);
+}
+```
+
+### Drag-and-drop file uploads (optional pattern)
+
+Use this **only** when your editor needs to accept arbitrary file drops (images, PDFs, CSVs, attachments). Default editors do not need any of this.
+
+Connect wraps every editor in an outer DropZone that only handles Powerhouse document files (`.phd`, `.phdm`, `.zip`). To accept other files in your editor, use the `useEditorFileDrop` hook — it spreads the right handlers and a marker attribute that tells the outer DropZone to leave your subtree alone.
+
+```tsx
+import { useEditorFileDrop } from '@powerhousedao/reactor-browser';
+
+export default function Editor() {
+  const { dragProps, isDragOver } = useEditorFileDrop({
+    accept: ['.png', '.jpg', '.jpeg', '.pdf'],
+    onFiles: (files) => handleFiles(files),
+  });
+
+  return (
+    <div {...dragProps} className="relative">
+      {isDragOver && (
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+          <p className="text-foreground text-base font-medium">Drop files to attach</p>
+        </div>
+      )}
+      {/* ... editor content ... */}
+    </div>
+  );
+}
+```
+
+The overlay `div` **MUST** use `pointer-events-none` — otherwise it captures the `drop` event and your handler never fires.
+
+If your file-upload handler lives inside a **child** component's React context (e.g. `usePromptInputAttachments().add` inside a `PromptInput`), use a ref bridge: store the child's add function in a ref from a tiny bridge component, and call `ref.current?.(files)` from `onFiles`.
+
+### Using shadcn / Vercel AI Elements in editors (optional)
+
+Use this **only** when your editor needs UI primitives not covered by `@powerhousedao/design-system` or `@powerhousedao/document-engineering` — typically chat-style UIs built on Vercel AI Elements (`Conversation`, `Message`, `Reasoning`, `Tool`, `PromptInput`). Default editors should prefer the design-system / document-engineering primitives and skip this section.
+
+`shadcn init` does not work here (it fails with "could not detect a supported framework"), so configure shadcn manually with the steps below. Substitute `<name>` with your editor's name throughout.
+
+#### Setup steps
+
+1. **Install deps**: `pnpm add class-variance-authority clsx tailwind-merge lucide-react tw-animate-css`
+
+2. **Create `components.json`** at the project root. The `@/*` alias here is consumed by the shadcn / AI Elements CLIs at install time only — do **NOT** add a matching `@/*` alias to `tsconfig.json`:
+
+   ```json
+   {
+     "$schema": "https://ui.shadcn.com/schema.json",
+     "style": "new-york",
+     "rsc": false,
+     "tsx": true,
+     "tailwind": {
+       "config": "",
+       "css": "style.css",
+       "baseColor": "neutral",
+       "cssVariables": true
+     },
+     "aliases": {
+       "components": "@/editors/<name>/components",
+       "utils": "@/editors/<name>/lib/utils",
+       "ui": "@/editors/<name>/components/ui",
+       "lib": "@/editors/<name>/lib",
+       "hooks": "@/editors/<name>/hooks"
+     },
+     "iconLibrary": "lucide"
+   }
+   ```
+
+3. **Create `editors/<name>/lib/utils.ts`** exporting the standard `cn` helper (`twMerge(clsx(inputs))`).
+
+4. **Extend `style.css`** (append, do not replace): `@import "tw-animate-css";`, `@custom-variant dark (&:is(.dark *));`, a `@theme inline { ... }` block mapping `--color-*`/`--radius-*`, `:root` and `.dark` blocks with `oklch(...)` values, and a `@layer base` block. ⚠️ The design-system theme already declares its own tokens — verify both the editor and Connect still render correctly in light/dark mode after this step. If they break, fall back to design-system primitives.
+
+5. **Install AI Elements** using Vercel's CLI (not shadcn's). Verify each name exists at https://ai-sdk.dev/elements first — unknown names abort the install:
+
+   ```bash
+   npx ai-elements@latest add conversation message reasoning tool prompt-input code-block
+   ```
+
+   The CLI auto-installs `ai`, `use-stick-to-bottom`, `streamdown` (+ `@streamdown/{cjk,code,math,mermaid}`), and `@radix-ui/react-use-controllable-state`.
+
+6. **Move `components/ai-elements/`** from the project root into `editors/<name>/components/ai-elements/`, then delete the empty project-root `components/`. (Files under `editors/<name>/components/ui/` are already in the right place.)
+
+7. **Rewrite `@/...` imports to relative paths with `.js` extensions** across every CLI-generated file — `@/*` does not resolve under `nodenext`, and extensionless relative imports fail too. From an `ai-elements/` file: `@/editors/<name>/components/ui/button` → `../ui/button.js`, `@/editors/<name>/lib/utils` → `../../lib/utils.js`. From a `ui/` file: `./button.js` and `../../lib/utils.js`. Also add `.js` to any extensionless sibling imports (e.g. `./shimmer` → `./shimmer.js`).
+
+#### Bridging document-model types to AI Elements
+
+AI Elements use Vercel AI SDK types (`UIMessage`, `ToolUIPart`, `DynamicToolUIPart`); your document model has its own. **Do not convert between them.** Use the plain-prop low-level primitives (`Message`, `MessageContent`, `Conversation`, `ConversationContent`, `Reasoning`, `ReasoningTrigger`, `ReasoningContent`, `Tool`, `ToolHeader`, `ToolContent`, `ToolInput`, `ToolOutput`, `MessageResponse`) and write thin wrapper components. For `ToolHeader`, pass `type="dynamic-tool"` with explicit `toolName` and `state`.
+
+Tool-state mapping:
+
+| Document-model state         | AI Elements `ToolPart["state"]` |
+| ---------------------------- | ------------------------------- |
+| Tool call with no result yet | `"input-available"`             |
+| Tool call with result        | `"output-available"`            |
+| Tool call with error result  | `"output-error"`                |
+
+If TypeScript complains that your concrete interface is missing an index signature when passed where `Record<string, unknown> & { ... }` is expected, add `[key: string]: unknown;` to the interface.
+
+#### Final file structure
+
+```
+editors/<name>/
+  editor.tsx              ← main editor (edit codegen output)
+  module.ts               ← DO NOT EDIT (codegen)
+  lib/utils.ts            ← cn() helper
+  components/
+    ai-elements/          ← moved from project root in step 6
+    ui/                   ← shadcn primitives installed by ai-elements CLI
+    <wrappers bridging document-model types to AI Elements primitives>
+```
 
 ## ⚠️ CRITICAL: Generated Files & Modification Rules
 
