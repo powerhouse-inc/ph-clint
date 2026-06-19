@@ -70,13 +70,13 @@
     "service-unstartup": "bash ./node_modules/@powerhousedao/ph-cli/dist/scripts/service-unstartup.sh"
   },
   "peerDependencies": {
-    "@powerhousedao/reactor-browser": "6.2.0-dev.23",
-    "document-model": "6.2.0-dev.23",
+    "@powerhousedao/reactor-browser": ">=6.2.0-dev.0",
+    "document-model": ">=6.2.0-dev.0",
     "graphql": "^16",
     "graphql-tag": "^2",
     "react": "^19",
     "react-dom": "^19",
-    "zod": "^4"
+    "zod": "^4:"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.15",
