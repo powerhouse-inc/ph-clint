@@ -216,11 +216,7 @@ export function ChatInputBar({ dispatch, attachments, disabled, responding, addF
               normal turn shows no flip when responding flips true.
               'interrupting' disables the button (the stop is already in
               flight). */}
-          <PromptInputSubmit
-            disabled={isActive ? isInterrupting : isDisabled}
-            status={isActive ? 'streaming' : undefined}
-            onStop={handleStop}
-          />
+          <PromptInputSubmit disabled={isActive ? isInterrupting : isDisabled} status={isActive ? 'streaming' : undefined} onStop={handleStop} />
         </PromptInputFooter>
       </PromptInput>
     </div>

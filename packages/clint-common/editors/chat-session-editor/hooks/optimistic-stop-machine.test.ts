@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  initialOptimisticStopState,
-  optimisticStopReducer,
-  selectStopStatus,
-  type OptimisticStopEvent,
-} from './optimistic-stop-machine.js';
+import { initialOptimisticStopState, optimisticStopReducer, selectStopStatus, type OptimisticStopEvent } from './optimistic-stop-machine.js';
 
 function run(events: OptimisticStopEvent[]) {
   return events.reduce(optimisticStopReducer, initialOptimisticStopState);

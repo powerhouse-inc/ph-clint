@@ -78,10 +78,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
       return;
     }
 
-    const working =
-      (last.role === 'USER' && hasMessageContent(last)) ||
-      last.role === 'TOOL' ||
-      (last.role === 'ASSISTANT' && last.content.some((p) => p.type === 'TOOL_CALL'));
+    const working = (last.role === 'USER' && hasMessageContent(last)) || last.role === 'TOOL' || (last.role === 'ASSISTANT' && last.content.some((p) => p.type === 'TOOL_CALL'));
     if (working) {
       clearGrace();
       setResp(true);
@@ -91,10 +88,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
 
     // Ambiguous trailing assistant text: keep lit while it grows (streaming) or
     // at the moment we leave a working phase still lit; wind down once quiet.
-    const size =
-      last.role === 'ASSISTANT'
-        ? last.content.reduce((n, p) => n + (p.type === 'TEXT' && p.text ? p.text.length : 0), 0)
-        : 0;
+    const size = last.role === 'ASSISTANT' ? last.content.reduce((n, p) => n + (p.type === 'TEXT' && p.text ? p.text.length : 0), 0) : 0;
     const prev = lastSeenRef.current;
     lastSeenRef.current = { id: last.id, size };
     const grew = !!prev && prev.id === last.id && size > prev.size;

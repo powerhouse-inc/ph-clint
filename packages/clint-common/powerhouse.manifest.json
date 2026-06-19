@@ -1,28 +1,28 @@
 {
-	"name": "clint-common",
-	"description": "",
-	"category": "",
-	"publisher": {
-		"name": "",
-		"url": ""
-	},
-	"documentModels": [
-		{
-			"id": "powerhouse/chat-session",
-			"name": "ChatSession"
-		}
-	],
-	"apps": [],
-	"editors": [
-		{
-			"id": "chat-session-editor",
-			"name": "chat-session-editor",
-			"documentTypes": [
-				"powerhouse/chat-session"
-			]
-		}
-	],
-	"processors": [],
-	"subgraphs": [],
-	"config": []
+  "name": "clint-common",
+  "description": "",
+  "category": "",
+  "publisher": {
+    "name": "",
+    "url": ""
+  },
+  "documentModels": [
+    {
+      "name": "ChatSession",
+      "id": "powerhouse/chat-session"
+    }
+  ],
+  "apps": [],
+  "editors": [
+    {
+      "id": "chat-session-editor",
+      "name": "chat-session-editor",
+      "documentTypes": [
+        "powerhouse/chat-session"
+      ]
+    }
+  ],
+  "processors": [],
+  "subgraphs": [],
+  "config": []
 }
