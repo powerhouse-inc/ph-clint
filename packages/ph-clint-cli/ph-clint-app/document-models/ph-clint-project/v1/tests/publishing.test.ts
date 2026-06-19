@@ -926,4 +926,67 @@ describe('PublishingOperations', () => {
     expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
+
+  describe('BUMP_VERSION', () => {
+    it('sets a valid semver version', () => {
+      const doc = reducer(utils.createDocument(), bumpVersion({ version: '1.2.3' }));
+      expect(doc.operations.global[0].error).toBeUndefined();
+      expect(doc.state.global.version).toBe('1.2.3');
+    });
+
+    it('accepts prerelease and build metadata', () => {
+      const doc = reducer(utils.createDocument(), bumpVersion({ version: '1.0.0-dev.90+build.1' }));
+      expect(doc.operations.global[0].error).toBeUndefined();
+      expect(doc.state.global.version).toBe('1.0.0-dev.90+build.1');
+    });
+
+    it('rejects an invalid version', () => {
+      const doc = reducer(utils.createDocument(), bumpVersion({ version: 'not-a-version' }));
+      expect(doc.operations.global[0].error).toContain('Invalid version');
+    });
+  });
+
+  describe('PUBLISH_DEV / PUBLISH_STAGING / PUBLISH_PRODUCTION', () => {
+    it('appends a pending Dev record with the current version', () => {
+      let doc = reducer(utils.createDocument(), bumpVersion({ version: '2.0.0' }));
+      doc = reducer(doc, publishDev({ id: 'pub-dev', timestamp: '2026-01-01T00:00:00.000Z' }));
+      const record = doc.state.global.publishHistory.find((r) => r.id === 'pub-dev')!;
+      expect(record).toEqual({
+        id: 'pub-dev',
+        tag: 'Dev',
+        version: '2.0.0',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        status: 'Pending',
+      });
+    });
+
+    it('appends a pending Staging record', () => {
+      const doc = reducer(utils.createDocument(), publishStaging({ id: 'pub-stg', timestamp: '2026-01-01T00:00:00.000Z' }));
+      const record = doc.state.global.publishHistory.find((r) => r.id === 'pub-stg')!;
+      expect(record.tag).toBe('Staging');
+      expect(record.status).toBe('Pending');
+    });
+
+    it('appends a pending Production record', () => {
+      const doc = reducer(utils.createDocument(), publishProduction({ id: 'pub-prod', timestamp: '2026-01-01T00:00:00.000Z' }));
+      const record = doc.state.global.publishHistory.find((r) => r.id === 'pub-prod')!;
+      expect(record.tag).toBe('Production');
+      expect(record.status).toBe('Pending');
+    });
+  });
+
+  describe('SET_PUBLISH_STATUS', () => {
+    it('updates the status of an existing record', () => {
+      let doc = reducer(utils.createDocument(), publishDev({ id: 'pub-1', timestamp: '2026-01-01T00:00:00.000Z' }));
+      doc = reducer(doc, setPublishStatus({ id: 'pub-1', status: 'Succeeded' }));
+      const record = doc.state.global.publishHistory.find((r) => r.id === 'pub-1')!;
+      expect(doc.operations.global[1].error).toBeUndefined();
+      expect(record.status).toBe('Succeeded');
+    });
+
+    it('rejects setting status on a missing record', () => {
+      const doc = reducer(utils.createDocument(), setPublishStatus({ id: 'missing', status: 'Failed' }));
+      expect(doc.operations.global[0].error).toContain('Publish record not found');
+    });
+  });
 });
