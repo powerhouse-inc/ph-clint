@@ -116,7 +116,7 @@ export const cli = defineCli({
 // @clint:begin reactor
 cli.configureReactor({
   create: (ctx) => buildDefaultReactor(ctx, {
-    documentModels,
+    documentModels: [...documentModels],
     drives: [
       { name: 'Clint Folders', role: 'personal', id: deterministicId(CLI_NAME, 'personal-drive') },
     ],
