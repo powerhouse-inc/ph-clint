@@ -113,5 +113,61 @@ describe('MastraProfilesOperations', () => {
       const op = doc.operations.global[doc.operations.global.length - 1];
       expect(op.error).toContain('Profile not found');
     });
+
+    it('rejects an unknown insertBefore', () => {
+      let doc = enabled();
+      doc = reducer(doc, addProfile({ id: 'tools', title: 'T', content: '' }));
+      doc = reducer(doc, reorderProfiles({ ids: ['tools'], insertBefore: 'missing' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('not found');
+    });
+  });
+
+  describe('UPDATE_PROFILE extra branches', () => {
+    it('updates content only when title is omitted', () => {
+      let doc = enabled();
+      doc = reducer(doc, updateProfile({ id: 'base', content: 'New content.' }));
+      const profile = doc.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
+      expect(profile.content).toBe('New content.');
+      expect(profile.title).toBe('Base Profile');
+    });
+
+    it('updates both title and content', () => {
+      let doc = enabled();
+      doc = reducer(doc, updateProfile({ id: 'base', title: 'New Title', content: 'New content.' }));
+      const profile = doc.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
+      expect(profile.title).toBe('New Title');
+      expect(profile.content).toBe('New content.');
+    });
+  });
+
+  describe('REMOVE_PROFILE extra branches', () => {
+    it('rejects when the profile does not exist', () => {
+      const doc = reducer(enabled(), removeProfile({ id: 'missing' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('not found');
+    });
+  });
+
+  describe('rejects every profile op when Mastra is disabled', () => {
+    it('ADD_PROFILE', () => {
+      const doc = reducer(utils.createDocument(), addProfile({ id: 'tools', title: 'T', content: '' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('UPDATE_PROFILE', () => {
+      const doc = reducer(utils.createDocument(), updateProfile({ id: 'base', title: 'x' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('REMOVE_PROFILE', () => {
+      const doc = reducer(utils.createDocument(), removeProfile({ id: 'base' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('REORDER_PROFILES', () => {
+      const doc = reducer(utils.createDocument(), reorderProfiles({ ids: ['base'], insertBefore: null }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { addPowerhousePackage, disableMastra, enableMastra, reducer, setEnableChat, setPowerhouseLevel, utils, type PhClintProjectDocument } from 'document-models/ph-clint-project/v1';
+import { addPackageDocumentType, addPowerhousePackage, disableMastra, enableMastra, reducer, setEnableChat, setPowerhouseLevel, utils, type PhClintProjectDocument } from 'document-models/ph-clint-project/v1';
 import { describe, expect, it } from 'vitest';
 
 /** Helper: enabled doc with mastra on. */
@@ -125,6 +125,24 @@ describe('FeaturesMastraOperations', () => {
       doc = reducer(doc, setEnableChat({ enabled: false }));
       expect(doc.state.global.packages.find((p) => p.packageName === '@powerhousedao/clint-common')).toBeUndefined();
       expect(doc.state.global.features.mastra.common.enableChat).toBe(false);
+    });
+
+    it('on disable, keeps a managed clint-common package but drops only the chat-session doc type when it has others', () => {
+      let doc = enabledWithPowerhouse();
+      doc = reducer(doc, setEnableChat({ enabled: true }));
+      // Add an extra managed doc type so the package is not removed wholesale on disable.
+      doc = reducer(
+        doc,
+        addPackageDocumentType({
+          packageId: 'pkg-clint-common',
+          documentType: 'powerhouse/document-drive',
+        }),
+      );
+      doc = reducer(doc, setEnableChat({ enabled: false }));
+      const pkg = doc.state.global.packages.find((p) => p.packageName === '@powerhousedao/clint-common')!;
+      expect(pkg).toBeDefined();
+      expect(pkg.documentTypes).toEqual(['powerhouse/document-drive']);
+      expect(pkg.documentTypes).not.toContain('powerhouse/chat-session');
     });
   });
 });

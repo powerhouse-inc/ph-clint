@@ -45,6 +45,11 @@ describe('MastraMainAgentOperations', () => {
       doc = reducer(doc, clearMainAgentDescription({ _: true }));
       expect(doc.state.global.features.mastra.mainAgent!.description).toBeNull();
     });
+
+    it('rejects when mastra is disabled', () => {
+      const doc = reducer(utils.createDocument(), clearMainAgentDescription({ _: true }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
   });
 
   describe('SET_MAIN_AGENT_IMAGE', () => {
@@ -71,6 +76,11 @@ describe('MastraMainAgentOperations', () => {
       let doc = reducer(enabled(), setMainAgentImage({ attachment: ATTACHMENT_REF }));
       doc = reducer(doc, clearMainAgentImage({ _: true }));
       expect(doc.state.global.features.mastra.mainAgent!.attachment).toBeNull();
+    });
+
+    it('rejects when mastra is disabled', () => {
+      const doc = reducer(utils.createDocument(), clearMainAgentImage({ _: true }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
     });
   });
 });

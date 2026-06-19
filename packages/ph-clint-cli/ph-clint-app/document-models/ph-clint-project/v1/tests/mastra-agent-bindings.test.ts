@@ -231,4 +231,123 @@ describe('MastraAgentBindingsOperations', () => {
       expect(op.error).toContain('not on agent');
     });
   });
+
+  describe('rejects every binding op when Mastra is disabled', () => {
+    it('SET_AGENT_MODEL', () => {
+      const doc = reducer(utils.createDocument(), setAgentModel({ agentId: 'main', modelId: 'openai/gpt-4o' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('ADD_AGENT_PROFILE_REF', () => {
+      const doc = reducer(utils.createDocument(), addAgentProfileRef({ agentId: 'main', profileId: 'base' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('REMOVE_AGENT_PROFILE_REF', () => {
+      const doc = reducer(utils.createDocument(), removeAgentProfileRef({ agentId: 'main', profileId: 'base' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('REORDER_AGENT_PROFILE_REFS', () => {
+      const doc = reducer(utils.createDocument(), reorderAgentProfileRefs({ agentId: 'main', ids: ['base'], insertBefore: null }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('ADD_AGENT_SKILL', () => {
+      const doc = reducer(utils.createDocument(), addAgentSkill({ agentId: 'main', name: 'a-skill' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('REMOVE_AGENT_SKILL', () => {
+      const doc = reducer(utils.createDocument(), removeAgentSkill({ agentId: 'main', name: 'a-skill' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('ADD_AGENT_TOOL_PATTERN', () => {
+      const doc = reducer(utils.createDocument(), addAgentToolPattern({ agentId: 'main', pattern: '*-mcp__*' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('REMOVE_AGENT_TOOL_PATTERN', () => {
+      const doc = reducer(utils.createDocument(), removeAgentToolPattern({ agentId: 'main', pattern: '*-mcp__*' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+  });
+
+  describe('agent-not-found across binding ops', () => {
+    it('ADD_AGENT_PROFILE_REF rejects unknown agentId', () => {
+      const doc = reducer(setup(), addAgentProfileRef({ agentId: 'missing', profileId: 'base' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('Agent not found');
+    });
+
+    it('REMOVE_AGENT_PROFILE_REF rejects unknown agentId', () => {
+      const doc = reducer(setup(), removeAgentProfileRef({ agentId: 'missing', profileId: 'base' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('Agent not found');
+    });
+
+    it('REORDER_AGENT_PROFILE_REFS rejects unknown agentId', () => {
+      const doc = reducer(setup(), reorderAgentProfileRefs({ agentId: 'missing', ids: ['base'], insertBefore: null }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('Agent not found');
+    });
+
+    it('ADD_AGENT_SKILL rejects unknown agentId', () => {
+      const doc = reducer(setup(), addAgentSkill({ agentId: 'missing', name: 'a-skill' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('Agent not found');
+    });
+
+    it('REMOVE_AGENT_SKILL rejects unknown agentId', () => {
+      const doc = reducer(setup(), removeAgentSkill({ agentId: 'missing', name: 'a-skill' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('Agent not found');
+    });
+
+    it('ADD_AGENT_TOOL_PATTERN rejects unknown agentId', () => {
+      const doc = reducer(setup(), addAgentToolPattern({ agentId: 'missing', pattern: '*-mcp__*' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('Agent not found');
+    });
+
+    it('REMOVE_AGENT_TOOL_PATTERN rejects unknown agentId', () => {
+      const doc = reducer(setup(), removeAgentToolPattern({ agentId: 'missing', pattern: '*-mcp__*' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('Agent not found');
+    });
+  });
+
+  describe('ADD_AGENT_PROFILE_REF insertBefore edge cases', () => {
+    it('rejects when insertBefore ref is not in the agent profileIds', () => {
+      let doc = setup();
+      doc = reducer(
+        doc,
+        addAgentProfileRef({
+          agentId: 'main',
+          profileId: 'tools',
+          insertBefore: 'style',
+        }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("insertBefore profile not in agent's profileIds");
+    });
+  });
+
+  describe('REORDER_AGENT_PROFILE_REFS insertBefore edge cases', () => {
+    it('rejects when insertBefore is not among the remaining refs', () => {
+      let doc = setup();
+      doc = reducer(doc, addAgentProfileRef({ agentId: 'main', profileId: 'tools' }));
+      doc = reducer(
+        doc,
+        reorderAgentProfileRefs({
+          agentId: 'main',
+          ids: ['base'],
+          insertBefore: 'base',
+        }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain("insertBefore profile not in agent's profileIds");
+    });
+  });
 });

@@ -206,4 +206,45 @@ describe('MastraSubAgentsOperations', () => {
       expect(op.error).toContain('not found');
     });
   });
+
+  describe('ADD_SUB_AGENT extra branches', () => {
+    it('rejects when the name is empty after trim', () => {
+      const doc = reducer(
+        enabledWithExtraModel(),
+        addSubAgent({
+          id: 'sub',
+          name: '   ',
+          description: 'x',
+          modelId: 'openai/gpt-4o',
+        }),
+      );
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('must not be empty');
+    });
+  });
+
+  describe('SET_SUB_AGENT_NAME extra branches', () => {
+    it('rejects when the sub-agent does not exist', () => {
+      const doc = reducer(enabledWithExtraModel(), setSubAgentName({ id: 'missing', name: 'Renamed' }));
+      const op = doc.operations.global[doc.operations.global.length - 1];
+      expect(op.error).toContain('not found');
+    });
+  });
+
+  describe('rejects mutating ops when Mastra is disabled', () => {
+    it('REMOVE_SUB_AGENT', () => {
+      const doc = reducer(utils.createDocument(), removeSubAgent({ id: 'sub' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('SET_SUB_AGENT_NAME', () => {
+      const doc = reducer(utils.createDocument(), setSubAgentName({ id: 'sub', name: 'Renamed' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+
+    it('SET_SUB_AGENT_DESCRIPTION', () => {
+      const doc = reducer(utils.createDocument(), setSubAgentDescription({ id: 'sub', description: 'x' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
+  });
 });

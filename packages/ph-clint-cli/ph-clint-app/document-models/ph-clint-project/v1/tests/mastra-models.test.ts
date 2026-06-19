@@ -75,5 +75,10 @@ describe('MastraModelsOperations', () => {
       const op = doc.operations.global[doc.operations.global.length - 1];
       expect(op.error).toContain('Model not found');
     });
+
+    it('rejects when mastra is disabled', () => {
+      const doc = reducer(utils.createDocument(), removeModel({ id: 'clint/demo-agent' }));
+      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
+    });
   });
 });
