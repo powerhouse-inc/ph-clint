@@ -15,7 +15,7 @@ export const Conversation = ({ className, ...props }: ConversationProps) => <Sti
 
 export type ConversationContentProps = ComponentProps<typeof StickToBottom.Content>;
 
-export const ConversationContent = ({ className, ...props }: ConversationContentProps) => <StickToBottom.Content className={cn('flex flex-col gap-8 p-4', className)} {...props} />;
+export const ConversationContent = ({ className, ...props }: ConversationContentProps) => <StickToBottom.Content className={cn('flex flex-col p-4', className)} {...props} />;
 
 export type ConversationEmptyStateProps = ComponentProps<'div'> & {
   title?: string;

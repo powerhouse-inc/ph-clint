@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { Reasoning, ReasoningTrigger, ReasoningContent } from './ai-elements/reasoning.js';
 import { Tool, ToolHeader, ToolContent, ToolInput, ToolOutput } from './ai-elements/tool.js';
 import { MessageResponse } from './ai-elements/message.js';
+import { useToolRenderer, type ToolRenderProps } from './tool-rendering.js';
 import { AlertTriangleIcon, DownloadIcon, FileIcon, ImageIcon } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
@@ -85,10 +86,10 @@ export function ContentPartRenderer({ part, linkedResult }: ContentPartRendererP
       );
 
     case 'TOOL_CALL':
-      return <ToolCallRenderer part={part} linkedResult={linkedResult} />;
+      return <ResolvedToolRenderer {...buildToolCallProps(part, linkedResult)} />;
 
     case 'TOOL_RESULT':
-      return <ToolResultRenderer part={part} />;
+      return <ResolvedToolRenderer {...buildToolResultProps(part)} />;
 
     case 'IMAGE':
       return <ImagePartRenderer part={part} />;
@@ -131,55 +132,74 @@ function getToolPreview(args: string | null | undefined, result: string | null |
   return parts.length > 0 ? parts.join(' ') : undefined;
 }
 
-function ToolCallRenderer({ part, linkedResult }: { part: ContentPart; linkedResult?: ContentPart }) {
-  let parsedArgs: unknown = undefined;
-  if (part.args) {
-    try {
-      parsedArgs = JSON.parse(part.args);
-    } catch {
-      parsedArgs = part.args;
-    }
+function parseMaybeJson(raw: string | null | undefined): unknown {
+  if (raw == null) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
   }
+}
 
-  let parsedResult: unknown = undefined;
-  if (linkedResult?.result) {
-    try {
-      parsedResult = JSON.parse(linkedResult.result);
-    } catch {
-      parsedResult = linkedResult.result;
-    }
-  }
-
+function buildToolCallProps(part: ContentPart, linkedResult?: ContentPart): ToolRenderProps {
   const hasResult = !!linkedResult;
   const isError = linkedResult?.isError ?? false;
-  const preview = getToolPreview(part.args, linkedResult?.result, isError);
+  return {
+    toolName: part.toolName ?? 'unknown',
+    args: parseMaybeJson(part.args),
+    result: linkedResult ? parseMaybeJson(linkedResult.result) : undefined,
+    isError,
+    hasResult,
+    state: isError ? 'output-error' : hasResult ? 'output-available' : 'input-available',
+    callPart: part,
+    resultPart: linkedResult,
+    Default: BuiltinToolRenderer,
+  };
+}
+
+function buildToolResultProps(part: ContentPart): ToolRenderProps {
+  const isError = part.isError ?? false;
+  return {
+    toolName: part.toolName ?? 'unknown',
+    args: undefined,
+    result: parseMaybeJson(part.result),
+    isError,
+    hasResult: true,
+    state: isError ? 'output-error' : 'output-available',
+    callPart: undefined,
+    resultPart: part,
+    Default: BuiltinToolRenderer,
+  };
+}
+
+/** Renders a custom tool renderer when one is registered for the tool, else the built-in UI. */
+function ResolvedToolRenderer(props: ToolRenderProps) {
+  const Custom = useToolRenderer(props.toolName);
+  const Renderer = Custom ?? props.Default;
+  return <Renderer {...props} />;
+}
+
+function BuiltinToolRenderer({ args, result, isError, hasResult, state, callPart, resultPart }: ToolRenderProps) {
+  // Standalone tool result (a TOOL-role message with no preceding call).
+  if (!callPart) {
+    return (
+      <Tool>
+        <ToolHeader type="dynamic-tool" toolName={resultPart?.toolName ?? 'unknown'} title={`${resultPart?.toolName ?? 'Tool'} result`} state={state} />
+        <ToolContent>
+          <ToolOutput output={result} errorText={isError ? (resultPart?.result ?? 'Error') : undefined} />
+        </ToolContent>
+      </Tool>
+    );
+  }
+
+  const preview = getToolPreview(callPart.args, resultPart?.result, isError);
 
   return (
     <Tool className={cn(hasResult && (isError ? 'border-red-300 dark:border-red-800' : 'border-green-300 dark:border-green-800'))}>
-      <ToolHeader type="dynamic-tool" toolName={part.toolName ?? 'unknown'} title={part.toolName ?? 'Tool Call'} state={isError ? 'output-error' : hasResult ? 'output-available' : 'input-available'} preview={preview} />
+      <ToolHeader type="dynamic-tool" toolName={callPart.toolName ?? 'unknown'} title={callPart.toolName ?? 'Tool Call'} state={state} preview={preview} />
       <ToolContent>
-        {parsedArgs !== undefined && <ToolInput input={parsedArgs} />}
-        {hasResult && <ToolOutput output={parsedResult} errorText={isError ? (linkedResult.result ?? 'Error') : undefined} />}
-      </ToolContent>
-    </Tool>
-  );
-}
-
-function ToolResultRenderer({ part }: { part: ContentPart }) {
-  let parsedResult: unknown = undefined;
-  if (part.result) {
-    try {
-      parsedResult = JSON.parse(part.result);
-    } catch {
-      parsedResult = part.result;
-    }
-  }
-
-  return (
-    <Tool>
-      <ToolHeader type="dynamic-tool" toolName={part.toolName ?? 'unknown'} title={`${part.toolName ?? 'Tool'} result`} state={part.isError ? 'output-error' : 'output-available'} />
-      <ToolContent>
-        <ToolOutput output={parsedResult} errorText={part.isError ? (part.result ?? 'Error') : undefined} />
+        {args !== undefined && <ToolInput input={args} />}
+        {hasResult && <ToolOutput output={result} errorText={isError ? (resultPart?.result ?? 'Error') : undefined} />}
       </ToolContent>
     </Tool>
   );

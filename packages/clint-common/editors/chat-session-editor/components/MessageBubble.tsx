@@ -2,25 +2,34 @@ import type { Message as MessageType, ContentPart } from 'document-models/chat-s
 import { Message, MessageContent } from './ai-elements/message.js';
 import { ContentPartRenderer } from './ContentPartRenderer.js';
 import { BotIcon, UserIcon, TerminalIcon, ShieldIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface MessageBubbleProps {
   message: MessageType;
   toolResultMap: Map<string, ContentPart>;
+  /** Show the assistant/tool avatar — only the first message of an assistant turn. */
+  showAvatar?: boolean;
 }
 
-export function MessageBubble({ message, toolResultMap }: MessageBubbleProps) {
+export function MessageBubble({ message, toolResultMap, showAvatar = true }: MessageBubbleProps) {
   switch (message.role) {
     case 'SYSTEM':
       return <SystemMessageBanner message={message} />;
     case 'USER':
       return <UserMessage message={message} />;
     case 'ASSISTANT':
-      return <AssistantMessage message={message} toolResultMap={toolResultMap} />;
+      return <AssistantMessage message={message} toolResultMap={toolResultMap} showAvatar={showAvatar} />;
     case 'TOOL':
-      return <ToolMessage message={message} />;
+      return <ToolMessage message={message} showAvatar={showAvatar} />;
     default:
       return null;
   }
+}
+
+/** Avatar circle, or an equal-width spacer so turn content stays aligned. */
+function AvatarSlot({ show, className, children }: { show: boolean; className: string; children: ReactNode }) {
+  if (!show) return <div className="size-7 shrink-0" aria-hidden />;
+  return <div className={className}>{children}</div>;
 }
 
 function SystemMessageBanner({ message }: { message: MessageType }) {
@@ -54,13 +63,13 @@ function UserMessage({ message }: { message: MessageType }) {
   );
 }
 
-function AssistantMessage({ message, toolResultMap }: { message: MessageType; toolResultMap: Map<string, ContentPart> }) {
+function AssistantMessage({ message, toolResultMap, showAvatar }: { message: MessageType; toolResultMap: Map<string, ContentPart>; showAvatar: boolean }) {
   return (
     <Message from="assistant">
       <div className="flex items-start gap-2">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+        <AvatarSlot show={showAvatar} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
           <BotIcon className="size-3.5" />
-        </div>
+        </AvatarSlot>
         <MessageContent>
           {message.content.map((part) => {
             const linkedResult = part.type === 'TOOL_CALL' && part.toolCallId ? toolResultMap.get(part.toolCallId) : undefined;
@@ -82,13 +91,13 @@ function AssistantMessage({ message, toolResultMap }: { message: MessageType; to
   );
 }
 
-function ToolMessage({ message }: { message: MessageType }) {
+function ToolMessage({ message, showAvatar }: { message: MessageType; showAvatar: boolean }) {
   return (
     <Message from="assistant">
       <div className="flex items-start gap-2">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
+        <AvatarSlot show={showAvatar} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
           <TerminalIcon className="size-3.5" />
-        </div>
+        </AvatarSlot>
         <MessageContent>
           {message.content.map((part) => (
             <ContentPartRenderer key={part.id} part={part} />

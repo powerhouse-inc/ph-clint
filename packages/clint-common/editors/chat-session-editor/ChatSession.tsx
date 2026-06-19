@@ -7,6 +7,7 @@ import { PaperclipIcon } from 'lucide-react';
 import { AgentInfoHeader, type AgentAvatarProps } from './components/AgentInfoHeader.js';
 import { ChatInputBar } from './components/ChatInputBar.js';
 import { AttachmentServiceProvider } from './components/ContentPartRenderer.js';
+import { ToolRenderersProvider, type ToolRenderers } from './components/tool-rendering.js';
 import { ConversationView } from './components/ConversationView.js';
 import { SessionStatusBar } from './components/SessionStatusBar.js';
 import { TestPane } from './components/test-pane/TestPane.js';
@@ -24,13 +25,16 @@ export type ChatSessionProps = {
   header?: ReactNode;
   /** Override the agent avatar in the info header (e.g. an animated logo). */
   agentAvatar?: ComponentType<AgentAvatarProps>;
+  /** Custom renderers for agent tool calls/results, keyed by tool name (or a
+   *  resolver function). Tools without a match use the built-in tool UI. */
+  toolRenderers?: ToolRenderers;
 };
 
 /** How long to keep the responding state lit after trailing assistant text
  *  stops growing, so the final streamed answer animates to its end. */
 const RESPONDING_GRACE_MS = 1000;
 
-export function ChatSession({ document, dispatch, attachments, className, header, agentAvatar }: ChatSessionProps) {
+export function ChatSession({ document, dispatch, attachments, className, header, agentAvatar, toolRenderers }: ChatSessionProps) {
   const [showTestPane, setShowTestPane] = useState(false);
 
   const state = document.state.global;
@@ -160,33 +164,35 @@ export function ChatSession({ document, dispatch, attachments, className, header
 
   return (
     <AttachmentServiceProvider service={attachments}>
-      <div className={cn('clint-chat-root flex h-full w-full flex-col overflow-hidden bg-background text-foreground', className)} onDragOver={onDragOver} onDrop={onDrop} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
-        {header}
-        <div className="relative flex flex-1 overflow-hidden">
-          {isDragOver && (
-            <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/40">
-              <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-primary/60 bg-background/90 px-10 py-8 shadow-lg">
-                <PaperclipIcon className="size-10 text-primary" />
-                <p className="text-base font-medium text-foreground">Drop files to attach</p>
-                <p className="text-sm text-muted-foreground">Files will be added to your message</p>
+      <ToolRenderersProvider renderers={toolRenderers}>
+        <div className={cn('clint-chat-root flex h-full w-full flex-col overflow-hidden bg-background text-foreground', className)} onDragOver={onDragOver} onDrop={onDrop} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
+          {header}
+          <div className="relative flex flex-1 overflow-hidden">
+            {isDragOver && (
+              <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-primary/60 bg-background/90 px-10 py-8 shadow-lg">
+                  <PaperclipIcon className="size-10 text-primary" />
+                  <p className="text-base font-medium text-foreground">Drop files to attach</p>
+                  <p className="text-sm text-muted-foreground">Files will be added to your message</p>
+                </div>
               </div>
+            )}
+            <div className="flex flex-1 flex-col min-w-0">
+              <AgentInfoHeader agent={state.agent} responding={responding} avatar={agentAvatar} />
+              <ConversationView messages={state.messages} />
+              <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={responding} addFilesRef={addFilesRef} />
+              {/* Test pane has no visible toggle; Ctrl/Cmd+Shift+T opens it for development. */}
+              <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length} />
             </div>
-          )}
-          <div className="flex flex-1 flex-col min-w-0">
-            <AgentInfoHeader agent={state.agent} responding={responding} avatar={agentAvatar} />
-            <ConversationView messages={state.messages} />
-            <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={responding} addFilesRef={addFilesRef} />
-            {/* Test pane has no visible toggle; Ctrl/Cmd+Shift+T opens it for development. */}
-            <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length} />
-          </div>
 
-          {showTestPane && (
-            <div className="w-[380px] shrink-0 overflow-hidden">
-              <TestPane dispatch={dispatch} />
-            </div>
-          )}
+            {showTestPane && (
+              <div className="w-[380px] shrink-0 overflow-hidden">
+                <TestPane dispatch={dispatch} />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </ToolRenderersProvider>
     </AttachmentServiceProvider>
   );
 }
