@@ -2,8 +2,9 @@
  * WARNING: DO NOT EDIT
  * This file is auto-generated and updated by codegen
  */
-import type { DocumentModelUtils } from 'document-model';
-import { baseCreateDocument, baseLoadFromInput, baseSaveToFileHandle, defaultBaseState, generateId } from 'document-model';
+import type { DocumentModelUtils, PHBaseState, Reducer } from 'document-model';
+import { baseCreateDocument, baseLoadFromInputVersioned, baseSaveToFileHandle, defaultBaseState } from 'document-model';
+import { phClintProjectUpgradeManifest } from '../../upgrades/upgrade-manifest.js';
 import { assertIsPhClintProjectDocument, assertIsPhClintProjectState, isPhClintProjectDocument, isPhClintProjectState } from './document-schema.js';
 import { phClintProjectDocumentType } from './document-type.js';
 import { reducer } from './reducer.js';
@@ -47,20 +48,16 @@ export const utils: DocumentModelUtils<PhClintProjectPHState> = {
     };
   },
   createDocument(state) {
-    const document = baseCreateDocument(utils.createState, state);
-
-    document.header.documentType = phClintProjectDocumentType;
-
-    // for backwards compatibility, but this is NOT a valid signed document id
-    document.header.id = generateId();
-
-    return document;
+    return baseCreateDocument(utils.createState, state, phClintProjectDocumentType);
   },
   saveToFileHandle(document, input) {
     return baseSaveToFileHandle(document, input);
   },
   loadFromInput(input) {
-    return baseLoadFromInput(input, reducer);
+    return baseLoadFromInputVersioned(input, {
+      reducers: { 1: reducer as unknown as Reducer<PHBaseState> },
+      upgradeManifest: phClintProjectUpgradeManifest,
+    });
   },
   isStateOfType(state) {
     return isPhClintProjectState(state);
