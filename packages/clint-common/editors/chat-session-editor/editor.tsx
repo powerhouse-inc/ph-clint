@@ -7,6 +7,7 @@ import { ChatSession } from './ChatSession.js';
 
 export { ChatSession } from './ChatSession.js';
 export type { ChatSessionProps } from './ChatSession.js';
+export type { ToolRenderProps, ToolRenderer, ToolRenderers, ToolRenderState } from './components/tool-rendering.js';
 
 export default function Editor() {
   const [document, dispatch] = useSelectedChatSessionDocument();
