@@ -1289,6 +1289,10 @@ export function defineCli<
       proxyInstance,
       enableSwitchboard: !noApiFlag,
       enableConnect: !noStudioFlag,
+      attachmentJwtHandler: options.attachmentJwtHandler?.({
+        workdir,
+        config: typedConfig,
+      }),
       skillIds,
       resolvedSkills,
       prompts: options.prompts,

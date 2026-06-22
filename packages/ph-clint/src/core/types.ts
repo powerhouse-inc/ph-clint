@@ -1007,6 +1007,19 @@ export interface CliOptions<
   /** Schema for sensitive config values. Merged into configSchema internally; values are censored in output. */
   secretsSchema?: TSecrets;
   interactive?: InteractiveConfig<z.infer<TSchema> & z.infer<TSecrets>>;
+  /**
+   * Builds the bearer-token handler for the embedded switchboard's HTTP
+   * attachment routes (`/attachments/*`). Called once after config resolves,
+   * with the workdir + resolved config; the returned handler mints a token per
+   * call (or undefined when none is available). The framework has no identity
+   * of its own, so the host CLI supplies this — without it, attachment
+   * reservations against an auth-enabled switchboard are unauthenticated and
+   * rejected (401).
+   */
+  attachmentJwtHandler?: (ctx: {
+    workdir: string;
+    config: z.infer<TSchema> & z.infer<TSecrets>;
+  }) => ((url: string) => Promise<string | undefined>) | undefined;
   triggers?: Trigger<any, any, any>[];
   routine?: RoutineConfig;
   /** Service definitions for the ServiceManager. */

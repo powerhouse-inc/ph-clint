@@ -51,6 +51,13 @@ export interface CliRuntimeDeps {
    * ReactorSetupContext so the create() factory can place it on ReactorContext.
    */
   attachments?: IAttachmentService;
+  /**
+   * Mints the bearer token for the embedded switchboard's HTTP attachment
+   * routes. Passed to the default `createRemoteAttachmentService` below so
+   * reservation/upload calls authenticate against an auth-enabled switchboard.
+   * Supplied by the host CLI (the framework has no identity of its own).
+   */
+  attachmentJwtHandler?: (url: string) => Promise<string | undefined>;
   agentLoader?: AgentLoader;
   /** The routine object. Used for capability wiring and teardown. */
   routine?: Routine;
@@ -165,10 +172,13 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
 
     // Resolve attachment:// refs through the local switchboard. The
     // /attachments/* routes mount at the host root, so use the origin.
-    // Skip if a service was injected externally.
+    // The jwtHandler authenticates reservation/upload calls when the
+    // switchboard has auth enabled (otherwise they 401). Skip if a service
+    // was injected externally.
     if (!cachedReactor.attachments) {
       cachedReactor.attachments = createRemoteAttachmentService({
         remoteUrl: new URL(switchboardInstance.switchboardUrl).origin,
+        jwtHandler: deps.attachmentJwtHandler,
       });
     }
 
