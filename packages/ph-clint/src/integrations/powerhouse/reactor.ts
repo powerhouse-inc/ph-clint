@@ -50,16 +50,6 @@ export interface BuildReactorOptions {
 }
 
 /**
- * Dynamically import a module, wrapping the import() to prevent
- * TypeScript from resolving peer dependency types at compile time.
- */
-async function lazyImport<T = Record<string, unknown>>(
-  specifier: string,
-): Promise<T> {
-  return import(/* webpackIgnore: true */ specifier) as Promise<T>;
-}
-
-/**
  * Build a ReactorClientModule with persistent PGlite storage.
  *
  * All imports are lazy — @powerhousedao/reactor and @electric-sql/pglite
@@ -76,16 +66,21 @@ export async function buildReactor(
   const { mkdir } = await import('node:fs/promises');
   await mkdir(options.storagePath, { recursive: true });
 
-  const reactor = await lazyImport<Record<string, unknown>>(
-    '@powerhousedao/reactor',
-  );
-  const pgliteMod = await lazyImport<Record<string, unknown>>(
-    '@electric-sql/pglite',
-  );
-  const kyselyMod = await lazyImport<Record<string, unknown>>('kysely');
-  const dialectMod = await lazyImport<Record<string, unknown>>(
-    'kysely-pglite-dialect',
-  );
+  const reactor = (await import('@powerhousedao/reactor')) as unknown as Record<
+    string,
+    unknown
+  >;
+  const pgliteMod = (await import('@electric-sql/pglite')) as unknown as Record<
+    string,
+    unknown
+  >;
+  const kyselyMod = (await import('kysely')) as unknown as Record<
+    string,
+    unknown
+  >;
+  const dialectMod = (await import(
+    'kysely-pglite-dialect'
+  )) as unknown as Record<string, unknown>;
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- dynamic peer dep
   const ReactorBuilder = reactor.ReactorBuilder as new () => ReactorBuilderLike;
@@ -114,21 +109,22 @@ export async function buildReactor(
     // its kysely to switchboard yet, so that subgraph stays disabled. See
     // `createReactorDriveProjection` in `@powerhousedao/switchboard/server`
     // for adding it later.
-    const sw = await lazyImport<SwitchboardServerEntry>(
-      '@powerhousedao/switchboard/server',
-    );
+    const sw = (await import(
+      '@powerhousedao/switchboard/server'
+    )) as unknown as SwitchboardServerEntry;
     sw.applySwitchboardReactorDefaults(reactorBuilder, clientBuilder, {
       documentModels: options.documentModels,
       signalHandlers: false,
     });
   } else {
     // Standalone reactor: register only the document models ph-clint needs.
-    const sharedMod = await lazyImport<Record<string, unknown>>(
-      '@powerhousedao/shared/document-drive',
-    );
-    const docModelMod = await lazyImport<Record<string, unknown>>(
-      'document-model',
-    );
+    const sharedMod = (await import(
+      '@powerhousedao/shared/document-drive'
+    )) as unknown as Record<string, unknown>;
+    const docModelMod = (await import('document-model')) as unknown as Record<
+      string,
+      unknown
+    >;
     const driveDocumentModelModule =
       sharedMod.driveDocumentModelModule as DocumentModelModule;
     const documentModelDocumentModelModule =

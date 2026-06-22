@@ -27,16 +27,6 @@ export interface StartSwitchboardOptions {
   registryUrl?: string;
 }
 
-/**
- * Dynamically import a module, wrapping the import() to prevent
- * TypeScript from resolving peer dependency types at compile time.
- */
-async function lazyImport<T = Record<string, unknown>>(
-  specifier: string,
-): Promise<T> {
-  return import(/* webpackIgnore: true */ specifier) as Promise<T>;
-}
-
 interface SwitchboardHandle {
   shutdown: () => Promise<void>;
 }
@@ -92,10 +82,9 @@ interface StartSwitchboardEntry {
 export async function startSwitchboard(
   options: StartSwitchboardOptions,
 ): Promise<SwitchboardInstance> {
-  const { startSwitchboard: startSwitchboardImpl } =
-    await lazyImport<StartSwitchboardEntry>(
-      '@powerhousedao/switchboard/server',
-    );
+  const { startSwitchboard: startSwitchboardImpl } = (await import(
+    '@powerhousedao/switchboard/server'
+  )) as unknown as StartSwitchboardEntry;
 
   const handle = await startSwitchboardImpl({
     reactor: options.reactorModule,
