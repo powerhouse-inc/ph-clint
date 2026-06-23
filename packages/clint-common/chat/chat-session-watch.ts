@@ -11,7 +11,7 @@
  * 5. Stream agent response, writing each chunk back to the document
  * 6. On agent failure, append an assistant ERROR message to close the turn
  */
-import { createDocumentChangeTrigger, type AgentContentPart, type TriggerContext } from '@powerhousedao/ph-clint';
+import { createDocumentChangeTrigger, type AgentContentPart, type TriggerContext, type Logger } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
 import { writeAgentStreamToDocument, RetryableStreamError } from './chat-bridge.js';
 import { extractAttachments } from './extract-attachments.js';
@@ -78,6 +78,38 @@ function ensureInterruptListener(ctx: TriggerContext<{ pending: number }, Record
   });
 }
 
+/** Ensures the document-created listener is registered once. */
+let creationListenerRegistered = false;
+
+// Init a chat session on creation so the agent header shows on open: creation
+// fires powerhouse:document:created, which the change-trigger does not observe.
+function ensureCreationListener(ctx: TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>): void {
+  if (creationListenerRegistered) return;
+  const on = ctx.context.on;
+  if (!on) return;
+  creationListenerRegistered = true;
+  const log = ctx.context.log;
+
+  on('powerhouse:document:created', (payload) => {
+    if (payload.documentType !== DOCUMENT_TYPE) return;
+    void initCreatedSession(ctx, payload.documentId, log);
+  });
+}
+
+async function initCreatedSession(ctx: TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>, documentId: string, log?: Logger): Promise<void> {
+  try {
+    const reactor = await ctx.reactor();
+    const agent = await ctx.agent();
+    if (!reactor || !agent) return;
+    const doc = await reactor.client.get<'powerhouse/chat-session'>(documentId);
+    const state = doc.state.global;
+    if (state.status === 'COMPLETED' || state.status === 'ABORTED' || state.status === 'ERROR') return;
+    await ensureSessionInitialized(reactor, documentId, state, agent, log);
+  } catch (err) {
+    log?.error(`${TAG} init on create failed for ${documentId}:`, err);
+  }
+}
+
 export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRegistry, 'powerhouse/chat-session'>({
   id: 'chat-session-watch',
   documentType: DOCUMENT_TYPE,
@@ -93,6 +125,7 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
     }
 
     ensureInterruptListener(ctx);
+    ensureCreationListener(ctx);
 
     for (const doc of docs) {
       const documentId = doc.header.id;
@@ -101,6 +134,17 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
 
       // Guard: skip completed/aborted/error sessions
       if (status === 'COMPLETED' || status === 'ABORTED' || status === 'ERROR') {
+        continue;
+      }
+
+      // Eager init: populate the agent header (name + avatar) as soon as the
+      // session exists. Idempotent; the START_SESSION write re-triggers us.
+      if (!state.threadId) {
+        try {
+          await ensureSessionInitialized(reactor, documentId, state, agent, log);
+        } catch (err) {
+          log?.error(`${TAG} eager session init failed for ${documentId}:`, err);
+        }
         continue;
       }
 
