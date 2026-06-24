@@ -1,14 +1,17 @@
 import type { Message as MessageType, ContentPart } from 'document-models/chat-session';
 import { Conversation, ConversationContent, ConversationScrollButton, ConversationEmptyState } from './ai-elements/conversation.js';
 import { MessageBubble } from './MessageBubble.js';
+import { TypingIndicator } from './TypingIndicator.js';
 import { MessageSquareIcon } from 'lucide-react';
 import { useMemo } from 'react';
 
 interface ConversationViewProps {
   messages: MessageType[];
+  /** Agent is mid-turn (drives the typing indicator). */
+  responding?: boolean;
 }
 
-export function ConversationView({ messages }: ConversationViewProps) {
+export function ConversationView({ messages, responding = false }: ConversationViewProps) {
   const toolResultMap = useMemo(() => {
     const map = new Map<string, ContentPart>();
     for (const msg of messages) {
@@ -41,6 +44,30 @@ export function ConversationView({ messages }: ConversationViewProps) {
     return visible;
   }, [messages]);
 
+  // Show the typing indicator while the agent is working but the current turn
+  // hasn't produced reply text yet. Once any assistant prose appears after the
+  // last user message, the streaming message itself replaces the dots and they
+  // don't return for the rest of the turn.
+  const showTyping = useMemo(() => {
+    if (!responding) return false;
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'USER') {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    for (let i = lastUserIdx + 1; i < messages.length; i++) {
+      const msg = messages[i];
+      if (msg.role === 'ASSISTANT' && msg.content.some((p) => p.type === 'TEXT' && p.text && p.text.trim())) {
+        return false;
+      }
+    }
+    return true;
+  }, [messages, responding]);
+
+  const lastVisible = visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1] : undefined;
+
   return (
     <Conversation className="flex-1">
       <ConversationContent className="mx-auto max-w-[1100px]">
@@ -64,6 +91,11 @@ export function ConversationView({ messages }: ConversationViewProps) {
               </div>
             );
           })
+        )}
+        {showTyping && (
+          <div className={!lastVisible ? undefined : lastVisible.role === 'USER' ? 'mt-8' : 'mt-2'}>
+            <TypingIndicator showAvatar={!lastVisible || lastVisible.role === 'USER'} />
+          </div>
         )}
       </ConversationContent>
       <ConversationScrollButton />
