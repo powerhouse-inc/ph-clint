@@ -1,4 +1,4 @@
-import { ChatSession as ChatSessionV1 } from 'document-models/chat-session/v1';
+import { ChatSession as ChatSessionV1 } from "document-models/chat-session/v1";
 
 /**
  * WARNING: DO NOT EDIT

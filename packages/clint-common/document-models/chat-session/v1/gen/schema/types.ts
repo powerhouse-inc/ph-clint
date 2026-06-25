@@ -9,11 +9,14 @@ export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
   [SubKey in K]: Maybe<T[SubKey]>;
 };
-export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
+export type MakeEmpty<
+  T extends { [key: string]: unknown },
+  K extends keyof T,
+> = { [_ in K]?: never };
 export type Incremental<T> =
   | T
   | {
-      [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never;
+      [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never;
     };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
@@ -60,213 +63,220 @@ export type Scalars = {
 };
 
 export type AbortSessionInput = {
-  endedAt: Scalars['DateTime']['input'];
+  endedAt: Scalars["DateTime"]["input"];
 };
 
 export type AddAssistantMessageInput = {
   content: Array<AssistantContentPartInput>;
-  createdAt: Scalars['DateTime']['input'];
-  id: Scalars['OID']['input'];
-  stepIndex?: InputMaybe<Scalars['Int']['input']>;
+  createdAt: Scalars["DateTime"]["input"];
+  id: Scalars["OID"]["input"];
+  stepIndex?: InputMaybe<Scalars["Int"]["input"]>;
 };
 
 export type AddSystemMessageInput = {
-  createdAt: Scalars['DateTime']['input'];
-  id: Scalars['OID']['input'];
-  text: Scalars['String']['input'];
+  createdAt: Scalars["DateTime"]["input"];
+  id: Scalars["OID"]["input"];
+  text: Scalars["String"]["input"];
 };
 
 export type AddToolOutputInput = {
-  messageId: Scalars['OID']['input'];
-  partId: Scalars['OID']['input'];
-  text: Scalars['String']['input'];
-  toolCallId: Scalars['String']['input'];
-  toolName: Scalars['String']['input'];
+  messageId: Scalars["OID"]["input"];
+  partId: Scalars["OID"]["input"];
+  text: Scalars["String"]["input"];
+  toolCallId: Scalars["String"]["input"];
+  toolName: Scalars["String"]["input"];
 };
 
 export type AddToolResultInput = {
   content: Array<ToolResultPartInput>;
-  createdAt: Scalars['DateTime']['input'];
-  id: Scalars['OID']['input'];
-  stepIndex?: InputMaybe<Scalars['Int']['input']>;
+  createdAt: Scalars["DateTime"]["input"];
+  id: Scalars["OID"]["input"];
+  stepIndex?: InputMaybe<Scalars["Int"]["input"]>;
 };
 
 export type AddUserMessageInput = {
   content: Array<UserContentPartInput>;
-  createdAt: Scalars['DateTime']['input'];
-  id: Scalars['OID']['input'];
+  createdAt: Scalars["DateTime"]["input"];
+  id: Scalars["OID"]["input"];
 };
 
 export type AgentInfo = {
-  attachment: Maybe<Scalars['String']['output']>;
-  description: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  model: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
+  attachment: Maybe<Scalars["String"]["output"]>;
+  description: Maybe<Scalars["String"]["output"]>;
+  id: Maybe<Scalars["String"]["output"]>;
+  model: Maybe<Scalars["String"]["output"]>;
+  name: Maybe<Scalars["String"]["output"]>;
 };
 
 export type AgentInfoInput = {
-  description?: InputMaybe<Scalars['String']['input']>;
-  id?: InputMaybe<Scalars['String']['input']>;
-  model?: InputMaybe<Scalars['String']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars["String"]["input"]>;
+  id?: InputMaybe<Scalars["String"]["input"]>;
+  model?: InputMaybe<Scalars["String"]["input"]>;
+  name?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type AppendAssistantContentInput = {
-  messageId: Scalars['OID']['input'];
+  messageId: Scalars["OID"]["input"];
   part: AssistantContentPartInput;
 };
 
 export type AssistantContentPartInput = {
-  args?: InputMaybe<Scalars['String']['input']>;
-  attachment?: InputMaybe<Scalars['String']['input']>;
-  error?: InputMaybe<Scalars['String']['input']>;
-  filename?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['OID']['input'];
-  mediaType?: InputMaybe<Scalars['String']['input']>;
-  text?: InputMaybe<Scalars['String']['input']>;
-  toolCallId?: InputMaybe<Scalars['String']['input']>;
-  toolName?: InputMaybe<Scalars['String']['input']>;
+  args?: InputMaybe<Scalars["String"]["input"]>;
+  attachment?: InputMaybe<Scalars["String"]["input"]>;
+  error?: InputMaybe<Scalars["String"]["input"]>;
+  filename?: InputMaybe<Scalars["String"]["input"]>;
+  id: Scalars["OID"]["input"];
+  mediaType?: InputMaybe<Scalars["String"]["input"]>;
+  text?: InputMaybe<Scalars["String"]["input"]>;
+  toolCallId?: InputMaybe<Scalars["String"]["input"]>;
+  toolName?: InputMaybe<Scalars["String"]["input"]>;
   type: ContentPartType;
-  url?: InputMaybe<Scalars['URL']['input']>;
+  url?: InputMaybe<Scalars["URL"]["input"]>;
 };
 
 export type ChatSessionState = {
   agent: Maybe<AgentInfo>;
-  endedAt: Maybe<Scalars['DateTime']['output']>;
-  interruptRequested: Maybe<Scalars['Boolean']['output']>;
+  endedAt: Maybe<Scalars["DateTime"]["output"]>;
+  interruptRequested: Maybe<Scalars["Boolean"]["output"]>;
   messages: Array<Message>;
-  resourceId: Maybe<Scalars['String']['output']>;
-  startedAt: Maybe<Scalars['DateTime']['output']>;
+  resourceId: Maybe<Scalars["String"]["output"]>;
+  startedAt: Maybe<Scalars["DateTime"]["output"]>;
   status: SessionStatus;
-  threadId: Maybe<Scalars['String']['output']>;
+  threadId: Maybe<Scalars["String"]["output"]>;
   usage: Maybe<UsageSummary>;
 };
 
 export type ContentPart = {
-  args: Maybe<Scalars['String']['output']>;
-  attachment: Maybe<Scalars['String']['output']>;
-  error: Maybe<Scalars['String']['output']>;
-  filename: Maybe<Scalars['String']['output']>;
-  id: Scalars['OID']['output'];
-  isError: Maybe<Scalars['Boolean']['output']>;
-  mediaType: Maybe<Scalars['String']['output']>;
-  result: Maybe<Scalars['String']['output']>;
-  text: Maybe<Scalars['String']['output']>;
-  toolCallId: Maybe<Scalars['String']['output']>;
-  toolName: Maybe<Scalars['String']['output']>;
+  args: Maybe<Scalars["String"]["output"]>;
+  attachment: Maybe<Scalars["String"]["output"]>;
+  error: Maybe<Scalars["String"]["output"]>;
+  filename: Maybe<Scalars["String"]["output"]>;
+  id: Scalars["OID"]["output"];
+  isError: Maybe<Scalars["Boolean"]["output"]>;
+  mediaType: Maybe<Scalars["String"]["output"]>;
+  result: Maybe<Scalars["String"]["output"]>;
+  text: Maybe<Scalars["String"]["output"]>;
+  toolCallId: Maybe<Scalars["String"]["output"]>;
+  toolName: Maybe<Scalars["String"]["output"]>;
   type: ContentPartType;
-  url: Maybe<Scalars['URL']['output']>;
+  url: Maybe<Scalars["URL"]["output"]>;
 };
 
-export type ContentPartType = 'ERROR' | 'FILE' | 'IMAGE' | 'REASONING' | 'TEXT' | 'TOOL_CALL' | 'TOOL_RESULT';
+export type ContentPartType =
+  | "ERROR"
+  | "FILE"
+  | "IMAGE"
+  | "REASONING"
+  | "TEXT"
+  | "TOOL_CALL"
+  | "TOOL_RESULT";
 
 export type DeleteUserMessageInput = {
-  messageId: Scalars['OID']['input'];
+  messageId: Scalars["OID"]["input"];
 };
 
 export type EndSessionInput = {
-  endedAt: Scalars['DateTime']['input'];
+  endedAt: Scalars["DateTime"]["input"];
   status: SessionStatus;
 };
 
 export type InterruptAgentInput = {
-  _?: InputMaybe<Scalars['Boolean']['input']>;
+  _?: InputMaybe<Scalars["Boolean"]["input"]>;
 };
 
 export type Message = {
   content: Array<ContentPart>;
-  createdAt: Scalars['DateTime']['output'];
-  id: Scalars['OID']['output'];
+  createdAt: Scalars["DateTime"]["output"];
+  id: Scalars["OID"]["output"];
   role: MessageRole;
-  stepIndex: Maybe<Scalars['Int']['output']>;
+  stepIndex: Maybe<Scalars["Int"]["output"]>;
   usage: Maybe<MessageUsage>;
 };
 
-export type MessageRole = 'ASSISTANT' | 'SYSTEM' | 'TOOL' | 'USER';
+export type MessageRole = "ASSISTANT" | "SYSTEM" | "TOOL" | "USER";
 
 export type MessageUsage = {
-  completionTokens: Maybe<Scalars['Int']['output']>;
-  promptTokens: Maybe<Scalars['Int']['output']>;
-  totalTokens: Maybe<Scalars['Int']['output']>;
+  completionTokens: Maybe<Scalars["Int"]["output"]>;
+  promptTokens: Maybe<Scalars["Int"]["output"]>;
+  totalTokens: Maybe<Scalars["Int"]["output"]>;
 };
 
-export type SessionStatus = 'ABORTED' | 'ACTIVE' | 'COMPLETED' | 'ERROR';
+export type SessionStatus = "ABORTED" | "ACTIVE" | "COMPLETED" | "ERROR";
 
 export type SetAgentDescriptionInput = {
-  description: Scalars['String']['input'];
+  description: Scalars["String"]["input"];
 };
 
 export type SetAgentImageInput = {
-  attachment?: InputMaybe<Scalars['String']['input']>;
+  attachment?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type SetAgentInfoInput = {
-  description?: InputMaybe<Scalars['String']['input']>;
-  id?: InputMaybe<Scalars['String']['input']>;
-  model?: InputMaybe<Scalars['String']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars["String"]["input"]>;
+  id?: InputMaybe<Scalars["String"]["input"]>;
+  model?: InputMaybe<Scalars["String"]["input"]>;
+  name?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type SetMessageUsageInput = {
-  completionTokens?: InputMaybe<Scalars['Int']['input']>;
-  messageId: Scalars['OID']['input'];
-  promptTokens?: InputMaybe<Scalars['Int']['input']>;
-  totalTokens?: InputMaybe<Scalars['Int']['input']>;
+  completionTokens?: InputMaybe<Scalars["Int"]["input"]>;
+  messageId: Scalars["OID"]["input"];
+  promptTokens?: InputMaybe<Scalars["Int"]["input"]>;
+  totalTokens?: InputMaybe<Scalars["Int"]["input"]>;
 };
 
 export type StartSessionInput = {
   agent: AgentInfoInput;
-  resourceId: Scalars['String']['input'];
-  startedAt: Scalars['DateTime']['input'];
-  threadId: Scalars['String']['input'];
+  resourceId: Scalars["String"]["input"];
+  startedAt: Scalars["DateTime"]["input"];
+  threadId: Scalars["String"]["input"];
 };
 
 export type ToolResultPartInput = {
-  attachment?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['OID']['input'];
-  isError?: InputMaybe<Scalars['Boolean']['input']>;
-  mediaType?: InputMaybe<Scalars['String']['input']>;
-  result?: InputMaybe<Scalars['String']['input']>;
-  text?: InputMaybe<Scalars['String']['input']>;
-  toolCallId: Scalars['String']['input'];
-  toolName: Scalars['String']['input'];
+  attachment?: InputMaybe<Scalars["String"]["input"]>;
+  id: Scalars["OID"]["input"];
+  isError?: InputMaybe<Scalars["Boolean"]["input"]>;
+  mediaType?: InputMaybe<Scalars["String"]["input"]>;
+  result?: InputMaybe<Scalars["String"]["input"]>;
+  text?: InputMaybe<Scalars["String"]["input"]>;
+  toolCallId: Scalars["String"]["input"];
+  toolName: Scalars["String"]["input"];
   type: ContentPartType;
-  url?: InputMaybe<Scalars['URL']['input']>;
+  url?: InputMaybe<Scalars["URL"]["input"]>;
 };
 
 export type UpdateAssistantContentInput = {
-  args?: InputMaybe<Scalars['String']['input']>;
-  error?: InputMaybe<Scalars['String']['input']>;
-  messageId: Scalars['OID']['input'];
-  partId: Scalars['OID']['input'];
-  text?: InputMaybe<Scalars['String']['input']>;
+  args?: InputMaybe<Scalars["String"]["input"]>;
+  error?: InputMaybe<Scalars["String"]["input"]>;
+  messageId: Scalars["OID"]["input"];
+  partId: Scalars["OID"]["input"];
+  text?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type UpdateUsageSummaryInput = {
-  totalCompletionTokens?: InputMaybe<Scalars['Int']['input']>;
-  totalMessages?: InputMaybe<Scalars['Int']['input']>;
-  totalPromptTokens?: InputMaybe<Scalars['Int']['input']>;
-  totalSteps?: InputMaybe<Scalars['Int']['input']>;
-  totalTokens?: InputMaybe<Scalars['Int']['input']>;
-  totalToolCalls?: InputMaybe<Scalars['Int']['input']>;
+  totalCompletionTokens?: InputMaybe<Scalars["Int"]["input"]>;
+  totalMessages?: InputMaybe<Scalars["Int"]["input"]>;
+  totalPromptTokens?: InputMaybe<Scalars["Int"]["input"]>;
+  totalSteps?: InputMaybe<Scalars["Int"]["input"]>;
+  totalTokens?: InputMaybe<Scalars["Int"]["input"]>;
+  totalToolCalls?: InputMaybe<Scalars["Int"]["input"]>;
 };
 
 export type UsageSummary = {
-  totalCompletionTokens: Scalars['Int']['output'];
-  totalMessages: Scalars['Int']['output'];
-  totalPromptTokens: Scalars['Int']['output'];
-  totalSteps: Scalars['Int']['output'];
-  totalTokens: Scalars['Int']['output'];
-  totalToolCalls: Scalars['Int']['output'];
+  totalCompletionTokens: Scalars["Int"]["output"];
+  totalMessages: Scalars["Int"]["output"];
+  totalPromptTokens: Scalars["Int"]["output"];
+  totalSteps: Scalars["Int"]["output"];
+  totalTokens: Scalars["Int"]["output"];
+  totalToolCalls: Scalars["Int"]["output"];
 };
 
 export type UserContentPartInput = {
-  attachment?: InputMaybe<Scalars['String']['input']>;
-  filename?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['OID']['input'];
-  mediaType?: InputMaybe<Scalars['String']['input']>;
-  text?: InputMaybe<Scalars['String']['input']>;
+  attachment?: InputMaybe<Scalars["String"]["input"]>;
+  filename?: InputMaybe<Scalars["String"]["input"]>;
+  id: Scalars["OID"]["input"];
+  mediaType?: InputMaybe<Scalars["String"]["input"]>;
+  text?: InputMaybe<Scalars["String"]["input"]>;
   type: ContentPartType;
-  url?: InputMaybe<Scalars['URL']['input']>;
+  url?: InputMaybe<Scalars["URL"]["input"]>;
 };

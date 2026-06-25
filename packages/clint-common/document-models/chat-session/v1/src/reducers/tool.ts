@@ -1,5 +1,5 @@
-import type { ChatSessionToolOperations } from 'document-models/chat-session/v1';
-import { MessageNotFoundError } from '../../gen/tool/error.js';
+import type { ChatSessionToolOperations } from "document-models/chat-session/v1";
+import { MessageNotFoundError } from "../../gen/tool/error.js";
 
 export const chatSessionToolOperations: ChatSessionToolOperations = {
   addToolResultOperation(state, action) {
@@ -20,7 +20,7 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
     }));
     state.messages.push({
       id: action.input.id,
-      role: 'TOOL',
+      role: "TOOL",
       content: parts,
       stepIndex: action.input.stepIndex ?? null,
       createdAt: action.input.createdAt,
@@ -30,10 +30,13 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
   },
   addToolOutputOperation(state, action) {
     const msg = state.messages.find((m) => m.id === action.input.messageId);
-    if (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);
+    if (!msg)
+      throw new MessageNotFoundError(
+        "Message not found: " + action.input.messageId,
+      );
     msg.content.push({
       id: action.input.partId,
-      type: 'TEXT',
+      type: "TEXT",
       text: action.input.text,
       toolCallId: action.input.toolCallId,
       toolName: action.input.toolName,

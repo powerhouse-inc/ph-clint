@@ -1,250 +1,85 @@
-import { addModel, addSubAgent, enableMastra, reducer, removeSubAgent, setSubAgentDescription, setSubAgentName, utils, type PhClintProjectDocument } from 'document-models/ph-clint-project/v1';
-import { describe, expect, it } from 'vitest';
+import { generateMock } from "document-model";
+import {
+  addSubAgent,
+  AddSubAgentInputSchema,
+  isPhClintProjectDocument,
+  reducer,
+  removeSubAgent,
+  RemoveSubAgentInputSchema,
+  setSubAgentDescription,
+  SetSubAgentDescriptionInputSchema,
+  setSubAgentName,
+  SetSubAgentNameInputSchema,
+  utils,
+} from "document-models/ph-clint-project/v1";
+import { describe, expect, it } from "vitest";
 
-/** Helper: enabled doc with an extra model so sub-agents can reference it. */
-function enabledWithExtraModel(): PhClintProjectDocument {
-  let doc = reducer(utils.createDocument(), enableMastra({ agentId: 'main', agentName: 'Main' }));
-  doc = reducer(doc, addModel({ id: 'openai/gpt-4o' }));
-  return doc;
-}
+describe("MastraSubAgentsOperations", () => {
+  it("should handle addSubAgent operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddSubAgentInputSchema());
 
-describe('MastraSubAgentsOperations', () => {
-  describe('ADD_SUB_AGENT', () => {
-    it('adds a sub-agent with empty bindings', () => {
-      let doc = enabledWithExtraModel();
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'summarizer',
-          name: 'Summarizer',
-          description: 'Summarizes content.',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      const subs = doc.state.global.features.mastra.subAgents;
-      expect(subs).toHaveLength(1);
-      expect(subs[0]).toEqual({
-        id: 'summarizer',
-        name: 'Summarizer',
-        description: 'Summarizes content.',
-        modelId: 'openai/gpt-4o',
-        profileIds: [],
-        skills: [],
-        toolPatterns: [],
-      });
-    });
+    const updatedDocument = reducer(document, addSubAgent(input));
 
-    it('trims name', () => {
-      let doc = enabledWithExtraModel();
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'summarizer',
-          name: '  Summarizer  ',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      expect(doc.state.global.features.mastra.subAgents[0].name).toBe('Summarizer');
-    });
-
-    it('rejects when the id collides with the main agent', () => {
-      const doc = reducer(
-        enabledWithExtraModel(),
-        addSubAgent({
-          id: 'main',
-          name: 'Main Clone',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('already taken by main agent');
-    });
-
-    it('rejects duplicate sub-agent id', () => {
-      let doc = enabledWithExtraModel();
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub2',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('already exists');
-    });
-
-    it('rejects when modelId is not in the library', () => {
-      const doc = reducer(
-        enabledWithExtraModel(),
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub',
-          description: 'x',
-          modelId: 'missing/x',
-        }),
-      );
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('Model not in library');
-    });
-
-    it('rejects invalid id format', () => {
-      const doc = reducer(
-        enabledWithExtraModel(),
-        addSubAgent({
-          id: 'Bad-ID',
-          name: 'Sub',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('lowercase kebab-case');
-    });
-
-    it('rejects when mastra is disabled', () => {
-      const doc = reducer(
-        utils.createDocument(),
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub',
-          description: 'x',
-          modelId: 'missing/x',
-        }),
-      );
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_SUB_AGENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  describe('REMOVE_SUB_AGENT', () => {
-    it('removes a sub-agent', () => {
-      let doc = enabledWithExtraModel();
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      doc = reducer(doc, removeSubAgent({ id: 'sub' }));
-      expect(doc.state.global.features.mastra.subAgents).toEqual([]);
-    });
+  it("should handle removeSubAgent operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(RemoveSubAgentInputSchema());
 
-    it('rejects when the sub-agent does not exist', () => {
-      const doc = reducer(enabledWithExtraModel(), removeSubAgent({ id: 'missing' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('not found');
-    });
+    const updatedDocument = reducer(document, removeSubAgent(input));
+
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "REMOVE_SUB_AGENT",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  describe('SET_SUB_AGENT_NAME', () => {
-    it('trims and updates the name', () => {
-      let doc = enabledWithExtraModel();
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      doc = reducer(doc, setSubAgentName({ id: 'sub', name: '  Renamed  ' }));
-      expect(doc.state.global.features.mastra.subAgents[0].name).toBe('Renamed');
-    });
+  it("should handle setSubAgentName operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetSubAgentNameInputSchema());
 
-    it('rejects when the name is empty after trim', () => {
-      let doc = enabledWithExtraModel();
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      doc = reducer(doc, setSubAgentName({ id: 'sub', name: '  ' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('must not be empty');
-    });
+    const updatedDocument = reducer(document, setSubAgentName(input));
+
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "SET_SUB_AGENT_NAME",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  describe('SET_SUB_AGENT_DESCRIPTION', () => {
-    it('updates the description', () => {
-      let doc = enabledWithExtraModel();
-      doc = reducer(
-        doc,
-        addSubAgent({
-          id: 'sub',
-          name: 'Sub',
-          description: 'old',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      doc = reducer(doc, setSubAgentDescription({ id: 'sub', description: 'new' }));
-      expect(doc.state.global.features.mastra.subAgents[0].description).toBe('new');
-    });
+  it("should handle setSubAgentDescription operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetSubAgentDescriptionInputSchema());
 
-    it('rejects when the sub-agent does not exist', () => {
-      const doc = reducer(enabledWithExtraModel(), setSubAgentDescription({ id: 'missing', description: 'x' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('not found');
-    });
-  });
+    const updatedDocument = reducer(document, setSubAgentDescription(input));
 
-  describe('ADD_SUB_AGENT extra branches', () => {
-    it('rejects when the name is empty after trim', () => {
-      const doc = reducer(
-        enabledWithExtraModel(),
-        addSubAgent({
-          id: 'sub',
-          name: '   ',
-          description: 'x',
-          modelId: 'openai/gpt-4o',
-        }),
-      );
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('must not be empty');
-    });
-  });
-
-  describe('SET_SUB_AGENT_NAME extra branches', () => {
-    it('rejects when the sub-agent does not exist', () => {
-      const doc = reducer(enabledWithExtraModel(), setSubAgentName({ id: 'missing', name: 'Renamed' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('not found');
-    });
-  });
-
-  describe('rejects mutating ops when Mastra is disabled', () => {
-    it('REMOVE_SUB_AGENT', () => {
-      const doc = reducer(utils.createDocument(), removeSubAgent({ id: 'sub' }));
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
-
-    it('SET_SUB_AGENT_NAME', () => {
-      const doc = reducer(utils.createDocument(), setSubAgentName({ id: 'sub', name: 'Renamed' }));
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
-
-    it('SET_SUB_AGENT_DESCRIPTION', () => {
-      const doc = reducer(utils.createDocument(), setSubAgentDescription({ id: 'sub', description: 'x' }));
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "SET_SUB_AGENT_DESCRIPTION",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });

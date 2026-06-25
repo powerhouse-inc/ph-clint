@@ -2,9 +2,9 @@
  * WARNING: DO NOT EDIT
  * This file is auto-generated and updated by codegen
  */
-import type { PHBaseState, PHDocument } from 'document-model';
-import type { ChatSessionAction } from './actions.js';
-import type { ChatSessionState as ChatSessionGlobalState } from './schema/types.js';
+import type { PHBaseState, PHDocument } from "document-model";
+import type { ChatSessionAction } from "./actions.js";
+import type { ChatSessionState as ChatSessionGlobalState } from "./schema/types.js";
 
 type ChatSessionLocalState = Record<PropertyKey, never>;
 
@@ -14,6 +14,12 @@ type ChatSessionPHState = PHBaseState & {
 };
 type ChatSessionDocument = PHDocument<ChatSessionPHState>;
 
-export * from './schema/types.js';
+export * from "./schema/types.js";
 
-export type { ChatSessionAction, ChatSessionDocument, ChatSessionGlobalState, ChatSessionLocalState, ChatSessionPHState };
+export type {
+  ChatSessionAction,
+  ChatSessionDocument,
+  ChatSessionGlobalState,
+  ChatSessionLocalState,
+  ChatSessionPHState,
+};
