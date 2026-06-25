@@ -179,7 +179,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
             )}
             <div className="flex flex-1 flex-col min-w-0">
               <AgentInfoHeader agent={state.agent} responding={responding} avatar={agentAvatar} />
-              <ConversationView messages={state.messages} />
+              <ConversationView messages={state.messages} responding={responding} />
               <ChatInputBar dispatch={dispatch} attachments={attachments} disabled={state.status !== 'ACTIVE'} responding={responding} addFilesRef={addFilesRef} />
               {/* Test pane has no visible toggle; Ctrl/Cmd+Shift+T opens it for development. */}
               <SessionStatusBar status={state.status} startedAt={state.startedAt} endedAt={state.endedAt} usage={state.usage} messageCount={state.messages.length} />
