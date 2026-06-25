@@ -13,15 +13,7 @@
     }
   ],
   "apps": [],
-  "editors": [
-    {
-      "id": "ph-clint-project-editor",
-      "name": "PhClintProjectEditor",
-      "documentTypes": [
-        "powerhouse/ph-clint-project"
-      ]
-    }
-  ],
+  "editors": [],
   "processors": [],
   "subgraphs": [],
   "config": []

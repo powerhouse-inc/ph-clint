@@ -1,4 +1,4 @@
-import { PhClintProject as PhClintProjectV1 } from 'document-models/ph-clint-project/v1';
+import { PhClintProject as PhClintProjectV1 } from "document-models/ph-clint-project/v1";
 
 /**
  * WARNING: DO NOT EDIT

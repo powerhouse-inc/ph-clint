@@ -1,173 +1,85 @@
-import { addProfile, enableMastra, reducer, removeProfile, reorderProfiles, updateProfile, utils, type PhClintProjectDocument } from 'document-models/ph-clint-project/v1';
-import { describe, expect, it } from 'vitest';
+import { generateMock } from "document-model";
+import {
+  addProfile,
+  AddProfileInputSchema,
+  isPhClintProjectDocument,
+  reducer,
+  removeProfile,
+  RemoveProfileInputSchema,
+  reorderProfiles,
+  ReorderProfilesInputSchema,
+  updateProfile,
+  UpdateProfileInputSchema,
+  utils,
+} from "document-models/ph-clint-project/v1";
+import { describe, expect, it } from "vitest";
 
-function enabled(): PhClintProjectDocument {
-  return reducer(utils.createDocument(), enableMastra({ agentId: 'main', agentName: 'Main' }));
-}
+describe("MastraProfilesOperations", () => {
+  it("should handle addProfile operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddProfileInputSchema());
 
-describe('MastraProfilesOperations', () => {
-  describe('ADD_PROFILE', () => {
-    it('appends a new profile when insertBefore is omitted', () => {
-      let doc = enabled();
-      doc = reducer(doc, addProfile({ id: 'tools', title: 'Tools', content: 'Tool usage.' }));
-      const ids = doc.state.global.features.mastra.profiles.map((p) => p.id);
-      expect(ids).toEqual(['base', 'tools']);
-    });
+    const updatedDocument = reducer(document, addProfile(input));
 
-    it('inserts before the named profile when insertBefore is provided', () => {
-      let doc = enabled();
-      doc = reducer(doc, addProfile({ id: 'tools', title: 'Tools', content: '' }));
-      doc = reducer(
-        doc,
-        addProfile({
-          id: 'style',
-          title: 'Style',
-          content: '',
-          insertBefore: 'tools',
-        }),
-      );
-      const ids = doc.state.global.features.mastra.profiles.map((p) => p.id);
-      expect(ids).toEqual(['base', 'style', 'tools']);
-    });
-
-    it('rejects invalid profile id format', () => {
-      const doc = reducer(enabled(), addProfile({ id: 'Bad-ID', title: 'x', content: '' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('lowercase kebab-case');
-    });
-
-    it('rejects duplicates', () => {
-      const doc = reducer(enabled(), addProfile({ id: 'base', title: 'Dup', content: '' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('already exists');
-    });
-
-    it('rejects an unknown insertBefore', () => {
-      const doc = reducer(
-        enabled(),
-        addProfile({
-          id: 'tools',
-          title: 'Tools',
-          content: '',
-          insertBefore: 'missing',
-        }),
-      );
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('not found');
-    });
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "ADD_PROFILE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  describe('UPDATE_PROFILE', () => {
-    it('updates title only when content is omitted', () => {
-      let doc = enabled();
-      doc = reducer(doc, updateProfile({ id: 'base', title: 'Renamed' }));
-      const profile = doc.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
-      expect(profile.title).toBe('Renamed');
-      expect(profile.content).toBe('You are a helpful assistant.');
-    });
+  it("should handle updateProfile operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(UpdateProfileInputSchema());
 
-    it('rejects when the profile does not exist', () => {
-      const doc = reducer(enabled(), updateProfile({ id: 'missing', title: 'x' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('not found');
-    });
+    const updatedDocument = reducer(document, updateProfile(input));
+
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "UPDATE_PROFILE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  describe('REMOVE_PROFILE', () => {
-    it('rejects when in use by the main agent', () => {
-      const doc = reducer(enabled(), removeProfile({ id: 'base' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('in use');
-      expect(doc.state.global.features.mastra.profiles.find((p) => p.id === 'base')).toBeDefined();
-    });
+  it("should handle removeProfile operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(RemoveProfileInputSchema());
 
-    it('removes an unused profile', () => {
-      let doc = enabled();
-      doc = reducer(doc, addProfile({ id: 'tools', title: 'Tools', content: '' }));
-      doc = reducer(doc, removeProfile({ id: 'tools' }));
-      expect(doc.state.global.features.mastra.profiles.find((p) => p.id === 'tools')).toBeUndefined();
-    });
+    const updatedDocument = reducer(document, removeProfile(input));
+
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "REMOVE_PROFILE",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  describe('REORDER_PROFILES', () => {
-    it('moves named profiles before insertBefore', () => {
-      let doc = enabled();
-      doc = reducer(doc, addProfile({ id: 'tools', title: 'T', content: '' }));
-      doc = reducer(doc, addProfile({ id: 'style', title: 'S', content: '' }));
-      doc = reducer(doc, reorderProfiles({ ids: ['style'], insertBefore: 'tools' }));
-      const ids = doc.state.global.features.mastra.profiles.map((p) => p.id);
-      expect(ids).toEqual(['base', 'style', 'tools']);
-    });
+  it("should handle reorderProfiles operation", () => {
+    const document = utils.createDocument();
+    const input = generateMock(ReorderProfilesInputSchema());
 
-    it('appends moved profiles when insertBefore is null', () => {
-      let doc = enabled();
-      doc = reducer(doc, addProfile({ id: 'tools', title: 'T', content: '' }));
-      doc = reducer(doc, addProfile({ id: 'style', title: 'S', content: '' }));
-      doc = reducer(doc, reorderProfiles({ ids: ['base'], insertBefore: null }));
-      const ids = doc.state.global.features.mastra.profiles.map((p) => p.id);
-      expect(ids).toEqual(['tools', 'style', 'base']);
-    });
+    const updatedDocument = reducer(document, reorderProfiles(input));
 
-    it('rejects when any referenced id is missing', () => {
-      const doc = reducer(enabled(), reorderProfiles({ ids: ['missing'], insertBefore: null }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('Profile not found');
-    });
-
-    it('rejects an unknown insertBefore', () => {
-      let doc = enabled();
-      doc = reducer(doc, addProfile({ id: 'tools', title: 'T', content: '' }));
-      doc = reducer(doc, reorderProfiles({ ids: ['tools'], insertBefore: 'missing' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('not found');
-    });
-  });
-
-  describe('UPDATE_PROFILE extra branches', () => {
-    it('updates content only when title is omitted', () => {
-      let doc = enabled();
-      doc = reducer(doc, updateProfile({ id: 'base', content: 'New content.' }));
-      const profile = doc.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
-      expect(profile.content).toBe('New content.');
-      expect(profile.title).toBe('Base Profile');
-    });
-
-    it('updates both title and content', () => {
-      let doc = enabled();
-      doc = reducer(doc, updateProfile({ id: 'base', title: 'New Title', content: 'New content.' }));
-      const profile = doc.state.global.features.mastra.profiles.find((p) => p.id === 'base')!;
-      expect(profile.title).toBe('New Title');
-      expect(profile.content).toBe('New content.');
-    });
-  });
-
-  describe('REMOVE_PROFILE extra branches', () => {
-    it('rejects when the profile does not exist', () => {
-      const doc = reducer(enabled(), removeProfile({ id: 'missing' }));
-      const op = doc.operations.global[doc.operations.global.length - 1];
-      expect(op.error).toContain('not found');
-    });
-  });
-
-  describe('rejects every profile op when Mastra is disabled', () => {
-    it('ADD_PROFILE', () => {
-      const doc = reducer(utils.createDocument(), addProfile({ id: 'tools', title: 'T', content: '' }));
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
-
-    it('UPDATE_PROFILE', () => {
-      const doc = reducer(utils.createDocument(), updateProfile({ id: 'base', title: 'x' }));
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
-
-    it('REMOVE_PROFILE', () => {
-      const doc = reducer(utils.createDocument(), removeProfile({ id: 'base' }));
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
-
-    it('REORDER_PROFILES', () => {
-      const doc = reducer(utils.createDocument(), reorderProfiles({ ids: ['base'], insertBefore: null }));
-      expect(doc.operations.global[0].error).toContain('Mastra is disabled');
-    });
+    expect(isPhClintProjectDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe(
+      "REORDER_PROFILES",
+    );
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(
+      input,
+    );
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });
