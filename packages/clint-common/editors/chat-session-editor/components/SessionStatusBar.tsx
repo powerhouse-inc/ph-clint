@@ -15,22 +15,22 @@ const statusConfig: Record<SessionStatus, { icon: typeof ActivityIcon; label: st
   ACTIVE: {
     icon: ActivityIcon,
     label: 'Active',
-    className: 'text-green-600 bg-green-50 dark:bg-green-950/30',
+    className: 'text-success bg-success/10',
   },
   COMPLETED: {
     icon: CheckCircleIcon,
     label: 'Completed',
-    className: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30',
+    className: 'text-info bg-info/10',
   },
   ABORTED: {
     icon: XCircleIcon,
     label: 'Aborted',
-    className: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
+    className: 'text-warning bg-warning/10',
   },
   ERROR: {
     icon: AlertTriangleIcon,
     label: 'Error',
-    className: 'text-red-600 bg-red-50 dark:bg-red-950/30',
+    className: 'text-destructive bg-destructive/10',
   },
 };
 

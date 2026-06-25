@@ -36,7 +36,7 @@ function bumpPatch(version: string): string {
 function TextField(props: { label: string; value: string; placeholder?: string; readOnly?: boolean; compact?: boolean; onCommit: (value: string) => void }) {
   return (
     <label className={props.compact ? 'my-1 block' : 'my-3 block'}>
-      <h3 className={props.compact ? 'text-xs text-gray-600' : 'text-base'}>{props.label}</h3>
+      <h3 className={props.compact ? 'text-xs text-muted-foreground' : 'text-base'}>{props.label}</h3>
       <input
         type="text"
         defaultValue={props.value}
@@ -60,7 +60,7 @@ function Toggle(props: { label: string; checked: boolean; disabled?: boolean; hi
     <label className="my-2 flex items-center gap-3">
       <input type="checkbox" checked={props.checked} disabled={props.disabled} onChange={(e) => props.onChange(e.target.checked)} />
       <span className="font-semibold">{props.label}</span>
-      {props.hint ? <span className="text-sm text-gray-600">{props.hint}</span> : null}
+      {props.hint ? <span className="text-sm text-muted-foreground">{props.hint}</span> : null}
     </label>
   );
 }
@@ -171,16 +171,16 @@ export default function Editor() {
 
   const isAboveDisabled = powerhouse !== 'Disabled';
 
-  const tabClasses = (tab: Tab) => `px-4 py-2 text-sm font-medium border-b-2 cursor-pointer ${activeTab === tab ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
+  const tabClasses = (tab: Tab) => `px-4 py-2 text-sm font-medium border-b-2 cursor-pointer ${activeTab === tab ? 'border-info text-info' : 'border-transparent text-muted-foreground hover:text-foreground'}`;
 
   return (
-    <div className="mx-auto max-w-4xl bg-gray-50 p-6">
+    <div className="mx-auto max-w-4xl bg-muted p-6">
       <DocumentToolbar />
 
       <div className="ph-default-styles">
         <h2 className="mt-4 text-xl font-bold">ph-clint Project Spec</h2>
 
-        <nav className="my-4 flex border-b border-gray-200">
+        <nav className="my-4 flex border-b border-border">
           {TAB_LABELS.map((t) => (
             <button key={t.value} className={tabClasses(t.value)} onClick={() => setActiveTab(t.value)}>
               {t.label}
@@ -295,30 +295,30 @@ function CliTab(props: {
       <section className="my-6">
         <h3 className="text-lg font-semibold">Features</h3>
 
-        <div className="my-4 rounded border border-gray-200 bg-white p-4">
+        <div className="my-4 rounded border border-border bg-card p-4">
           <h4 className="text-base font-semibold">Powerhouse</h4>
-          {props.isAboveDisabled && <p className="text-sm text-gray-500">Cannot go back to Disabled once enabled</p>}
+          {props.isAboveDisabled && <p className="text-sm text-muted-foreground">Cannot go back to Disabled once enabled</p>}
           <div className="mt-2 space-y-2">
             {POWERHOUSE_LEVELS.map((level, i) => (
               <label key={level.value} className="flex items-start gap-2">
-                {i > 0 && <div className="absolute -mt-3 ml-[7px] h-3 border-l border-gray-300" />}
+                {i > 0 && <div className="absolute -mt-3 ml-[7px] h-3 border-l border-border" />}
                 <input type="radio" name="powerhouse-level" checked={props.powerhouse === level.value} disabled={props.isAboveDisabled && level.value === 'Disabled'} onChange={() => props.setPowerhouseLevel(level.value)} className="mt-0.5" />
                 <div>
                   <span className="font-medium">{level.value}</span>
-                  <span className="ml-2 text-sm text-gray-500">{level.description}</span>
+                  <span className="ml-2 text-sm text-muted-foreground">{level.description}</span>
                 </div>
               </label>
             ))}
           </div>
         </div>
 
-        <div className="my-4 rounded border border-gray-200 bg-white p-4">
+        <div className="my-4 rounded border border-border bg-card p-4">
           <Toggle label="Mastra" checked={mastra.enabled} hint="AI agent framework" onChange={props.toggleMastra} />
           {mastra.enabled && (
-            <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+            <div className="mt-4 space-y-4 border-t border-border pt-4">
               <ModelsSection models={mastra.models} main={mastra.mainAgent} subAgents={mastra.subAgents} addModel={props.addModel} removeModel={props.removeModel} />
               <div>
-                <h4 className="text-sm font-semibold text-gray-700">Common</h4>
+                <h4 className="text-sm font-semibold text-foreground">Common</h4>
                 <Toggle
                   label="Enable Chat"
                   checked={mastra.common.enableChat}
@@ -331,7 +331,7 @@ function CliTab(props: {
           )}
         </div>
 
-        <div className="my-4 rounded border border-gray-200 bg-white p-4">
+        <div className="my-4 rounded border border-border bg-card p-4">
           <Toggle label="Routine loop" checked={props.routine.enabled} hint="tick-based execution loop with triggers" onChange={props.toggleRoutine} />
         </div>
       </section>
@@ -370,7 +370,7 @@ function AgentsTab(props: AgentsTabProps) {
 
   if (!mastra.enabled || !main) {
     return (
-      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+      <section className="my-6 rounded border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
         <h3 className="text-lg font-semibold">Agents</h3>
         <p className="mt-2">Enable Mastra in the CLI tab to configure agents.</p>
       </section>
@@ -434,7 +434,7 @@ function AgentsTab(props: AgentsTabProps) {
           />
         ) : (
           <button
-            className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded bg-info px-3 py-2 text-sm text-info-foreground hover:bg-info/90 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={mastra.models.length === 0}
             title={mastra.models.length === 0 ? 'Add a model first (CLI tab → Mastra)' : ''}
             onClick={() => setShowAddForm(true)}
@@ -474,21 +474,21 @@ function MainAgentCard(props: MainAgentCardProps) {
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="my-3 rounded border border-gray-200 bg-white p-4">
+    <div className="my-3 rounded border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button className="text-sm text-gray-400 hover:text-gray-700" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
+          <button className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
             {expanded ? '▾' : '▸'}
           </button>
-          <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-500">{main.id}</span>
+          <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">{main.id}</span>
           <span className="font-semibold">{main.name}</span>
-          <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Main</span>
+          <span className="rounded bg-info/15 px-2 py-0.5 text-xs font-semibold text-info">Main</span>
         </div>
       </div>
-      {main.description && <p className="ml-7 text-sm text-gray-600">{main.description}</p>}
+      {main.description && <p className="ml-7 text-sm text-muted-foreground">{main.description}</p>}
 
       {expanded && (
-        <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
           <div style={{ display: 'flex', gap: '1.5rem' }}>
             <div style={{ flexShrink: 0, width: '7rem' }}>
               <AgentImageField attachmentRef={main.attachment ?? null} attachments={props.attachments} onSetImage={props.setMainAgentImage} onClearImage={props.clearMainAgentImage} />
@@ -529,7 +529,7 @@ function MainAgentCard(props: MainAgentCardProps) {
 function DescriptionField(props: { value: string | null | undefined; placeholder: string; onSet: (v: string) => void; onClear: () => void }) {
   return (
     <label className="my-1 block">
-      <h3 className="text-xs text-gray-600">Description</h3>
+      <h3 className="text-xs text-muted-foreground">Description</h3>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -560,23 +560,23 @@ function AddSubAgentForm(props: { models: PhClintAgentModel[]; existingAgentIds:
   const canAdd = idValid && name.trim() && description.trim() && modelId;
 
   return (
-    <div className="my-3 rounded border border-blue-200 bg-blue-50 p-4">
+    <div className="my-3 rounded border border-info/40 bg-info/10 p-4">
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="text-xs text-gray-600">Sub-agent ID</span>
+          <span className="text-xs text-muted-foreground">Sub-agent ID</span>
           <input type="text" value={id} placeholder="summarizer" onChange={(e) => setId(e.target.value.trim())} className="w-full rounded border p-2 font-mono text-sm" />
         </label>
         <label className="block">
-          <span className="text-xs text-gray-600">Display name</span>
+          <span className="text-xs text-muted-foreground">Display name</span>
           <input type="text" value={name} placeholder="Summarizer" onChange={(e) => setName(e.target.value)} className="w-full rounded border p-2 text-sm" />
         </label>
       </div>
       <label className="my-2 block">
-        <span className="text-xs text-gray-600">Description (the main agent uses this to decide when to delegate)</span>
+        <span className="text-xs text-muted-foreground">Description (the main agent uses this to decide when to delegate)</span>
         <input type="text" value={description} placeholder="Summarizes long documents into bullet points" onChange={(e) => setDescription(e.target.value)} className="w-full rounded border p-2 text-sm" />
       </label>
       <label className="my-2 block">
-        <span className="text-xs text-gray-600">Model</span>
+        <span className="text-xs text-muted-foreground">Model</span>
         <select value={modelId} onChange={(e) => setModelId(e.target.value)} className="w-full rounded border p-2 font-mono text-sm">
           {props.models.map((m) => (
             <option key={m.id} value={m.id}>
@@ -586,10 +586,10 @@ function AddSubAgentForm(props: { models: PhClintAgentModel[]; existingAgentIds:
         </select>
       </label>
       <div className="mt-2 flex items-center gap-2">
-        <button className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canAdd} onClick={() => props.onAdd(id, name.trim(), description.trim(), modelId)}>
+        <button className="rounded bg-info px-3 py-2 text-sm text-info-foreground hover:bg-info/90 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canAdd} onClick={() => props.onAdd(id, name.trim(), description.trim(), modelId)}>
           Add
         </button>
-        <button className="text-sm text-gray-500 hover:text-gray-700" onClick={props.onCancel}>
+        <button className="text-sm text-muted-foreground hover:text-foreground" onClick={props.onCancel}>
           Cancel
         </button>
       </div>
@@ -619,23 +619,23 @@ function SubAgentCard(props: SubAgentCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="my-3 rounded border border-gray-200 bg-white p-4">
+    <div className="my-3 rounded border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button className="text-sm text-gray-400 hover:text-gray-700" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
+          <button className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
             {expanded ? '▾' : '▸'}
           </button>
-          <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-500">{sub.id}</span>
+          <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">{sub.id}</span>
           <span className="font-semibold">{sub.name}</span>
         </div>
-        <button className="text-sm text-red-500 hover:text-red-700" onClick={() => props.removeSubAgent(sub.id)}>
+        <button className="text-sm text-destructive hover:text-destructive" onClick={() => props.removeSubAgent(sub.id)}>
           Remove
         </button>
       </div>
-      <p className="ml-7 text-sm text-gray-600">{sub.description}</p>
+      <p className="ml-7 text-sm text-muted-foreground">{sub.description}</p>
 
       {expanded && (
-        <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
           <div className="grid grid-cols-2 gap-3">
             <TextField compact label="Name" value={sub.name} onCommit={(v) => props.setSubAgentName(sub.id, v)} />
             <TextField compact label="Description" value={sub.description} onCommit={(v) => props.setSubAgentDescription(sub.id, v)} />
@@ -689,7 +689,7 @@ function AgentBindings(props: AgentBindingsProps) {
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="text-xs text-gray-600">Model</span>
+        <span className="text-xs text-muted-foreground">Model</span>
         <select value={props.modelId} onChange={(e) => props.setAgentModel(props.agentId, e.target.value)} className="mt-1 w-full rounded border p-2 font-mono text-sm">
           {props.models.map((m) => (
             <option key={m.id} value={m.id}>
@@ -757,27 +757,27 @@ function ProfileRefsEditor(props: {
 
   return (
     <div>
-      <span className="text-xs text-gray-600">Profiles (instructions, in order)</span>
+      <span className="text-xs text-muted-foreground">Profiles (instructions, in order)</span>
       <ul className="my-1 space-y-1">
         {props.profileIds.map((profileId, i) => {
           const profile = props.allProfiles.find((p) => p.id === profileId);
           return (
-            <li key={profileId} className="flex items-center gap-2 rounded bg-gray-50 px-2 py-1">
-              <button className="text-gray-400 hover:text-gray-600 disabled:opacity-30" disabled={i === 0} onClick={() => moveUp(i)} title="Move up">
+            <li key={profileId} className="flex items-center gap-2 rounded bg-muted px-2 py-1">
+              <button className="text-muted-foreground hover:text-muted-foreground disabled:opacity-30" disabled={i === 0} onClick={() => moveUp(i)} title="Move up">
                 ↑
               </button>
-              <button className="text-gray-400 hover:text-gray-600 disabled:opacity-30" disabled={i === props.profileIds.length - 1} onClick={() => moveDown(i)} title="Move down">
+              <button className="text-muted-foreground hover:text-muted-foreground disabled:opacity-30" disabled={i === props.profileIds.length - 1} onClick={() => moveDown(i)} title="Move down">
                 ↓
               </button>
-              <span className="font-mono text-xs text-gray-500">{profileId}</span>
-              <span className="flex-1 text-sm">{profile?.title ?? <em className="text-red-500">(missing in library)</em>}</span>
-              <button className="text-sm text-red-500 hover:text-red-700" onClick={() => props.onRemove(profileId)}>
+              <span className="font-mono text-xs text-muted-foreground">{profileId}</span>
+              <span className="flex-1 text-sm">{profile?.title ?? <em className="text-destructive">(missing in library)</em>}</span>
+              <button className="text-sm text-destructive hover:text-destructive" onClick={() => props.onRemove(profileId)}>
                 Remove
               </button>
             </li>
           );
         })}
-        {props.profileIds.length === 0 && <li className="px-2 py-1 text-sm italic text-gray-400">No profiles assigned</li>}
+        {props.profileIds.length === 0 && <li className="px-2 py-1 text-sm italic text-muted-foreground">No profiles assigned</li>}
       </ul>
       {available.length > 0 && (
         <select
@@ -805,13 +805,13 @@ function ChipListEditor(props: { label: string; hint: string; values: string[]; 
 
   return (
     <div>
-      <span className="text-xs text-gray-600">{props.label}</span>
-      <p className="text-xs text-gray-500">{props.hint}</p>
+      <span className="text-xs text-muted-foreground">{props.label}</span>
+      <p className="text-xs text-muted-foreground">{props.hint}</p>
       <div className="my-1 flex flex-wrap items-center gap-1">
         {props.values.map((v) => (
-          <span key={v} className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 font-mono text-xs">
+          <span key={v} className="flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs">
             {v}
-            <button className="text-red-500 hover:text-red-700" onClick={() => props.onRemove(v)} title="Remove">
+            <button className="text-destructive hover:text-destructive" onClick={() => props.onRemove(v)} title="Remove">
               ×
             </button>
           </span>
@@ -832,7 +832,7 @@ function ChipListEditor(props: { label: string; hint: string; values: string[]; 
           className="flex-1 rounded border p-1 font-mono text-sm"
         />
         <button
-          className="rounded bg-blue-500 px-2 py-1 text-xs text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded bg-info px-2 py-1 text-xs text-info-foreground hover:bg-info/90 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!valid}
           onClick={() => {
             props.onAdd(input.trim());
@@ -942,10 +942,10 @@ function AgentImageField(props: { attachmentRef: string | null | undefined; atta
     <div style={{ width: SIZE, height: SIZE, flexShrink: 0 }} className="relative my-3">
       {props.attachmentRef ? (
         <>
-          {objectUrl && <img src={objectUrl} alt="Agent" style={{ width: SIZE, height: SIZE }} className="rounded border border-gray-200 object-cover" />}
-          {!objectUrl && <div style={{ width: SIZE, height: SIZE }} className="rounded border border-gray-200 bg-gray-100" />}
+          {objectUrl && <img src={objectUrl} alt="Agent" style={{ width: SIZE, height: SIZE }} className="rounded border border-border object-cover" />}
+          {!objectUrl && <div style={{ width: SIZE, height: SIZE }} className="rounded border border-border bg-muted" />}
           <div className="mt-1 flex justify-center gap-1">
-            <label className="cursor-pointer rounded bg-gray-100 px-2 py-0.5 text-xs hover:bg-gray-200">
+            <label className="cursor-pointer rounded bg-muted px-2 py-0.5 text-xs hover:bg-muted">
               Replace
               <input
                 type="file"
@@ -956,7 +956,7 @@ function AgentImageField(props: { attachmentRef: string | null | undefined; atta
                 }}
               />
             </label>
-            <button className="rounded bg-gray-100 px-2 py-0.5 text-xs text-red-600 hover:bg-gray-200" onClick={props.onClearImage}>
+            <button className="rounded bg-muted px-2 py-0.5 text-xs text-destructive hover:bg-muted" onClick={props.onClearImage}>
               Remove
             </button>
           </div>
@@ -964,13 +964,13 @@ function AgentImageField(props: { attachmentRef: string | null | undefined; atta
       ) : (
         <div
           style={{ width: SIZE, height: SIZE }}
-          className={`flex flex-col items-center justify-center rounded border-2 border-dashed text-center ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white'}`}
+          className={`flex flex-col items-center justify-center rounded border-2 border-dashed text-center ${isDragOver ? 'border-info bg-info/10' : 'border-border bg-card'}`}
           onDragOver={onDragOver}
           onDragEnter={onDragEnter}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
         >
-          <label className="cursor-pointer p-2 text-xs text-gray-500 hover:text-blue-600">
+          <label className="cursor-pointer p-2 text-xs text-muted-foreground hover:text-info">
             Drop image or click
             <input
               type="file"
@@ -1009,15 +1009,15 @@ function ModelsSection(props: { models: PhClintAgentModel[]; main: PhClintMainAg
 
   return (
     <div>
-      <h4 className="text-sm font-semibold text-gray-700">Models</h4>
-      <p className="text-xs text-gray-500">
+      <h4 className="text-sm font-semibold text-foreground">Models</h4>
+      <p className="text-xs text-muted-foreground">
         Provider/model format (e.g. <code>anthropic/claude-sonnet-4-5</code>). Each agent picks one from this list.
       </p>
 
       {props.models.length > 0 && (
         <table className="mt-2 w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b text-left text-muted-foreground">
               <th className="py-1">Model</th>
               <th className="py-1">Used by</th>
               <th className="py-1" />
@@ -1028,11 +1028,11 @@ function ModelsSection(props: { models: PhClintAgentModel[]; main: PhClintMainAg
               const users = usersOf(m.id);
               const inUse = users.length > 0;
               return (
-                <tr key={m.id} className="border-b border-gray-100">
+                <tr key={m.id} className="border-b border-border">
                   <td className="py-2 font-mono">{m.id}</td>
-                  <td className="py-2 text-xs text-gray-500">{users.length === 0 ? <em>—</em> : users.join(', ')}</td>
+                  <td className="py-2 text-xs text-muted-foreground">{users.length === 0 ? <em>—</em> : users.join(', ')}</td>
                   <td className="py-2 text-right">
-                    <button className="text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300" disabled={inUse} title={inUse ? `In use by ${users.join(', ')}` : ''} onClick={() => props.removeModel(m.id)}>
+                    <button className="text-destructive hover:text-destructive disabled:cursor-not-allowed disabled:text-muted-foreground" disabled={inUse} title={inUse ? `In use by ${users.join(', ')}` : ''} onClick={() => props.removeModel(m.id)}>
                       Remove
                     </button>
                   </td>
@@ -1054,7 +1054,7 @@ function ModelsSection(props: { models: PhClintAgentModel[]; main: PhClintMainAg
           }}
           className="flex-1 rounded border p-2 font-mono text-sm"
         />
-        <button className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50" disabled={!newModelId.trim()} onClick={handleAdd}>
+        <button className="rounded bg-info px-3 py-2 text-sm text-info-foreground hover:bg-info/90 disabled:opacity-50" disabled={!newModelId.trim()} onClick={handleAdd}>
           Add Model
         </button>
       </div>
@@ -1073,7 +1073,7 @@ function ProfilesTab(props: {
 }) {
   if (!props.mastra.enabled) {
     return (
-      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+      <section className="my-6 rounded border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
         <h3 className="text-lg font-semibold">Profiles</h3>
         <p className="mt-2">Enable Mastra in the CLI tab to manage agent profiles.</p>
       </section>
@@ -1141,16 +1141,16 @@ function ProfilesSection(props: {
   return (
     <section className="my-6">
       <h3 className="text-lg font-semibold">Agent Profiles</h3>
-      <p className="text-sm text-gray-600">Markdown sections that compose into agents&apos; instructions. Reference these from each agent&apos;s profile list.</p>
+      <p className="text-sm text-muted-foreground">Markdown sections that compose into agents&apos; instructions. Reference these from each agent&apos;s profile list.</p>
 
       {props.profiles.map((profile, i) => {
         const users = usersOf(profile.id);
         const inUse = users.length > 0;
         return (
-          <div key={profile.id} className="my-3 rounded border border-gray-200 bg-white p-4">
+          <div key={profile.id} className="my-3 rounded border border-border bg-card p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-500">{profile.id}</span>
+                <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">{profile.id}</span>
                 <input
                   type="text"
                   defaultValue={profile.title}
@@ -1161,22 +1161,27 @@ function ProfilesSection(props: {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') e.currentTarget.blur();
                   }}
-                  className="border-b border-transparent font-semibold hover:border-gray-300 focus:border-blue-500"
+                  className="border-b border-transparent font-semibold hover:border-border focus:border-info"
                 />
                 {users.length > 0 && (
-                  <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700" title={users.join(', ')}>
+                  <span className="rounded bg-info/10 px-2 py-0.5 text-xs text-info" title={users.join(', ')}>
                     used by: {users.join(', ')}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-1">
-                <button className="px-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" disabled={i === 0} onClick={() => moveUp(i)} title="Move up">
+                <button className="px-1 text-muted-foreground hover:text-muted-foreground disabled:opacity-30" disabled={i === 0} onClick={() => moveUp(i)} title="Move up">
                   ↑
                 </button>
-                <button className="px-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" disabled={i === props.profiles.length - 1} onClick={() => moveDown(i)} title="Move down">
+                <button className="px-1 text-muted-foreground hover:text-muted-foreground disabled:opacity-30" disabled={i === props.profiles.length - 1} onClick={() => moveDown(i)} title="Move down">
                   ↓
                 </button>
-                <button className="ml-2 text-sm text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300" disabled={inUse} title={inUse ? `In use by ${users.join(', ')}` : ''} onClick={() => props.removeProfile(profile.id)}>
+                <button
+                  className="ml-2 text-sm text-destructive hover:text-destructive disabled:cursor-not-allowed disabled:text-muted-foreground"
+                  disabled={inUse}
+                  title={inUse ? `In use by ${users.join(', ')}` : ''}
+                  onClick={() => props.removeProfile(profile.id)}
+                >
                   Remove
                 </button>
               </div>
@@ -1189,14 +1194,14 @@ function ProfilesSection(props: {
               }}
               placeholder="Markdown content for this profile section..."
               rows={4}
-              className="mt-2 w-full rounded border border-gray-200 p-2 font-mono text-sm"
+              className="mt-2 w-full rounded border border-border p-2 font-mono text-sm"
             />
           </div>
         );
       })}
 
       {showAddForm ? (
-        <div className="my-3 rounded border border-blue-200 bg-blue-50 p-4">
+        <div className="my-3 rounded border border-info/40 bg-info/10 p-4">
           <div className="flex items-center gap-2">
             <input type="text" placeholder="section-id" value={newId} onChange={(e) => setNewId(e.target.value)} className="w-40 rounded border p-2 font-mono text-sm" />
             <input
@@ -1209,11 +1214,11 @@ function ProfilesSection(props: {
               }}
               className="flex-1 rounded border p-2 text-sm"
             />
-            <button className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50" disabled={!newId.trim() || !newTitle.trim()} onClick={handleAdd}>
+            <button className="rounded bg-info px-3 py-2 text-sm text-info-foreground hover:bg-info/90 disabled:opacity-50" disabled={!newId.trim() || !newTitle.trim()} onClick={handleAdd}>
               Add
             </button>
             <button
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-muted-foreground hover:text-foreground"
               onClick={() => {
                 setShowAddForm(false);
                 setNewId('');
@@ -1225,7 +1230,7 @@ function ProfilesSection(props: {
           </div>
         </div>
       ) : (
-        <button className="mt-3 rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600" onClick={() => setShowAddForm(true)}>
+        <button className="mt-3 rounded bg-info px-3 py-2 text-sm text-info-foreground hover:bg-info/90" onClick={() => setShowAddForm(true)}>
           + Add Profile
         </button>
       )}
@@ -1238,7 +1243,7 @@ function ProfilesSection(props: {
 function SkillsTab(props: { skills: ExternalSkill[]; addSkill: (name: string, githubUrl: string) => void; removeSkill: (id: string) => void }) {
   return (
     <>
-      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+      <section className="my-6 rounded border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
         <h3 className="text-lg font-semibold">Skill Templates</h3>
         <p className="mt-2">Coming soon</p>
       </section>
@@ -1265,17 +1270,17 @@ function ExternalSkillsSection(props: { skills: ExternalSkill[]; addSkill: (name
   return (
     <section className="my-6">
       <h3 className="text-lg font-semibold">External Skills</h3>
-      <p className="text-sm text-gray-600">Skills from the skills.sh ecosystem, installed via GitHub URL.</p>
+      <p className="text-sm text-muted-foreground">Skills from the skills.sh ecosystem, installed via GitHub URL.</p>
 
       {props.skills.length > 0 && (
         <ul className="mt-3 space-y-2">
           {props.skills.map((skill) => (
-            <li key={skill.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-3">
+            <li key={skill.id} className="flex items-center justify-between rounded border border-border bg-card p-3">
               <div>
                 <span className="font-mono font-semibold">{skill.name}</span>
-                <span className="ml-2 text-sm text-gray-500">{skill.githubUrl}</span>
+                <span className="ml-2 text-sm text-muted-foreground">{skill.githubUrl}</span>
               </div>
-              <button className="text-sm text-red-500 hover:text-red-700" onClick={() => props.removeSkill(skill.id)}>
+              <button className="text-sm text-destructive hover:text-destructive" onClick={() => props.removeSkill(skill.id)}>
                 Remove
               </button>
             </li>
@@ -1295,7 +1300,7 @@ function ExternalSkillsSection(props: { skills: ExternalSkill[]; addSkill: (name
           }}
           className="flex-1 rounded border p-2 font-mono text-sm"
         />
-        <button className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50" disabled={!newName.trim() || !newUrl.trim()} onClick={handleAdd}>
+        <button className="rounded bg-info px-3 py-2 text-sm text-info-foreground hover:bg-info/90 disabled:opacity-50" disabled={!newName.trim() || !newUrl.trim()} onClick={handleAdd}>
           Add Skill
         </button>
       </div>
@@ -1315,7 +1320,7 @@ function PowerhouseTab(props: {
 }) {
   if (!props.isAboveDisabled) {
     return (
-      <section className="my-6 rounded border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+      <section className="my-6 rounded border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
         <h3 className="text-lg font-semibold">Powerhouse</h3>
         <p className="mt-2">Enable Powerhouse in the CLI tab (set level to Reactor or above) to manage packages.</p>
       </section>
@@ -1349,14 +1354,14 @@ function PublishTab(props: {
       <section className="my-6">
         <h3 className="text-lg font-semibold">Publishing</h3>
 
-        <div className="my-3 rounded border border-gray-200 bg-white p-4">
+        <div className="my-3 rounded border border-border bg-card p-4">
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Current version:</span>
+            <span className="text-sm text-muted-foreground">Current version:</span>
             <span className="font-mono font-semibold">{props.version}</span>
           </div>
 
           <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-gray-600">Bump version to:</span>
+            <span className="text-sm text-muted-foreground">Bump version to:</span>
             <input
               type="text"
               placeholder={nextPatch}
@@ -1372,13 +1377,13 @@ function PublishTab(props: {
           </div>
 
           <div className="mt-4 flex items-center gap-2">
-            <button className="rounded bg-gray-600 px-3 py-2 text-sm text-white hover:bg-gray-700" onClick={props.publishDev}>
+            <button className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90" onClick={props.publishDev}>
               Publish Dev
             </button>
-            <button className="rounded bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-700" onClick={props.publishStaging}>
+            <button className="rounded bg-warning px-3 py-2 text-sm text-warning-foreground hover:bg-warning/90" onClick={props.publishStaging}>
               Publish Staging
             </button>
-            <button className="rounded bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700" onClick={props.publishProduction}>
+            <button className="rounded bg-success px-3 py-2 text-sm text-success-foreground hover:bg-success/90" onClick={props.publishProduction}>
               Publish Production
             </button>
           </div>
@@ -1386,14 +1391,14 @@ function PublishTab(props: {
 
         {recentHistory.length > 0 && (
           <div className="mt-3">
-            <h4 className="text-sm font-semibold text-gray-600">Recent publish history</h4>
+            <h4 className="text-sm font-semibold text-muted-foreground">Recent publish history</h4>
             <ul className="mt-2 space-y-1">
               {recentHistory.map((r) => (
                 <li key={r.id} className="flex items-center gap-3 text-sm">
                   <StatusBadge status={r.status} />
                   <span className="font-mono">{r.version}</span>
-                  <span className="text-gray-500">{r.tag}</span>
-                  <span className="text-gray-400">{r.timestamp}</span>
+                  <span className="text-muted-foreground">{r.tag}</span>
+                  <span className="text-muted-foreground">{r.timestamp}</span>
                 </li>
               ))}
             </ul>
@@ -1415,11 +1420,11 @@ function PublishTab(props: {
 
       <section className="my-6">
         <h3 className="text-lg font-semibold">Document</h3>
-        <div className="my-3 rounded border border-gray-200 bg-white p-4">
-          <p className="text-sm text-gray-600">
+        <div className="my-3 rounded border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">
             Document ID: <span className="font-mono">{props.documentHeader.id}</span>
           </p>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Type: <span className="font-mono">{props.documentHeader.documentType}</span>
           </p>
         </div>
@@ -1441,18 +1446,18 @@ function DeploymentSection(props: {
     <section className="my-6">
       <h3 className="text-lg font-semibold">Deployment</h3>
 
-      <div className="my-3 rounded border border-gray-200 bg-white p-4">
+      <div className="my-3 rounded border border-border bg-card p-4">
         <Toggle label="Proxy enabled" checked={props.deployment.proxyEnabled} onChange={props.setProxyEnabled} hint="Embedded reverse proxy" />
         <Toggle label="Observability enabled" checked={props.deployment.observabilityEnabled} onChange={props.setObservabilityEnabled} hint="Sentry + OpenTelemetry" />
       </div>
 
-      <div className="my-3 rounded border border-gray-200 bg-white p-4">
+      <div className="my-3 rounded border border-border bg-card p-4">
         <h4 className="text-base font-semibold">Supported resources</h4>
         <ul className="my-2 space-y-1">
           {props.deployment.supportedResources.map((r) => (
             <li key={r} className="flex items-center justify-between text-sm">
               <span className="font-mono">{r}</span>
-              <button className="text-red-500 hover:text-red-700" onClick={() => props.removeSupportedResource(r)}>
+              <button className="text-destructive hover:text-destructive" onClick={() => props.removeSupportedResource(r)}>
                 Remove
               </button>
             </li>
@@ -1473,7 +1478,7 @@ function DeploymentSection(props: {
             className="flex-1 rounded border p-1 font-mono text-sm"
           />
           <button
-            className="rounded bg-blue-500 px-2 py-1 text-xs text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded bg-info px-2 py-1 text-xs text-info-foreground hover:bg-info/90 disabled:opacity-50"
             disabled={!newResource.trim()}
             onClick={() => {
               props.addSupportedResource(newResource.trim());
@@ -1522,7 +1527,7 @@ function PackagesSection(props: {
           className="flex-1 rounded border p-2 font-mono text-sm"
         />
         <button
-          className="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50"
+          className="rounded bg-info px-3 py-2 text-sm text-info-foreground hover:bg-info/90 disabled:opacity-50"
           disabled={!newPackage.trim()}
           onClick={() => {
             props.addPackage(newPackage.trim());
@@ -1540,15 +1545,15 @@ function PackageCard(props: { pkg: PowerhousePackage; addDocType: (packageId: st
   const [newDocType, setNewDocType] = useState('');
 
   return (
-    <div className="my-3 rounded border border-gray-200 bg-white p-4">
+    <div className="my-3 rounded border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <div>
           <span className="font-mono font-semibold">{props.pkg.packageName}</span>
-          {props.pkg.managed && <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">managed</span>}
-          {props.pkg.version && <span className="ml-2 text-sm text-gray-500">v{props.pkg.version}</span>}
+          {props.pkg.managed && <span className="ml-2 rounded bg-info/15 px-2 py-0.5 text-xs text-info">managed</span>}
+          {props.pkg.version && <span className="ml-2 text-sm text-muted-foreground">v{props.pkg.version}</span>}
         </div>
         {!props.pkg.managed && (
-          <button className="text-sm text-red-500 hover:text-red-700" onClick={() => props.removePackage(props.pkg.id)}>
+          <button className="text-sm text-destructive hover:text-destructive" onClick={() => props.removePackage(props.pkg.id)}>
             Remove Package
           </button>
         )}
@@ -1557,7 +1562,7 @@ function PackageCard(props: { pkg: PowerhousePackage; addDocType: (packageId: st
         {props.pkg.documentTypes.map((dt) => (
           <li key={dt} className="flex items-center justify-between text-sm">
             <span className="font-mono">{dt}</span>
-            <button className="text-red-500 hover:text-red-700" onClick={() => props.removeDocType(props.pkg.id, dt)}>
+            <button className="text-destructive hover:text-destructive" onClick={() => props.removeDocType(props.pkg.id, dt)}>
               ×
             </button>
           </li>
@@ -1578,7 +1583,7 @@ function PackageCard(props: { pkg: PowerhousePackage; addDocType: (packageId: st
           className="flex-1 rounded border p-1 font-mono text-sm"
         />
         <button
-          className="rounded bg-blue-500 px-2 py-1 text-xs text-white hover:bg-blue-600 disabled:opacity-50"
+          className="rounded bg-info px-2 py-1 text-xs text-info-foreground hover:bg-info/90 disabled:opacity-50"
           disabled={!newDocType.trim()}
           onClick={() => {
             props.addDocType(props.pkg.id, newDocType.trim());
@@ -1593,6 +1598,6 @@ function PackageCard(props: { pkg: PowerhousePackage; addDocType: (packageId: st
 }
 
 function StatusBadge(props: { status: string }) {
-  const color = props.status === 'Succeeded' ? 'bg-green-100 text-green-700' : props.status === 'Failed' ? 'bg-red-100 text-red-700' : props.status === 'InProgress' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700';
+  const color = props.status === 'Succeeded' ? 'bg-success/10 text-success' : props.status === 'Failed' ? 'bg-destructive/10 text-destructive' : props.status === 'InProgress' ? 'bg-warning/10 text-warning' : 'bg-muted text-foreground';
   return <span className={`rounded px-2 py-0.5 text-xs ${color}`}>{props.status}</span>;
 }
