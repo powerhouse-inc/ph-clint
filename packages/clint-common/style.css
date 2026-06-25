@@ -13,6 +13,7 @@
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
 @import '@powerhousedao/design-system/theme.css';
+@import '@powerhousedao/connect/style.css';
 
 @theme inline {
   --radius-sm: calc(var(--radius) * 0.6);

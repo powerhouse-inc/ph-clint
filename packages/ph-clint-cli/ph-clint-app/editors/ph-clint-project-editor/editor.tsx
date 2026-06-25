@@ -174,7 +174,7 @@ export default function Editor() {
   const tabClasses = (tab: Tab) => `px-4 py-2 text-sm font-medium border-b-2 cursor-pointer ${activeTab === tab ? 'border-info text-info' : 'border-transparent text-muted-foreground hover:text-foreground'}`;
 
   return (
-    <div className="mx-auto max-w-4xl bg-muted p-6">
+    <div className="mx-auto max-w-4xl bg-muted p-6 text-foreground">
       <DocumentToolbar />
 
       <div className="ph-default-styles">
