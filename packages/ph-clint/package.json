@@ -1,6 +1,6 @@
 {
   "name": "@powerhousedao/ph-clint",
-  "version": "0.1.0-dev.96",
+  "version": "0.1.0-dev.97",
   "type": "module",
   "publishConfig": {
     "access": "public"
