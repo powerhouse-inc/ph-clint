@@ -89,6 +89,8 @@ type Message {
   stepIndex: Int
   createdAt: DateTime!
   usage: MessageUsage
+  finishedAt: DateTime
+  finishReason: String
 }
 
 type ChatSessionState {
@@ -225,6 +227,12 @@ input SetMessageUsageInput {
   promptTokens: Int
   completionTokens: Int
   totalTokens: Int
+}
+
+input FinishAssistantMessageInput {
+  messageId: OID!
+  finishReason: String
+  finishedAt: DateTime!
 }
 
 # tool

@@ -74,6 +74,8 @@ function makeMessage(parts: ContentPart[]): Message {
     createdAt: '2026-05-07T00:00:00.000Z',
     stepIndex: null,
     usage: null,
+    finishedAt: null,
+    finishReason: null,
   };
 }
 

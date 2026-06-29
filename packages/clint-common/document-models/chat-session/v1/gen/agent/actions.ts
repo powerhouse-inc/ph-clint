@@ -3,7 +3,7 @@
  * This file is auto-generated and updated by codegen
  */
 import type { Action } from 'document-model';
-import type { AddAssistantMessageInput, AppendAssistantContentInput, SetMessageUsageInput, UpdateAssistantContentInput } from '../types.js';
+import type { AddAssistantMessageInput, AppendAssistantContentInput, FinishAssistantMessageInput, SetMessageUsageInput, UpdateAssistantContentInput } from '../types.js';
 
 export type AddAssistantMessageAction = Action & {
   type: 'ADD_ASSISTANT_MESSAGE';
@@ -21,5 +21,9 @@ export type SetMessageUsageAction = Action & {
   type: 'SET_MESSAGE_USAGE';
   input: SetMessageUsageInput;
 };
+export type FinishAssistantMessageAction = Action & {
+  type: 'FINISH_ASSISTANT_MESSAGE';
+  input: FinishAssistantMessageInput;
+};
 
-export type ChatSessionAgentAction = AddAssistantMessageAction | AppendAssistantContentAction | UpdateAssistantContentAction | SetMessageUsageAction;
+export type ChatSessionAgentAction = AddAssistantMessageAction | AppendAssistantContentAction | UpdateAssistantContentAction | SetMessageUsageAction | FinishAssistantMessageAction;

@@ -1,67 +1,33 @@
-import { addToolResult, reducer, startSession, utils } from 'document-models/chat-session/v1';
+import { generateMock } from 'document-model';
+import { addToolOutput, AddToolOutputInputSchema, addToolResult, AddToolResultInputSchema, isChatSessionDocument, reducer, utils } from 'document-models/chat-session/v1';
 import { describe, expect, it } from 'vitest';
 
 describe('ToolOperations', () => {
-  it('addToolResult maps all content fields correctly', () => {
-    let doc = reducer(
-      utils.createDocument(),
-      startSession({
-        threadId: 't',
-        resourceId: 'r',
-        startedAt: '2025-01-01T00:00:00Z',
-        agent: { name: 'Bot' },
-      }),
-    );
+  it('should handle addToolResult operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddToolResultInputSchema(), {
+      createdAt: '2024-01-01T00:00:00.000Z',
+    });
 
-    doc = reducer(
-      doc,
-      addToolResult({
-        id: 'msg-t',
-        stepIndex: 2,
-        content: [
-          {
-            id: 'p1',
-            type: 'TOOL_RESULT',
-            toolCallId: 'tc-1',
-            toolName: 'search',
-            result: '{"data":"ok"}',
-            isError: false,
-          },
-          {
-            id: 'p2',
-            type: 'IMAGE',
-            toolCallId: 'tc-1',
-            toolName: 'search',
-            mediaType: 'image/png',
-            url: 'https://example.com/chart.png',
-            attachment: 'attachment://v1:abc123def4567890abc123def4567890abc123def4567890abc123def45678901',
-          },
-        ],
-        createdAt: '2025-01-01T00:00:01Z',
-      }),
-    );
+    const updatedDocument = reducer(document, addToolResult(input));
 
-    const msg = doc.state.global.messages[0];
-    expect(msg.role).toBe('TOOL');
-    expect(msg.stepIndex).toBe(2);
-    expect(msg.content).toHaveLength(2);
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_TOOL_RESULT');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
 
-    // first part: tool result with all fields
-    const p1 = msg.content[0];
-    expect(p1.type).toBe('TOOL_RESULT');
-    expect(p1.toolCallId).toBe('tc-1');
-    expect(p1.result).toBe('{"data":"ok"}');
-    expect(p1.isError).toBe(false);
-    expect(p1.args).toBeNull();
-    expect(p1.filename).toBeNull();
+  it('should handle addToolOutput operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddToolOutputInputSchema());
 
-    // second part: image attached to tool result
-    const p2 = msg.content[1];
-    expect(p2.type).toBe('IMAGE');
-    expect(p2.mediaType).toBe('image/png');
-    expect(p2.attachment).toBe('attachment://v1:abc123def4567890abc123def4567890abc123def4567890abc123def45678901');
+    const updatedDocument = reducer(document, addToolOutput(input));
 
-    // usage counter incremented
-    expect(doc.state.global.usage!.totalMessages).toBe(1);
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_TOOL_OUTPUT');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });

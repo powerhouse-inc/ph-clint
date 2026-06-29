@@ -37,6 +37,8 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       stepIndex: action.input.stepIndex ?? null,
       createdAt: action.input.createdAt,
       usage: null,
+      finishedAt: null,
+      finishReason: null,
     });
     if (state.usage) {
       state.usage.totalMessages += 1;
@@ -93,5 +95,11 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       completionTokens: action.input.completionTokens ?? null,
       totalTokens: action.input.totalTokens ?? null,
     };
+  },
+  finishAssistantMessageOperation(state, action) {
+    const msg = state.messages.find((m) => m.id === action.input.messageId);
+    if (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);
+    msg.finishedAt = action.input.finishedAt;
+    msg.finishReason = action.input.finishReason ?? null;
   },
 };

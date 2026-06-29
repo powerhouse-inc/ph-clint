@@ -170,6 +170,12 @@ export type EndSessionInput = {
   status: SessionStatus;
 };
 
+export type FinishAssistantMessageInput = {
+  finishReason?: InputMaybe<Scalars['String']['input']>;
+  finishedAt: Scalars['DateTime']['input'];
+  messageId: Scalars['OID']['input'];
+};
+
 export type InterruptAgentInput = {
   _?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -177,6 +183,8 @@ export type InterruptAgentInput = {
 export type Message = {
   content: Array<ContentPart>;
   createdAt: Scalars['DateTime']['output'];
+  finishReason: Maybe<Scalars['String']['output']>;
+  finishedAt: Maybe<Scalars['DateTime']['output']>;
   id: Scalars['OID']['output'];
   role: MessageRole;
   stepIndex: Maybe<Scalars['Int']['output']>;

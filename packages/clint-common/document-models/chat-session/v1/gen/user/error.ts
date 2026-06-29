@@ -27,5 +27,6 @@ export class NotUserMessageError extends Error implements ReducerError {
 
 export const errors = {
   AddUserMessage: { InvalidContentPartError },
+
   DeleteUserMessage: { MessageNotFoundError, NotUserMessageError },
 };

@@ -8,20 +8,12 @@
   },
   "documentModels": [
     {
-      "name": "ChatSession",
-      "id": "powerhouse/chat-session"
+      "id": "powerhouse/chat-session",
+      "name": "ChatSession"
     }
   ],
   "apps": [],
-  "editors": [
-    {
-      "id": "chat-session-editor",
-      "name": "chat-session-editor",
-      "documentTypes": [
-        "powerhouse/chat-session"
-      ]
-    }
-  ],
+  "editors": [],
   "processors": [],
   "subgraphs": [],
   "config": []
