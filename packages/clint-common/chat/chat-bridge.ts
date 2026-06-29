@@ -10,7 +10,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { StreamChunk, ReactorContext, Logger, DocumentRegistry } from '@powerhousedao/ph-clint';
-import { addAssistantMessage, appendAssistantContent, updateAssistantContent, addToolResult, addToolOutput, updateUsageSummary, endSession } from '@powerhousedao/clint-common/document-models/chat-session';
+import { addAssistantMessage, appendAssistantContent, updateAssistantContent, addToolResult, addToolOutput, updateUsageSummary, endSession, finishAssistantMessage } from '@powerhousedao/clint-common/document-models/chat-session';
 import type { ChatSessionAction } from '@powerhousedao/clint-common/document-models/chat-session';
 import type { ChatSessionRegistry } from './chat-session-init.js';
 
@@ -167,6 +167,8 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
   let stepIndex = 0;
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
   let currentToolMsgId: string | null = null;
+  let lastAssistantMsgId: string | null = null;
+  let finishReason: string | null = null;
   const stats: BridgeStats = { totalMessages: 0, totalSteps: 0, totalToolCalls: 0 };
 
   const now = () => new Date().toISOString();
@@ -203,6 +205,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
             currentMsgId = randomUUID();
             currentPartId = randomUUID();
             textBuffer = chunk.text;
+            lastAssistantMsgId = currentMsgId;
             stats.totalMessages++;
             stats.totalSteps++;
 
@@ -233,6 +236,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
           if (!currentMsgId) {
             currentMsgId = randomUUID();
             currentPartId = randomUUID();
+            lastAssistantMsgId = currentMsgId;
             stats.totalMessages++;
             stats.totalSteps++;
 
@@ -324,6 +328,11 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
           break;
         }
 
+        case 'finish': {
+          finishReason = chunk.finishReason ?? null;
+          break;
+        }
+
         case 'error': {
           await flushText();
 
@@ -369,6 +378,16 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
         totalToolCalls: stats.totalToolCalls,
       }),
     );
+
+    if (lastAssistantMsgId) {
+      await dispatch(
+        finishAssistantMessage({
+          messageId: lastAssistantMsgId,
+          finishReason,
+          finishedAt: now(),
+        }),
+      );
+    }
 
     log?.info(`${TAG} stream complete for ${documentId}: ` + `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls`);
   } catch (err) {

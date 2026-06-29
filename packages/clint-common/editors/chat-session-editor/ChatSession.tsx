@@ -1,8 +1,7 @@
 import type { IAttachmentService } from '@powerhousedao/reactor-attachments';
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import type { ChatSessionAction, ChatSessionDocument } from 'document-models/chat-session';
-import { hasMessageContent } from 'document-models/chat-session';
-import { useCallback, useEffect, useRef, useState, type ComponentType, type DragEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type DragEvent, type ReactNode } from 'react';
 import { PaperclipIcon } from 'lucide-react';
 import { AgentInfoHeader, type AgentAvatarProps } from './components/AgentInfoHeader.js';
 import { ChatInputBar } from './components/ChatInputBar.js';
@@ -30,85 +29,28 @@ export type ChatSessionProps = {
   toolRenderers?: ToolRenderers;
 };
 
-/** How long to keep the responding state lit after trailing assistant text
- *  stops growing, so the final streamed answer animates to its end. */
-const RESPONDING_GRACE_MS = 1000;
-
 export function ChatSession({ document, dispatch, attachments, className, header, agentAvatar, toolRenderers }: ChatSessionProps) {
   const [showTestPane, setShowTestPane] = useState(false);
 
   const state = document.state.global;
 
-  // Whether the agent is mid-turn — derived from message shape, no persisted
-  // per-turn op (the document is append-only and shouldn't carry UI state).
-  //
-  // Definite "working" shapes animate immediately: a non-empty USER message
-  // (turn started), a TOOL result (a tool returned, agent continues), or an
-  // ASSISTANT message with a pending TOOL_CALL (tool dispatched). Trailing
-  // assistant text is ambiguous — streaming and finished look identical in the
-  // document — so a grace timer keeps it lit while that text keeps growing and
-  // releases shortly after it goes quiet.
-  const [responding, setResponding] = useState(false);
-  const respondingRef = useRef(false);
-  const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSeenRef = useRef<{ id: string; size: number } | null>(null);
-
-  useEffect(() => {
-    const setResp = (v: boolean) => {
-      respondingRef.current = v;
-      setResponding(v);
-    };
-    const clearGrace = () => {
-      if (graceTimerRef.current) {
-        clearTimeout(graceTimerRef.current);
-        graceTimerRef.current = null;
+  const responding = useMemo(() => {
+    const { status, interruptRequested, messages } = state;
+    if (status !== 'ACTIVE' || interruptRequested) return false;
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'USER') {
+        lastUserIdx = i;
+        break;
       }
-    };
-    const armGrace = () => {
-      clearGrace();
-      graceTimerRef.current = setTimeout(() => {
-        graceTimerRef.current = null;
-        setResp(false);
-      }, RESPONDING_GRACE_MS);
-    };
-
-    const messages = state.messages;
-    const last = messages.length > 0 ? messages[messages.length - 1] : undefined;
-
-    if (state.status !== 'ACTIVE' || state.interruptRequested || !last) {
-      clearGrace();
-      setResp(false);
-      lastSeenRef.current = null;
-      return;
     }
-
-    const working = (last.role === 'USER' && hasMessageContent(last)) || last.role === 'TOOL' || (last.role === 'ASSISTANT' && last.content.some((p) => p.type === 'TOOL_CALL'));
-    if (working) {
-      clearGrace();
-      setResp(true);
-      lastSeenRef.current = null;
-      return;
+    if (lastUserIdx === -1) return false;
+    for (let i = lastUserIdx + 1; i < messages.length; i++) {
+      const m = messages[i];
+      if (m.role === 'ASSISTANT' && m.finishedAt) return false;
     }
-
-    // Ambiguous trailing assistant text: keep lit while it grows (streaming) or
-    // at the moment we leave a working phase still lit; wind down once quiet.
-    const size = last.role === 'ASSISTANT' ? last.content.reduce((n, p) => n + (p.type === 'TEXT' && p.text ? p.text.length : 0), 0) : 0;
-    const prev = lastSeenRef.current;
-    lastSeenRef.current = { id: last.id, size };
-    const grew = !!prev && prev.id === last.id && size > prev.size;
-    const leftWorkingPhase = !prev && respondingRef.current;
-    if (grew || leftWorkingPhase) {
-      setResp(true);
-      armGrace();
-    }
+    return true;
   }, [state]);
-
-  useEffect(
-    () => () => {
-      if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
-    },
-    [],
-  );
 
   const toggleTestPane = useCallback(() => {
     setShowTestPane((prev) => !prev);

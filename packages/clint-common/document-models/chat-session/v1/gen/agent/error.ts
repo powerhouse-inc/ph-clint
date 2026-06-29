@@ -34,11 +34,16 @@ export class ContentPartNotFoundError extends Error implements ReducerError {
 
 export const errors = {
   AddAssistantMessage: { InvalidContentPartError },
+
   AppendAssistantContent: {
     MessageNotFoundError,
     NotAssistantMessageError,
     InvalidContentPartError,
   },
+
   UpdateAssistantContent: { MessageNotFoundError, ContentPartNotFoundError },
+
   SetMessageUsage: { MessageNotFoundError },
+
+  FinishAssistantMessage: { MessageNotFoundError },
 };

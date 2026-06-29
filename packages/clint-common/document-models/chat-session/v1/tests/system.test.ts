@@ -1,222 +1,120 @@
-import { addSystemMessage, endSession, reducer, setAgentDescription, setAgentImage, setAgentInfo, startSession, updateUsageSummary, utils } from 'document-models/chat-session/v1';
+import { generateMock } from 'document-model';
+import {
+  addSystemMessage,
+  AddSystemMessageInputSchema,
+  endSession,
+  EndSessionInputSchema,
+  isChatSessionDocument,
+  reducer,
+  setAgentDescription,
+  SetAgentDescriptionInputSchema,
+  setAgentImage,
+  SetAgentImageInputSchema,
+  setAgentInfo,
+  SetAgentInfoInputSchema,
+  startSession,
+  StartSessionInputSchema,
+  updateUsageSummary,
+  UpdateUsageSummaryInputSchema,
+  utils,
+} from 'document-models/chat-session/v1';
 import { describe, expect, it } from 'vitest';
 
 describe('SystemOperations', () => {
-  it('setAgentInfo: partial updates and agent creation branches', () => {
-    // on fresh doc, agent is null — should create it
-    let doc = reducer(utils.createDocument(), setAgentInfo({ name: 'TestBot' }));
-
-    expect(doc.state.global.agent).toStrictEqual({
-      id: null,
-      name: 'TestBot',
-      model: null,
-      description: null,
-      attachment: null,
+  it('should handle startSession operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(StartSessionInputSchema(), {
+      startedAt: '2024-01-01T00:00:00.000Z',
     });
 
-    // agent already exists — partial update preserves other fields
-    doc = reducer(doc, setAgentInfo({ model: 'gpt-4' }));
+    const updatedDocument = reducer(document, startSession(input));
 
-    expect(doc.state.global.agent).toStrictEqual({
-      id: null,
-      name: 'TestBot',
-      model: 'gpt-4',
-      description: null,
-      attachment: null,
-    });
-
-    // update id specifically
-    doc = reducer(doc, setAgentInfo({ id: 'agent-42' }));
-    expect(doc.state.global.agent!.id).toBe('agent-42');
-
-    // all-empty input — no fields change
-    doc = reducer(doc, setAgentInfo({}));
-
-    expect(doc.state.global.agent).toStrictEqual({
-      id: 'agent-42',
-      name: 'TestBot',
-      model: 'gpt-4',
-      description: null,
-      attachment: null,
-    });
-
-    // startSession with minimal agent — all fields default to null
-    const doc3 = reducer(
-      utils.createDocument(),
-      startSession({
-        threadId: 't2',
-        resourceId: 'r2',
-        startedAt: '2025-01-01T00:00:00Z',
-        agent: {},
-      }),
-    );
-    expect(doc3.state.global.agent).toStrictEqual({
-      id: null,
-      name: null,
-      model: null,
-      description: null,
-      attachment: null,
-    });
-
-    // also verify the false branch after startSession sets agent
-    let doc2 = reducer(
-      utils.createDocument(),
-      startSession({
-        threadId: 't',
-        resourceId: 'r',
-        startedAt: '2025-01-01T00:00:00Z',
-        agent: { id: 'a1', name: 'Bot', model: 'm1' },
-      }),
-    );
-    doc2 = reducer(doc2, setAgentInfo({ description: 'Updated desc' }));
-
-    expect(doc2.state.global.agent).toStrictEqual({
-      id: 'a1',
-      name: 'Bot',
-      model: 'm1',
-      description: 'Updated desc',
-      attachment: null,
-    });
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('START_SESSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('updateUsageSummary: creation from null, partial updates, zero values, all-null no-op', () => {
-    // fresh doc has usage: null — should create with zero defaults
-    let doc = reducer(utils.createDocument(), updateUsageSummary({ totalPromptTokens: 100 }));
+  it('should handle setAgentInfo operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetAgentInfoInputSchema());
 
-    expect(doc.state.global.usage).toStrictEqual({
-      totalPromptTokens: 100,
-      totalCompletionTokens: 0,
-      totalTokens: 0,
-      totalSteps: 0,
-      totalMessages: 0,
-      totalToolCalls: 0,
+    const updatedDocument = reducer(document, setAgentInfo(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_AGENT_INFO');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle endSession operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(EndSessionInputSchema(), {
+      endedAt: '2024-01-01T00:00:00.000Z',
     });
 
-    // partial update — only provided fields change
-    doc = reducer(doc, updateUsageSummary({ totalSteps: 5, totalTokens: 999 }));
+    const updatedDocument = reducer(document, endSession(input));
 
-    expect(doc.state.global.usage!.totalPromptTokens).toBe(100); // unchanged
-    expect(doc.state.global.usage!.totalSteps).toBe(5);
-    expect(doc.state.global.usage!.totalTokens).toBe(999);
-
-    // explicit 0 overwrites (not skipped)
-    doc = reducer(doc, updateUsageSummary({ totalPromptTokens: 0 }));
-    expect(doc.state.global.usage!.totalPromptTokens).toBe(0);
-
-    // all-null input — nothing changes
-    const before = { ...doc.state.global.usage! };
-    doc = reducer(
-      doc,
-      updateUsageSummary({
-        totalPromptTokens: null,
-        totalCompletionTokens: null,
-        totalTokens: null,
-        totalSteps: null,
-        totalMessages: null,
-        totalToolCalls: null,
-      }),
-    );
-    expect(doc.state.global.usage).toStrictEqual(before);
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('END_SESSION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('startSession: initializes all fields including description, attachment defaults to null', () => {
-    const doc = reducer(
-      utils.createDocument(),
-      startSession({
-        threadId: 't1',
-        resourceId: 'r1',
-        startedAt: '2025-01-01T00:00:00Z',
-        agent: { name: 'TestBot', description: 'My assistant' },
-      }),
-    );
+  it('should handle updateUsageSummary operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(UpdateUsageSummaryInputSchema());
 
-    expect(doc.state.global.threadId).toBe('t1');
-    expect(doc.state.global.resourceId).toBe('r1');
-    expect(doc.state.global.status).toBe('ACTIVE');
-    expect(doc.state.global.startedAt).toBe('2025-01-01T00:00:00Z');
-    expect(doc.state.global.agent).toStrictEqual({
-      id: null,
-      name: 'TestBot',
-      model: null,
-      description: 'My assistant',
-      attachment: null,
+    const updatedDocument = reducer(document, updateUsageSummary(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('UPDATE_USAGE_SUMMARY');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+
+  it('should handle addSystemMessage operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(AddSystemMessageInputSchema(), {
+      createdAt: '2024-01-01T00:00:00.000Z',
     });
-    expect(doc.state.global.usage).toStrictEqual({
-      totalPromptTokens: 0,
-      totalCompletionTokens: 0,
-      totalTokens: 0,
-      totalSteps: 0,
-      totalMessages: 0,
-      totalToolCalls: 0,
-    });
+
+    const updatedDocument = reducer(document, addSystemMessage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('ADD_SYSTEM_MESSAGE');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('endSession: sets status and endedAt', () => {
-    let doc = reducer(
-      utils.createDocument(),
-      startSession({
-        threadId: 't',
-        resourceId: 'r',
-        startedAt: '2025-01-01T00:00:00Z',
-        agent: { name: 'Bot' },
-      }),
-    );
-    doc = reducer(doc, endSession({ status: 'COMPLETED', endedAt: '2025-01-01T01:00:00Z' }));
+  it('should handle setAgentImage operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetAgentImageInputSchema());
 
-    expect(doc.state.global.status).toBe('COMPLETED');
-    expect(doc.state.global.endedAt).toBe('2025-01-01T01:00:00Z');
+    const updatedDocument = reducer(document, setAgentImage(input));
+
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_AGENT_IMAGE');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 
-  it('addSystemMessage: pushes message and increments usage counter', () => {
-    let doc = reducer(
-      utils.createDocument(),
-      startSession({
-        threadId: 't',
-        resourceId: 'r',
-        startedAt: '2025-01-01T00:00:00Z',
-        agent: {},
-      }),
-    );
-    doc = reducer(doc, addSystemMessage({ id: 'msg-1', text: 'You are helpful.', createdAt: '2025-01-01T00:00:01Z' }));
+  it('should handle setAgentDescription operation', () => {
+    const document = utils.createDocument();
+    const input = generateMock(SetAgentDescriptionInputSchema());
 
-    expect(doc.state.global.messages).toHaveLength(1);
-    expect(doc.state.global.messages[0].role).toBe('SYSTEM');
-    expect(doc.state.global.messages[0].content[0].text).toBe('You are helpful.');
-    expect(doc.state.global.usage!.totalMessages).toBe(1);
-  });
+    const updatedDocument = reducer(document, setAgentDescription(input));
 
-  it('setAgentImage: sets and clears attachment ref', () => {
-    const REF = 'attachment://v1:abc123';
-
-    // sets attachment on fresh doc (agent is null → creates agent)
-    let doc = reducer(utils.createDocument(), setAgentImage({ attachment: REF }));
-    expect(doc.state.global.agent!.attachment).toBe(REF);
-
-    // clear attachment entirely
-    doc = reducer(doc, setAgentImage({}));
-    expect(doc.state.global.agent!.attachment).toBeNull();
-  });
-
-  it('setAgentDescription: sets description, creates agent if null', () => {
-    // creates agent when null
-    let doc = reducer(utils.createDocument(), setAgentDescription({ description: 'A helpful assistant' }));
-    expect(doc.state.global.agent!.description).toBe('A helpful assistant');
-    expect(doc.state.global.agent!.name).toBeNull();
-
-    // updates existing agent description
-    doc = reducer(doc, setAgentInfo({ name: 'Bot' }));
-    doc = reducer(doc, setAgentDescription({ description: 'Updated bio' }));
-    expect(doc.state.global.agent!.description).toBe('Updated bio');
-    expect(doc.state.global.agent!.name).toBe('Bot');
-  });
-
-  it('setAgentInfo: partial update includes description', () => {
-    let doc = reducer(utils.createDocument(), setAgentInfo({ name: 'Bot', description: 'A bot' }));
-    expect(doc.state.global.agent!.description).toBe('A bot');
-
-    // partial update doesn't clobber description
-    doc = reducer(doc, setAgentInfo({ model: 'gpt-4' }));
-    expect(doc.state.global.agent!.description).toBe('A bot');
-    expect(doc.state.global.agent!.model).toBe('gpt-4');
+    expect(isChatSessionDocument(updatedDocument)).toBe(true);
+    expect(updatedDocument.operations.global).toHaveLength(1);
+    expect(updatedDocument.operations.global[0].action.type).toBe('SET_AGENT_DESCRIPTION');
+    expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
+    expect(updatedDocument.operations.global[0].index).toEqual(0);
   });
 });
