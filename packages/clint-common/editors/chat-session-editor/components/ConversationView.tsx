@@ -44,27 +44,7 @@ export function ConversationView({ messages, responding = false }: ConversationV
     return visible;
   }, [messages]);
 
-  // Show the typing indicator while the agent is working but the current turn
-  // hasn't produced reply text yet. Once any assistant prose appears after the
-  // last user message, the streaming message itself replaces the dots and they
-  // don't return for the rest of the turn.
-  const showTyping = useMemo(() => {
-    if (!responding) return false;
-    let lastUserIdx = -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'USER') {
-        lastUserIdx = i;
-        break;
-      }
-    }
-    for (let i = lastUserIdx + 1; i < messages.length; i++) {
-      const msg = messages[i];
-      if (msg.role === 'ASSISTANT' && msg.content.some((p) => p.type === 'TEXT' && p.text && p.text.trim())) {
-        return false;
-      }
-    }
-    return true;
-  }, [messages, responding]);
+  const showTyping = responding;
 
   const lastVisible = visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1] : undefined;
 

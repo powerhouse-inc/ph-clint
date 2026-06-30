@@ -20,7 +20,7 @@ export const documentModel: DocumentModelGlobalState = {
         },
         global: {
           schema:
-            'enum SessionStatus {\n  ACTIVE\n  COMPLETED\n  ABORTED\n  ERROR\n}\n\nenum MessageRole {\n  SYSTEM\n  USER\n  ASSISTANT\n  TOOL\n}\n\nenum ContentPartType {\n  TEXT\n  IMAGE\n  FILE\n  TOOL_CALL\n  TOOL_RESULT\n  REASONING\n  ERROR\n}\n\ntype AgentInfo {\n  id: String\n  name: String\n  model: String\n  description: String\n  attachment: String\n}\n\ntype MessageUsage {\n  promptTokens: Int\n  completionTokens: Int\n  totalTokens: Int\n}\n\ntype UsageSummary {\n  totalPromptTokens: Int!\n  totalCompletionTokens: Int!\n  totalTokens: Int!\n  totalSteps: Int!\n  totalMessages: Int!\n  totalToolCalls: Int!\n}\n\ntype ContentPart {\n  id: OID!\n  type: ContentPartType!\n  text: String\n  toolCallId: String\n  toolName: String\n  args: String\n  result: String\n  isError: Boolean\n  mediaType: String\n  url: URL\n  attachment: String\n  filename: String\n  error: String\n}\n\ntype Message {\n  id: OID!\n  role: MessageRole!\n  content: [ContentPart!]!\n  stepIndex: Int\n  createdAt: DateTime!\n  usage: MessageUsage\n}\n\ntype ChatSessionState {\n  threadId: String\n  resourceId: String\n  agent: AgentInfo\n  status: SessionStatus!\n  startedAt: DateTime\n  endedAt: DateTime\n  messages: [Message!]!\n  usage: UsageSummary\n  interruptRequested: Boolean\n}',
+            'enum SessionStatus {\n  ACTIVE\n  COMPLETED\n  ABORTED\n  ERROR\n}\n\nenum MessageRole {\n  SYSTEM\n  USER\n  ASSISTANT\n  TOOL\n}\n\nenum ContentPartType {\n  TEXT\n  IMAGE\n  FILE\n  TOOL_CALL\n  TOOL_RESULT\n  REASONING\n  ERROR\n}\n\ntype AgentInfo {\n  id: String\n  name: String\n  model: String\n  description: String\n  attachment: String\n}\n\ntype MessageUsage {\n  promptTokens: Int\n  completionTokens: Int\n  totalTokens: Int\n}\n\ntype UsageSummary {\n  totalPromptTokens: Int!\n  totalCompletionTokens: Int!\n  totalTokens: Int!\n  totalSteps: Int!\n  totalMessages: Int!\n  totalToolCalls: Int!\n}\n\ntype ContentPart {\n  id: OID!\n  type: ContentPartType!\n  text: String\n  toolCallId: String\n  toolName: String\n  args: String\n  result: String\n  isError: Boolean\n  mediaType: String\n  url: URL\n  attachment: String\n  filename: String\n  error: String\n}\n\ntype Message {\n  id: OID!\n  role: MessageRole!\n  content: [ContentPart!]!\n  stepIndex: Int\n  createdAt: DateTime!\n  usage: MessageUsage\n  finishedAt: DateTime\n  finishReason: String\n}\n\ntype ChatSessionState {\n  threadId: String\n  resourceId: String\n  agent: AgentInfo\n  status: SessionStatus!\n  startedAt: DateTime\n  endedAt: DateTime\n  messages: [Message!]!\n  usage: UsageSummary\n  interruptRequested: Boolean\n}',
           examples: [],
           initialValue: '{"threadId": null, "resourceId": null, "agent": null, "status": "ACTIVE", "startedAt": null, "endedAt": null, "messages": [], "usage": null, "interruptRequested": false}',
         },
@@ -289,6 +289,26 @@ export const documentModel: DocumentModelGlobalState = {
               errors: [
                 {
                   id: 'err-msg-not-found-4',
+                  name: 'MessageNotFoundError',
+                  code: 'MESSAGE_NOT_FOUND',
+                  description: 'The specified message ID does not exist in the session.',
+                  template: '',
+                },
+              ],
+              examples: [],
+              scope: 'global',
+            },
+            {
+              id: 'op-finish-assistant-message',
+              name: 'FINISH_ASSISTANT_MESSAGE',
+              description: "Mark an assistant message as the final message of the agent's turn.",
+              schema: 'input FinishAssistantMessageInput {\n  messageId: OID!\n  finishReason: String\n  finishedAt: DateTime!\n}',
+              template: "Mark an assistant message as the final message of the agent's turn.",
+              reducer:
+                "const msg = state.messages.find(m => m.id === action.input.messageId);\nif (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);\nmsg.finishedAt = action.input.finishedAt;\nmsg.finishReason = action.input.finishReason ?? null;",
+              errors: [
+                {
+                  id: 'err-msg-not-found-6',
                   name: 'MessageNotFoundError',
                   code: 'MESSAGE_NOT_FOUND',
                   description: 'The specified message ID does not exist in the session.',

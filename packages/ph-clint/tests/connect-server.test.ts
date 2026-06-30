@@ -108,8 +108,7 @@ describe('createConnectServer', () => {
 
     const res = await httpGet(`http://127.0.0.1:${port}/`);
     expect(res.body).not.toContain('__PH_DYNAMIC_BASE__');
-    // Byte-identical apart from the standalone error-report script append.
-    expect(res.body.replace(/\n?<script>\(function\(\)\{[\s\S]*?\}\)\(\);<\/script>\n?/, '')).toBe(html);
+    expect(res.body).toBe(html);
   });
 
   it('serves a static file under /assets/ with the immutable Cache-Control; missing asset 404s', async () => {

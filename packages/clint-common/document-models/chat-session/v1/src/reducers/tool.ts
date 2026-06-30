@@ -25,6 +25,8 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
       stepIndex: action.input.stepIndex ?? null,
       createdAt: action.input.createdAt,
       usage: null,
+      finishedAt: null,
+      finishReason: null,
     });
     if (state.usage) state.usage.totalMessages += 1;
   },

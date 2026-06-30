@@ -3,7 +3,7 @@
  * This file is auto-generated and updated by codegen
  */
 import type { DocumentModelUtils, PHBaseState, Reducer } from 'document-model';
-import { baseCreateDocument, baseLoadFromInputVersioned, baseSaveToFileHandle, defaultBaseState } from 'document-model';
+import { baseCreateDocument, baseLoadFromInputVersioned, baseSaveToFileHandle, createBaseState } from 'document-model';
 import { chatSessionUpgradeManifest } from '../../upgrades/upgrade-manifest.js';
 import { assertIsChatSessionDocument, assertIsChatSessionState, isChatSessionDocument, isChatSessionState } from './document-schema.js';
 import { chatSessionDocumentType } from './document-type.js';
@@ -27,7 +27,7 @@ export const utils: DocumentModelUtils<ChatSessionPHState> = {
   fileExtension: 'chat',
   createState(state) {
     return {
-      ...defaultBaseState(),
+      ...createBaseState(state?.auth, { version: 1, ...state?.document }),
       global: { ...initialGlobalState, ...state?.global },
       local: { ...initialLocalState, ...state?.local },
     };

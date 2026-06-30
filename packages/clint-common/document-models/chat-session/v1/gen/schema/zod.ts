@@ -17,6 +17,7 @@ import type {
   ContentPartType,
   DeleteUserMessageInput,
   EndSessionInput,
+  FinishAssistantMessageInput,
   InterruptAgentInput,
   Message,
   MessageRole,
@@ -190,6 +191,14 @@ export function EndSessionInputSchema(): z.ZodObject<Properties<EndSessionInput>
   });
 }
 
+export function FinishAssistantMessageInputSchema(): z.ZodObject<Properties<FinishAssistantMessageInput>> {
+  return z.object({
+    finishReason: z.string().nullish(),
+    finishedAt: z.iso.datetime(),
+    messageId: z.string(),
+  });
+}
+
 export function InterruptAgentInputSchema(): z.ZodObject<Properties<InterruptAgentInput>> {
   return z.object({
     _: z.boolean().nullish(),
@@ -201,6 +210,8 @@ export function MessageSchema(): z.ZodObject<Properties<Message>> {
     __typename: z.literal('Message').optional(),
     content: z.array(z.lazy(() => ContentPartSchema())),
     createdAt: z.iso.datetime(),
+    finishReason: z.string().nullish(),
+    finishedAt: z.iso.datetime().nullish(),
     id: z.string(),
     role: MessageRoleSchema,
     stepIndex: z.number().nullish(),

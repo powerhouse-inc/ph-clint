@@ -28,7 +28,13 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentInfoOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, description: null, attachment: null };
+      state.agent = {
+        id: null,
+        name: null,
+        model: null,
+        description: null,
+        attachment: null,
+      };
     }
     if (action.input.id) state.agent.id = action.input.id;
     if (action.input.name) state.agent.name = action.input.name;
@@ -59,6 +65,8 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       stepIndex: null,
       createdAt: action.input.createdAt,
       usage: null,
+      finishedAt: null,
+      finishReason: null,
     });
     if (state.usage) state.usage.totalMessages += 1;
   },
@@ -82,13 +90,25 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
   },
   setAgentImageOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, description: null, attachment: null };
+      state.agent = {
+        id: null,
+        name: null,
+        model: null,
+        description: null,
+        attachment: null,
+      };
     }
     state.agent.attachment = action.input.attachment ?? null;
   },
   setAgentDescriptionOperation(state, action) {
     if (!state.agent) {
-      state.agent = { id: null, name: null, model: null, description: null, attachment: null };
+      state.agent = {
+        id: null,
+        name: null,
+        model: null,
+        description: null,
+        attachment: null,
+      };
     }
     state.agent.description = action.input.description;
   },
