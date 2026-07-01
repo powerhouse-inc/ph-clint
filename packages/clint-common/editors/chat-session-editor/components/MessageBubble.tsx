@@ -95,7 +95,7 @@ function ToolMessage({ message, showAvatar }: { message: MessageType; showAvatar
   return (
     <Message from="assistant">
       <div className="flex items-start gap-2">
-        <AvatarSlot show={showAvatar} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
+        <AvatarSlot show={showAvatar} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
           <TerminalIcon className="size-3.5" />
         </AvatarSlot>
         <MessageContent>
