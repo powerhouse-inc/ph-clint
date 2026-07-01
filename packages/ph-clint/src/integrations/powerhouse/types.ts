@@ -406,6 +406,9 @@ export interface ConnectConfig {
   name?: string;
   /** Path to pre-built Connect static assets. When set, serves via static file server instead of Vite dev server. */
   assetsDir?: string;
+  // Precompress assets to brotli/gzip on first boot (static mode). Opt-in; only
+  // safe for bundles immutable after boot (in-place rewrites stale the .br/.gz).
+  precompress?: boolean;
   /**
    * Package registry URL forwarded to Connect via
    * `PH_CONNECT_PACKAGES_REGISTRY`. The vite config reads this to resolve

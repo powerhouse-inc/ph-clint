@@ -1,34 +1,34 @@
-// Static file server for pre-built Connect SPA assets; applies a one-time
-// dynamic-base token substitution to HTML docs (see substituteDynamicBase).
+// sirv-backed static server for pre-built Connect SPA assets: precompressed
+// brotli/gzip + immutable assets, plus a dynamic-base HTML transform (see substituteDynamicBase).
 
 import { createServer, type Server } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
-import { existsSync } from 'node:fs';
-import { parseArgs } from 'node:util';
+import { existsSync, statSync } from 'node:fs';
+import { parseArgs, promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
+import { brotliCompress, gzip, constants as zlib } from 'node:zlib';
+import sirv from 'sirv';
 
-const MIME_TYPES: Record<string, string> = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'application/javascript',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.ico': 'image/x-icon',
-  '.woff2': 'font/woff2',
-  '.wasm': 'application/wasm',
-};
+const brotliAsync = promisify(brotliCompress);
+const gzipAsync = promisify(gzip);
 
 export interface ConnectServerOptions {
-  /** Directory containing the built SPA (must hold an index.html). */
+  // Directory containing the built SPA (must hold an index.html).
   dir: string;
   // Deploy base path the SPA is mounted under (proxy mount, not a per-route
   // prefix). Normalized to leading+trailing-slash form ('/' | '/x/'). Default '/'.
   base?: string;
+  // Generate missing .br/.gz siblings at startup (skips up-to-date ones).
+  precompress?: boolean;
 }
 
-/** Normalize a deploy base to leading+trailing-slash form ('/' | '/x/'). */
+const ASSET_MAX_AGE = 31536000;
+const TOPLEVEL_MAX_AGE = 3600;
+const COMPRESSIBLE = new Set(['.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.map', '.txt', '.xml', '.ico', '.webmanifest']);
+const COMPRESS_MIN_BYTES = 1024;
+
+// Normalize a deploy base to leading+trailing-slash form ('/' | '/x/').
 function normalizeBase(base: string | undefined): string {
   const trimmed = base?.trim().replace(/^\/+|\/+$/g, '') ?? '';
   return trimmed === '' ? '/' : `/${trimmed}/`;
@@ -51,6 +51,59 @@ function substituteDynamicBase(html: string, base: string): string {
   return inject + replaced;
 }
 
+// A precompressed sibling is reusable when it exists and is at least as new as
+// its source — content-hashed asset names make this stable across restarts.
+function siblingFresh(path: string, srcMtimeMs: number): boolean {
+  try {
+    return statSync(path).mtimeMs >= srcMtimeMs;
+  } catch {
+    return false;
+  }
+}
+
+export interface PrecompressOptions {
+  // Brotli quality 0-11; higher is smaller and slower. Default 5 (fast, for the
+  // runtime boot path). A build-time pass can afford 11.
+  brotliQuality?: number;
+  // Gzip level 0-9. Default 6.
+  gzipLevel?: number;
+}
+
+// Write missing/stale .br and .gz siblings for compressible assets under `dir`.
+export async function precompressAssets(dir: string, options: PrecompressOptions = {}): Promise<{ count: number; ms: number }> {
+  // Loaded here, not at module top: totalist is only needed on the precompress
+  // path, so the server's hot path doesn't pull it in.
+  const { totalist } = await import('totalist');
+  const brotliQuality = options.brotliQuality ?? 5;
+  const gzipLevel = options.gzipLevel ?? 6;
+  const start = Date.now();
+  let count = 0;
+  await totalist(dir, async (_rel: string, abs: string, stats: { size: number; mtimeMs: number }) => {
+    const ext = extname(abs);
+    if (abs.endsWith('.br') || abs.endsWith('.gz')) return;
+    if (!COMPRESSIBLE.has(ext) || stats.size < COMPRESS_MIN_BYTES) return;
+    let buf: Buffer | undefined;
+    const br = `${abs}.br`;
+    if (!siblingFresh(br, stats.mtimeMs)) {
+      buf ??= await readFile(abs);
+      await writeFile(br, await brotliAsync(buf, {
+        params: {
+          [zlib.BROTLI_PARAM_QUALITY]: brotliQuality,
+          [zlib.BROTLI_PARAM_SIZE_HINT]: stats.size,
+        },
+      }));
+      count++;
+    }
+    const gz = `${abs}.gz`;
+    if (!siblingFresh(gz, stats.mtimeMs)) {
+      buf ??= await readFile(abs);
+      await writeFile(gz, await gzipAsync(buf, { level: gzipLevel }));
+      count++;
+    }
+  });
+  return { count, ms: Date.now() - start };
+}
+
 // Create the Connect static server (not yet listening). Throws when `dir`
 // holds no index.html.
 export function createConnectServer(options: ConnectServerOptions): Server {
@@ -62,63 +115,80 @@ export function createConnectServer(options: ConnectServerOptions): Server {
     throw new Error(`index.html not found in ${dir}`);
   }
 
-  // HTML docs are transformed (dynamic-base substitution) once per file path
-  // and cached; the assets dir is a static build.
-  const htmlCache = new Map<string, string>();
+  // sirv streams concrete files, serving a precompressed .br/.gz sibling when
+  // accepted. HTML is handled separately, so its fallback/extension probing stay off.
+  const buildAssetServer = () => sirv(dir, {
+    etag: true,
+    brotli: true,
+    gzip: true,
+    single: false,
+    extensions: [],
+    // Set Cache-Control here, not via sirv's maxAge/immutable: a global one is
+    // baked into writeHead and would override this per-path setHeader.
+    setHeaders(res, pathname) {
+      res.setHeader('Cache-Control', pathname.startsWith('/assets/')
+        ? `public, max-age=${ASSET_MAX_AGE}, immutable`
+        : `public, max-age=${TOPLEVEL_MAX_AGE}`);
+    },
+  });
 
+  // Swapped after background precompression so sirv's boot-time file map (built
+  // at construction, in non-dev) picks up the new .br/.gz siblings.
+  let serveAsset = buildAssetServer();
+  if (options.precompress) {
+    precompressAssets(dir)
+      .then(({ count, ms }) => {
+        // Rebuild only when new siblings were written; a warm restart already
+        // saw the existing ones (sirv reads the dir at construction).
+        if (count > 0) serveAsset = buildAssetServer();
+        console.log(`  Precompressed ${count} asset variants in ${ms}ms`);
+      })
+      .catch((err) => console.error(`  Precompress failed: ${(err as Error).message}`));
+  }
+
+  // The substituted HTML shell is cached per file path; base is fixed per process.
+  const htmlCache = new Map<string, string>();
   async function loadHtmlDocument(path: string): Promise<string> {
     let doc = htmlCache.get(path);
     if (doc === undefined) {
-      const raw = await readFile(path, 'utf-8');
-      doc = substituteDynamicBase(raw, base);
+      doc = substituteDynamicBase(await readFile(path, 'utf-8'), base);
       htmlCache.set(path, doc);
     }
     return doc;
   }
 
-  return createServer(async (req, res) => {
+  const sendShell = (res: import('node:http').ServerResponse, target: string): void => {
+    loadHtmlDocument(target).then((body) => {
+      res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
+      res.end(body);
+    }).catch((err) => {
+      console.error(`connect-server: failed to render shell: ${(err as Error).message}`);
+      res.writeHead(500);
+      res.end('Internal Server Error');
+    });
+  };
+
+  return createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    const ext = extname(url.pathname);
 
-    const filePath = join(dir, url.pathname);
-    const ext = extname(filePath);
-
-    // A missing file under /assets/ is a 404, not the SPA shell — serving
-    // HTML as a .js/.css masks broken asset references.
-    if (url.pathname.startsWith('/assets/') && !existsSync(filePath)) {
-      res.writeHead(404);
-      res.end('Not Found');
+    // Extensionless routes (SPA paths) and .html → the dynamic-base shell, no-cache.
+    if (ext === '' || ext === '.html') {
+      const specific = ext === '.html' ? join(dir, url.pathname) : '';
+      sendShell(res, specific && existsSync(specific) ? specific : indexPath);
       return;
     }
 
-    if (ext && ext !== '.html' && existsSync(filePath)) {
-      try {
-        const content = await readFile(filePath);
-        // Vite content-hashes filenames under /assets/, so they're immutable;
-        // other top-level static files (e.g. /icon.ico) aren't, cache modestly.
-        const cacheControl = url.pathname.startsWith('/assets/')
-          ? 'public, max-age=31536000, immutable'
-          : 'public, max-age=3600';
-        res.writeHead(200, {
-          'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream',
-          'Cache-Control': cacheControl,
-        });
-        res.end(content);
+    serveAsset(req, res, () => {
+      // Missing /assets/ file is a hard 404 (masking it with HTML hides broken
+      // refs); any other miss is a client-side route → serve the SPA shell.
+      if (url.pathname.startsWith('/assets/')) {
+        res.writeHead(404);
+        res.end('Not Found');
         return;
-      } catch {
-        // Fall through to SPA fallback
       }
-    }
-
-    try {
-      const target = ext === '.html' && existsSync(filePath) ? filePath : indexPath;
-      const body = await loadHtmlDocument(target);
-      // SPA shell carries the per-deployment dynamic base, must revalidate.
-      res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
-      res.end(body);
-    } catch {
-      res.writeHead(500);
-      res.end('Internal Server Error');
-    }
+      sendShell(res, indexPath);
+    });
   });
 }
 
@@ -138,6 +208,7 @@ if (isMain()) {
       dir: { type: 'string' },
       port: { type: 'string' },
       base: { type: 'string' },
+      precompress: { type: 'boolean' },
     },
   });
 
@@ -145,18 +216,20 @@ if (isMain()) {
   const port = parseInt(values.port ?? '3000', 10);
 
   if (!dir) {
-    console.error('Usage: node connect-server.js --dir <path> --port <port> [--base </deploy/base/>]');
+    console.error('Usage: node connect-server.js --dir <path> --port <port> [--base </deploy/base/>] [--precompress]');
     process.exit(1);
   }
 
   let server: Server;
   try {
-    server = createConnectServer({ dir, base: values.base });
+    server = createConnectServer({ dir, base: values.base, precompress: values.precompress });
   } catch (err) {
     console.error((err as Error).message);
     process.exit(1);
   }
 
+  // Listen (and announce readiness) immediately; precompression runs in the
+  // background and swaps in compressed serving when done.
   server.listen(port, () => {
     console.log(`  Local: http://localhost:${port}/`);
   });
