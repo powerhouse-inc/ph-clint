@@ -50,7 +50,10 @@ export function connectServiceDefinition(
         // Quote interpolated values — the command runs via shell:true and
         // paths may contain spaces.
         const baseFlag = base && base !== '/' ? ` --base ${JSON.stringify(base)}` : '';
-        return `node ${JSON.stringify(serverScript)} --dir ${JSON.stringify(connectConfig.assetsDir)} --port ${p}${baseFlag}`;
+        // Opt-in only: precompression requires a bundle that is immutable after
+        // boot — a consumer that rewrites assets in place would serve stale .br/.gz.
+        const precompressFlag = connectConfig.precompress ? ' --precompress' : '';
+        return `node ${JSON.stringify(serverScript)} --dir ${JSON.stringify(connectConfig.assetsDir)} --port ${p}${baseFlag}${precompressFlag}`;
       }
 
       return `ph connect --port ${p}`;

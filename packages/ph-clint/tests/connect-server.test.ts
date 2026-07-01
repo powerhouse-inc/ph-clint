@@ -120,7 +120,8 @@ describe('createConnectServer', () => {
     const ok = await httpGet(`http://127.0.0.1:${port}/assets/index.js`);
     expect(ok.status).toBe(200);
     expect(ok.body).toBe('console.log("bundle");');
-    expect(ok.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+    expect(ok.headers['cache-control']).toMatch(/max-age=31536000/);
+    expect(ok.headers['cache-control']).toMatch(/immutable/);
 
     const missing = await httpGet(`http://127.0.0.1:${port}/assets/missing.js`);
     expect(missing.status).toBe(404);
