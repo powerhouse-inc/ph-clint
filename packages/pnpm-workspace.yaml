@@ -20,19 +20,19 @@ catalog:
   '@mastra/core': ^1.41.0
   '@mastra/libsql': ^1.12.1
   '@mastra/memory': ^1.20.2
-  '@powerhousedao/reactor-attachments': 6.2.0-rc.2
-  '@powerhousedao/analytics-engine-core': 6.2.0-rc.2
-  '@powerhousedao/connect': 6.2.0-rc.2
-  '@powerhousedao/design-system': 6.2.0-rc.2
+  '@powerhousedao/reactor-attachments': 6.2.0-rc.5
+  '@powerhousedao/analytics-engine-core': 6.2.0-rc.5
+  '@powerhousedao/connect': 6.2.0-rc.5
+  '@powerhousedao/design-system': 6.2.0-rc.5
   '@powerhousedao/document-engineering': 1.40.5
-  '@powerhousedao/ph-cli': 6.2.0-rc.2
-  '@powerhousedao/reactor': 6.2.0-rc.2
-  '@powerhousedao/reactor-api': 6.2.0-rc.2
-  '@powerhousedao/reactor-browser': 6.2.0-rc.2
-  '@powerhousedao/reactor-mcp': 6.2.0-rc.2
-  '@powerhousedao/shared': 6.2.0-rc.2
-  '@powerhousedao/switchboard': 6.2.0-rc.2
-  document-model: 6.2.0-rc.2
+  '@powerhousedao/ph-cli': 6.2.0-rc.5
+  '@powerhousedao/reactor': 6.2.0-rc.5
+  '@powerhousedao/reactor-api': 6.2.0-rc.5
+  '@powerhousedao/reactor-browser': 6.2.0-rc.5
+  '@powerhousedao/reactor-mcp': 6.2.0-rc.5
+  '@powerhousedao/shared': 6.2.0-rc.5
+  '@powerhousedao/switchboard': 6.2.0-rc.5
+  document-model: 6.2.0-rc.5
   # zod — unified across the workspace. Exact, to match the `overrides` pin
   # above (the override forces 4.3.6 transitively anyway).
   zod: 4.3.6
