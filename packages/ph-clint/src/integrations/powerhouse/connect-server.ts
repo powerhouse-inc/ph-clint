@@ -54,6 +54,30 @@ function substituteDynamicBase(html: string, base: string): string {
   return inject + replaced;
 }
 
+// Pre-paint theme boot: `?theme=dark|light` persists to `ph:theme`, then the
+// stored choice (or system preference) decides the `.dark` root class before
+// hydration. Fail-silent — storage access can throw in embed/privacy contexts.
+const THEME_BOOT_SCRIPT =
+  `<script data-ph-theme-boot>(function(){try{` +
+  `var p=new URLSearchParams(location.search).get('theme');` +
+  `if(p==='dark'||p==='light')localStorage.setItem('ph:theme',p);` +
+  `var s=localStorage.getItem('ph:theme');` +
+  `var d=s==='dark'||((!s||s==='system')&&matchMedia('(prefers-color-scheme: dark)').matches);` +
+  `document.documentElement.classList.toggle('dark',d);` +
+  `}catch(e){}})();</script>`;
+
+// Inject the theme boot script at the top of <head>; the marker attribute
+// keeps documents that already carry it (or a build-time copy) untouched.
+function injectThemeBootScript(html: string): string {
+  if (html.includes('data-ph-theme-boot')) return html;
+  const headOpen = html.match(/<head[^>]*>/i);
+  if (headOpen?.index !== undefined) {
+    const at = headOpen.index + headOpen[0].length;
+    return html.slice(0, at) + THEME_BOOT_SCRIPT + html.slice(at);
+  }
+  return THEME_BOOT_SCRIPT + html;
+}
+
 // A precompressed sibling is reusable when it exists and is at least as new as
 // its source — content-hashed asset names make this stable across restarts.
 function siblingFresh(path: string, srcMtimeMs: number): boolean {
@@ -160,7 +184,7 @@ export function createConnectServer(options: ConnectServerOptions): Server {
   async function loadHtmlDocument(path: string): Promise<string> {
     let doc = htmlCache.get(path);
     if (doc === undefined) {
-      doc = substituteDynamicBase(await readFile(path, 'utf-8'), base);
+      doc = injectThemeBootScript(substituteDynamicBase(await readFile(path, 'utf-8'), base));
       htmlCache.set(path, doc);
     }
     return doc;
