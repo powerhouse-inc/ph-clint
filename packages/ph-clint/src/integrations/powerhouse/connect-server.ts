@@ -25,6 +25,9 @@ export interface ConnectServerOptions {
 
 const ASSET_MAX_AGE = 31536000;
 const TOPLEVEL_MAX_AGE = 3600;
+// /__react__ entrypoints have stable URLs but mutate on a React bump, so cache
+// long yet revalidatable (not immutable) — a bump recovers within the window.
+const REACT_ENTRY_MAX_AGE = 604800;
 const COMPRESSIBLE = new Set(['.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.map', '.txt', '.xml', '.ico', '.webmanifest', '.data']);
 const COMPRESS_MIN_BYTES = 1024;
 
@@ -126,9 +129,15 @@ export function createConnectServer(options: ConnectServerOptions): Server {
     // Set Cache-Control here, not via sirv's maxAge/immutable: a global one is
     // baked into writeHead and would override this per-path setHeader.
     setHeaders(res, pathname) {
-      res.setHeader('Cache-Control', pathname.startsWith('/assets/')
-        ? `public, max-age=${ASSET_MAX_AGE}, immutable`
-        : `public, max-age=${TOPLEVEL_MAX_AGE}`);
+      // Content-hashed dirs (/assets, /__react__/chunks) are immutable; the
+      // stable-URL /__react__ entrypoints get a long revalidatable TTL.
+      if (pathname.startsWith('/assets/') || pathname.startsWith('/__react__/chunks/')) {
+        res.setHeader('Cache-Control', `public, max-age=${ASSET_MAX_AGE}, immutable`);
+      } else if (pathname.startsWith('/__react__/')) {
+        res.setHeader('Cache-Control', `public, max-age=${REACT_ENTRY_MAX_AGE}`);
+      } else {
+        res.setHeader('Cache-Control', `public, max-age=${TOPLEVEL_MAX_AGE}`);
+      }
     },
   });
 
