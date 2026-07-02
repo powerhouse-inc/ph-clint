@@ -108,7 +108,39 @@ describe('createConnectServer', () => {
 
     const res = await httpGet(`http://127.0.0.1:${port}/`);
     expect(res.body).not.toContain('__PH_DYNAMIC_BASE__');
-    expect(res.body).toBe(html);
+    // Only the theme boot script is added; the base step changes nothing.
+    expect(res.body.replace(/<script data-ph-theme-boot>.*?<\/script>/, '')).toBe(html);
+  });
+
+  it('injects the theme boot script at the top of <head>, before the entry bundle', async () => {
+    const dir = makeAssetsDir(DYNAMIC_BASE_HTML);
+    const port = await listen(createConnectServer({ dir, base: '/myagent/' }));
+
+    const res = await httpGet(`http://127.0.0.1:${port}/`);
+    expect(res.status).toBe(200);
+    expect(res.body).toContain('<script data-ph-theme-boot>');
+    // Persists ?theme= into ph:theme, honors system preference, toggles .dark.
+    expect(res.body).toContain(`localStorage.setItem('ph:theme',p)`);
+    expect(res.body).toContain('prefers-color-scheme: dark');
+    expect(res.body).toContain(`classList.toggle('dark',d)`);
+    const themeAt = res.body.indexOf('data-ph-theme-boot');
+    const entryAt = res.body.indexOf('src="/myagent/assets/index.js"');
+    expect(themeAt).toBeGreaterThanOrEqual(0);
+    expect(themeAt).toBeLessThan(entryAt);
+  });
+
+  it('keeps an existing theme boot marker instead of injecting another', async () => {
+    const html =
+      `<!doctype html><html><head>` +
+      `<script data-ph-theme-boot>/* build-time copy */</script>` +
+      `<script type="module" src="/assets/index.js"></script>` +
+      `</head><body></body></html>`;
+    const dir = makeAssetsDir(html);
+    const port = await listen(createConnectServer({ dir }));
+
+    const res = await httpGet(`http://127.0.0.1:${port}/`);
+    expect(res.body.match(/data-ph-theme-boot/g)).toHaveLength(1);
+    expect(res.body).toContain('/* build-time copy */');
   });
 
   it('serves a static file under /assets/ with the immutable Cache-Control; missing asset 404s', async () => {
