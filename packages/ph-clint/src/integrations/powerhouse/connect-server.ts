@@ -25,7 +25,7 @@ export interface ConnectServerOptions {
 
 const ASSET_MAX_AGE = 31536000;
 const TOPLEVEL_MAX_AGE = 3600;
-const COMPRESSIBLE = new Set(['.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.map', '.txt', '.xml', '.ico', '.webmanifest']);
+const COMPRESSIBLE = new Set(['.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.map', '.txt', '.xml', '.ico', '.webmanifest', '.data']);
 const COMPRESS_MIN_BYTES = 1024;
 
 // Normalize a deploy base to leading+trailing-slash form ('/' | '/x/').
