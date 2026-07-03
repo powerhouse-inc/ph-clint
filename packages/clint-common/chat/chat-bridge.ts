@@ -171,6 +171,11 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
   let finishReason: string | null = null;
   const stats: BridgeStats = { totalMessages: 0, totalSteps: 0, totalToolCalls: 0 };
 
+  // Per-turn token usage from the agent stream
+  type StreamUsage = NonNullable<Extract<StreamChunk, { type: 'finish' }>['usage']>;
+  let finishUsage: StreamUsage | undefined;
+  let stepUsage: StreamUsage | undefined;
+
   const now = () => new Date().toISOString();
 
   async function flushText(): Promise<void> {
@@ -328,8 +333,23 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
           break;
         }
 
+        case 'step-finish': {
+          if (chunk.usage) {
+            stepUsage = {
+              inputTokens: (stepUsage?.inputTokens ?? 0) + (chunk.usage.inputTokens ?? 0),
+              outputTokens: (stepUsage?.outputTokens ?? 0) + (chunk.usage.outputTokens ?? 0),
+              totalTokens: (stepUsage?.totalTokens ?? 0) + (chunk.usage.totalTokens ?? 0),
+              cachedInputTokens: (stepUsage?.cachedInputTokens ?? 0) + (chunk.usage.cachedInputTokens ?? 0),
+              cacheCreationInputTokens: (stepUsage?.cacheCreationInputTokens ?? 0) + (chunk.usage.cacheCreationInputTokens ?? 0),
+              reasoningTokens: (stepUsage?.reasoningTokens ?? 0) + (chunk.usage.reasoningTokens ?? 0),
+            };
+          }
+          break;
+        }
+
         case 'finish': {
           finishReason = chunk.finishReason ?? null;
+          finishUsage = chunk.usage;
           break;
         }
 
@@ -371,11 +391,28 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
 
     await flushText();
 
+    // Compute turn-usage from the stream (finish is authoritative; step-finish is fallback)
+    const turnUsage = finishUsage ?? stepUsage;
+
+    // Read prior cumulative totals from the document (one turn per doc, safe)
+    const doc = await reactor.client.get<'powerhouse/chat-session'>(documentId);
+    const prior = doc.state.global.usage;
+    const priorPrompt = prior?.totalPromptTokens ?? 0;
+    const priorCompletion = prior?.totalCompletionTokens ?? 0;
+    const priorTotal = prior?.totalTokens ?? 0;
+    const priorSteps = prior?.totalSteps ?? 0;
+    const buildUsage = turnUsage
+      ? {
+          totalPromptTokens: priorPrompt + (turnUsage.inputTokens ?? 0),
+          totalCompletionTokens: priorCompletion + (turnUsage.outputTokens ?? 0),
+          totalTokens: priorTotal + (turnUsage.totalTokens ?? (turnUsage.inputTokens ?? 0) + (turnUsage.outputTokens ?? 0)),
+        }
+      : undefined;
+
     await dispatch(
       updateUsageSummary({
-        totalMessages: stats.totalMessages,
-        totalSteps: stats.totalSteps,
-        totalToolCalls: stats.totalToolCalls,
+        totalSteps: priorSteps + stats.totalSteps,
+        ...buildUsage,
       }),
     );
 
@@ -389,7 +426,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
       );
     }
 
-    log?.info(`${TAG} stream complete for ${documentId}: ` + `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls`);
+    log?.info(`${TAG} stream complete for ${documentId}: ` + `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls` + (buildUsage ? `, ${buildUsage.totalTokens} tokens` : ''));
   } catch (err) {
     await flushText().catch(() => {});
 
