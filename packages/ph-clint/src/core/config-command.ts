@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, renameSync, unlinkSync } from 'node:fs';
+import { dirname, basename, join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { getSchemaFields, type FieldInfo } from './schema.js';
 import {
@@ -22,12 +23,40 @@ function loadJsonFile(path: string): Record<string, unknown> {
   }
 }
 
-/**
- * Write a JSON config file, creating parent directories as needed.
- */
-function writeJsonFile(path: string, data: Record<string, unknown>): void {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(data, null, 2) + '\n', 'utf-8');
+/** Restrictive permissions for config files holding secrets. */
+const SENSITIVE_FILE_MODE = 0o600;
+
+// Atomic JSON write: same-dir temp file + rename. `mode` applies to the fresh
+// temp file, so it takes effect even when the destination already exists.
+function writeJsonFile(path: string, data: Record<string, unknown>, mode?: number): void {
+  const dir = dirname(path);
+  mkdirSync(dir, { recursive: true });
+  const tmp = join(dir, `.${basename(path)}.tmp-${randomBytes(6).toString('hex')}`);
+  const contents = JSON.stringify(data, null, 2) + '\n';
+  try {
+    writeFileSync(tmp, contents, mode !== undefined ? { encoding: 'utf-8', mode } : 'utf-8');
+    try {
+      renameSync(tmp, path);
+    } catch (err) {
+      // Windows rename won't clobber an existing destination; replace it.
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== 'EEXIST' && code !== 'EPERM') throw err;
+      unlinkSync(path);
+      renameSync(tmp, path);
+    }
+  } catch (err) {
+    try { unlinkSync(tmp); } catch {}
+    throw err;
+  }
+}
+
+/** 0600 when the object holds any sensitive key, else undefined (default perms). */
+function fileModeFor(data: Record<string, unknown>, sensitiveKeys?: ReadonlySet<string>): number | undefined {
+  if (!sensitiveKeys) return undefined;
+  for (const key of Object.keys(data)) {
+    if (sensitiveKeys.has(key)) return SENSITIVE_FILE_MODE;
+  }
+  return undefined;
 }
 
 /**
@@ -189,7 +218,7 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
           return { text: `${settingName} is not set in ${removeScope} config` };
         }
         delete existing[settingName];
-        writeJsonFile(filePath, existing);
+        writeJsonFile(filePath, existing, fileModeFor(existing, sensitiveKeys));
         return { text: `Removed ${settingName} from ${removeScope} config` };
       }
 
@@ -218,7 +247,7 @@ export function createConfigCommand(opts: ConfigCommandOptions): Command {
         // Read existing file, merge, write back
         const existing = loadJsonFile(filePath);
         existing[settingName] = coerced;
-        writeJsonFile(filePath, existing);
+        writeJsonFile(filePath, existing, fileModeFor(existing, sensitiveKeys));
 
         return { text: `Set ${settingName} = ${JSON.stringify(coerced)} in ${writeScope} config` };
       }
