@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, readFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -243,6 +243,46 @@ describe('createConfigCommand', () => {
       const filePath = join(workDir, '.ph', 'tasks.config.local.json');
       const data = JSON.parse(await readFile(filePath, 'utf-8'));
       expect(data.defaultPriority).toBe('high');
+    });
+
+    const itPosix = process.platform === 'win32' ? it.skip : it;
+
+    itPosix('writes 0600 when a sensitive key is present', async () => {
+      const cmd = createConfigCommand({
+        cliName: 'tasks',
+        configSchema,
+        sensitiveKeys: new Set(['apiKey']),
+      });
+      await cmd.execute({ name: 'apiKey', write: 'secret-value' }, makeContext());
+      const filePath = join(workDir, '.ph', 'tasks.config.local.json');
+      const mode = (await stat(filePath)).mode & 0o777;
+      expect(mode).toBe(0o600);
+    });
+
+    itPosix('does not force 0600 for a non-sensitive key', async () => {
+      const cmd = createConfigCommand({
+        cliName: 'tasks',
+        configSchema,
+        sensitiveKeys: new Set(['apiKey']),
+      });
+      await cmd.execute({ name: 'defaultPriority', write: 'high' }, makeContext());
+      const filePath = join(workDir, '.ph', 'tasks.config.local.json');
+      const mode = (await stat(filePath)).mode & 0o777;
+      expect(mode).not.toBe(0o600);
+    });
+
+    itPosix('keeps 0600 after removing a non-secret while a secret remains', async () => {
+      const cmd = createConfigCommand({
+        cliName: 'tasks',
+        configSchema,
+        sensitiveKeys: new Set(['apiKey']),
+      });
+      await cmd.execute({ name: 'apiKey', write: 'secret-value' }, makeContext());
+      await cmd.execute({ name: 'maxItems', write: '5' }, makeContext());
+      await cmd.execute({ name: 'maxItems', remove: true }, makeContext());
+      const filePath = join(workDir, '.ph', 'tasks.config.local.json');
+      const mode = (await stat(filePath)).mode & 0o777;
+      expect(mode).toBe(0o600);
     });
 
     it('writes number values correctly', async () => {
