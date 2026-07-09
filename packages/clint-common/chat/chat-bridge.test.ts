@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { writeAgentStreamToDocument } from './chat-bridge.js';
-import type { StreamChunk, ReactorContext } from '@powerhousedao/ph-clint';
+import type { StreamChunk, ReactorContext, TypedReactorClient } from '@powerhousedao/ph-clint';
 import type { ChatSessionRegistry } from './chat-session-init.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -17,28 +17,35 @@ interface RecordedAction {
   actions: unknown[];
 }
 
-function makeReactorWithPriorUsage(priorUsage: unknown): ReactorContext<ChatSessionRegistry> {
+type MockReactor = ReactorContext<ChatSessionRegistry> & { calls: RecordedAction[] };
+
+function makeReactorWithPriorUsage(priorUsage: unknown): MockReactor {
   const calls: RecordedAction[] = [];
 
-  return {
-    client: {
-      execute: (documentId: string, scope: string, actions: unknown[]) => {
-        calls.push({ documentId, scope, actions });
-        return Promise.resolve({ ok: true } as never);
-      },
-      get: () =>
-        Promise.resolve({
-          state: {
-            global: { usage: priorUsage },
-          },
-        } as never),
+  const client = {
+    execute: (documentId: string, scope: string, actions: unknown[]) => {
+      calls.push({ documentId, scope, actions });
+      return Promise.resolve({ ok: true } as never);
     },
-    onChange: () => {},
+    get: () =>
+      Promise.resolve({
+        state: {
+          global: { usage: priorUsage },
+        },
+      } as never),
+    // Reduced test double: only execute/get are exercised. The full
+    // TypedReactorClient surface can't be structurally satisfied here.
+  } as unknown as TypedReactorClient<ChatSessionRegistry>;
+
+  return {
+    client,
+    driveId: 'drive-1',
+    shutdown: () => Promise.resolve(),
     calls,
-  } as ReactorContext<ChatSessionRegistry>;
+  };
 }
 
-function getUpdateUsageSummaryAction(calls: RecordedAction[]): unknown | undefined {
+function getUpdateUsageSummaryAction(calls: RecordedAction[]): unknown {
   for (const call of calls) {
     for (const action of call.actions) {
       const typed = action as { type: string; input: Record<string, unknown> };
