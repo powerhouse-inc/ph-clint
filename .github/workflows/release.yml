@@ -1,0 +1,77 @@
+name: release
+
+# Publish the six workspace packages (lockstep) to npmjs.
+# Version bumps / dep updates happen in a prior manual commit — this workflow
+# builds and publishes whatever version is committed on the branch it runs from.
+#
+#   branch      npm dist-tag
+#   main        dev     (0.1.0-dev.N — MUST NOT take `latest`: it is semver-above
+#                        the production 0.0.x line and would steal the tag)
+#   production  latest  (stable 0.0.x)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The publishing workspace root is packages/ — running pnpm publish -r from
+    # the repo root would sweep examples/, sandbox/ and prototypes/ too.
+    defaults:
+      run:
+        working-directory: packages
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve dist-tag from branch
+        id: meta
+        run: |
+          case "${{ github.ref_name }}" in
+            main)       echo "tag=dev"    >> "$GITHUB_OUTPUT" ;;
+            production) echo "tag=latest" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::release runs from main or production only (got ${{ github.ref_name }})"; exit 1 ;;
+          esac
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # packages/pnpm-lock.yaml is gitignored — nothing to freeze against.
+      - name: Install workspace
+        run: pnpm install
+
+      - name: Build
+        run: pnpm -r run build
+
+      - name: Guard npm token
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          [ -n "$NPM_TOKEN" ] || { echo "::error::secret NPM_TOKEN is not set"; exit 1; }
+
+      # pnpm rewrites workspace:/catalog: ranges to real versions on publish
+      # and skips versions already on the registry (reruns are idempotent).
+      - name: Publish (all six packages, lockstep)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: pnpm publish -r --access public --tag "$TAG" --no-git-checks
+
+      - name: Verify dist-tags
+        run: |
+          sleep 10
+          for p in ph-clint ph-clint-dev ph-clint-observability ph-clint-app ph-clint-cli clint-common; do
+            echo "== @powerhousedao/$p"
+            npm view "@powerhousedao/$p" dist-tags --registry https://registry.npmjs.org || true
+          done
