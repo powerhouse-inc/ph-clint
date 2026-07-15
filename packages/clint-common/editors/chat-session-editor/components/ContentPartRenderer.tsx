@@ -195,7 +195,7 @@ function BuiltinToolRenderer({ args, result, isError, hasResult, state, callPart
   const preview = getToolPreview(callPart.args, resultPart?.result, isError);
 
   return (
-    <Tool className={cn(hasResult && (isError ? 'border-red-300 dark:border-red-800' : 'border-green-300 dark:border-green-800'))}>
+    <Tool className={cn(hasResult && (isError ? 'border-destructive/30' : 'border-success/30'))}>
       <ToolHeader type="dynamic-tool" toolName={callPart.toolName ?? 'unknown'} title={callPart.toolName ?? 'Tool Call'} state={state} preview={preview} />
       <ToolContent>
         {args !== undefined && <ToolInput input={args} />}
