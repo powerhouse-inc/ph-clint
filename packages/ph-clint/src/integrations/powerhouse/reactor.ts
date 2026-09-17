@@ -8,7 +8,7 @@ import type { ReactorClientModule } from './types.js';
 
 /** Structural type for the @powerhousedao/reactor ReactorBuilder (fluent API). */
 interface ReactorBuilderLike {
-  withDocumentModels(m: DocumentModelModule[]): ReactorBuilderLike;
+  withDocumentModelSources(m: DocumentModelModule[]): ReactorBuilderLike;
   withKysely(k: unknown): ReactorBuilderLike;
 }
 
@@ -129,7 +129,7 @@ export async function buildReactor(
       sharedMod.driveDocumentModelModule as DocumentModelModule;
     const documentModelDocumentModelModule =
       docModelMod.documentModelDocumentModelModule as DocumentModelModule;
-    reactorBuilder.withDocumentModels([
+    reactorBuilder.withDocumentModelSources([
       documentModelDocumentModelModule,
       driveDocumentModelModule,
       ...options.documentModels,
