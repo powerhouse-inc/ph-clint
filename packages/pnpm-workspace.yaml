@@ -38,6 +38,10 @@ catalog:
   zod: 4.3.6
 
 allowBuilds:
+  '@reown/appkit': true
+  bufferutil: true
+  keccak: true
+  'utf-8-validate': true
   '@apollo/protobufjs': true
   '@datadog/pprof': true
   '@parcel/watcher': true
