@@ -1,4 +1,4 @@
-import { generateMock } from 'document-model';
+import { generateMock } from 'document-model/mock';
 import { addToolOutput, AddToolOutputInputSchema, addToolResult, AddToolResultInputSchema, isChatSessionDocument, reducer, utils } from 'document-models/chat-session/v1';
 import { describe, expect, it } from 'vitest';
 

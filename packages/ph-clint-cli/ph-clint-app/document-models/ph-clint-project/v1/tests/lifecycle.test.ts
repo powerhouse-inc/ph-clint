@@ -1,4 +1,4 @@
-import { generateMock } from 'document-model';
+import { generateMock } from 'document-model/mock';
 import { importSpec, ImportSpecInputSchema, isPhClintProjectDocument, reducer, utils, type ImportSpecInput } from 'document-models/ph-clint-project/v1';
 import { describe, expect, it } from 'vitest';
 
