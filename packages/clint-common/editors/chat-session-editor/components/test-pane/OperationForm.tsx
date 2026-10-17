@@ -283,7 +283,7 @@ function ImageFilePicker({ label, value, onChange }: { label: string; value: Ima
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      {!service && <p className="text-[10px] text-amber-500">No attachment service — image cannot be uploaded.</p>}
+      {!service && <p className="text-[10px] text-warning">No attachment service — image cannot be uploaded.</p>}
       <input
         type="file"
         accept="image/*"
