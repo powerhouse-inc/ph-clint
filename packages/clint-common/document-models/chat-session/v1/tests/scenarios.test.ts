@@ -78,7 +78,7 @@ describe('chat-session scenarios', () => {
       }),
       addToolOutput({ messageId: 'tr1', partId: 'tr1-o', toolCallId: 'tc1', toolName: 'read', text: 'streamed' }),
       failTurn({ id: 'f1', userMessageId: 'u1', code: 'PROVIDER_ERROR', message: 'boom', retryable: false, failedAt: T2 }),
-      retryTurn({ userMessageId: 'u1' }),
+      retryTurn({ userMessageId: 'u1', requestedAt: T2 }),
       clearRetryRequest({}),
       endSession({ status: 'ERROR', endedAt: T3 }),
       resumeSession({ resumedAt: T3 }),
@@ -175,7 +175,7 @@ describe('chat-session scenarios', () => {
       finishAssistantMessage({ messageId: 'missing', finishedAt: T1 }), // 20
       addToolOutput({ messageId: 'missing', partId: 'p', toolCallId: 'c', toolName: 'n', text: 't' }), // 21
       markMessagePickedUp({ messageId: 'missing', pickedUpAt: T1 }), // 22
-      retryTurn({ userMessageId: 'missing' }), // 23
+      retryTurn({ userMessageId: 'missing', requestedAt: T2 }), // 23
       resumeSession({ resumedAt: T1 }), // 24
       abortSession({ endedAt: T1 }), // 25
       resumeSession({ resumedAt: T2 }), // 26

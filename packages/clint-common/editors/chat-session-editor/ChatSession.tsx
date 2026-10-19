@@ -43,7 +43,7 @@ export function ChatSession({ document, dispatch, attachments, className, header
   const turn = useMemo(() => deriveTurnView(state), [state]);
   const { responding } = turn;
 
-  const handleRetry = useCallback((userMessageId: string) => dispatch(retryTurn({ userMessageId })), [dispatch]);
+  const handleRetry = useCallback((userMessageId: string) => dispatch(retryTurn({ userMessageId, requestedAt: new Date().toISOString() })), [dispatch]);
   const handleResume = useCallback(() => dispatch(resumeSession({ resumedAt: new Date().toISOString() })), [dispatch]);
 
   const chatActions = useMemo<ChatActions>(
@@ -51,12 +51,12 @@ export function ChatSession({ document, dispatch, attachments, className, header
       onRetry: handleRetry,
       renderFailureAction,
       retryableFailureId: turn.retryableFailureId,
-      lastUserMessageId: turn.lastUserMessage?.id ?? null,
-      lastUserDelivery: turn.lastUserDelivery,
-      retryRequestedFor: state.retryRequestedFor ?? null,
+      deliveryMessageId: turn.deliveryMessageId,
+      deliveryState: turn.deliveryState,
+      deliverySince: turn.deliverySince,
       active: state.status === 'ACTIVE',
     }),
-    [handleRetry, renderFailureAction, turn, state.retryRequestedFor, state.status],
+    [handleRetry, renderFailureAction, turn, state.status],
   );
 
   const toggleTestPane = useCallback(() => {

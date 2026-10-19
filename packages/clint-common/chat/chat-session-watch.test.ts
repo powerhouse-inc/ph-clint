@@ -239,7 +239,11 @@ describe('chat-session-watch — turns', () => {
 
   it('runs a turn when retryRequestedFor is set and clears it', async () => {
     const fake = makeFakeReactor(sessionWithUserMessage());
-    fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }), failTurn({ id: 'f1', userMessageId: 'u1', code: 'RATE_LIMITED', message: 'Too Many Requests', retryable: true, failedAt: T2 }), retryTurn({ userMessageId: 'u1' }));
+    fake.apply(
+      markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }),
+      failTurn({ id: 'f1', userMessageId: 'u1', code: 'RATE_LIMITED', message: 'Too Many Requests', retryable: true, failedAt: T2 }),
+      retryTurn({ userMessageId: 'u1', requestedAt: T2 }),
+    );
     expect(fake.doc().state.global.retryRequestedFor).toBe('u1');
     const agent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'answer' }, { type: 'finish', finishReason: 'stop' })]);
 
@@ -267,7 +271,7 @@ describe('chat-session-watch — turns', () => {
       addAssistantMessage({ id: 'a1', content: [{ id: 'a1-p1', type: 'TEXT', text: 'partial' }], createdAt: T1 }),
       finishAssistantMessage({ messageId: 'a1', finishReason: 'error', finishedAt: T2 }),
       failTurn({ id: 'f1', userMessageId: 'u1', code: 'PROVIDER_ERROR', message: 'Service Unavailable', retryable: true, failedAt: T2 }),
-      retryTurn({ userMessageId: 'u1' }),
+      retryTurn({ userMessageId: 'u1', requestedAt: T2 }),
     );
     const agent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'rest' }, { type: 'finish', finishReason: 'stop' })]);
 

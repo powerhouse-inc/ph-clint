@@ -193,10 +193,19 @@ describe('Turn lifecycle (agent)', () => {
   });
 
   it('CLEAR_RETRY_REQUEST clears retryRequestedFor', () => {
-    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1' }));
+    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1', requestedAt: T2 }));
     doc = reducer(doc, clearRetryRequest({}));
 
     expect(doc.operations.global[3].error).toBeUndefined();
     expect(doc.state.global.retryRequestedFor).toBeNull();
+  });
+
+  it('CLEAR_RETRY_REQUEST clears retryRequestedAt', () => {
+    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1', requestedAt: T2 }));
+    expect(doc.state.global.retryRequestedAt).toBe(T2);
+    doc = reducer(doc, clearRetryRequest({}));
+
+    expect(doc.operations.global[3].error).toBeUndefined();
+    expect(doc.state.global.retryRequestedAt).toBeNull();
   });
 });

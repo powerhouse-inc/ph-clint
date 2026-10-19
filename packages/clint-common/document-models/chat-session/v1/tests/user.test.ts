@@ -107,14 +107,21 @@ describe('UserOperations', () => {
 
 describe('Turn lifecycle (user)', () => {
   it('RETRY_TURN sets retryRequestedFor', () => {
-    const doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1' }));
+    const doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1', requestedAt: T2 }));
 
     expect(doc.operations.global[2].error).toBeUndefined();
     expect(doc.state.global.retryRequestedFor).toBe('u1');
   });
 
+  it('RETRY_TURN stores retryRequestedAt', () => {
+    const doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1', requestedAt: T3 }));
+
+    expect(doc.operations.global[2].error).toBeUndefined();
+    expect(doc.state.global.retryRequestedAt).toBe(T3);
+  });
+
   it('RETRY_TURN on an unknown message records MessageNotFoundError', () => {
-    const doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'nope' }));
+    const doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'nope', requestedAt: T2 }));
 
     expect(doc.operations.global[2].error).toBe('Message not found: nope');
     expect(doc.state.global.retryRequestedFor ?? null).toBeNull();
@@ -129,7 +136,7 @@ describe('Turn lifecycle (user)', () => {
         createdAt: T2,
       }),
     );
-    doc = reducer(doc, retryTurn({ userMessageId: 'a1' }));
+    doc = reducer(doc, retryTurn({ userMessageId: 'a1', requestedAt: T2 }));
 
     expect(doc.operations.global[3].error).toBe('Can only retry the turn of a USER message');
     expect(doc.state.global.retryRequestedFor).toBeNull();
@@ -138,7 +145,7 @@ describe('Turn lifecycle (user)', () => {
   it('RETRY_TURN clears a pending interrupt', () => {
     let doc = reducer(sessionWithUserMessage(), interruptAgent({}));
     expect(doc.state.global.interruptRequested).toBe(true);
-    doc = reducer(doc, retryTurn({ userMessageId: 'u1' }));
+    doc = reducer(doc, retryTurn({ userMessageId: 'u1', requestedAt: T2 }));
 
     expect(doc.operations.global[3].error).toBeUndefined();
     expect(doc.state.global.interruptRequested).toBe(false);
@@ -146,7 +153,7 @@ describe('Turn lifecycle (user)', () => {
   });
 
   it('ADD_USER_MESSAGE clears a pending retry request', () => {
-    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1' }));
+    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1', requestedAt: T2 }));
     expect(doc.state.global.retryRequestedFor).toBe('u1');
     doc = reducer(
       doc,
@@ -159,6 +166,7 @@ describe('Turn lifecycle (user)', () => {
 
     expect(doc.operations.global[3].error).toBeUndefined();
     expect(doc.state.global.retryRequestedFor).toBeNull();
+    expect(doc.state.global.retryRequestedAt).toBeNull();
   });
 
   it('RESUME_SESSION keeps messages and usage', () => {

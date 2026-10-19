@@ -158,6 +158,7 @@ export function ChatSessionStateSchema(): z.ZodObject<Properties<ChatSessionStat
     interruptRequested: z.boolean().nullish(),
     messages: z.array(z.lazy(() => MessageSchema())),
     resourceId: z.string().nullish(),
+    retryRequestedAt: z.iso.datetime().nullish(),
     retryRequestedFor: z.string().nullish(),
     startedAt: z.iso.datetime().nullish(),
     status: SessionStatusSchema,
@@ -269,6 +270,7 @@ export function ResumeSessionInputSchema(): z.ZodObject<Properties<ResumeSession
 
 export function RetryTurnInputSchema(): z.ZodObject<Properties<RetryTurnInput>> {
   return z.object({
+    requestedAt: z.iso.datetime(),
     userMessageId: z.string(),
   });
 }

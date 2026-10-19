@@ -13,7 +13,7 @@ describe('deriveTurnView', () => {
     const messages = [msg({ id: 'u1', role: 'USER', pickedUpAt: undefined }), msg({ id: 'a1', role: 'ASSISTANT', finishedAt: '2026-01-01T00:00:02.000Z' })];
     const view = deriveTurnView({ status: 'ACTIVE', interruptRequested: false, messages });
     expect(view.responding).toBe(false);
-    expect(view.lastUserDelivery).toBe('picked-up');
+    expect(view.deliveryState).toBe('picked-up');
     expect(view.retryableFailureId).toBeNull();
   });
 
@@ -33,5 +33,30 @@ describe('deriveTurnView', () => {
     const messages = [msg({ id: 'u1', role: 'USER' }), msg({ id: 'f1', role: 'ASSISTANT', finishedAt: failure.failedAt, failure })];
     expect(deriveTurnView({ status: 'ERROR', interruptRequested: false, messages }).retryableFailureId).toBeNull();
     expect(deriveTurnView({ status: 'ACTIVE', interruptRequested: false, messages }).retryableFailureId).toBe('f1');
+  });
+});
+
+describe('deriveTurnView pickup', () => {
+  it('is not responding before the agent picks the message up', () => {
+    const view = deriveTurnView({ status: 'ACTIVE', interruptRequested: false, messages: [msg({ id: 'u1', role: 'USER' })] });
+    expect(view.responding).toBe(false);
+    expect(view.deliveryState).toBe('sending');
+    expect(view.deliverySince).toBe('2026-01-01T00:00:01.000Z');
+  });
+
+  it('a pending retry waits for pickup from retryRequestedAt', () => {
+    const messages = [msg({ id: 'u1', role: 'USER', pickedUpAt: '2026-01-01T00:00:01.000Z' }), msg({ id: 'f1', role: 'ASSISTANT', finishedAt: failure.failedAt, failure })];
+    const view = deriveTurnView({ status: 'ACTIVE', interruptRequested: false, retryRequestedFor: 'u1', retryRequestedAt: '2026-01-01T00:00:05.000Z', messages });
+    expect(view.responding).toBe(false);
+    expect(view.deliveryMessageId).toBe('u1');
+    expect(view.deliveryState).toBe('sending');
+    expect(view.deliverySince).toBe('2026-01-01T00:00:05.000Z');
+    expect(view.retryableFailureId).toBeNull();
+  });
+
+  it('a legacy pending retry without retryRequestedAt waits from the message createdAt', () => {
+    const messages = [msg({ id: 'u1', role: 'USER' })];
+    const view = deriveTurnView({ status: 'ACTIVE', interruptRequested: false, retryRequestedFor: 'u1', messages });
+    expect(view.deliverySince).toBe('2026-01-01T00:00:01.000Z');
   });
 });

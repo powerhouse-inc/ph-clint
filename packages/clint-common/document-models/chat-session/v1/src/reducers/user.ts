@@ -8,6 +8,7 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
     state.interruptRequested = false;
     // A new user message supersedes any pending retry request.
     state.retryRequestedFor = null;
+    state.retryRequestedAt = null;
     for (const p of action.input.content) {
       if (p.type === 'TEXT' && !p.text) {
         throw new InvalidContentPartError('TEXT part requires text');
@@ -63,6 +64,7 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
     // A retry starts a turn like a new user message, so it clears a stale interrupt.
     state.interruptRequested = false;
     state.retryRequestedFor = action.input.userMessageId;
+    state.retryRequestedAt = action.input.requestedAt;
   },
   resumeSessionOperation(state) {
     if (state.status !== 'ERROR') throw new SessionNotResumableError('Only ERROR sessions can be resumed (status: ' + state.status + ')');

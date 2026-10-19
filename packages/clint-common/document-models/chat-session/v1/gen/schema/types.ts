@@ -137,6 +137,7 @@ export type ChatSessionState = {
   interruptRequested: Maybe<Scalars['Boolean']['output']>;
   messages: Array<Message>;
   resourceId: Maybe<Scalars['String']['output']>;
+  retryRequestedAt: Maybe<Scalars['DateTime']['output']>;
   retryRequestedFor: Maybe<Scalars['OID']['output']>;
   startedAt: Maybe<Scalars['DateTime']['output']>;
   status: SessionStatus;
@@ -225,6 +226,7 @@ export type ResumeSessionInput = {
 };
 
 export type RetryTurnInput = {
+  requestedAt: Scalars['DateTime']['input'];
   userMessageId: Scalars['OID']['input'];
 };
 

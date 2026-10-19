@@ -22,6 +22,7 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       totalToolCalls: 0,
     };
     state.retryRequestedFor = null;
+    state.retryRequestedAt = null;
   },
   endSessionOperation(state, action) {
     state.status = action.input.status;

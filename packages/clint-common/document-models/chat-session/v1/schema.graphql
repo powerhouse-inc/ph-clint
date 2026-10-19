@@ -114,6 +114,7 @@ type ChatSessionState {
   usage: UsageSummary
   interruptRequested: Boolean
   retryRequestedFor: OID
+  retryRequestedAt: DateTime
 }
 
 # system
@@ -199,6 +200,7 @@ input InterruptAgentInput {
 
 input RetryTurnInput {
   userMessageId: OID!
+  requestedAt: DateTime!
 }
 
 input ResumeSessionInput {

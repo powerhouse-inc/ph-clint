@@ -98,7 +98,10 @@ export const OPERATIONS: OperationDef[] = [
   {
     name: 'RETRY_TURN',
     module: 'user',
-    fields: [{ name: 'userMessageId', type: 'string', required: true, label: 'User Message ID' }],
+    fields: [
+      { name: 'userMessageId', type: 'string', required: true, label: 'User Message ID' },
+      { name: 'requestedAt', type: 'datetime', required: true, label: 'Requested At' },
+    ],
   },
   {
     name: 'RESUME_SESSION',

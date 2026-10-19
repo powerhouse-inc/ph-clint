@@ -148,5 +148,6 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
   },
   clearRetryRequestOperation(state) {
     state.retryRequestedFor = null;
+    state.retryRequestedAt = null;
   },
 };

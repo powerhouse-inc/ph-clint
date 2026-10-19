@@ -112,26 +112,26 @@ function ToolMessage({ message, showAvatar }: { message: MessageType; showAvatar
   );
 }
 
-/** Delivery state under the latest user message: Delivered → Picked up, or
- *  "Not picked up yet" with Retry once the agent has not started it in time. */
+/** Delivery state under the user message the agent should work on next:
+ *  Sending… → Picked up, or "Not picked up yet" with Retry once the agent has
+ *  not started it (or its retry) in time. */
 function DeliveryStatus({ message }: { message: MessageType }) {
-  const { lastUserMessageId, lastUserDelivery, retryRequestedFor, active, onRetry } = useChatActions();
-  const isLast = message.id === lastUserMessageId;
-  const waiting = isLast && lastUserDelivery === 'delivered';
-  const late = useElapsed(message.createdAt, NOT_PICKED_UP_AFTER_MS, waiting);
-  if (!isLast || !lastUserDelivery) return null;
+  const { deliveryMessageId, deliveryState, deliverySince, active, onRetry } = useChatActions();
+  const isTarget = message.id === deliveryMessageId;
+  const waiting = isTarget && deliveryState === 'sending';
+  const late = useElapsed(deliverySince, NOT_PICKED_UP_AFTER_MS, waiting);
+  if (!isTarget || !deliveryState) return null;
 
   if (late) {
-    const canRetry = active && !!onRetry && retryRequestedFor !== message.id;
     return (
       <div className="mr-9 flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <span>Not picked up yet</span>
-        {canRetry && <RetryButton onClick={() => onRetry(message.id)} />}
+        {active && onRetry && <RetryButton onClick={() => onRetry(message.id)} />}
       </div>
     );
   }
 
-  return <div className="mr-9 text-right text-xs text-muted-foreground">{lastUserDelivery === 'picked-up' ? 'Picked up' : 'Delivered'}</div>;
+  return <div className="mr-9 text-right text-xs text-muted-foreground">{deliveryState === 'picked-up' ? 'Picked up' : 'Sending…'}</div>;
 }
 
 /** Retry and the host's action (e.g. a budget request) for a failed turn. */

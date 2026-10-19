@@ -12,20 +12,19 @@ export interface ChatActions {
   renderFailureAction?: RenderFailureAction;
   /** The failed-turn message that shows a Retry button. */
   retryableFailureId: string | null;
-  /** The latest user message and its delivery state. */
-  lastUserMessageId: string | null;
-  lastUserDelivery: DeliveryState | null;
-  /** A retry is requested for this user message and not yet picked up. */
-  retryRequestedFor: string | null;
+  /** The message whose delivery state is shown, its state, and when the wait for pickup started. */
+  deliveryMessageId: string | null;
+  deliveryState: DeliveryState | null;
+  deliverySince: string | null;
   /** The session accepts new turns (status ACTIVE). */
   active: boolean;
 }
 
 const defaultActions: ChatActions = {
   retryableFailureId: null,
-  lastUserMessageId: null,
-  lastUserDelivery: null,
-  retryRequestedFor: null,
+  deliveryMessageId: null,
+  deliveryState: null,
+  deliverySince: null,
   active: false,
 };
 

@@ -20,6 +20,7 @@ export function defaultGlobalState(): ChatSessionGlobalState {
     usage: null,
     interruptRequested: false,
     retryRequestedFor: null,
+    retryRequestedAt: null,
   };
 }
 

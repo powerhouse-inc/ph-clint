@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { DocumentDispatch } from '@powerhousedao/reactor-browser';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { addUserMessage, endSession, failTurn, markMessagePickedUp, reducer, retryTurn, startSession, utils } from 'document-models/chat-session';
+import { addUserMessage, clearRetryRequest, endSession, failTurn, markMessagePickedUp, reducer, retryTurn, startSession, utils } from 'document-models/chat-session';
 import type { ChatSessionAction, ChatSessionDocument, TurnFailure } from 'document-models/chat-session';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ChatSession } from '../ChatSession.js';
@@ -10,6 +10,19 @@ const T0 = '2026-01-01T00:00:00.000Z';
 const T1 = '2026-01-01T00:00:01.000Z';
 const T2 = '2026-01-01T00:00:02.000Z';
 const T3 = '2026-01-01T00:00:03.000Z';
+const T4 = '2026-01-01T00:00:04.000Z';
+const TYPING = { name: 'Agent is typing' };
+
+function useClock(at: string) {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+  vi.setSystemTime(new Date(at));
+}
+
+function advance(ms: number) {
+  act(() => {
+    vi.advanceTimersByTime(ms);
+  });
+}
 
 class ResizeObserverStub {
   observe(): void {}
@@ -56,7 +69,7 @@ describe('chat session states', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(dispatchedTypes(dispatch)).toEqual(['RETRY_TURN']);
     const action = dispatch.mock.calls[0][0] as ChatSessionAction;
-    expect(action.input).toEqual({ userMessageId: 'u1' });
+    expect(action.input).toEqual({ userMessageId: 'u1', requestedAt: expect.any(String) as string });
   });
 
   it('shows Resume on an ERROR session and dispatches RESUME_SESSION', () => {
@@ -79,19 +92,64 @@ describe('chat session states', () => {
     expect(screen.queryByText('Not picked up yet')).toBeNull();
   });
 
+  it('shows sending before pickup', () => {
+    useClock(T3);
+    renderSession(session());
+    expect(screen.getByText('Sending…')).toBeTruthy();
+    expect(screen.queryByText('Delivered')).toBeNull();
+    expect(screen.queryByText('Picked up')).toBeNull();
+  });
+
+  it('no spinner before pickup', () => {
+    useClock(T3);
+    renderSession(session());
+    expect(screen.queryByRole('status', TYPING)).toBeNull();
+  });
+
   it('shows not picked up after 60s', () => {
-    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
-    vi.setSystemTime(new Date(T3));
+    useClock(T3);
     const { dispatch } = renderSession(session());
-    expect(screen.getByText('Delivered')).toBeTruthy();
     expect(screen.queryByText('Not picked up yet')).toBeNull();
 
-    act(() => {
-      vi.advanceTimersByTime(60_000);
-    });
+    advance(60_000);
     expect(screen.getByText('Not picked up yet')).toBeTruthy();
+    expect(screen.queryByText('Sending…')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(dispatchedTypes(dispatch)).toEqual(['RETRY_TURN']);
+  });
+
+  it('shows not picked up after 60s for an unpicked retry', () => {
+    useClock(T4);
+    const retrying = reducer(withFailure(session()), retryTurn({ userMessageId: 'u1', requestedAt: T3 }));
+    renderSession(retrying);
+    expect(screen.getByText('Sending…')).toBeTruthy();
+    expect(screen.queryByRole('status', TYPING)).toBeNull();
+
+    advance(60_000);
+    expect(screen.getByText('Not picked up yet')).toBeTruthy();
+    expect(screen.queryByRole('status', TYPING)).toBeNull();
+  });
+
+  it('Retry is offered again after an unpicked retry', () => {
+    useClock(T4);
+    const retrying = reducer(withFailure(session()), retryTurn({ userMessageId: 'u1', requestedAt: T3 }));
+    const { dispatch } = renderSession(retrying);
+    advance(60_000);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(dispatchedTypes(dispatch)).toEqual(['RETRY_TURN']);
+    const action = dispatch.mock.calls[0][0] as ChatSessionAction;
+    expect(action.input).toEqual({ userMessageId: 'u1', requestedAt: new Date(Date.now()).toISOString() });
+  });
+
+  it('Retry is hidden while a retry is pending and shown again after the 60 s threshold', () => {
+    useClock(T4);
+    const retrying = reducer(withFailure(session()), retryTurn({ userMessageId: 'u1', requestedAt: T3 }));
+    renderSession(retrying);
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+    advance(58_000);
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+    advance(1_000);
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1);
   });
 
   it('renders the host failure action for BUDGET_EXHAUSTED', () => {
@@ -102,23 +160,23 @@ describe('chat session states', () => {
   });
 
   it('no spinner after FAIL_TURN', () => {
-    // Before the failure the turn is in progress.
+    // Before the failure the turn is picked up and in progress.
     const pending = reducer(session(), markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }));
     const { rerender } = renderSession(pending);
-    expect(screen.queryByRole('status', { name: 'Agent is typing' })).not.toBeNull();
+    expect(screen.queryByRole('status', TYPING)).not.toBeNull();
 
     const failed = withFailure(session());
     rerender(<ChatSession document={failed} dispatch={vi.fn()} />);
-    expect(screen.queryByRole('status', { name: 'Agent is typing' })).toBeNull();
+    expect(screen.queryByRole('status', TYPING)).toBeNull();
 
-    // A retry request makes it respond again.
-    const retrying = reducer(failed, retryTurn({ userMessageId: 'u1' }));
+    // A retry request alone is not a pickup: still no spinner.
+    const retrying = reducer(failed, retryTurn({ userMessageId: 'u1', requestedAt: T3 }));
     rerender(<ChatSession document={retrying} dispatch={vi.fn()} />);
-    expect(screen.queryByRole('status', { name: 'Agent is typing' })).not.toBeNull();
+    expect(screen.queryByRole('status', TYPING)).toBeNull();
 
-    // So does a pickup newer than the failure (retry request already cleared).
-    const pickedUpAgain = reducer(failed, markMessagePickedUp({ messageId: 'u1', pickedUpAt: T3 }));
+    // The agent picks the retry up (clears the request and sets a newer pickedUpAt).
+    const pickedUpAgain = reducer(reducer(retrying, clearRetryRequest({})), markMessagePickedUp({ messageId: 'u1', pickedUpAt: T4 }));
     rerender(<ChatSession document={pickedUpAgain} dispatch={vi.fn()} />);
-    expect(screen.queryByRole('status', { name: 'Agent is typing' })).not.toBeNull();
+    expect(screen.queryByRole('status', TYPING)).not.toBeNull();
   });
 });

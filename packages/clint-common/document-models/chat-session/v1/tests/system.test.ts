@@ -123,7 +123,7 @@ describe('SystemOperations', () => {
 
 describe('Turn lifecycle (system)', () => {
   it('START_SESSION clears a pending retry request', () => {
-    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1' }));
+    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1', requestedAt: T2 }));
     doc = reducer(
       doc,
       startSession({
@@ -135,6 +135,7 @@ describe('Turn lifecycle (system)', () => {
     );
 
     expect(doc.state.global.retryRequestedFor).toBeNull();
+    expect(doc.state.global.retryRequestedAt).toBeNull();
   });
 
   it('new messages start without pickup or failure', () => {
