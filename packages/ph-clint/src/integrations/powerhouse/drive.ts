@@ -2,6 +2,7 @@
  * Drive management — find or create drives on startup.
  */
 
+import { applyCreatePolicy } from './create-policy.js';
 import type { DriveConfig, ReactorClientModule } from './types.js';
 
 const DRIVE_DOCUMENT_TYPE = 'powerhouse/document-drive' as const;
@@ -56,9 +57,14 @@ export async function ensureDrive(
   let driveId: string;
   if (wantedId || preferredEditor) {
     const module = await client.getDocumentModelModule(DRIVE_DOCUMENT_TYPE);
-    const doc = module.utils.createDocument() as any;
-    if (wantedId) doc.header.id = wantedId;
-    if (preferredEditor) doc.header.meta = { preferredEditor };
+    // A fixed id needs a legacy header built with it (see applyCreatePolicy);
+    // 6.2.3 rejects a v2-required header whose id was overwritten.
+    const doc = (await applyCreatePolicy(
+      client,
+      module.utils.createDocument(),
+      wantedId,
+    )) as any;
+    if (preferredEditor) doc.header.meta = { ...doc.header.meta, preferredEditor };
     const created = await client.create(doc);
     driveId = (created as any).header.id;
   } else {

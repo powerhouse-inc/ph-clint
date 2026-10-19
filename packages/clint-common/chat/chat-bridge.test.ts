@@ -17,7 +17,9 @@ interface RecordedAction {
   actions: unknown[];
 }
 
-function makeReactorWithPriorUsage(priorUsage: unknown): ReactorContext<ChatSessionRegistry> {
+type RecordingReactor = ReactorContext<ChatSessionRegistry> & { calls: RecordedAction[] };
+
+function makeReactorWithPriorUsage(priorUsage: unknown): RecordingReactor {
   const calls: RecordedAction[] = [];
 
   return {
@@ -35,7 +37,7 @@ function makeReactorWithPriorUsage(priorUsage: unknown): ReactorContext<ChatSess
     },
     onChange: () => {},
     calls,
-  } as ReactorContext<ChatSessionRegistry>;
+  } as unknown as RecordingReactor;
 }
 
 function getUpdateUsageSummaryAction(calls: RecordedAction[]): unknown | undefined {

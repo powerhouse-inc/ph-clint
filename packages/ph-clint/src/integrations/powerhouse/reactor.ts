@@ -8,14 +8,18 @@ import type { ReactorClientModule } from './types.js';
 
 /** Structural type for the @powerhousedao/reactor ReactorBuilder (fluent API). */
 interface ReactorBuilderLike {
-  withDocumentModels(m: DocumentModelModule[]): ReactorBuilderLike;
+  /** 6.2.3+: accepts live modules (and file/package sources). */
+  withDocumentModelSources?(m: DocumentModelModule[]): ReactorBuilderLike;
+  /** Before 6.2.3. */
+  withDocumentModels?(m: DocumentModelModule[]): ReactorBuilderLike;
   withKysely(k: unknown): ReactorBuilderLike;
 }
 
 interface ReactorClientBuilderLike {
-  withReactorBuilder(r: unknown): {
-    buildModule(): Promise<ReactorClientModule>;
-  };
+  withReactorBuilder(r: unknown): ReactorClientBuilderLike;
+  /** 6.2.3+: what the client creates new documents as. */
+  withCreateSignaturePolicy?(policy: 'legacy' | 'v2-required'): ReactorClientBuilderLike;
+  buildModule(): Promise<ReactorClientModule>;
 }
 
 /**
@@ -100,6 +104,10 @@ export async function buildReactor(
   const clientBuilder = new ReactorClientBuilder().withReactorBuilder(
     reactorBuilder,
   );
+  // The embedded reactor is local and private and has no signer, so it
+  // creates legacy documents: they accept unsigned writes and fixed ids.
+  // Powerhouse 6.2.3 otherwise defaults to `v2-required`, which refuses both.
+  clientBuilder.withCreateSignaturePolicy?.('legacy');
 
   if (options.enableSync) {
     // Switchboard owns the standard reactor wiring (channel scheme, base
@@ -129,11 +137,16 @@ export async function buildReactor(
       sharedMod.driveDocumentModelModule as DocumentModelModule;
     const documentModelDocumentModelModule =
       docModelMod.documentModelDocumentModelModule as DocumentModelModule;
-    reactorBuilder.withDocumentModels([
+    const models = [
       documentModelDocumentModelModule,
       driveDocumentModelModule,
       ...options.documentModels,
-    ]);
+    ];
+    if (reactorBuilder.withDocumentModelSources) {
+      reactorBuilder.withDocumentModelSources(models);
+    } else {
+      reactorBuilder.withDocumentModels?.(models);
+    }
   }
 
   return clientBuilder.buildModule();

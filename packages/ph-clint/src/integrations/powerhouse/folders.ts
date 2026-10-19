@@ -11,6 +11,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { applyCreatePolicy } from './create-policy.js';
 import type { TypedReactorClient } from './types.js';
 import type { FolderEntry, FolderOperations } from './types.js';
 import type { Command } from '../../core/types.js';
@@ -197,7 +198,7 @@ export function createFolderOperations(
     const parentFolderId = await ensureFolder(folderPath);
 
     const module = await client.getDocumentModelModule(documentType);
-    const doc = module.utils.createDocument();
+    const doc = await applyCreatePolicy(client, module.utils.createDocument());
     if (name) {
       doc.header.name = name;
     }

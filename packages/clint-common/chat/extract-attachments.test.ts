@@ -46,6 +46,9 @@ function makeService(bytes: Buffer, mimeType = 'image/png'): IAttachmentService 
     stat: () => {
       throw new Error('not implemented');
     },
+    getDownloadTarget: () => {
+      throw new Error('not implemented');
+    },
   };
 }
 
@@ -321,6 +324,9 @@ describe('extractAttachments', () => {
         throw new Error('not implemented');
       },
       stat: () => {
+        throw new Error('not implemented');
+      },
+      getDownloadTarget: () => {
         throw new Error('not implemented');
       },
     };
