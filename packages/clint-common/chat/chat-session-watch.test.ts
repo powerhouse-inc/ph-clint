@@ -1,0 +1,312 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StreamChunk } from '@powerhousedao/ph-clint';
+import { addAssistantMessage, addUserMessage, failTurn, finishAssistantMessage, markMessagePickedUp, retryTurn } from 'document-models/chat-session/v1';
+import type { Message } from 'document-models/chat-session/v1';
+import { CONTINUE_PROMPT, processChatSessionDocs, waitForChatTurns } from './chat-session-watch.js';
+import { actionTypes, chunks, makeFakeAgent, makeFakeReactor, makeTriggerContext, sessionWithUserMessage, T1, type AgentCall, type FakeReactor } from './testing/fakes.js';
+
+const T2 = '2026-01-01T00:00:02.000Z';
+
+async function runPass(fake: FakeReactor, agent: ReturnType<typeof makeFakeAgent>): Promise<void> {
+  await processChatSessionDocs([fake.doc()], makeTriggerContext(fake, agent));
+  await waitForChatTurns();
+}
+
+const retryable503: StreamChunk = { type: 'error', error: 'Service Unavailable', retryable: true, statusCode: 503 };
+
+function lastMessage(fake: FakeReactor): Message {
+  const msgs = fake.doc().state.global.messages;
+  return msgs[msgs.length - 1];
+}
+
+function failTurnInputs(fake: FakeReactor) {
+  return fake.dispatched.filter((a) => a.type === 'FAIL_TURN').map((a) => a.input as { code: string; retryable: boolean; userMessageId: string; message: string });
+}
+
+function expectSessionKeptActive(fake: FakeReactor): void {
+  expect(actionTypes(fake.dispatched)).not.toContain('END_SESSION');
+  expect(fake.doc().state.global.status).toBe('ACTIVE');
+  expect(fake.errors()).toEqual([]);
+}
+
+beforeEach(() => {
+  // Zero backoff: the full-jitter delay is Math.random() * backoff.
+  vi.spyOn(Math, 'random').mockReturnValue(0);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('chat-session-watch — turns', () => {
+  it('marks the user message picked up before streaming', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    let pickedUpWhenStreaming: string | null | undefined;
+    const agent = makeFakeAgent([
+      () => {
+        pickedUpWhenStreaming = fake.doc().state.global.messages.find((m) => m.id === 'u1')?.pickedUpAt;
+        return chunks({ type: 'text-delta', text: 'hi' }, { type: 'finish', finishReason: 'stop' });
+      },
+    ]);
+
+    await runPass(fake, agent);
+
+    expect(pickedUpWhenStreaming).toBeTruthy();
+    const types = actionTypes(fake.dispatched);
+    expect(types.indexOf('MARK_MESSAGE_PICKED_UP')).toBeGreaterThanOrEqual(0);
+    expect(types.indexOf('MARK_MESSAGE_PICKED_UP')).toBeLessThan(types.indexOf('ADD_ASSISTANT_MESSAGE'));
+    expect(lastMessage(fake).finishedAt).toBeTruthy();
+    expectSessionKeptActive(fake);
+  });
+
+  it('retries a retryable error that arrives before any text', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const agent = makeFakeAgent([() => chunks(retryable503), () => chunks({ type: 'text-delta', text: 'recovered' }, { type: 'finish', finishReason: 'stop' })]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(2);
+    // Nothing reached the document before the error, so the turn re-runs as asked.
+    expect(agent.calls[1].prompt).toBe('hello');
+    expect(agent.calls[1].opts?.threadId).toBe('thread-1');
+    expect(actionTypes(fake.dispatched).filter((t) => t === 'MARK_MESSAGE_PICKED_UP')).toHaveLength(2);
+    expect(failTurnInputs(fake)).toEqual([]);
+    const last = lastMessage(fake);
+    expect(last.role).toBe('ASSISTANT');
+    expect(last.content[0].text).toBe('recovered');
+    expect(last.finishedAt).toBeTruthy();
+    expectSessionKeptActive(fake);
+  });
+
+  it('retries a retryable error after text and tool calls', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const agent = makeFakeAgent([
+      () =>
+        chunks(
+          { type: 'text-delta', text: 'Looking it up.' },
+          { type: 'tool-call', toolCallId: 'c1', toolName: 'search', args: { q: 'x' } },
+          { type: 'tool-result', toolCallId: 'c1', toolName: 'search', result: 'found', isError: false },
+          { type: 'text-delta', text: 'Partial answ' },
+          retryable503,
+        ),
+      () => chunks({ type: 'text-delta', text: 'Full answer.' }, { type: 'finish', finishReason: 'stop' }),
+    ]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe(CONTINUE_PROMPT);
+    expect(agent.calls[1].opts?.threadId).toBe('thread-1');
+    expect(failTurnInputs(fake)).toEqual([]);
+    const msgs = fake.doc().state.global.messages;
+    // The message the error cut off is closed as superseded by the retry.
+    expect(msgs.find((m) => m.content[0]?.text === 'Partial answ')).toMatchObject({ finishReason: 'retry' });
+    expect(msgs.find((m) => m.content[0]?.text === 'Partial answ')?.finishedAt).toBeTruthy();
+    expect(lastMessage(fake).content[0].text).toBe('Full answer.');
+    expectSessionKeptActive(fake);
+  });
+
+  it('retry after a completed tool call does not re-run it', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    // Fake Mastra memory: completed tool calls persist per thread.
+    const memory = new Map<string, Set<string>>();
+    let toolRuns = 0;
+    async function* turn(call: AgentCall): AsyncGenerator<StreamChunk> {
+      const done = memory.get(call.opts?.threadId ?? '') ?? new Set<string>();
+      memory.set(call.opts?.threadId ?? '', done);
+      if (!done.has('c1')) {
+        yield { type: 'tool-call', toolCallId: 'c1', toolName: 'deploy', args: {} };
+        toolRuns++;
+        done.add('c1');
+        yield { type: 'tool-result', toolCallId: 'c1', toolName: 'deploy', result: 'ok', isError: false };
+        yield retryable503;
+        return;
+      }
+      yield { type: 'text-delta', text: 'Deployed.' };
+      yield { type: 'finish', finishReason: 'stop' };
+    }
+    const agent = makeFakeAgent([turn]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe(CONTINUE_PROMPT);
+    expect(toolRuns).toBe(1);
+    expect(lastMessage(fake).content[0].text).toBe('Deployed.');
+    expectSessionKeptActive(fake);
+  });
+
+  it('non-retryable error fails the turn and keeps the session ACTIVE', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const agent = makeFakeAgent([
+      () => chunks({ type: 'text-delta', text: 'Start' }, { type: 'error', error: 'Bad Request: invalid tool schema', retryable: false, statusCode: 400 }),
+      () => chunks({ type: 'text-delta', text: 'second turn' }, { type: 'finish', finishReason: 'stop' }),
+    ]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(1);
+    const fails = failTurnInputs(fake);
+    expect(fails).toHaveLength(1);
+    expect(fails[0]).toMatchObject({ retryable: false, userMessageId: 'u1', code: 'PROVIDER_ERROR' });
+    expect(fails[0].message).toContain('invalid tool schema');
+    const last = lastMessage(fake);
+    expect(last.failure?.retryable).toBe(false);
+    expect(last.finishedAt).toBeTruthy();
+    expect(fake.doc().state.global.messages.filter((m) => m.role === 'ASSISTANT' && !m.finishedAt)).toEqual([]);
+    expectSessionKeptActive(fake);
+
+    // Input stays usable: the next user message starts a new turn.
+    fake.apply(addUserMessage({ id: 'u2', content: [{ id: 'u2-p1', type: 'TEXT', text: 'again' }], createdAt: T2 }));
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe('again');
+    expect(lastMessage(fake).content[0].text).toBe('second turn');
+    expectSessionKeptActive(fake);
+  });
+
+  it('budget refusals fail the turn as BUDGET_EXHAUSTED without retrying', async () => {
+    const credit = makeFakeReactor(sessionWithUserMessage());
+    const creditAgent = makeFakeAgent([() => chunks({ type: 'error', error: 'This request requires more credits, or fewer max_tokens.', retryable: true })]);
+    await runPass(credit, creditAgent);
+    expect(creditAgent.calls).toHaveLength(1);
+    expect(failTurnInputs(credit)).toEqual([expect.objectContaining({ code: 'BUDGET_EXHAUSTED', retryable: false })]);
+    expectSessionKeptActive(credit);
+
+    const paid = makeFakeReactor(sessionWithUserMessage());
+    const paidAgent = makeFakeAgent([
+      // eslint-disable-next-line require-yield
+      async function* () {
+        throw Object.assign(new Error('Payment Required'), { statusCode: 402 });
+      },
+    ]);
+    await runPass(paid, paidAgent);
+    expect(paidAgent.calls).toHaveLength(1);
+    expect(failTurnInputs(paid)).toEqual([expect.objectContaining({ code: 'BUDGET_EXHAUSTED', retryable: false })]);
+    expectSessionKeptActive(paid);
+  });
+
+  it('exhausted retries fail the turn as retryable', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const agent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'a' }, { type: 'error', error: 'Too Many Requests', retryable: true, statusCode: 429 })]);
+
+    await runPass(fake, agent);
+
+    // First attempt + 3 retries.
+    expect(agent.calls).toHaveLength(4);
+    const fails = failTurnInputs(fake);
+    expect(fails).toHaveLength(1);
+    expect(fails[0]).toMatchObject({ retryable: true, userMessageId: 'u1', code: 'RATE_LIMITED' });
+    expect(lastMessage(fake).failure?.retryable).toBe(true);
+    expect(fake.doc().state.global.messages.filter((m) => m.role === 'ASSISTANT' && !m.finishedAt)).toEqual([]);
+    expectSessionKeptActive(fake);
+  });
+
+  it('runs a turn when retryRequestedFor is set and clears it', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }), failTurn({ id: 'f1', userMessageId: 'u1', code: 'RATE_LIMITED', message: 'Too Many Requests', retryable: true, failedAt: T2 }), retryTurn({ userMessageId: 'u1' }));
+    expect(fake.doc().state.global.retryRequestedFor).toBe('u1');
+    const agent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'answer' }, { type: 'finish', finishReason: 'stop' })]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(1);
+    // The failed attempt wrote nothing, so the original message is re-sent.
+    expect(agent.calls[0].prompt).toBe('hello');
+    expect(actionTypes(fake.dispatched)).toContain('CLEAR_RETRY_REQUEST');
+    expect(fake.doc().state.global.retryRequestedFor).toBeFalsy();
+    expect(fake.doc().state.global.messages.find((m) => m.id === 'u1')?.pickedUpAt).not.toBe(T1);
+    expect(lastMessage(fake).content[0].text).toBe('answer');
+    expect(lastMessage(fake).finishedAt).toBeTruthy();
+
+    // A further pass does not run the turn again.
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(1);
+    expectSessionKeptActive(fake);
+  });
+
+  it('a retry of a turn that already produced output continues it', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    fake.apply(
+      markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }),
+      addAssistantMessage({ id: 'a1', content: [{ id: 'a1-p1', type: 'TEXT', text: 'partial' }], createdAt: T1 }),
+      finishAssistantMessage({ messageId: 'a1', finishReason: 'error', finishedAt: T2 }),
+      failTurn({ id: 'f1', userMessageId: 'u1', code: 'PROVIDER_ERROR', message: 'Service Unavailable', retryable: true, failedAt: T2 }),
+      retryTurn({ userMessageId: 'u1' }),
+    );
+    const agent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'rest' }, { type: 'finish', finishReason: 'stop' })]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toBe(CONTINUE_PROMPT);
+    expectSessionKeptActive(fake);
+  });
+});
+
+describe('chat-session-watch — restart', () => {
+  function unfinishedTurn(): FakeReactor {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }), addAssistantMessage({ id: 'a1', content: [{ id: 'a1-p1', type: 'TEXT', text: 'half an ans' }], createdAt: T1 }));
+    return fake;
+  }
+
+  it('startup reconcile fails or retries an unfinished turn', async () => {
+    // One automatic retry, with the continue prompt.
+    const resumed = unfinishedTurn();
+    const okAgent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'swer.' }, { type: 'finish', finishReason: 'stop' })]);
+    await runPass(resumed, okAgent);
+    expect(okAgent.calls).toHaveLength(1);
+    expect(okAgent.calls[0].prompt).toBe(CONTINUE_PROMPT);
+    expect(resumed.doc().state.global.messages.filter((m) => m.role === 'ASSISTANT' && !m.finishedAt)).toEqual([]);
+    expect(lastMessage(resumed).content[0].text).toBe('swer.');
+    expect(failTurnInputs(resumed)).toEqual([]);
+    expectSessionKeptActive(resumed);
+
+    // The automatic retry fails → FAIL_TURN, no further attempts.
+    const failing = unfinishedTurn();
+    const badAgent = makeFakeAgent([() => chunks(retryable503)]);
+    await runPass(failing, badAgent);
+    expect(badAgent.calls).toHaveLength(1);
+    expect(failTurnInputs(failing)).toEqual([expect.objectContaining({ userMessageId: 'u1', retryable: true })]);
+    expect(lastMessage(failing).failure).toBeTruthy();
+    expectSessionKeptActive(failing);
+
+    // A turn already retried once after a restart (and cut off again) fails without another run.
+    const twice = unfinishedTurn();
+    twice.apply(finishAssistantMessage({ messageId: 'a1', finishReason: 'restart', finishedAt: T2 }), addAssistantMessage({ id: 'a2', content: [{ id: 'a2-p1', type: 'TEXT', text: 'again half' }], createdAt: T2 }));
+    const unusedAgent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'never' })]);
+    await runPass(twice, unusedAgent);
+    expect(unusedAgent.calls).toHaveLength(0);
+    expect(failTurnInputs(twice)).toEqual([expect.objectContaining({ code: 'INTERRUPTED', userMessageId: 'u1', retryable: true })]);
+    expect(twice.doc().state.global.messages.filter((m) => m.role === 'ASSISTANT' && !m.finishedAt)).toEqual([]);
+    expectSessionKeptActive(twice);
+  });
+
+  it('leaves finished and failed turns alone', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }), failTurn({ id: 'f1', userMessageId: 'u1', code: 'PROVIDER_ERROR', message: 'x', retryable: true, failedAt: T2 }));
+    const agent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'never' })]);
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(0);
+    expect(fake.dispatched).toEqual([]);
+  });
+});
+
+describe('chat-session-watch — usage', () => {
+  it('records token usage totals', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const agent = makeFakeAgent([
+      () => chunks({ type: 'text-delta', text: 'a' }, { type: 'step-finish', usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } }, retryable503),
+      () => chunks({ type: 'text-delta', text: 'b' }, { type: 'finish', finishReason: 'stop', usage: { inputTokens: 20, outputTokens: 10, totalTokens: 30 } }),
+    ]);
+
+    await runPass(fake, agent);
+
+    const usage = fake.doc().state.global.usage;
+    expect(usage?.totalPromptTokens).toBe(30);
+    expect(usage?.totalCompletionTokens).toBe(15);
+    expect(usage?.totalTokens).toBe(45);
+    expectSessionKeptActive(fake);
+  });
+});

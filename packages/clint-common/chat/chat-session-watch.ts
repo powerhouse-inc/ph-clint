@@ -1,26 +1,29 @@
 /**
- * Watches chat session documents and invokes the agent when a user message arrives.
+ * Watches chat session documents and invokes the agent when a turn is due.
  *
  * Flow:
  * 1. Trigger fires on any chat-session document change
- * 2. For each doc, guard: skip unless last message is a non-empty USER message,
- *    session is ACTIVE, not in-flight, and no interrupt is pending. Skips write
- *    nothing — they are recomputable from document state on every pass.
+ * 2. For each doc, guard: skip unless the session is ACTIVE, not in-flight and
+ *    no interrupt is pending. Skips write nothing — they are recomputable from
+ *    document state on every pass.
  * 3. Lazily initialize session (START_SESSION) if threadId is not set
- * 4. Dispatch the turn DETACHED (runAgentTurn) so the single serialized poll
+ * 4. Decide whether a turn is due (planTurn): a requested retry
+ *    (retryRequestedFor), a fresh USER message, or a turn left unfinished by a
+ *    restart (resumed once, then failed).
+ * 5. Dispatch the turn DETACHED (runAgentTurn) so the single serialized poll
  *    loop stays responsive and independent sessions stream concurrently on
  *    their own threadIds. The inFlight guard keeps it to one turn per document.
- * 5. The turn extracts user text, streams the agent response chunk-by-chunk
- *    back into the document, and on failure appends an assistant ERROR message
- *    to close the turn.
+ * 6. The turn marks the user message picked up, streams the agent response
+ *    back into the document and retries transient failures by re-running the
+ *    agent with CONTINUE_PROMPT (its memory holds the completed steps). A turn
+ *    that cannot finish ends with FAIL_TURN; the session is never ended.
  */
 import { createDocumentChangeTrigger, type AgentContentPart, type TriggerContext, type Logger, type ReactorContext, type AgentProvider } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
-import { writeAgentStreamToDocument, RetryableStreamError } from './chat-bridge.js';
+import { writeAgentStreamToDocument, RetryableStreamError, dispatchFailTurn, describeFailure, SUPERSEDED_FINISH_REASONS } from './chat-bridge.js';
 import { extractAttachments } from './extract-attachments.js';
-import type { ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
-import { addAssistantMessage, hasMessageContent } from '@powerhousedao/clint-common/document-models/chat-session';
-import { randomUUID } from 'node:crypto';
+import type { ChatSessionAction, ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
+import { clearRetryRequest, finishAssistantMessage, hasMessageContent, isFailedTurn, markMessagePickedUp } from '@powerhousedao/clint-common/document-models/chat-session';
 
 const DOCUMENT_TYPE = 'powerhouse/chat-session' as const;
 const TAG = '[chat-session-watch]';
@@ -28,7 +31,27 @@ const TAG = '[chat-session-watch]';
 const STREAM_MAX_RETRIES = 3;
 const STREAM_RETRY_CAP_MS = 30_000;
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+/**
+ * Prompt for re-running a turn that was cut off after it produced output. The
+ * agent's memory (threadId) holds the completed steps, so it picks up from there.
+ */
+export const CONTINUE_PROMPT = 'The previous response was interrupted by a temporary provider error. Continue exactly where you stopped; do not repeat tool calls that already completed.';
+
+/** Resolves after `ms`, or as soon as `signal` aborts. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve();
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
 
 /** Honor `retry-after`, else exponential backoff with full jitter; capped. */
 function streamRetryDelayMs(err: RetryableStreamError, attempt: number): number {
@@ -39,6 +62,16 @@ function streamRetryDelayMs(err: RetryableStreamError, attempt: number): number 
 
 /** Track documents currently being processed to prevent re-entrancy. */
 const inFlight = new Set<string>();
+
+/** Detached turns still running (see waitForChatTurns). */
+const runningTurns = new Set<Promise<void>>();
+
+/** Resolves once every detached turn has settled. For tests and shutdown. */
+export async function waitForChatTurns(): Promise<void> {
+  while (runningTurns.size > 0) {
+    await Promise.allSettled([...runningTurns]);
+  }
+}
 
 /**
  * AbortControllers for in-flight agent streams, keyed by document id. The
@@ -113,10 +146,120 @@ async function initCreatedSession(ctx: TriggerContext<{ pending: number }, Recor
   }
 }
 
+type TurnMode = 'new' | 'retry' | 'resume';
+
+type TurnPlan = { kind: 'run'; mode: TurnMode; userMessage: Message; continueFromStart: boolean; openMessageId?: string } | { kind: 'clear-retry' } | { kind: 'fail-interrupted'; userMessageId: string; openMessageId?: string };
+
+/** True when an ASSISTANT or TOOL message (other than a failure) follows the given message. */
+function hasOutputAfter(messages: Message[], messageId: string): boolean {
+  const index = messages.findIndex((m) => m.id === messageId);
+  return messages.slice(index + 1).some((m) => (m.role === 'ASSISTANT' || m.role === 'TOOL') && !isFailedTurn(m));
+}
+
 /**
- * Run a single chat turn for one session to completion: lazy-init the session,
- * extract attachments, build the prompt, stream the agent response back into the
- * document, and on failure record an assistant ERROR message to close the turn.
+ * A turn cut off by a restart: after the last USER or failure message, the
+ * latest ASSISTANT message is still open, or was closed only to be superseded
+ * (a retry or a restart). Legacy error messages count as terminal.
+ */
+function findUnfinishedTurn(messages: Message[]): { userMessageId: string; openMessageId?: string; resumedBefore: boolean } | null {
+  let start = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'USER' || isFailedTurn(messages[i])) {
+      start = i;
+      break;
+    }
+  }
+  if (start < 0) return null;
+  const anchor = messages[start];
+  const segment = messages.slice(start + 1);
+  const assistants = segment.filter((m) => m.role === 'ASSISTANT');
+  const latest = assistants.at(-1);
+  if (!latest) return null;
+  if (latest.content.some((p) => p.type === 'ERROR')) return null;
+  if (latest.finishedAt && !SUPERSEDED_FINISH_REASONS.has(latest.finishReason ?? '')) return null;
+  const userMessageId = anchor.role === 'USER' ? anchor.id : anchor.failure?.userMessageId;
+  if (!userMessageId) return null;
+  return {
+    userMessageId,
+    openMessageId: latest.finishedAt ? undefined : latest.id,
+    resumedBefore: assistants.some((m) => m.finishReason === 'restart'),
+  };
+}
+
+/** Decide whether this document has a turn to run (or to close). Pure. */
+function planTurn(state: ChatSessionState): TurnPlan | null {
+  const { messages } = state;
+
+  // A requested retry re-runs that user message's turn. Legacy docs read undefined.
+  if (state.retryRequestedFor) {
+    const userMessage = messages.find((m) => m.id === state.retryRequestedFor);
+    if (!userMessage || userMessage.role !== 'USER') return { kind: 'clear-retry' };
+    return { kind: 'run', mode: 'retry', userMessage, continueFromStart: hasOutputAfter(messages, userMessage.id) };
+  }
+
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage.role === 'USER') {
+    // Empty message (no text, no attachments): skip, statelessly.
+    if (!hasMessageContent(lastMessage)) return null;
+    return { kind: 'run', mode: 'new', userMessage: lastMessage, continueFromStart: false };
+  }
+
+  const unfinished = findUnfinishedTurn(messages);
+  if (!unfinished) return null;
+  const userMessage = messages.find((m) => m.id === unfinished.userMessageId);
+  // Resume once, and only turns this watcher picked up (legacy turns have no pickedUpAt).
+  if (!userMessage || userMessage.role !== 'USER' || !userMessage.pickedUpAt || unfinished.resumedBefore) {
+    return { kind: 'fail-interrupted', userMessageId: unfinished.userMessageId, openMessageId: unfinished.openMessageId };
+  }
+  return { kind: 'run', mode: 'resume', userMessage, continueFromStart: true, openMessageId: unfinished.openMessageId };
+}
+
+/** Build the agent prompt for a user message: text, native images, and saved-attachment paths. */
+async function buildUserPrompt(
+  documentId: string,
+  userMessage: Message,
+  reactor: ReactorContext<ChatSessionRegistry>,
+  ctx: TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>,
+  log?: Logger,
+): Promise<string | AgentContentPart[]> {
+  const userText = userMessage.content
+    .filter((p: ContentPart) => p.type === 'TEXT' && p.text)
+    .map((p: ContentPart) => p.text!)
+    .join('\n');
+
+  log?.info(`${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`);
+
+  // Extract file/image attachments to disk
+  const attachments = await extractAttachments(userMessage, {
+    workdir: ctx.context.workdir,
+    documentId,
+    log,
+    service: reactor.attachments,
+  });
+
+  // Build multimodal prompt: include images natively so the model
+  // can see them, plus file paths so agent tools can read them.
+  // Image bytes come from the already-resolved attachments (no second service.get).
+  const imageAttachments = attachments.filter((a) => a.partType === 'IMAGE');
+  const note = attachments.length > 0 ? `[Attached files saved to disk]\n${attachments.map((a) => `- ${a.filename}: ${a.localPath}`).join('\n')}` : '';
+  if (attachments.length > 0) log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
+
+  if (imageAttachments.length > 0) {
+    const parts: AgentContentPart[] = imageAttachments.map((a) => ({ type: 'image' as const, image: a.bytes, mediaType: a.mediaType ?? undefined }));
+    const text = note ? (userText ? `${userText}\n\n${note}` : note) : userText;
+    if (text) parts.push({ type: 'text', text });
+    return parts;
+  }
+  if (note) return userText ? `${userText}\n\n${note}` : note;
+  return userText;
+}
+
+/**
+ * Run a single chat turn for one session to completion: mark the user message
+ * picked up, lazy-init the session, build the prompt, and stream the agent
+ * response back into the document. Retryable failures re-run the agent (at
+ * most STREAM_MAX_RETRIES times; a restart resume gets one attempt), with
+ * CONTINUE_PROMPT once output exists. Every failure ends in FAIL_TURN.
  *
  * This is dispatched DETACHED from the watcher's poll loop (see onChange) so it
  * does not block other sessions. It is guarded by the `inFlight` set keyed on
@@ -126,111 +269,178 @@ async function initCreatedSession(ctx: TriggerContext<{ pending: number }, Recor
 async function runAgentTurn(
   documentId: string,
   state: ChatSessionState,
-  lastMessage: Message,
+  plan: Extract<TurnPlan, { kind: 'run' }>,
   reactor: ReactorContext<ChatSessionRegistry>,
   agent: AgentProvider,
   ctx: TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>,
   log?: Logger,
 ): Promise<void> {
+  const userMessageId = plan.userMessage.id;
+  const execute = (actions: ChatSessionAction[]) => reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', actions);
+  const pickUp = () => markMessagePickedUp({ messageId: userMessageId, pickedUpAt: new Date().toISOString() });
+  // One controller for the whole turn, so an interrupt also cancels a pending retry.
+  const abortController = new AbortController();
+  abortControllers.set(documentId, abortController);
   try {
-    // Extract user text from content parts. Kept inside the try so a malformed
-    // message surfaces as an ERROR message (closing the turn) rather than
-    // rejecting this detached task and leaving the turn open to retry forever.
-    const userText = lastMessage.content
-      .filter((p: ContentPart) => p.type === 'TEXT' && p.text)
-      .map((p: ContentPart) => p.text!)
-      .join('\n');
-
-    log?.info(`${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`);
+    // Claim the turn before streaming.
+    const claim: ChatSessionAction[] = [];
+    if (plan.mode === 'retry') claim.push(clearRetryRequest({ _: true }));
+    if (plan.openMessageId) claim.push(finishAssistantMessage({ messageId: plan.openMessageId, finishReason: 'restart', finishedAt: new Date().toISOString() }));
+    claim.push(pickUp());
+    await execute(claim);
 
     // Lazy session init: assigns threadId if not set
     const threadId = await ensureSessionInitialized(reactor, documentId, state, agent, log);
 
-    // Extract file/image attachments to disk
-    const attachments = await extractAttachments(lastMessage, {
-      workdir: ctx.context.workdir,
-      documentId,
-      log,
-      service: reactor.attachments,
-    });
-
-    // Build multimodal prompt: include images natively so the model
-    // can see them, plus file paths so agent tools can read them.
-    // Image bytes come from the already-resolved attachments (no second service.get).
-    const imageAttachments = attachments.filter((a) => a.partType === 'IMAGE');
-
-    let prompt: string | AgentContentPart[];
-    if (imageAttachments.length > 0) {
-      const parts: AgentContentPart[] = [];
-      for (const a of imageAttachments) {
-        parts.push({
-          type: 'image',
-          image: a.bytes,
-          mediaType: a.mediaType ?? undefined,
-        });
-      }
-      let text = userText;
-      if (attachments.length > 0) {
-        log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
-        const pathList = attachments.map((a) => `- ${a.filename}: ${a.localPath}`).join('\n');
-        const note = `[Attached files saved to disk]\n${pathList}`;
-        text = text ? `${text}\n\n${note}` : note;
-      }
-      if (text) parts.push({ type: 'text', text });
-      prompt = parts;
-    } else if (attachments.length > 0) {
-      log?.info(`${TAG} extracted ${attachments.length} attachment(s)`);
-      const pathList = attachments.map((a) => `- ${a.filename}: ${a.localPath}`).join('\n');
-      const note = `[Attached files saved to disk]\n${pathList}`;
-      prompt = userText ? `${userText}\n\n${note}` : note;
-    } else {
-      prompt = userText;
-    }
+    let prompt: string | AgentContentPart[] = plan.continueFromStart ? CONTINUE_PROMPT : await buildUserPrompt(documentId, plan.userMessage, reactor, ctx, log);
+    if (plan.continueFromStart) log?.info(`${TAG} continuing turn for ${documentId} (${plan.mode})`);
+    const maxRetries = plan.mode === 'resume' ? 0 : STREAM_MAX_RETRIES;
 
     // Stream agent response and write to document. The abort signal lets
     // the interrupt listener stop this turn mid-stream; the underlying
     // agent treats an abort as a clean end, so the partial assistant
     // message is preserved and the session stays ACTIVE.
-    // Retry transient upstream failures; the bridge only raises this before
-    // any content is written, so a re-run can't duplicate. Interrupts aren't retried.
     for (let attempt = 0; ; attempt++) {
-      const abortController = new AbortController();
-      abortControllers.set(documentId, abortController);
+      if (attempt > 0) await execute([pickUp()]);
       try {
         const stream = agent.stream(prompt, { threadId, abortSignal: abortController.signal });
-        await writeAgentStreamToDocument(stream, {
-          reactor,
-          documentId,
-          log,
-        });
-        break;
+        await writeAgentStreamToDocument(stream, { reactor, documentId, log, userMessageId });
+        return;
       } catch (streamErr) {
-        const canRetry = streamErr instanceof RetryableStreamError && attempt < STREAM_MAX_RETRIES && !abortController.signal.aborted;
-        if (!canRetry) throw streamErr;
+        if (!(streamErr instanceof RetryableStreamError)) throw streamErr;
+        if (abortController.signal.aborted) return;
+        if (attempt >= maxRetries) {
+          log?.error(`${TAG} retryable stream error for ${documentId}, giving up after ${attempt + 1} attempt(s): ${streamErr.message}`);
+          const detail = maxRetries > 0 ? `${streamErr.message} (gave up after ${maxRetries} retries)` : streamErr.message;
+          await dispatchFailTurn(reactor, documentId, { userMessageId, code: streamErr.code, message: describeFailure(streamErr.code, detail), retryable: true });
+          return;
+        }
+        // Output already reached the document (and the agent's memory): continue, don't restart.
+        if (streamErr.wroteContent) prompt = CONTINUE_PROMPT;
         const delay = streamRetryDelayMs(streamErr, attempt);
-        log?.warn(`${TAG} retryable stream error for ${documentId} (attempt ${attempt + 1}/${STREAM_MAX_RETRIES}), retrying in ${delay}ms: ${streamErr.message}`);
-        await sleep(delay);
-      } finally {
-        abortControllers.delete(documentId);
+        log?.warn(`${TAG} retryable stream error for ${documentId} (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms: ${streamErr.message}`);
+        await sleep(delay, abortController.signal);
+        if (abortController.signal.aborted) return;
       }
     }
   } catch (err) {
     log?.error(`${TAG} agent invocation failed for ${documentId}:`, err);
-    // Surface the failure as an assistant ERROR message. This also closes
-    // the turn: the last message is no longer USER, so the watcher guard
-    // and the derived responding state both see the turn as ended.
+    // Close the turn with a failure the editor can show; the session stays ACTIVE.
     const reason = err instanceof Error ? err.message : String(err);
-    await reactor.client
-      .execute<'powerhouse/chat-session'>(documentId, 'main', [
-        addAssistantMessage({
-          id: randomUUID(),
-          content: [{ id: randomUUID(), type: 'ERROR', error: `Agent failed to respond: ${reason}` }],
-          createdAt: new Date().toISOString(),
-        }),
-      ])
-      .catch((e: unknown) => log?.error(`${TAG} failed to record agent error for ${documentId}:`, e));
+    await dispatchFailTurn(reactor, documentId, { userMessageId, code: 'AGENT_ERROR', message: describeFailure('AGENT_ERROR', reason), retryable: false }).catch((e: unknown) => log?.error(`${TAG} failed to record agent error for ${documentId}:`, e));
   } finally {
-    abortControllers.delete(documentId);
+    if (abortControllers.get(documentId) === abortController) abortControllers.delete(documentId);
+  }
+}
+
+type WatchContext = TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>;
+type ChatSessionDocumentLike = { header: { id: string }; state: { global: ChatSessionState } };
+
+/**
+ * One watcher pass over chat-session documents: start due turns (detached),
+ * clear stale retry requests and fail turns that cannot be resumed.
+ */
+export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ctx: WatchContext): Promise<void> {
+  const log = ctx.context.log;
+  const reactor = await ctx.reactor();
+  const agent = await ctx.agent();
+
+  if (!reactor || !agent) {
+    log?.info(`${TAG} reactor or agent not available, skipping`);
+    return;
+  }
+
+  ensureInterruptListener(ctx);
+  ensureCreationListener(ctx);
+
+  for (const doc of docs) {
+    const documentId = doc.header.id;
+    const state = doc.state.global;
+    const { status, messages } = state;
+
+    // Guard: skip completed/aborted/error sessions
+    if (status === 'COMPLETED' || status === 'ABORTED' || status === 'ERROR') {
+      continue;
+    }
+
+    // Eager init: populate the agent header (name + avatar) as soon as the
+    // session exists. Idempotent; the START_SESSION write re-triggers us.
+    if (!state.threadId) {
+      try {
+        await ensureSessionInitialized(reactor, documentId, state, agent, log);
+      } catch (err) {
+        log?.error(`${TAG} eager session init failed for ${documentId}:`, err);
+      }
+      continue;
+    }
+
+    // Guard: need at least one message
+    if (messages.length === 0) continue;
+
+    // Guard: already processing this document (our own writes re-trigger us)
+    if (inFlight.has(documentId)) {
+      log?.info(`${TAG} ${documentId} already in-flight, skipping`);
+      continue;
+    }
+
+    // Guard: a set interruptRequested means the user stopped this turn.
+    // The flag tombstones the message as unanswered until the next user
+    // message or retry clears it. Skipping writes nothing, so no
+    // re-trigger loop.
+    if (state.interruptRequested) {
+      log?.info(`${TAG} ${documentId} interrupt requested, skipping turn`);
+      continue;
+    }
+
+    const plan = planTurn(state);
+    if (!plan) continue;
+
+    if (plan.kind === 'clear-retry') {
+      log?.warn(`${TAG} ${documentId} retry requested for an unknown message, clearing`);
+      await reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [clearRetryRequest({ _: true })]).catch((e: unknown) => log?.error(`${TAG} failed to clear retry request for ${documentId}:`, e));
+      continue;
+    }
+
+    if (plan.kind === 'fail-interrupted') {
+      log?.warn(`${TAG} ${documentId} has a turn cut off by a restart that cannot be resumed, failing it`);
+      const now = new Date().toISOString();
+      try {
+        if (plan.openMessageId) {
+          await reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [finishAssistantMessage({ messageId: plan.openMessageId, finishReason: 'restart', finishedAt: now })]);
+        }
+        await dispatchFailTurn(reactor, documentId, {
+          userMessageId: plan.userMessageId,
+          code: 'INTERRUPTED',
+          message: describeFailure('INTERRUPTED', 'the agent restarted before the response finished'),
+          retryable: true,
+        });
+      } catch (e) {
+        log?.error(`${TAG} failed to record interrupted turn for ${documentId}:`, e);
+      }
+      continue;
+    }
+
+    // Dispatch the agent turn as a DETACHED, in-flight-tracked task rather
+    // than awaiting it here. The routine drives this trigger from a single
+    // serialized poll loop (`await trigger.poll()`), so awaiting a multi-minute
+    // agent stream inline blocks EVERY other chat session until it finishes —
+    // a second session opened while the first is still building never gets
+    // picked up. Detaching keeps the poll loop responsive; independent
+    // sessions (distinct threadIds) then stream concurrently. The inFlight
+    // guard above plus this add/delete pair dedupe the rapid re-polls that
+    // fire while the stream writes back to the document.
+    inFlight.add(documentId);
+    log?.info(`${TAG} dispatching ${plan.mode} turn for ${documentId} (detached; ${inFlight.size} in-flight)`);
+    // Fire-and-forget: do NOT await (that would re-serialize the loop). The
+    // .catch is defensive — runAgentTurn handles its own errors, so this only
+    // guards against an unexpected throw becoming an unhandled rejection.
+    const turn: Promise<void> = runAgentTurn(documentId, state, plan, reactor, agent, ctx, log)
+      .catch((err) => log?.error(`${TAG} unexpected error in detached turn for ${documentId}:`, err))
+      .finally(() => {
+        inFlight.delete(documentId);
+        runningTurns.delete(turn);
+      });
+    runningTurns.add(turn);
   }
 }
 
@@ -239,90 +449,7 @@ export const chatSessionWatchTrigger = createDocumentChangeTrigger<ChatSessionRe
   documentType: DOCUMENT_TYPE,
 
   async onChange(docs, ctx) {
-    const log = ctx.context.log;
-    const reactor = await ctx.reactor();
-    const agent = await ctx.agent();
-
-    if (!reactor || !agent) {
-      log?.info(`${TAG} reactor or agent not available, skipping`);
-      return null;
-    }
-
-    ensureInterruptListener(ctx);
-    ensureCreationListener(ctx);
-
-    for (const doc of docs) {
-      const documentId = doc.header.id;
-      const state = doc.state.global;
-      const { status, messages } = state;
-
-      // Guard: skip completed/aborted/error sessions
-      if (status === 'COMPLETED' || status === 'ABORTED' || status === 'ERROR') {
-        continue;
-      }
-
-      // Eager init: populate the agent header (name + avatar) as soon as the
-      // session exists. Idempotent; the START_SESSION write re-triggers us.
-      if (!state.threadId) {
-        try {
-          await ensureSessionInitialized(reactor, documentId, state, agent, log);
-        } catch (err) {
-          log?.error(`${TAG} eager session init failed for ${documentId}:`, err);
-        }
-        continue;
-      }
-
-      // Guard: need at least one message
-      if (messages.length === 0) continue;
-
-      const lastMessage: Message = messages[messages.length - 1];
-
-      // Guard: only react to USER messages (prevents re-entrancy from our own writes)
-      if (lastMessage.role !== 'USER') continue;
-
-      // Guard: already processing this document
-      if (inFlight.has(documentId)) {
-        log?.info(`${TAG} ${documentId} already in-flight, skipping`);
-        continue;
-      }
-
-      // Guard: a set interruptRequested means the user stopped this turn.
-      // The flag tombstones the message as unanswered until the next user
-      // message clears it (addUserMessage). Skipping writes nothing, so no
-      // re-trigger loop.
-      if (state.interruptRequested) {
-        log?.info(`${TAG} ${documentId} interrupt requested, skipping turn`);
-        continue;
-      }
-
-      // Guard: empty message (no text, no attachment parts). Recomputable
-      // from content on every pass, so the skip is stateless.
-      if (!hasMessageContent(lastMessage)) {
-        log?.info(`${TAG} ${documentId} user message has no text or attachments, skipping`);
-        continue;
-      }
-
-      // Dispatch the agent turn as a DETACHED, in-flight-tracked task rather
-      // than awaiting it here. The routine drives this trigger from a single
-      // serialized poll loop (`await trigger.poll()`), so awaiting a multi-minute
-      // agent stream inline blocks EVERY other chat session until it finishes —
-      // a second session opened while the first is still building never gets
-      // picked up. Detaching keeps the poll loop responsive; independent
-      // sessions (distinct threadIds) then stream concurrently. The inFlight
-      // guard above plus this add/delete pair dedupe the rapid re-polls that
-      // fire while the stream writes back to the document.
-      inFlight.add(documentId);
-      log?.info(`${TAG} dispatching turn for ${documentId} (detached; ${inFlight.size} in-flight)`);
-      // Fire-and-forget: do NOT await (that would re-serialize the loop). The
-      // .catch is defensive — runAgentTurn handles its own errors, so this only
-      // guards against an unexpected throw becoming an unhandled rejection.
-      void runAgentTurn(documentId, state, lastMessage, reactor, agent, ctx, log)
-        .catch((err) => log?.error(`${TAG} unexpected error in detached turn for ${documentId}:`, err))
-        .finally(() => {
-          inFlight.delete(documentId);
-        });
-    }
-
+    await processChatSessionDocs(docs, ctx);
     return null;
   },
 });

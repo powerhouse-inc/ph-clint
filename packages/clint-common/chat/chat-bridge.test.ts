@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { writeAgentStreamToDocument } from './chat-bridge.js';
+import { writeAgentStreamToDocument, RetryableStreamError } from './chat-bridge.js';
+import { actionTypes, chunks, makeFakeReactor, sessionWithUserMessage } from './testing/fakes.js';
 import type { StreamChunk, ReactorContext } from '@powerhousedao/ph-clint';
 import type { ChatSessionRegistry } from './chat-session-init.js';
 
@@ -158,5 +159,68 @@ describe('writeAgentStreamToDocument — usage persistence', () => {
     // Clobbered fields must not be dispatched
     expect(typed?.totalMessages).toBeUndefined();
     expect(typed?.totalToolCalls).toBeUndefined();
+  });
+});
+
+describe('writeAgentStreamToDocument — failures', () => {
+  it('throws RetryableStreamError even after content was written, and never ends the session', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const stream = chunks({ type: 'text-delta', text: 'partial' }, { type: 'tool-call', toolCallId: 'c1', toolName: 'search', args: {} }, { type: 'error', error: 'Bad Gateway', retryable: true, statusCode: 502 });
+
+    const err = await writeAgentStreamToDocument(stream, { reactor: fake.reactor, documentId: 'doc', userMessageId: 'u1' }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(RetryableStreamError);
+    expect((err as RetryableStreamError).wroteContent).toBe(true);
+    expect((err as RetryableStreamError).statusCode).toBe(502);
+    const types = actionTypes(fake.dispatched);
+    expect(types).not.toContain('END_SESSION');
+    expect(types).not.toContain('FAIL_TURN');
+    expect(fake.doc().state.global.status).toBe('ACTIVE');
+    expect(fake.errors()).toEqual([]);
+  });
+
+  it('fails the turn on a non-retryable error chunk instead of ending the session', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const stream = chunks({ type: 'text-delta', text: 'partial' }, { type: 'error', error: 'Bad Request', retryable: false, statusCode: 400 });
+
+    const result = await writeAgentStreamToDocument(stream, { reactor: fake.reactor, documentId: 'doc' });
+
+    expect(result.outcome).toBe('failed');
+    const fail = fake.dispatched.find((a) => a.type === 'FAIL_TURN');
+    // userMessageId resolves to the turn's USER message when not given.
+    expect(fail?.input).toMatchObject({ userMessageId: 'u1', retryable: false, code: 'PROVIDER_ERROR' });
+    expect(actionTypes(fake.dispatched)).not.toContain('END_SESSION');
+    expect(fake.doc().state.global.status).toBe('ACTIVE');
+    expect(fake.doc().state.global.messages.filter((m) => m.role === 'ASSISTANT' && !m.finishedAt)).toEqual([]);
+    expect(fake.errors()).toEqual([]);
+  });
+
+  it('fails the turn as AGENT_ERROR when the stream throws a non-provider error', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    // eslint-disable-next-line require-yield
+    async function* broken(): AsyncGenerator<StreamChunk> {
+      throw new TypeError('cannot read properties of undefined');
+    }
+
+    const result = await writeAgentStreamToDocument(broken(), { reactor: fake.reactor, documentId: 'doc', userMessageId: 'u1' });
+
+    expect(result.outcome).toBe('failed');
+    expect(fake.dispatched.find((a) => a.type === 'FAIL_TURN')?.input).toMatchObject({ code: 'AGENT_ERROR', retryable: false, userMessageId: 'u1' });
+    expect(actionTypes(fake.dispatched)).not.toContain('END_SESSION');
+    expect(fake.errors()).toEqual([]);
+  });
+
+  it('treats a thrown retryable provider error as retryable', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    // eslint-disable-next-line require-yield
+    async function* overloaded(): AsyncGenerator<StreamChunk> {
+      throw Object.assign(new Error('Overloaded'), { statusCode: 529 });
+    }
+
+    const err = await writeAgentStreamToDocument(overloaded(), { reactor: fake.reactor, documentId: 'doc', userMessageId: 'u1' }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(RetryableStreamError);
+    expect((err as RetryableStreamError).wroteContent).toBe(false);
+    expect(actionTypes(fake.dispatched)).toEqual([]);
   });
 });

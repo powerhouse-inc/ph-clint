@@ -14,5 +14,5 @@
     }
   },
   "include": ["chat/**/*.ts"],
-  "exclude": ["chat/**/*.test.ts"]
+  "exclude": ["chat/**/*.test.ts", "chat/testing/**"]
 }
