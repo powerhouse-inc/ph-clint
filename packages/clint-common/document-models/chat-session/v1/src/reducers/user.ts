@@ -1,5 +1,5 @@
 import type { ChatSessionUserOperations } from 'document-models/chat-session/v1';
-import { InvalidContentPartError, MessageNotFoundError, NotUserMessageError } from '../../gen/user/error.js';
+import { InvalidContentPartError, MessageNotFoundError, NotUserMessageError, SessionNotResumableError } from '../../gen/user/error.js';
 
 export const chatSessionUserOperations: ChatSessionUserOperations = {
   addUserMessageOperation(state, action) {
@@ -35,6 +35,8 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
       usage: null,
       finishedAt: null,
       finishReason: null,
+      pickedUpAt: null,
+      failure: null,
     });
     if (state.usage) state.usage.totalMessages += 1;
   },
@@ -51,5 +53,15 @@ export const chatSessionUserOperations: ChatSessionUserOperations = {
   },
   interruptAgentOperation(state) {
     state.interruptRequested = true;
+  },
+  retryTurnOperation(state, action) {
+    const msg = state.messages.find((m) => m.id === action.input.userMessageId);
+    if (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.userMessageId);
+    state.retryRequestedFor = action.input.userMessageId;
+  },
+  resumeSessionOperation(state) {
+    if (state.status !== 'ERROR') throw new SessionNotResumableError('Only ERROR sessions can be resumed (status: ' + state.status + ')');
+    state.status = 'ACTIVE';
+    state.endedAt = null;
   },
 };

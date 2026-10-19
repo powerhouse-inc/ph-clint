@@ -3,7 +3,7 @@
  * This file is auto-generated and updated by codegen
  */
 import type { Action } from 'document-model';
-import type { AddAssistantMessageInput, AppendAssistantContentInput, FinishAssistantMessageInput, SetMessageUsageInput, UpdateAssistantContentInput } from '../types.js';
+import type { AddAssistantMessageInput, AppendAssistantContentInput, ClearRetryRequestInput, FailTurnInput, FinishAssistantMessageInput, MarkMessagePickedUpInput, SetMessageUsageInput, UpdateAssistantContentInput } from '../types.js';
 
 export type AddAssistantMessageAction = Action & {
   type: 'ADD_ASSISTANT_MESSAGE';
@@ -25,5 +25,18 @@ export type FinishAssistantMessageAction = Action & {
   type: 'FINISH_ASSISTANT_MESSAGE';
   input: FinishAssistantMessageInput;
 };
+export type MarkMessagePickedUpAction = Action & {
+  type: 'MARK_MESSAGE_PICKED_UP';
+  input: MarkMessagePickedUpInput;
+};
+export type FailTurnAction = Action & {
+  type: 'FAIL_TURN';
+  input: FailTurnInput;
+};
+export type ClearRetryRequestAction = Action & {
+  type: 'CLEAR_RETRY_REQUEST';
+  input: ClearRetryRequestInput;
+};
 
-export type ChatSessionAgentAction = AddAssistantMessageAction | AppendAssistantContentAction | UpdateAssistantContentAction | SetMessageUsageAction | FinishAssistantMessageAction;
+export type ChatSessionAgentAction =
+  AddAssistantMessageAction | AppendAssistantContentAction | UpdateAssistantContentAction | SetMessageUsageAction | FinishAssistantMessageAction | MarkMessagePickedUpAction | FailTurnAction | ClearRetryRequestAction;

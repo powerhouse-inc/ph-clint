@@ -20,6 +20,7 @@ export const initialGlobalState: ChatSessionGlobalState = {
   messages: [],
   usage: null,
   interruptRequested: false,
+  retryRequestedFor: null,
 };
 export const initialLocalState: ChatSessionLocalState = {};
 

@@ -1,4 +1,4 @@
-import { hasMessageContent } from 'document-models/chat-session/v1';
+import { hasMessageContent, isFailedTurn } from 'document-models/chat-session/v1';
 import type { ContentPart } from 'document-models/chat-session/v1';
 import { describe, expect, it } from 'vitest';
 
@@ -34,5 +34,22 @@ describe('hasMessageContent', () => {
   it('is true for IMAGE and FILE attachment parts', () => {
     expect(hasMessageContent({ content: [part({ type: 'IMAGE', attachment: 'a1' })] })).toBe(true);
     expect(hasMessageContent({ content: [part({ type: 'FILE', attachment: 'a2' })] })).toBe(true);
+  });
+});
+
+describe('isFailedTurn', () => {
+  const failure = { code: 'PROVIDER_ERROR', message: 'boom', retryable: true, failedAt: '2026-01-01T00:00:00.000Z' };
+
+  it('is true for an ASSISTANT message with a failure', () => {
+    expect(isFailedTurn({ role: 'ASSISTANT', failure })).toBe(true);
+  });
+
+  it('is false without a failure, including legacy messages that lack the field', () => {
+    expect(isFailedTurn({ role: 'ASSISTANT', failure: null })).toBe(false);
+    expect(isFailedTurn({ role: 'ASSISTANT' })).toBe(false);
+  });
+
+  it('is false for non-ASSISTANT messages', () => {
+    expect(isFailedTurn({ role: 'USER', failure })).toBe(false);
   });
 });

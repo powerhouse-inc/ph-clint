@@ -137,10 +137,15 @@ export type ChatSessionState = {
   interruptRequested: Maybe<Scalars['Boolean']['output']>;
   messages: Array<Message>;
   resourceId: Maybe<Scalars['String']['output']>;
+  retryRequestedFor: Maybe<Scalars['OID']['output']>;
   startedAt: Maybe<Scalars['DateTime']['output']>;
   status: SessionStatus;
   threadId: Maybe<Scalars['String']['output']>;
   usage: Maybe<UsageSummary>;
+};
+
+export type ClearRetryRequestInput = {
+  _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type ContentPart = {
@@ -170,6 +175,15 @@ export type EndSessionInput = {
   status: SessionStatus;
 };
 
+export type FailTurnInput = {
+  code: Scalars['String']['input'];
+  failedAt: Scalars['DateTime']['input'];
+  id: Scalars['OID']['input'];
+  message: Scalars['String']['input'];
+  retryable: Scalars['Boolean']['input'];
+  userMessageId: Scalars['OID']['input'];
+};
+
 export type FinishAssistantMessageInput = {
   finishReason?: InputMaybe<Scalars['String']['input']>;
   finishedAt: Scalars['DateTime']['input'];
@@ -180,12 +194,19 @@ export type InterruptAgentInput = {
   _?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+export type MarkMessagePickedUpInput = {
+  messageId: Scalars['OID']['input'];
+  pickedUpAt: Scalars['DateTime']['input'];
+};
+
 export type Message = {
   content: Array<ContentPart>;
   createdAt: Scalars['DateTime']['output'];
+  failure: Maybe<TurnFailure>;
   finishReason: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['DateTime']['output']>;
   id: Scalars['OID']['output'];
+  pickedUpAt: Maybe<Scalars['DateTime']['output']>;
   role: MessageRole;
   stepIndex: Maybe<Scalars['Int']['output']>;
   usage: Maybe<MessageUsage>;
@@ -197,6 +218,14 @@ export type MessageUsage = {
   completionTokens: Maybe<Scalars['Int']['output']>;
   promptTokens: Maybe<Scalars['Int']['output']>;
   totalTokens: Maybe<Scalars['Int']['output']>;
+};
+
+export type ResumeSessionInput = {
+  resumedAt: Scalars['DateTime']['input'];
+};
+
+export type RetryTurnInput = {
+  userMessageId: Scalars['OID']['input'];
 };
 
 export type SessionStatus = 'ABORTED' | 'ACTIVE' | 'COMPLETED' | 'ERROR';
@@ -241,6 +270,13 @@ export type ToolResultPartInput = {
   toolName: Scalars['String']['input'];
   type: ContentPartType;
   url?: InputMaybe<Scalars['URL']['input']>;
+};
+
+export type TurnFailure = {
+  code: Scalars['String']['output'];
+  failedAt: Scalars['DateTime']['output'];
+  message: Scalars['String']['output'];
+  retryable: Scalars['Boolean']['output'];
 };
 
 export type UpdateAssistantContentInput = {

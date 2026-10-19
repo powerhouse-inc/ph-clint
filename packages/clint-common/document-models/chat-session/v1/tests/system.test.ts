@@ -1,4 +1,4 @@
-import { generateMock } from 'document-model';
+import { generateMock } from 'document-model/mock';
 import {
   addSystemMessage,
   AddSystemMessageInputSchema,
@@ -6,6 +6,7 @@ import {
   EndSessionInputSchema,
   isChatSessionDocument,
   reducer,
+  retryTurn,
   setAgentDescription,
   SetAgentDescriptionInputSchema,
   setAgentImage,
@@ -19,6 +20,7 @@ import {
   utils,
 } from 'document-models/chat-session/v1';
 import { describe, expect, it } from 'vitest';
+import { sessionWithUserMessage, T2 } from './session-fixtures.js';
 
 describe('SystemOperations', () => {
   it('should handle startSession operation', () => {
@@ -116,5 +118,31 @@ describe('SystemOperations', () => {
     expect(updatedDocument.operations.global[0].action.type).toBe('SET_AGENT_DESCRIPTION');
     expect(updatedDocument.operations.global[0].action.input).toStrictEqual(input);
     expect(updatedDocument.operations.global[0].index).toEqual(0);
+  });
+});
+
+describe('Turn lifecycle (system)', () => {
+  it('START_SESSION clears a pending retry request', () => {
+    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1' }));
+    doc = reducer(
+      doc,
+      startSession({
+        threadId: 't2',
+        resourceId: 'r1',
+        agent: {},
+        startedAt: T2,
+      }),
+    );
+
+    expect(doc.state.global.retryRequestedFor).toBeNull();
+  });
+
+  it('new messages start without pickup or failure', () => {
+    const doc = reducer(sessionWithUserMessage(), addSystemMessage({ id: 's1', text: 'You are helpful', createdAt: T2 }));
+
+    for (const m of doc.state.global.messages) {
+      expect(m.pickedUpAt).toBeNull();
+      expect(m.failure).toBeNull();
+    }
   });
 });

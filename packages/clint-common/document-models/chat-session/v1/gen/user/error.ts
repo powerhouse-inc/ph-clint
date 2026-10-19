@@ -1,4 +1,4 @@
-export type ErrorCode = 'InvalidContentPartError' | 'MessageNotFoundError' | 'NotUserMessageError';
+export type ErrorCode = 'InvalidContentPartError' | 'MessageNotFoundError' | 'NotUserMessageError' | 'SessionNotResumableError';
 
 export interface ReducerError {
   errorCode: ErrorCode;
@@ -25,8 +25,19 @@ export class NotUserMessageError extends Error implements ReducerError {
   }
 }
 
+export class SessionNotResumableError extends Error implements ReducerError {
+  errorCode = 'SessionNotResumableError' as ErrorCode;
+  constructor(message = 'SessionNotResumableError') {
+    super(message);
+  }
+}
+
 export const errors = {
   AddUserMessage: { InvalidContentPartError },
 
   DeleteUserMessage: { MessageNotFoundError, NotUserMessageError },
+
+  RetryTurn: { MessageNotFoundError },
+
+  ResumeSession: { SessionNotResumableError },
 };

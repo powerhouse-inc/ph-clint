@@ -79,6 +79,8 @@ function makeMessage(parts: ContentPart[]): Message {
     usage: null,
     finishedAt: null,
     finishReason: null,
+    pickedUpAt: null,
+    failure: null,
   };
 }
 

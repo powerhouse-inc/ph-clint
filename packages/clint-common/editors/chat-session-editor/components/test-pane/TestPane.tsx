@@ -13,11 +13,16 @@ import {
   addUserMessage,
   deleteUserMessage,
   abortSession,
+  retryTurn,
+  resumeSession,
   addAssistantMessage,
   appendAssistantContent,
   updateAssistantContent,
   setMessageUsage,
   addToolResult,
+  markMessagePickedUp,
+  failTurn,
+  clearRetryRequest,
   addToolOutput,
 } from 'document-models/chat-session';
 import { ModuleTabs, type ModuleName } from './ModuleTabs.js';
@@ -42,6 +47,8 @@ const actionCreators: ActionCreatorMap = {
   ADD_USER_MESSAGE: addUserMessage,
   DELETE_USER_MESSAGE: deleteUserMessage,
   ABORT_SESSION: abortSession,
+  RETRY_TURN: retryTurn,
+  RESUME_SESSION: resumeSession,
   ADD_ASSISTANT_MESSAGE: addAssistantMessage,
   APPEND_ASSISTANT_CONTENT: (input: Record<string, unknown>) => {
     const parts = input.part as unknown[];
@@ -52,6 +59,9 @@ const actionCreators: ActionCreatorMap = {
   },
   UPDATE_ASSISTANT_CONTENT: updateAssistantContent,
   SET_MESSAGE_USAGE: setMessageUsage,
+  MARK_MESSAGE_PICKED_UP: markMessagePickedUp,
+  FAIL_TURN: failTurn,
+  CLEAR_RETRY_REQUEST: clearRetryRequest,
   ADD_TOOL_RESULT: addToolResult,
   ADD_TOOL_OUTPUT: addToolOutput,
 };

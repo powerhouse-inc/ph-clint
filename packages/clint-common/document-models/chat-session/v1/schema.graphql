@@ -82,6 +82,13 @@ type ContentPart {
   error: String
 }
 
+type TurnFailure {
+  code: String!
+  message: String!
+  retryable: Boolean!
+  failedAt: DateTime!
+}
+
 type Message {
   id: OID!
   role: MessageRole!
@@ -91,6 +98,8 @@ type Message {
   usage: MessageUsage
   finishedAt: DateTime
   finishReason: String
+  pickedUpAt: DateTime
+  failure: TurnFailure
 }
 
 type ChatSessionState {
@@ -103,6 +112,7 @@ type ChatSessionState {
   messages: [Message!]!
   usage: UsageSummary
   interruptRequested: Boolean
+  retryRequestedFor: OID
 }
 
 # system
@@ -186,6 +196,14 @@ input InterruptAgentInput {
   _: Boolean
 }
 
+input RetryTurnInput {
+  userMessageId: OID!
+}
+
+input ResumeSessionInput {
+  resumedAt: DateTime!
+}
+
 # agent
 
 input AssistantContentPartInput {
@@ -233,6 +251,24 @@ input FinishAssistantMessageInput {
   messageId: OID!
   finishReason: String
   finishedAt: DateTime!
+}
+
+input MarkMessagePickedUpInput {
+  messageId: OID!
+  pickedUpAt: DateTime!
+}
+
+input FailTurnInput {
+  id: OID!
+  userMessageId: OID!
+  code: String!
+  message: String!
+  retryable: Boolean!
+  failedAt: DateTime!
+}
+
+input ClearRetryRequestInput {
+  _: Boolean
 }
 
 # tool

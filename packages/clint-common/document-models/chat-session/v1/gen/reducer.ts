@@ -17,10 +17,15 @@ import {
   AddToolResultInputSchema,
   AddUserMessageInputSchema,
   AppendAssistantContentInputSchema,
+  ClearRetryRequestInputSchema,
   DeleteUserMessageInputSchema,
   EndSessionInputSchema,
+  FailTurnInputSchema,
   FinishAssistantMessageInputSchema,
   InterruptAgentInputSchema,
+  MarkMessagePickedUpInputSchema,
+  ResumeSessionInputSchema,
+  RetryTurnInputSchema,
   SetAgentDescriptionInputSchema,
   SetAgentImageInputSchema,
   SetAgentInfoInputSchema,
@@ -30,13 +35,24 @@ import {
   UpdateUsageSummaryInputSchema,
 } from './schema/zod.js';
 
+const schemaMemo = new Map<() => unknown, unknown>();
+
+function memoizedSchema<T>(makeSchema: () => T): T {
+  let schema = schemaMemo.get(makeSchema) as T | undefined;
+  if (schema === undefined) {
+    schema = makeSchema();
+    schemaMemo.set(makeSchema, schema);
+  }
+  return schema;
+}
+
 const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch) => {
   if (isDocumentAction(action)) {
     return state;
   }
   switch (action.type) {
     case 'START_SESSION': {
-      StartSessionInputSchema().parse(action.input);
+      memoizedSchema(StartSessionInputSchema).parse(action.input);
 
       chatSessionSystemOperations.startSessionOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -44,7 +60,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'SET_AGENT_INFO': {
-      SetAgentInfoInputSchema().parse(action.input);
+      memoizedSchema(SetAgentInfoInputSchema).parse(action.input);
 
       chatSessionSystemOperations.setAgentInfoOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -52,7 +68,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'END_SESSION': {
-      EndSessionInputSchema().parse(action.input);
+      memoizedSchema(EndSessionInputSchema).parse(action.input);
 
       chatSessionSystemOperations.endSessionOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -60,7 +76,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'UPDATE_USAGE_SUMMARY': {
-      UpdateUsageSummaryInputSchema().parse(action.input);
+      memoizedSchema(UpdateUsageSummaryInputSchema).parse(action.input);
 
       chatSessionSystemOperations.updateUsageSummaryOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -68,7 +84,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'ADD_SYSTEM_MESSAGE': {
-      AddSystemMessageInputSchema().parse(action.input);
+      memoizedSchema(AddSystemMessageInputSchema).parse(action.input);
 
       chatSessionSystemOperations.addSystemMessageOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -76,7 +92,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'SET_AGENT_IMAGE': {
-      SetAgentImageInputSchema().parse(action.input);
+      memoizedSchema(SetAgentImageInputSchema).parse(action.input);
 
       chatSessionSystemOperations.setAgentImageOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -84,7 +100,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'SET_AGENT_DESCRIPTION': {
-      SetAgentDescriptionInputSchema().parse(action.input);
+      memoizedSchema(SetAgentDescriptionInputSchema).parse(action.input);
 
       chatSessionSystemOperations.setAgentDescriptionOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -92,7 +108,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'ADD_USER_MESSAGE': {
-      AddUserMessageInputSchema().parse(action.input);
+      memoizedSchema(AddUserMessageInputSchema).parse(action.input);
 
       chatSessionUserOperations.addUserMessageOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -100,7 +116,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'DELETE_USER_MESSAGE': {
-      DeleteUserMessageInputSchema().parse(action.input);
+      memoizedSchema(DeleteUserMessageInputSchema).parse(action.input);
 
       chatSessionUserOperations.deleteUserMessageOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -108,7 +124,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'ABORT_SESSION': {
-      AbortSessionInputSchema().parse(action.input);
+      memoizedSchema(AbortSessionInputSchema).parse(action.input);
 
       chatSessionUserOperations.abortSessionOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -116,15 +132,31 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'INTERRUPT_AGENT': {
-      InterruptAgentInputSchema().parse(action.input);
+      memoizedSchema(InterruptAgentInputSchema).parse(action.input);
 
       chatSessionUserOperations.interruptAgentOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
+    case 'RETRY_TURN': {
+      memoizedSchema(RetryTurnInputSchema).parse(action.input);
+
+      chatSessionUserOperations.retryTurnOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'RESUME_SESSION': {
+      memoizedSchema(ResumeSessionInputSchema).parse(action.input);
+
+      chatSessionUserOperations.resumeSessionOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
     case 'ADD_ASSISTANT_MESSAGE': {
-      AddAssistantMessageInputSchema().parse(action.input);
+      memoizedSchema(AddAssistantMessageInputSchema).parse(action.input);
 
       chatSessionAgentOperations.addAssistantMessageOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -132,7 +164,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'APPEND_ASSISTANT_CONTENT': {
-      AppendAssistantContentInputSchema().parse(action.input);
+      memoizedSchema(AppendAssistantContentInputSchema).parse(action.input);
 
       chatSessionAgentOperations.appendAssistantContentOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -140,7 +172,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'UPDATE_ASSISTANT_CONTENT': {
-      UpdateAssistantContentInputSchema().parse(action.input);
+      memoizedSchema(UpdateAssistantContentInputSchema).parse(action.input);
 
       chatSessionAgentOperations.updateAssistantContentOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -148,7 +180,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'SET_MESSAGE_USAGE': {
-      SetMessageUsageInputSchema().parse(action.input);
+      memoizedSchema(SetMessageUsageInputSchema).parse(action.input);
 
       chatSessionAgentOperations.setMessageUsageOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -156,15 +188,39 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'FINISH_ASSISTANT_MESSAGE': {
-      FinishAssistantMessageInputSchema().parse(action.input);
+      memoizedSchema(FinishAssistantMessageInputSchema).parse(action.input);
 
       chatSessionAgentOperations.finishAssistantMessageOperation((state as any)[action.scope], action as any, dispatch);
 
       break;
     }
 
+    case 'MARK_MESSAGE_PICKED_UP': {
+      memoizedSchema(MarkMessagePickedUpInputSchema).parse(action.input);
+
+      chatSessionAgentOperations.markMessagePickedUpOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'FAIL_TURN': {
+      memoizedSchema(FailTurnInputSchema).parse(action.input);
+
+      chatSessionAgentOperations.failTurnOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
+    case 'CLEAR_RETRY_REQUEST': {
+      memoizedSchema(ClearRetryRequestInputSchema).parse(action.input);
+
+      chatSessionAgentOperations.clearRetryRequestOperation((state as any)[action.scope], action as any, dispatch);
+
+      break;
+    }
+
     case 'ADD_TOOL_RESULT': {
-      AddToolResultInputSchema().parse(action.input);
+      memoizedSchema(AddToolResultInputSchema).parse(action.input);
 
       chatSessionToolOperations.addToolResultOperation((state as any)[action.scope], action as any, dispatch);
 
@@ -172,7 +228,7 @@ const stateReducer: StateReducer<ChatSessionPHState> = (state, action, dispatch)
     }
 
     case 'ADD_TOOL_OUTPUT': {
-      AddToolOutputInputSchema().parse(action.input);
+      memoizedSchema(AddToolOutputInputSchema).parse(action.input);
 
       chatSessionToolOperations.addToolOutputOperation((state as any)[action.scope], action as any, dispatch);
 

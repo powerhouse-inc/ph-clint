@@ -95,6 +95,16 @@ export const OPERATIONS: OperationDef[] = [
     module: 'user',
     fields: [{ name: 'endedAt', type: 'datetime', required: true, label: 'Ended At' }],
   },
+  {
+    name: 'RETRY_TURN',
+    module: 'user',
+    fields: [{ name: 'userMessageId', type: 'string', required: true, label: 'User Message ID' }],
+  },
+  {
+    name: 'RESUME_SESSION',
+    module: 'user',
+    fields: [{ name: 'resumedAt', type: 'datetime', required: true, label: 'Resumed At' }],
+  },
 
   // Agent module
   {
@@ -135,6 +145,31 @@ export const OPERATIONS: OperationDef[] = [
       { name: 'completionTokens', type: 'int', label: 'Completion Tokens' },
       { name: 'totalTokens', type: 'int', label: 'Total Tokens' },
     ],
+  },
+  {
+    name: 'MARK_MESSAGE_PICKED_UP',
+    module: 'agent',
+    fields: [
+      { name: 'messageId', type: 'string', required: true, label: 'Message ID' },
+      { name: 'pickedUpAt', type: 'datetime', required: true, label: 'Picked Up At' },
+    ],
+  },
+  {
+    name: 'FAIL_TURN',
+    module: 'agent',
+    fields: [
+      { name: 'id', type: 'oid', required: true, label: 'Message ID' },
+      { name: 'userMessageId', type: 'string', required: true, label: 'User Message ID' },
+      { name: 'code', type: 'string', required: true, label: 'Code' },
+      { name: 'message', type: 'text', required: true, label: 'Message' },
+      { name: 'retryable', type: 'boolean', required: true, label: 'Retryable' },
+      { name: 'failedAt', type: 'datetime', required: true, label: 'Failed At' },
+    ],
+  },
+  {
+    name: 'CLEAR_RETRY_REQUEST',
+    module: 'agent',
+    fields: [],
   },
 
   // Tool module

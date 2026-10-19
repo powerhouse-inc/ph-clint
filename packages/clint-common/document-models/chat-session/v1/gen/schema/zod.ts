@@ -13,15 +13,20 @@ import type {
   AppendAssistantContentInput,
   AssistantContentPartInput,
   ChatSessionState,
+  ClearRetryRequestInput,
   ContentPart,
   ContentPartType,
   DeleteUserMessageInput,
   EndSessionInput,
+  FailTurnInput,
   FinishAssistantMessageInput,
   InterruptAgentInput,
+  MarkMessagePickedUpInput,
   Message,
   MessageRole,
   MessageUsage,
+  ResumeSessionInput,
+  RetryTurnInput,
   SessionStatus,
   SetAgentDescriptionInput,
   SetAgentImageInput,
@@ -29,6 +34,7 @@ import type {
   SetMessageUsageInput,
   StartSessionInput,
   ToolResultPartInput,
+  TurnFailure,
   UpdateAssistantContentInput,
   UpdateUsageSummaryInput,
   UsageSummary,
@@ -152,10 +158,17 @@ export function ChatSessionStateSchema(): z.ZodObject<Properties<ChatSessionStat
     interruptRequested: z.boolean().nullish(),
     messages: z.array(z.lazy(() => MessageSchema())),
     resourceId: z.string().nullish(),
+    retryRequestedFor: z.string().nullish(),
     startedAt: z.iso.datetime().nullish(),
     status: SessionStatusSchema,
     threadId: z.string().nullish(),
     usage: z.lazy(() => UsageSummarySchema().nullish()),
+  });
+}
+
+export function ClearRetryRequestInputSchema(): z.ZodObject<Properties<ClearRetryRequestInput>> {
+  return z.object({
+    _: z.boolean().nullish(),
   });
 }
 
@@ -191,6 +204,17 @@ export function EndSessionInputSchema(): z.ZodObject<Properties<EndSessionInput>
   });
 }
 
+export function FailTurnInputSchema(): z.ZodObject<Properties<FailTurnInput>> {
+  return z.object({
+    code: z.string(),
+    failedAt: z.iso.datetime(),
+    id: z.string(),
+    message: z.string(),
+    retryable: z.boolean(),
+    userMessageId: z.string(),
+  });
+}
+
 export function FinishAssistantMessageInputSchema(): z.ZodObject<Properties<FinishAssistantMessageInput>> {
   return z.object({
     finishReason: z.string().nullish(),
@@ -205,14 +229,23 @@ export function InterruptAgentInputSchema(): z.ZodObject<Properties<InterruptAge
   });
 }
 
+export function MarkMessagePickedUpInputSchema(): z.ZodObject<Properties<MarkMessagePickedUpInput>> {
+  return z.object({
+    messageId: z.string(),
+    pickedUpAt: z.iso.datetime(),
+  });
+}
+
 export function MessageSchema(): z.ZodObject<Properties<Message>> {
   return z.object({
     __typename: z.literal('Message').optional(),
     content: z.array(z.lazy(() => ContentPartSchema())),
     createdAt: z.iso.datetime(),
+    failure: z.lazy(() => TurnFailureSchema().nullish()),
     finishReason: z.string().nullish(),
     finishedAt: z.iso.datetime().nullish(),
     id: z.string(),
+    pickedUpAt: z.iso.datetime().nullish(),
     role: MessageRoleSchema,
     stepIndex: z.number().nullish(),
     usage: z.lazy(() => MessageUsageSchema().nullish()),
@@ -225,6 +258,18 @@ export function MessageUsageSchema(): z.ZodObject<Properties<MessageUsage>> {
     completionTokens: z.number().nullish(),
     promptTokens: z.number().nullish(),
     totalTokens: z.number().nullish(),
+  });
+}
+
+export function ResumeSessionInputSchema(): z.ZodObject<Properties<ResumeSessionInput>> {
+  return z.object({
+    resumedAt: z.iso.datetime(),
+  });
+}
+
+export function RetryTurnInputSchema(): z.ZodObject<Properties<RetryTurnInput>> {
+  return z.object({
+    userMessageId: z.string(),
   });
 }
 
@@ -279,6 +324,16 @@ export function ToolResultPartInputSchema(): z.ZodObject<Properties<ToolResultPa
     toolName: z.string(),
     type: ContentPartTypeSchema,
     url: z.url().nullish(),
+  });
+}
+
+export function TurnFailureSchema(): z.ZodObject<Properties<TurnFailure>> {
+  return z.object({
+    __typename: z.literal('TurnFailure').optional(),
+    code: z.string(),
+    failedAt: z.iso.datetime(),
+    message: z.string(),
+    retryable: z.boolean(),
   });
 }
 

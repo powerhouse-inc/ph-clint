@@ -27,6 +27,8 @@ export const chatSessionToolOperations: ChatSessionToolOperations = {
       usage: null,
       finishedAt: null,
       finishReason: null,
+      pickedUpAt: null,
+      failure: null,
     });
     if (state.usage) state.usage.totalMessages += 1;
   },

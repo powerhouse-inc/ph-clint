@@ -46,4 +46,6 @@ export const errors = {
   SetMessageUsage: { MessageNotFoundError },
 
   FinishAssistantMessage: { MessageNotFoundError },
+
+  MarkMessagePickedUp: { MessageNotFoundError },
 };
