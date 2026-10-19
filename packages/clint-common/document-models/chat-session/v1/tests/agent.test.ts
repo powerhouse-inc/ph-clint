@@ -177,6 +177,7 @@ describe('Turn lifecycle (agent)', () => {
     expect(msg.finishedAt).toBe(T2);
     expect(msg.finishReason).toBe('error');
     expect(msg.failure).toStrictEqual({
+      userMessageId: 'u1',
       code: 'PROVIDER_ERROR',
       message: 'Upstream failed',
       retryable: true,

@@ -83,6 +83,7 @@ type ContentPart {
 }
 
 type TurnFailure {
+  userMessageId: OID!
   code: String!
   message: String!
   retryable: Boolean!

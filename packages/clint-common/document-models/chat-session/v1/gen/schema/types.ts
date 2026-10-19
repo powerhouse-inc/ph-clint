@@ -277,6 +277,7 @@ export type TurnFailure = {
   failedAt: Scalars['DateTime']['output'];
   message: Scalars['String']['output'];
   retryable: Scalars['Boolean']['output'];
+  userMessageId: Scalars['OID']['output'];
 };
 
 export type UpdateAssistantContentInput = {

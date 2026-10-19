@@ -38,7 +38,7 @@ describe('hasMessageContent', () => {
 });
 
 describe('isFailedTurn', () => {
-  const failure = { code: 'PROVIDER_ERROR', message: 'boom', retryable: true, failedAt: '2026-01-01T00:00:00.000Z' };
+  const failure = { userMessageId: 'u1', code: 'PROVIDER_ERROR', message: 'boom', retryable: true, failedAt: '2026-01-01T00:00:00.000Z' };
 
   it('is true for an ASSISTANT message with a failure', () => {
     expect(isFailedTurn({ role: 'ASSISTANT', failure })).toBe(true);

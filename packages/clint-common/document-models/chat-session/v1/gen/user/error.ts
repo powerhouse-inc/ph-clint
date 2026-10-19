@@ -37,7 +37,7 @@ export const errors = {
 
   DeleteUserMessage: { MessageNotFoundError, NotUserMessageError },
 
-  RetryTurn: { MessageNotFoundError },
+  RetryTurn: { MessageNotFoundError, NotUserMessageError },
 
   ResumeSession: { SessionNotResumableError },
 };

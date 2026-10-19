@@ -334,6 +334,7 @@ export function TurnFailureSchema(): z.ZodObject<Properties<TurnFailure>> {
     failedAt: z.iso.datetime(),
     message: z.string(),
     retryable: z.boolean(),
+    userMessageId: z.string(),
   });
 }
 

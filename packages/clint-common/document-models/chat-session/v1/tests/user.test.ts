@@ -2,6 +2,7 @@ import { generateMock } from 'document-model/mock';
 import {
   abortSession,
   AbortSessionInputSchema,
+  addAssistantMessage,
   addUserMessage,
   AddUserMessageInputSchema,
   deleteUserMessage,
@@ -117,6 +118,47 @@ describe('Turn lifecycle (user)', () => {
 
     expect(doc.operations.global[2].error).toBe('Message not found: nope');
     expect(doc.state.global.retryRequestedFor ?? null).toBeNull();
+  });
+
+  it('RETRY_TURN on a non-USER message records NotUserMessageError', () => {
+    let doc = reducer(
+      sessionWithUserMessage(),
+      addAssistantMessage({
+        id: 'a1',
+        content: [{ id: 'a1-t', type: 'TEXT', text: 'hi' }],
+        createdAt: T2,
+      }),
+    );
+    doc = reducer(doc, retryTurn({ userMessageId: 'a1' }));
+
+    expect(doc.operations.global[3].error).toBe('Can only retry the turn of a USER message');
+    expect(doc.state.global.retryRequestedFor).toBeNull();
+  });
+
+  it('RETRY_TURN clears a pending interrupt', () => {
+    let doc = reducer(sessionWithUserMessage(), interruptAgent({}));
+    expect(doc.state.global.interruptRequested).toBe(true);
+    doc = reducer(doc, retryTurn({ userMessageId: 'u1' }));
+
+    expect(doc.operations.global[3].error).toBeUndefined();
+    expect(doc.state.global.interruptRequested).toBe(false);
+    expect(doc.state.global.retryRequestedFor).toBe('u1');
+  });
+
+  it('ADD_USER_MESSAGE clears a pending retry request', () => {
+    let doc = reducer(sessionWithUserMessage(), retryTurn({ userMessageId: 'u1' }));
+    expect(doc.state.global.retryRequestedFor).toBe('u1');
+    doc = reducer(
+      doc,
+      addUserMessage({
+        id: 'u2',
+        content: [{ id: 'u2-p1', type: 'TEXT', text: 'new' }],
+        createdAt: T2,
+      }),
+    );
+
+    expect(doc.operations.global[3].error).toBeUndefined();
+    expect(doc.state.global.retryRequestedFor).toBeNull();
   });
 
   it('RESUME_SESSION keeps messages and usage', () => {

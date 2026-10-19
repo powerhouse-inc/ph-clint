@@ -20,7 +20,7 @@ export const documentModel: DocumentModelGlobalState = {
         },
         global: {
           schema:
-            'enum SessionStatus {\n  ACTIVE\n  COMPLETED\n  ABORTED\n  ERROR\n}\n\nenum MessageRole {\n  SYSTEM\n  USER\n  ASSISTANT\n  TOOL\n}\n\nenum ContentPartType {\n  TEXT\n  IMAGE\n  FILE\n  TOOL_CALL\n  TOOL_RESULT\n  REASONING\n  ERROR\n}\n\ntype AgentInfo {\n  id: String\n  name: String\n  model: String\n  description: String\n  attachment: String\n}\n\ntype MessageUsage {\n  promptTokens: Int\n  completionTokens: Int\n  totalTokens: Int\n}\n\ntype UsageSummary {\n  totalPromptTokens: Int!\n  totalCompletionTokens: Int!\n  totalTokens: Int!\n  totalSteps: Int!\n  totalMessages: Int!\n  totalToolCalls: Int!\n}\n\ntype ContentPart {\n  id: OID!\n  type: ContentPartType!\n  text: String\n  toolCallId: String\n  toolName: String\n  args: String\n  result: String\n  isError: Boolean\n  mediaType: String\n  url: URL\n  attachment: String\n  filename: String\n  error: String\n}\n\ntype TurnFailure {\n  code: String!\n  message: String!\n  retryable: Boolean!\n  failedAt: DateTime!\n}\n\ntype Message {\n  id: OID!\n  role: MessageRole!\n  content: [ContentPart!]!\n  stepIndex: Int\n  createdAt: DateTime!\n  usage: MessageUsage\n  finishedAt: DateTime\n  finishReason: String\n  pickedUpAt: DateTime\n  failure: TurnFailure\n}\n\ntype ChatSessionState {\n  threadId: String\n  resourceId: String\n  agent: AgentInfo\n  status: SessionStatus!\n  startedAt: DateTime\n  endedAt: DateTime\n  messages: [Message!]!\n  usage: UsageSummary\n  interruptRequested: Boolean\n  retryRequestedFor: OID\n}',
+            'enum SessionStatus {\n  ACTIVE\n  COMPLETED\n  ABORTED\n  ERROR\n}\n\nenum MessageRole {\n  SYSTEM\n  USER\n  ASSISTANT\n  TOOL\n}\n\nenum ContentPartType {\n  TEXT\n  IMAGE\n  FILE\n  TOOL_CALL\n  TOOL_RESULT\n  REASONING\n  ERROR\n}\n\ntype AgentInfo {\n  id: String\n  name: String\n  model: String\n  description: String\n  attachment: String\n}\n\ntype MessageUsage {\n  promptTokens: Int\n  completionTokens: Int\n  totalTokens: Int\n}\n\ntype UsageSummary {\n  totalPromptTokens: Int!\n  totalCompletionTokens: Int!\n  totalTokens: Int!\n  totalSteps: Int!\n  totalMessages: Int!\n  totalToolCalls: Int!\n}\n\ntype ContentPart {\n  id: OID!\n  type: ContentPartType!\n  text: String\n  toolCallId: String\n  toolName: String\n  args: String\n  result: String\n  isError: Boolean\n  mediaType: String\n  url: URL\n  attachment: String\n  filename: String\n  error: String\n}\n\ntype TurnFailure {\n  userMessageId: OID!\n  code: String!\n  message: String!\n  retryable: Boolean!\n  failedAt: DateTime!\n}\n\ntype Message {\n  id: OID!\n  role: MessageRole!\n  content: [ContentPart!]!\n  stepIndex: Int\n  createdAt: DateTime!\n  usage: MessageUsage\n  finishedAt: DateTime\n  finishReason: String\n  pickedUpAt: DateTime\n  failure: TurnFailure\n}\n\ntype ChatSessionState {\n  threadId: String\n  resourceId: String\n  agent: AgentInfo\n  status: SessionStatus!\n  startedAt: DateTime\n  endedAt: DateTime\n  messages: [Message!]!\n  usage: UsageSummary\n  interruptRequested: Boolean\n  retryRequestedFor: OID\n}',
           examples: [],
           initialValue: '{"threadId": null, "resourceId": null, "agent": null, "status": "ACTIVE", "startedAt": null, "endedAt": null, "messages": [], "usage": null, "interruptRequested": false, "retryRequestedFor": null}',
         },
@@ -127,7 +127,7 @@ export const documentModel: DocumentModelGlobalState = {
                 'input UserContentPartInput {\n  id: OID!\n  type: ContentPartType!\n  text: String\n  mediaType: String\n  url: URL\n  attachment: String\n  filename: String\n}\n\ninput AddUserMessageInput {\n  id: OID!\n  content: [UserContentPartInput!]!\n  createdAt: DateTime!\n}',
               template: 'Add a user message with text, image, and/or file content parts.',
               reducer:
-                "state.interruptRequested = false;\nfor (const p of action.input.content) {\n  if (p.type === 'TEXT' && !p.text) {\n    throw new InvalidContentPartError('TEXT part requires text');\n  }\n}\nconst parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: null,\n  toolName: null,\n  args: null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  attachment: p.attachment || null,\n  filename: p.filename || null,\n  error: null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'USER',\n  content: parts,\n  stepIndex: null,\n  createdAt: action.input.createdAt,\n  usage: null,\n  finishedAt: null,\n  finishReason: null,\n  pickedUpAt: null,\n  failure: null,\n});\nif (state.usage) state.usage.totalMessages += 1;",
+                "state.interruptRequested = false;\nstate.retryRequestedFor = null;\nfor (const p of action.input.content) {\n  if (p.type === 'TEXT' && !p.text) {\n    throw new InvalidContentPartError('TEXT part requires text');\n  }\n}\nconst parts = action.input.content.map(p => ({\n  id: p.id,\n  type: p.type,\n  text: p.text || null,\n  toolCallId: null,\n  toolName: null,\n  args: null,\n  result: null,\n  isError: null,\n  mediaType: p.mediaType || null,\n  url: p.url || null,\n  attachment: p.attachment || null,\n  filename: p.filename || null,\n  error: null,\n}));\nstate.messages.push({\n  id: action.input.id,\n  role: 'USER',\n  content: parts,\n  stepIndex: null,\n  createdAt: action.input.createdAt,\n  usage: null,\n  finishedAt: null,\n  finishReason: null,\n  pickedUpAt: null,\n  failure: null,\n});\nif (state.usage) state.usage.totalMessages += 1;",
               errors: [
                 {
                   id: 'err-invalid-part-3',
@@ -196,13 +196,20 @@ export const documentModel: DocumentModelGlobalState = {
               schema: 'input RetryTurnInput {\n  userMessageId: OID!\n}',
               template: 'Ask the agent to run the turn for a user message again (e.g. after a failed turn). Sets retryRequestedFor; the agent clears it with CLEAR_RETRY_REQUEST once it picks the retry up.',
               reducer:
-                "const msg = state.messages.find((m) => m.id === action.input.userMessageId);\nif (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.userMessageId);\nstate.retryRequestedFor = action.input.userMessageId;",
+                "const msg = state.messages.find((m) => m.id === action.input.userMessageId);\nif (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.userMessageId);\nif (msg.role !== 'USER') throw new NotUserMessageError('Can only retry the turn of a USER message');\n// A retry starts a turn like a new user message, so it clears a stale interrupt.\nstate.interruptRequested = false;\nstate.retryRequestedFor = action.input.userMessageId;",
               errors: [
                 {
                   id: 'err-msg-not-found-7',
                   name: 'MessageNotFoundError',
                   code: 'MESSAGE_NOT_FOUND',
                   description: 'The user message to retry does not exist in the session.',
+                  template: '',
+                },
+                {
+                  id: 'err-not-user-msg-2',
+                  name: 'NotUserMessageError',
+                  code: 'NOT_USER_MESSAGE',
+                  description: 'Only the turn of a USER message can be retried.',
                   template: '',
                 },
               ],
@@ -383,7 +390,7 @@ export const documentModel: DocumentModelGlobalState = {
               schema: 'input FailTurnInput {\n  id: OID!\n  userMessageId: OID!\n  code: String!\n  message: String!\n  retryable: Boolean!\n  failedAt: DateTime!\n}',
               template: 'The agent turn for a user message failed. Appends a finished ASSISTANT message with an ERROR part and the failure details. The session stays ACTIVE so the user can retry or keep chatting.',
               reducer:
-                "state.messages.push({\n  id: action.input.id,\n  role: 'ASSISTANT',\n  content: [\n    {\n      id: action.input.id + '-error',\n      type: 'ERROR',\n      text: null,\n      toolCallId: null,\n      toolName: null,\n      args: null,\n      result: null,\n      isError: null,\n      mediaType: null,\n      url: null,\n      attachment: null,\n      filename: null,\n      error: action.input.message,\n    },\n  ],\n  stepIndex: null,\n  createdAt: action.input.failedAt,\n  usage: null,\n  finishedAt: action.input.failedAt,\n  finishReason: 'error',\n  pickedUpAt: null,\n  failure: {\n    code: action.input.code,\n    message: action.input.message,\n    retryable: action.input.retryable,\n    failedAt: action.input.failedAt,\n  },\n});\nif (state.usage) state.usage.totalMessages += 1;",
+                "state.messages.push({\n  id: action.input.id,\n  role: 'ASSISTANT',\n  content: [\n    {\n      id: action.input.id + '-error',\n      type: 'ERROR',\n      text: null,\n      toolCallId: null,\n      toolName: null,\n      args: null,\n      result: null,\n      isError: null,\n      mediaType: null,\n      url: null,\n      attachment: null,\n      filename: null,\n      error: action.input.message,\n    },\n  ],\n  stepIndex: null,\n  createdAt: action.input.failedAt,\n  usage: null,\n  finishedAt: action.input.failedAt,\n  finishReason: 'error',\n  pickedUpAt: null,\n  failure: {\n    userMessageId: action.input.userMessageId,\n    code: action.input.code,\n    message: action.input.message,\n    retryable: action.input.retryable,\n    failedAt: action.input.failedAt,\n  },\n});\nif (state.usage) state.usage.totalMessages += 1;",
               errors: [],
               examples: [],
               scope: 'global',

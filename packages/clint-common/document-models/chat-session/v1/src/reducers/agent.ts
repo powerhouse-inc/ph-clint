@@ -137,6 +137,7 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       finishReason: 'error',
       pickedUpAt: null,
       failure: {
+        userMessageId: action.input.userMessageId,
         code: action.input.code,
         message: action.input.message,
         retryable: action.input.retryable,
