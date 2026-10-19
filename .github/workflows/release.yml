@@ -56,12 +56,29 @@ jobs:
       - name: Build
         run: pnpm -r run build
 
-      # pnpm rewrites workspace:/catalog: ranges to real versions on publish
-      # and skips versions already on the registry (reruns are idempotent).
-      - name: Publish (all six packages, lockstep)
+      # pnpm pack rewrites workspace:/catalog: ranges to real versions; npm
+      # publishes the tarballs because pnpm's OIDC token exchange fails (404)
+      # against npm trusted publishing. Versions already on the registry are
+      # skipped, so reruns are idempotent.
+      - name: Pack (all six packages, lockstep)
+        run: pnpm -r pack --pack-destination "$RUNNER_TEMP/tarballs"
+
+      - name: Publish with npm trusted publishing
         env:
           TAG: ${{ steps.meta.outputs.tag }}
-        run: pnpm publish -r --access public --tag "$TAG" --no-git-checks
+        run: |
+          npm install -g npm@11
+          npm --version
+          # dependencies first, so no published package points at a missing one
+          for n in ph-clint ph-clint-app ph-clint-dev ph-clint-observability clint-common ph-clint-cli; do
+            t=$(ls "$RUNNER_TEMP"/tarballs/powerhousedao-$n-[0-9]*.tgz)
+            name=$(tar -xzOf "$t" package/package.json | node -p 'const j=JSON.parse(require("fs").readFileSync(0,"utf8")); j.name+"@"+j.version')
+            if npm view "$name" version >/dev/null 2>&1; then
+              echo "skip $name (already published)"
+            else
+              npm publish "$t" --access public --tag "$TAG"
+            fi
+          done
 
       - name: Verify dist-tags
         run: |

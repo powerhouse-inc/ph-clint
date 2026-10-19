@@ -1,6 +1,11 @@
 {
   "name": "@powerhousedao/ph-clint-observability",
   "version": "0.1.0-dev.106",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/powerhouse-inc/ph-clint.git",
+    "directory": "packages/ph-clint-observability"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"

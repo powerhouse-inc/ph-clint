@@ -1,6 +1,11 @@
 {
   "name": "@powerhousedao/ph-clint-app",
   "version": "0.1.0-dev.106",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/powerhouse-inc/ph-clint.git",
+    "directory": "packages/ph-clint-cli/ph-clint-app"
+  },
   "license": "AGPL-3.0-only",
   "type": "module",
   "publishConfig": {
