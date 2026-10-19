@@ -94,12 +94,14 @@ interface ChatInputBarProps {
   dispatch: DocumentDispatch<ChatSessionAction>;
   attachments?: IAttachmentService;
   disabled?: boolean;
+  /** Placeholder while disabled. */
+  disabledPlaceholder?: string;
   /** True while the agent is actively generating a response — swaps send for stop. */
   responding?: boolean;
   addFilesRef?: MutableRefObject<((files: FileList) => void) | null>;
 }
 
-export function ChatInputBar({ dispatch, attachments, disabled, responding, addFilesRef }: ChatInputBarProps) {
+export function ChatInputBar({ dispatch, attachments, disabled, disabledPlaceholder = 'Session is not active', responding, addFilesRef }: ChatInputBarProps) {
   const [sending, setSending] = useState(false);
   const toast = usePHToast();
 
@@ -206,7 +208,7 @@ export function ChatInputBar({ dispatch, attachments, disabled, responding, addF
     <div className="shrink-0 border-t border-border bg-background px-4 py-3" aria-busy={isActive || undefined}>
       <PromptInput onSubmit={handleSubmit} multiple className="mx-auto max-w-[1100px]">
         <DropBridge addFilesRef={addFilesRef} />
-        <PromptInputTextarea disabled={isDisabled} onKeyDown={handleKeyDown} placeholder={disabled ? 'Session is not active' : 'Type a message...'} />
+        <PromptInputTextarea disabled={isDisabled} onKeyDown={handleKeyDown} placeholder={disabled ? disabledPlaceholder : 'Type a message...'} />
         <AttachmentPreviews />
         <PromptInputFooter>
           <AttachButton disabled={isDisabled} />

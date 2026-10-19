@@ -8,6 +8,8 @@ interface SessionStatusBarProps {
   endedAt: string | null | undefined;
   usage: UsageSummary | null | undefined;
   messageCount: number;
+  /** Shown as a Resume button while the session is in ERROR. */
+  onResume?: () => void;
   children?: React.ReactNode;
 }
 
@@ -39,7 +41,7 @@ function formatTime(iso: string | null | undefined): string {
   return new Date(iso).toLocaleTimeString();
 }
 
-export function SessionStatusBar({ status, startedAt, endedAt, usage, messageCount, children }: SessionStatusBarProps) {
+export function SessionStatusBar({ status, startedAt, endedAt, usage, messageCount, onResume, children }: SessionStatusBarProps) {
   const config = statusConfig[status];
   const Icon = config.icon;
 
@@ -49,6 +51,12 @@ export function SessionStatusBar({ status, startedAt, endedAt, usage, messageCou
         <Icon className="size-3" />
         {config.label}
       </span>
+
+      {status === 'ERROR' && onResume && (
+        <button type="button" onClick={onResume} className="inline-flex items-center rounded-md border border-border bg-background px-2 py-0.5 font-medium text-foreground hover:bg-muted">
+          Resume
+        </button>
+      )}
 
       <span className="flex items-center gap-1">
         <ClockIcon className="size-3" />
