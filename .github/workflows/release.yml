@@ -14,6 +14,8 @@ on:
 
 permissions:
   contents: read
+  # npm trusted publishing (OIDC): no NPM_TOKEN, no 2FA prompt, provenance included
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -54,17 +56,10 @@ jobs:
       - name: Build
         run: pnpm -r run build
 
-      - name: Guard npm token
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          [ -n "$NPM_TOKEN" ] || { echo "::error::secret NPM_TOKEN is not set"; exit 1; }
-
       # pnpm rewrites workspace:/catalog: ranges to real versions on publish
       # and skips versions already on the registry (reruns are idempotent).
       - name: Publish (all six packages, lockstep)
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
         run: pnpm publish -r --access public --tag "$TAG" --no-git-checks
 
