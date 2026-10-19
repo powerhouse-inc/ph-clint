@@ -249,6 +249,14 @@ describe('createMastraHelpers', () => {
     expect(calls[0].maxSteps).toBe(30);
   });
 
+  it('wrapAgent asks Mastra to save memory per step', async () => {
+    const helpers = createMastraHelpers(makeAgentSetupContext());
+    const { calls, agent } = createCapturingAgent();
+    const provider = helpers.wrapAgent(agent);
+    for await (const _ of provider.stream('hi', { threadId: 't1' })) { /* drain */ }
+    expect(calls[0].savePerStep).toBe(true);
+  });
+
   it('wrapAgent omits untilIdle from stream opts by default', async () => {
     const helpers = createMastraHelpers(makeAgentSetupContext());
     const { calls, agent } = createCapturingAgent();

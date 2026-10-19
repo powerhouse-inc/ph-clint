@@ -37,6 +37,47 @@ const STREAM_RETRY_CAP_MS = 30_000;
  */
 export const CONTINUE_PROMPT = 'The previous response was interrupted by a temporary provider error. Continue exactly where you stopped; do not repeat tool calls that already completed.';
 
+const COMPLETED_TOOL_TEXT_CHARS = 300;
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/**
+ * CONTINUE_PROMPT plus the tool calls of this turn that already have a result,
+ * read from the chat document (the bridge mirrors TOOL_CALL parts and
+ * TOOL_RESULT messages). Agent memory may not hold an interrupted turn's steps,
+ * so the prompt itself says what must not run again.
+ */
+export function buildContinuePrompt(messages: Message[], userMessageId: string): string {
+  const start = messages.findIndex((m) => m.id === userMessageId);
+  const turn = messages.slice(start + 1);
+  const results = new Map<string, string>();
+  for (const m of turn) {
+    if (m.role !== 'TOOL') continue;
+    for (const p of m.content) {
+      if (p.type === 'TOOL_RESULT' && p.toolCallId) results.set(p.toolCallId, p.result ?? '');
+    }
+  }
+  const lines: string[] = [];
+  for (const m of turn) {
+    if (m.role !== 'ASSISTANT') continue;
+    for (const p of m.content) {
+      if (p.type !== 'TOOL_CALL' || !p.toolCallId) continue;
+      const result = results.get(p.toolCallId);
+      if (result === undefined) continue;
+      lines.push(`- ${p.toolName ?? 'tool'}(${truncate(p.args ?? '', COMPLETED_TOOL_TEXT_CHARS)}) → ${truncate(result, COMPLETED_TOOL_TEXT_CHARS)}`);
+    }
+  }
+  return lines.length > 0 ? `${CONTINUE_PROMPT}\n\nAlready completed in this turn:\n${lines.join('\n')}` : CONTINUE_PROMPT;
+}
+
+/** Load the document and build the continue prompt for a turn. */
+async function loadContinuePrompt(reactor: ReactorContext<ChatSessionRegistry>, documentId: string, userMessageId: string): Promise<string> {
+  const doc = await reactor.client.get<'powerhouse/chat-session'>(documentId);
+  return buildContinuePrompt(doc.state.global.messages, userMessageId);
+}
+
 /** Resolves after `ms`, or as soon as `signal` aborts. */
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -292,9 +333,10 @@ async function runAgentTurn(
     // Lazy session init: assigns threadId if not set
     const threadId = await ensureSessionInitialized(reactor, documentId, state, agent, log);
 
-    let prompt: string | AgentContentPart[] = plan.continueFromStart ? CONTINUE_PROMPT : await buildUserPrompt(documentId, plan.userMessage, reactor, ctx, log);
+    let prompt: string | AgentContentPart[] = plan.continueFromStart ? await loadContinuePrompt(reactor, documentId, userMessageId) : await buildUserPrompt(documentId, plan.userMessage, reactor, ctx, log);
     if (plan.continueFromStart) log?.info(`${TAG} continuing turn for ${documentId} (${plan.mode})`);
     const maxRetries = plan.mode === 'resume' ? 0 : STREAM_MAX_RETRIES;
+    let continuing = plan.continueFromStart;
 
     // Stream agent response and write to document. The abort signal lets
     // the interrupt listener stop this turn mid-stream; the underlying
@@ -315,8 +357,10 @@ async function runAgentTurn(
           await dispatchFailTurn(reactor, documentId, { userMessageId, code: streamErr.code, message: describeFailure(streamErr.code, detail), retryable: true });
           return;
         }
-        // Output already reached the document (and the agent's memory): continue, don't restart.
-        if (streamErr.wroteContent) prompt = CONTINUE_PROMPT;
+        // Once output reached the document, continue rather than restart.
+        if (streamErr.wroteContent) continuing = true;
+        // Rebuilt each time so it lists the tool calls completed so far.
+        if (continuing) prompt = await loadContinuePrompt(reactor, documentId, userMessageId);
         const delay = streamRetryDelayMs(streamErr, attempt);
         log?.warn(`${TAG} retryable stream error for ${documentId} (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms: ${streamErr.message}`);
         await sleep(delay, abortController.signal);

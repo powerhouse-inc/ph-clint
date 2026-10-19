@@ -478,7 +478,8 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
           const failure = classifyTurnFailure({ message, statusCode: chunk.statusCode, retryable: chunk.retryable });
           if (failure.retryable) {
             log?.warn(`${TAG} retryable stream error for ${documentId} (${stats.totalMessages} msgs written): ${message}`);
-            await settlePartial('retry');
+            // Closing the cut-off message is best-effort: it must not turn a retryable error fatal.
+            await settlePartial('retry').catch((e: unknown) => log?.error(`${TAG} failed to close partial message:`, e));
             throw new RetryableStreamError(message, {
               retryAfterMs: chunk.retryAfterMs,
               statusCode: chunk.statusCode,

@@ -224,3 +224,18 @@ describe('writeAgentStreamToDocument — failures', () => {
     expect(actionTypes(fake.dispatched)).toEqual([]);
   });
 });
+
+describe('writeAgentStreamToDocument — failure while closing a partial message', () => {
+  it('stays retryable when closing the cut-off message fails', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const execute = fake.reactor.client.execute.bind(fake.reactor.client);
+    (fake.reactor.client as { execute: unknown }).execute = (id: string, branch: string, actions: { type: string }[]) =>
+      actions.some((a) => a.type === 'FINISH_ASSISTANT_MESSAGE') ? Promise.reject(new Error('reactor unavailable')) : execute(id, branch, actions as never);
+    const stream = chunks({ type: 'text-delta', text: 'partial' }, { type: 'error', error: 'Bad Gateway', retryable: true, statusCode: 502 });
+
+    const err = await writeAgentStreamToDocument(stream, { reactor: fake.reactor, documentId: 'doc', userMessageId: 'u1' }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(RetryableStreamError);
+    expect(actionTypes(fake.dispatched)).not.toContain('FAIL_TURN');
+  });
+});

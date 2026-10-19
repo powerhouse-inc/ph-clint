@@ -188,7 +188,10 @@ export function createMastraHelpers(ctx: AgentSetupContext): MastraHelpers {
         prompt: AgentPromptInput,
         opts?: Parameters<AgentProvider['stream']>[1],
       ): AsyncGenerator<StreamChunk> {
-        const streamOpts: Record<string, unknown> = { maxSteps };
+        // savePerStep: persist each finished step to thread memory, so a turn
+        // cut off by a provider error keeps its completed tool calls (Mastra
+        // otherwise saves only on finish; ignored under observational memory).
+        const streamOpts: Record<string, unknown> = { maxSteps, savePerStep: true };
         if (providerOptions) streamOpts.providerOptions = providerOptions;
         // Keep the stream open across background-task continuations. Mastra
         // falls through to a regular stream() when no memory/thread is set.

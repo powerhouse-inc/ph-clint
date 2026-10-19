@@ -95,7 +95,7 @@ describe('chat-session-watch — turns', () => {
     await runPass(fake, agent);
 
     expect(agent.calls).toHaveLength(2);
-    expect(agent.calls[1].prompt).toBe(CONTINUE_PROMPT);
+    expect(agent.calls[1].prompt).toBe(`${CONTINUE_PROMPT}\n\nAlready completed in this turn:\n- search({"q":"x"}) → found`);
     expect(agent.calls[1].opts?.threadId).toBe('thread-1');
     expect(failTurnInputs(fake)).toEqual([]);
     const msgs = fake.doc().state.global.messages;
@@ -130,7 +130,10 @@ describe('chat-session-watch — turns', () => {
     await runPass(fake, agent);
 
     expect(agent.calls).toHaveLength(2);
-    expect(agent.calls[1].prompt).toBe(CONTINUE_PROMPT);
+    const retryPrompt = agent.calls[1].prompt as string;
+    expect(retryPrompt.startsWith(CONTINUE_PROMPT)).toBe(true);
+    expect(retryPrompt).toContain('Already completed in this turn:');
+    expect(retryPrompt).toContain('deploy');
     expect(toolRuns).toBe(1);
     expect(lastMessage(fake).content[0].text).toBe('Deployed.');
     expectSessionKeptActive(fake);
@@ -184,6 +187,38 @@ describe('chat-session-watch — turns', () => {
     expect(paidAgent.calls).toHaveLength(1);
     expect(failTurnInputs(paid)).toEqual([expect.objectContaining({ code: 'BUDGET_EXHAUSTED', retryable: false })]);
     expectSessionKeptActive(paid);
+  });
+
+  it('continue prompt lists only tool calls that have results', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const longArgs = { text: 'a'.repeat(400) };
+    const agent = makeFakeAgent([
+      () =>
+        chunks(
+          { type: 'tool-call', toolCallId: 'c1', toolName: 'write_file', args: longArgs },
+          { type: 'tool-call', toolCallId: 'c2', toolName: 'run_tests', args: {} },
+          { type: 'tool-result', toolCallId: 'c1', toolName: 'write_file', result: 'b'.repeat(400), isError: false },
+          { type: 'tool-call', toolCallId: 'c3', toolName: 'deploy', args: { env: 'prod' } },
+          retryable503,
+        ),
+      () => chunks({ type: 'text-delta', text: 'done' }, { type: 'finish', finishReason: 'stop' }),
+    ]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(2);
+    const prompt = agent.calls[1].prompt as string;
+    const [first, rest] = prompt.split('\n\nAlready completed in this turn:\n');
+    expect(first).toBe(CONTINUE_PROMPT);
+    const lines = rest.split('\n');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].startsWith('- write_file({"text":"aaa')).toBe(true);
+    const [argsPart, resultPart] = lines[0].slice('- write_file('.length).split(') → ');
+    expect(argsPart.length).toBeLessThanOrEqual(301);
+    expect(resultPart.length).toBeLessThanOrEqual(301);
+    expect(prompt).not.toContain('run_tests');
+    expect(prompt).not.toContain('deploy');
+    expectSessionKeptActive(fake);
   });
 
   it('exhausted retries fail the turn as retryable', async () => {
