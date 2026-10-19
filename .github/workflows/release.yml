@@ -47,7 +47,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
+          # no registry-url: setup-node would write a placeholder NODE_AUTH_TOKEN
+          # into .npmrc, which npm sends instead of the trusted-publishing token
 
       # packages/pnpm-lock.yaml is gitignored — nothing to freeze against.
       - name: Install workspace
@@ -65,6 +66,7 @@ jobs:
 
       - name: Publish with npm trusted publishing
         env:
+          NODE_AUTH_TOKEN: ""
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
           npm install -g npm@11
