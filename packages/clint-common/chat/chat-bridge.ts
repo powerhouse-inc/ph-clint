@@ -9,32 +9,132 @@
  * to avoid flooding the reactor with per-token operations.
  */
 import { randomUUID } from 'node:crypto';
-import type { StreamChunk, ReactorContext, Logger, DocumentRegistry } from '@powerhousedao/ph-clint';
-import { addAssistantMessage, appendAssistantContent, updateAssistantContent, addToolResult, addToolOutput, updateUsageSummary, endSession, finishAssistantMessage } from '@powerhousedao/clint-common/document-models/chat-session';
+import type { StreamChunk, ReactorContext, Logger } from '@powerhousedao/ph-clint';
+import { addAssistantMessage, appendAssistantContent, updateAssistantContent, addToolResult, addToolOutput, updateUsageSummary, failTurn, finishAssistantMessage } from '@powerhousedao/clint-common/document-models/chat-session';
 import type { ChatSessionAction } from '@powerhousedao/clint-common/document-models/chat-session';
 import type { ChatSessionRegistry } from './chat-session-init.js';
 
 const FLUSH_INTERVAL_MS = 500;
 
 /**
- * Transient stream failure raised before any content was committed, so the
- * caller can re-run the turn without duplicating content. The bridge leaves
- * the session ACTIVE; mid-stream failures end as a normal ERROR instead.
+ * Failure codes written to `TurnFailure.code`. The editor keys on
+ * BUDGET_EXHAUSTED; the others are informational.
+ */
+export type TurnFailureCode = 'BUDGET_EXHAUSTED' | 'RATE_LIMITED' | 'PROVIDER_ERROR' | 'AGENT_ERROR' | 'INTERRUPTED';
+
+export interface TurnFailureInfo {
+  code: TurnFailureCode;
+  /** Human-readable reason shown in the conversation. */
+  message: string;
+  /** Whether re-running the turn may succeed (automatic retry, then the user's Retry). */
+  retryable: boolean;
+}
+
+/**
+ * Transient stream failure. Raised whether or not content was already written:
+ * the caller re-runs the turn (with a continue prompt when `wroteContent`), and
+ * the agent's memory holds the steps that completed. The session stays ACTIVE.
  */
 export interface RetryableStreamErrorOptions {
   retryAfterMs?: number;
   statusCode?: number;
+  code?: TurnFailureCode;
+  wroteContent?: boolean;
 }
 
 export class RetryableStreamError extends Error {
   readonly retryAfterMs?: number;
   readonly statusCode?: number;
+  readonly code: TurnFailureCode;
+  /** True when this attempt wrote messages before failing. */
+  readonly wroteContent: boolean;
   constructor(message: string, opts?: RetryableStreamErrorOptions) {
     super(message);
     this.name = 'RetryableStreamError';
     this.retryAfterMs = opts?.retryAfterMs;
     this.statusCode = opts?.statusCode;
+    this.code = opts?.code ?? 'PROVIDER_ERROR';
+    this.wroteContent = opts?.wroteContent ?? false;
   }
+}
+
+const MAX_FAILURE_DETAIL_CHARS = 500;
+
+const FAILURE_SUMMARY: Record<TurnFailureCode, string> = {
+  BUDGET_EXHAUSTED: 'Not enough credits to continue',
+  RATE_LIMITED: 'The model provider is rate limiting requests',
+  PROVIDER_ERROR: 'The model provider returned an error',
+  AGENT_ERROR: 'The agent failed to respond',
+  INTERRUPTED: 'The response was interrupted',
+};
+
+/** "<summary>: <detail>", with the detail trimmed of noise and bounded. */
+export function describeFailure(code: TurnFailureCode, detail?: string): string {
+  let text = (detail ?? '').trim().replace(/^(AI_)?[A-Za-z]*Error:\s*/, '');
+  if (text.length > MAX_FAILURE_DETAIL_CHARS) text = `${text.slice(0, MAX_FAILURE_DETAIL_CHARS)}…`;
+  return text ? `${FAILURE_SUMMARY[code]}: ${text}` : `${FAILURE_SUMMARY[code]}.`;
+}
+
+/** A budget/credit refusal (OpenRouter answers 402 or "requires more credits"). */
+function isBudgetRefusal(message: string, statusCode?: number): boolean {
+  return statusCode === 402 || /requires more credits/i.test(message);
+}
+
+/**
+ * Classify a provider failure. Budget refusals are never retryable, whatever
+ * the provider claims; otherwise the provider's retry hint decides.
+ */
+export function classifyTurnFailure(input: { message: string; statusCode?: number; retryable?: boolean; isAgentError?: boolean }): TurnFailureInfo {
+  const { message, statusCode } = input;
+  if (isBudgetRefusal(message, statusCode)) {
+    return { code: 'BUDGET_EXHAUSTED', message: describeFailure('BUDGET_EXHAUSTED', message), retryable: false };
+  }
+  const retryable = input.retryable === true;
+  const code: TurnFailureCode = statusCode === 429 ? 'RATE_LIMITED' : input.isAgentError ? 'AGENT_ERROR' : 'PROVIDER_ERROR';
+  return { code, message: describeFailure(code, message), retryable };
+}
+
+const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504, 520, 522, 524, 529]);
+const RETRYABLE_NETWORK_CODES = new Set(['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE', 'EAI_AGAIN', 'ENOTFOUND']);
+
+/** Classify an error thrown by the agent stream (e.g. an APICallError before the first chunk). */
+function classifyThrownError(err: unknown): TurnFailureInfo & { statusCode?: number } {
+  const e = (err && typeof err === 'object' ? err : {}) as { message?: unknown; statusCode?: unknown; isRetryable?: unknown; code?: unknown };
+  const message = typeof e.message === 'string' ? e.message : String(err);
+  const statusCode = typeof e.statusCode === 'number' ? e.statusCode : undefined;
+  const networkCode = typeof e.code === 'string' && RETRYABLE_NETWORK_CODES.has(e.code);
+  const fromProvider = statusCode !== undefined || typeof e.isRetryable === 'boolean' || networkCode;
+  const retryable = e.isRetryable === true || (statusCode !== undefined && RETRYABLE_STATUS.has(statusCode)) || networkCode;
+  return { ...classifyTurnFailure({ message, statusCode, retryable, isAgentError: !fromProvider }), statusCode };
+}
+
+export interface FailTurnOptions extends TurnFailureInfo {
+  /** The USER message whose turn failed; resolved from the document when omitted. */
+  userMessageId?: string;
+}
+
+/**
+ * Record a failed turn with FAIL_TURN: a finished ASSISTANT error message the
+ * editor shows (with Retry when retryable). The session stays ACTIVE.
+ */
+export async function dispatchFailTurn<R extends ChatSessionRegistry>(reactor: ReactorContext<R>, documentId: string, opts: FailTurnOptions): Promise<void> {
+  let userMessageId = opts.userMessageId;
+  if (!userMessageId) {
+    const doc = await reactor.client.get<'powerhouse/chat-session'>(documentId);
+    const messages = doc.state.global.messages;
+    userMessageId = [...messages].reverse().find((m) => m.role === 'USER')?.id;
+  }
+  const failedAt = new Date().toISOString();
+  if (!userMessageId) {
+    // No user message to attach the failure to: record a plain finished error message.
+    const id = randomUUID();
+    await reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [
+      addAssistantMessage({ id, content: [{ id: randomUUID(), type: 'ERROR', error: opts.message }], createdAt: failedAt }),
+      finishAssistantMessage({ messageId: id, finishReason: 'error', finishedAt: failedAt }),
+    ]);
+    return;
+  }
+  await reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [failTurn({ id: randomUUID(), userMessageId, code: opts.code, message: opts.message, retryable: opts.retryable, failedAt })]);
 }
 
 interface BridgeStats {
@@ -47,7 +147,21 @@ export interface WriteBridgeOptions<R extends ChatSessionRegistry = ChatSessionR
   reactor: ReactorContext<R>;
   documentId: string;
   log?: Logger;
+  /** The USER message this turn answers; used by FAIL_TURN. Defaults to the last USER message. */
+  userMessageId?: string;
 }
+
+export interface WriteBridgeResult {
+  /** `failed`: a non-retryable failure was recorded with FAIL_TURN. */
+  outcome: 'completed' | 'failed';
+}
+
+/**
+ * finishReason written on a partial assistant message the turn moves past:
+ * `retry` when a retryable error cut it off, `restart` when a restart did.
+ * Neither ends the turn.
+ */
+export const SUPERSEDED_FINISH_REASONS: ReadonlySet<string> = new Set(['retry', 'restart']);
 
 const TAG = '[chat-bridge]';
 
@@ -155,9 +269,13 @@ function prepareToolResult(result: unknown, toolName: string, log?: Logger): { r
 
 /**
  * Consume an agent stream and write each chunk to a chat-session document.
+ *
+ * Never ends the session. A retryable failure throws RetryableStreamError
+ * (after content or not) for the caller to re-run the turn; any other failure
+ * is recorded with FAIL_TURN and resolves `{ outcome: 'failed' }`.
  */
-export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(stream: AsyncGenerator<StreamChunk>, options: WriteBridgeOptions<R>): Promise<void> {
-  const { reactor, documentId, log } = options;
+export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(stream: AsyncGenerator<StreamChunk>, options: WriteBridgeOptions<R>): Promise<WriteBridgeResult> {
+  const { reactor, documentId, log, userMessageId } = options;
   const dispatch = (action: ChatSessionAction) => reactor.client.execute<'powerhouse/chat-session'>(documentId, 'main', [action]);
 
   // State machine
@@ -175,6 +293,7 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
   type StreamUsage = NonNullable<Extract<StreamChunk, { type: 'finish' }>['usage']>;
   let finishUsage: StreamUsage | undefined;
   let stepUsage: StreamUsage | undefined;
+  let usageRecorded = false;
 
   const now = () => new Date().toISOString();
 
@@ -355,66 +474,28 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
 
         case 'error': {
           await flushText();
-
-          // Transient failure, nothing written yet → let the caller retry; keep session ACTIVE.
-          if (chunk.retryable && stats.totalMessages === 0) {
-            log?.warn(`${TAG} retryable stream error for ${documentId} before any content: ${chunk.error}`);
-            throw new RetryableStreamError(chunk.error || 'Agent stream failed with a retryable error', {
+          const message = chunk.error || 'Agent stream failed with an unknown error';
+          const failure = classifyTurnFailure({ message, statusCode: chunk.statusCode, retryable: chunk.retryable });
+          if (failure.retryable) {
+            log?.warn(`${TAG} retryable stream error for ${documentId} (${stats.totalMessages} msgs written): ${message}`);
+            // Closing the cut-off message is best-effort: it must not turn a retryable error fatal.
+            await settlePartial('retry').catch((e: unknown) => log?.error(`${TAG} failed to close partial message:`, e));
+            throw new RetryableStreamError(message, {
               retryAfterMs: chunk.retryAfterMs,
               statusCode: chunk.statusCode,
+              code: failure.code,
+              wroteContent: stats.totalMessages > 0,
             });
           }
-
-          log?.error(`${TAG} stream error for ${documentId}: ${chunk.error}`);
-
-          // Persist the error in the conversation so the UI can show what
-          // failed, not just the ERROR status badge.
-          await dispatch(
-            addAssistantMessage({
-              id: randomUUID(),
-              content: [{ id: randomUUID(), type: 'ERROR', error: chunk.error || 'Agent stream failed with an unknown error' }],
-              stepIndex,
-              createdAt: now(),
-            }),
-          );
-
-          await dispatch(
-            endSession({
-              status: 'ERROR',
-              endedAt: now(),
-            }),
-          );
-          return;
+          log?.error(`${TAG} stream error for ${documentId}: ${message}`);
+          await failTheTurn(failure);
+          return { outcome: 'failed' };
         }
       }
     }
 
     await flushText();
-
-    // Compute turn-usage from the stream (finish is authoritative; step-finish is fallback)
-    const turnUsage = finishUsage ?? stepUsage;
-
-    // Read prior cumulative totals from the document (one turn per doc, safe)
-    const doc = await reactor.client.get<'powerhouse/chat-session'>(documentId);
-    const prior = doc.state.global.usage;
-    const priorPrompt = prior?.totalPromptTokens ?? 0;
-    const priorCompletion = prior?.totalCompletionTokens ?? 0;
-    const priorTotal = prior?.totalTokens ?? 0;
-    const priorSteps = prior?.totalSteps ?? 0;
-    const buildUsage = turnUsage
-      ? {
-          totalPromptTokens: priorPrompt + (turnUsage.inputTokens ?? 0),
-          totalCompletionTokens: priorCompletion + (turnUsage.outputTokens ?? 0),
-          totalTokens: priorTotal + (turnUsage.totalTokens ?? (turnUsage.inputTokens ?? 0) + (turnUsage.outputTokens ?? 0)),
-        }
-      : undefined;
-
-    await dispatch(
-      updateUsageSummary({
-        totalSteps: priorSteps + stats.totalSteps,
-        ...buildUsage,
-      }),
-    );
+    const totals = await recordUsage(true);
 
     if (lastAssistantMsgId) {
       await dispatch(
@@ -426,29 +507,79 @@ export async function writeAgentStreamToDocument<R extends ChatSessionRegistry>(
       );
     }
 
-    log?.info(`${TAG} stream complete for ${documentId}: ` + `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls` + (buildUsage ? `, ${buildUsage.totalTokens} tokens` : ''));
+    log?.info(`${TAG} stream complete for ${documentId}: ` + `${stats.totalMessages} msgs, ${stats.totalSteps} steps, ${stats.totalToolCalls} tool calls` + (totals ? `, ${totals} tokens` : ''));
+    return { outcome: 'completed' };
   } catch (err) {
     await flushText().catch(() => {});
 
-    // Retryable pre-content failure: leave the session ACTIVE for the caller's retry.
-    if (err instanceof RetryableStreamError) {
-      throw err;
+    if (err instanceof RetryableStreamError) throw err;
+
+    if (err instanceof Error && err.name === 'AbortError') {
+      // Interrupted: keep what was written, close the open message.
+      log?.info(`${TAG} stream aborted for ${documentId}`);
+      await settlePartial('abort').catch(() => {});
+      return { outcome: 'completed' };
+    }
+
+    const failure = classifyThrownError(err);
+    if (failure.retryable) {
+      log?.warn(`${TAG} retryable stream failure for ${documentId}:`, err);
+      await settlePartial('retry').catch(() => {});
+      throw new RetryableStreamError(err instanceof Error ? err.message : String(err), {
+        statusCode: failure.statusCode,
+        code: failure.code,
+        wroteContent: stats.totalMessages > 0,
+      });
     }
 
     log?.error(`${TAG} fatal error for ${documentId}:`, err);
-
-    await dispatch(
-      endSession({
-        status: 'ERROR',
-        endedAt: now(),
-      }),
-    ).catch((e: unknown) => log?.error(`${TAG} failed to dispatch END_SESSION:`, e));
-
-    throw err;
+    await failTheTurn(failure);
+    return { outcome: 'failed' };
   } finally {
     if (flushTimer) {
       clearTimeout(flushTimer);
       flushTimer = null;
     }
+  }
+
+  /**
+   * Write cumulative usage (steps + tokens from finish, else summed
+   * step-finish). On failure paths only when the attempt did something.
+   * Returns the new token total when tokens were reported.
+   */
+  async function recordUsage(always: boolean): Promise<number | undefined> {
+    const turnUsage = finishUsage ?? stepUsage;
+    if (usageRecorded || (!always && !turnUsage && stats.totalSteps === 0)) return undefined;
+    usageRecorded = true;
+    const doc = await reactor.client.get<'powerhouse/chat-session'>(documentId);
+    const prior = doc.state.global.usage;
+    const buildUsage = turnUsage
+      ? {
+          totalPromptTokens: (prior?.totalPromptTokens ?? 0) + (turnUsage.inputTokens ?? 0),
+          totalCompletionTokens: (prior?.totalCompletionTokens ?? 0) + (turnUsage.outputTokens ?? 0),
+          totalTokens: (prior?.totalTokens ?? 0) + (turnUsage.totalTokens ?? (turnUsage.inputTokens ?? 0) + (turnUsage.outputTokens ?? 0)),
+        }
+      : undefined;
+    await dispatch(
+      updateUsageSummary({
+        totalSteps: (prior?.totalSteps ?? 0) + stats.totalSteps,
+        ...buildUsage,
+      }),
+    );
+    return buildUsage?.totalTokens;
+  }
+
+  /** Close the latest assistant message of this attempt, if it is still open. */
+  async function settlePartial(reason: string): Promise<void> {
+    await recordUsage(false).catch((e: unknown) => log?.error(`${TAG} failed to record usage:`, e));
+    if (!lastAssistantMsgId) return;
+    const messageId = lastAssistantMsgId;
+    lastAssistantMsgId = null;
+    await dispatch(finishAssistantMessage({ messageId, finishReason: reason, finishedAt: now() }));
+  }
+
+  async function failTheTurn(failure: TurnFailureInfo): Promise<void> {
+    await settlePartial('error').catch((e: unknown) => log?.error(`${TAG} failed to close partial message:`, e));
+    await dispatchFailTurn(reactor, documentId, { ...failure, userMessageId }).catch((e: unknown) => log?.error(`${TAG} failed to dispatch FAIL_TURN:`, e));
   }
 }

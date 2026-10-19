@@ -21,6 +21,8 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       totalMessages: 0,
       totalToolCalls: 0,
     };
+    state.retryRequestedFor = null;
+    state.retryRequestedAt = null;
   },
   endSessionOperation(state, action) {
     state.status = action.input.status;
@@ -67,6 +69,8 @@ export const chatSessionSystemOperations: ChatSessionSystemOperations = {
       usage: null,
       finishedAt: null,
       finishReason: null,
+      pickedUpAt: null,
+      failure: null,
     });
     if (state.usage) state.usage.totalMessages += 1;
   },

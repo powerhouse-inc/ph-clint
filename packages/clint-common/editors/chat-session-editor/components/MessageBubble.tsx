@@ -3,6 +3,8 @@ import { Message, MessageContent } from './ai-elements/message.js';
 import { ContentPartRenderer } from './ContentPartRenderer.js';
 import { BotIcon, UserIcon, TerminalIcon, ShieldIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { NOT_PICKED_UP_AFTER_MS } from '../lib/turn-state.js';
+import { RetryButton, useChatActions, useElapsed } from './chat-actions.js';
 
 interface MessageBubbleProps {
   message: MessageType;
@@ -59,6 +61,7 @@ function UserMessage({ message }: { message: MessageType }) {
           <UserIcon className="size-3.5" />
         </div>
       </div>
+      <DeliveryStatus message={message} />
     </Message>
   );
 }
@@ -77,6 +80,7 @@ function AssistantMessage({ message, toolResultMap, showAvatar }: { message: Mes
           })}
         </MessageContent>
       </div>
+      <FailureActions message={message} />
       {message.usage && (
         <div className="ml-9 text-xs text-muted-foreground">
           {message.usage.totalTokens != null && <span>{message.usage.totalTokens} tokens</span>}
@@ -105,5 +109,44 @@ function ToolMessage({ message, showAvatar }: { message: MessageType; showAvatar
         </MessageContent>
       </div>
     </Message>
+  );
+}
+
+/** Delivery state under the user message the agent should work on next:
+ *  Sending… → Picked up, or "Not picked up yet" with Retry once the agent has
+ *  not started it (or its retry) in time. */
+function DeliveryStatus({ message }: { message: MessageType }) {
+  const { deliveryMessageId, deliveryState, deliverySince, active, onRetry } = useChatActions();
+  const isTarget = message.id === deliveryMessageId;
+  const waiting = isTarget && deliveryState === 'sending';
+  const late = useElapsed(deliverySince, NOT_PICKED_UP_AFTER_MS, waiting);
+  if (!isTarget || !deliveryState) return null;
+
+  if (late) {
+    return (
+      <div className="mr-9 flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        <span>Not picked up yet</span>
+        {active && onRetry && <RetryButton onClick={() => onRetry(message.id)} />}
+      </div>
+    );
+  }
+
+  return <div className="mr-9 text-right text-xs text-muted-foreground">{deliveryState === 'picked-up' ? 'Picked up' : 'Sending…'}</div>;
+}
+
+/** Retry and the host's action (e.g. a budget request) for a failed turn. */
+function FailureActions({ message }: { message: MessageType }) {
+  const { retryableFailureId, onRetry, renderFailureAction } = useChatActions();
+  const failure = message.failure;
+  if (!failure) return null;
+  const hostAction = failure.code === 'BUDGET_EXHAUSTED' && renderFailureAction ? renderFailureAction(failure) : null;
+  const canRetry = message.id === retryableFailureId && !!onRetry;
+  if (!hostAction && !canRetry) return null;
+
+  return (
+    <div className="ml-9 flex flex-wrap items-center gap-2">
+      {canRetry && <RetryButton onClick={() => onRetry(failure.userMessageId)} />}
+      {hostAction}
+    </div>
   );
 }

@@ -39,6 +39,8 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
       usage: null,
       finishedAt: null,
       finishReason: null,
+      pickedUpAt: null,
+      failure: null,
     });
     if (state.usage) {
       state.usage.totalMessages += 1;
@@ -101,5 +103,51 @@ export const chatSessionAgentOperations: ChatSessionAgentOperations = {
     if (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);
     msg.finishedAt = action.input.finishedAt;
     msg.finishReason = action.input.finishReason ?? null;
+  },
+  markMessagePickedUpOperation(state, action) {
+    const msg = state.messages.find((m) => m.id === action.input.messageId);
+    if (!msg) throw new MessageNotFoundError('Message not found: ' + action.input.messageId);
+    msg.pickedUpAt = action.input.pickedUpAt;
+  },
+  failTurnOperation(state, action) {
+    state.messages.push({
+      id: action.input.id,
+      role: 'ASSISTANT',
+      content: [
+        {
+          id: action.input.id + '-error',
+          type: 'ERROR',
+          text: null,
+          toolCallId: null,
+          toolName: null,
+          args: null,
+          result: null,
+          isError: null,
+          mediaType: null,
+          url: null,
+          attachment: null,
+          filename: null,
+          error: action.input.message,
+        },
+      ],
+      stepIndex: null,
+      createdAt: action.input.failedAt,
+      usage: null,
+      finishedAt: action.input.failedAt,
+      finishReason: 'error',
+      pickedUpAt: null,
+      failure: {
+        userMessageId: action.input.userMessageId,
+        code: action.input.code,
+        message: action.input.message,
+        retryable: action.input.retryable,
+        failedAt: action.input.failedAt,
+      },
+    });
+    if (state.usage) state.usage.totalMessages += 1;
+  },
+  clearRetryRequestOperation(state) {
+    state.retryRequestedFor = null;
+    state.retryRequestedAt = null;
   },
 };
