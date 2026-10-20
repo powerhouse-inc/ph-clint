@@ -1277,17 +1277,15 @@ describe('proxy survives responses and sockets that already ended', () => {
   it('an upstream that dies after headers were sent ends the response once', async () => {
     const upstream = await createStalledUpstream();
     const p = await startProxyWith(upstream.url);
+    let settled: Settled | undefined;
     const errors = await collectProcessErrors(async () => {
-      await new Promise<void>((resolve) => {
-        const req = http.get(`${p.url}/svc/x`, (res) => {
-          res.on('data', () => { upstream.server.closeAllConnections(); });
-          res.on('error', () => resolve());
-          res.on('close', () => resolve());
-        });
-        req.on('error', () => resolve());
-      });
+      settled = await getAndSettle(`${p.url}/svc/x`, () => upstream.server.closeAllConnections());
     });
     expect(errors).toEqual([]);
+    // One response: the 200 head that was already sent, then a torn-down body.
+    expect(settled?.status).toBe(200);
+    expect(settled?.body).not.toContain('Bad Gateway');
+    expect(settled?.complete).toBe(false);
     expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
   });
 
@@ -1338,23 +1336,36 @@ describe('proxy survives responses and sockets that already ended', () => {
     return `http://127.0.0.1:${(server.address() as { port: number }).port}`;
   }
 
-  async function getAndSettle(url: string): Promise<void> {
-    await new Promise<void>((resolve) => {
+  interface Settled { status: number; body: string; complete: boolean }
+
+  async function getAndSettle(url: string, onData?: () => void): Promise<Settled> {
+    return new Promise<Settled>((resolve) => {
+      let status = 0;
+      let body = '';
+      let complete = false;
+      const done = () => resolve({ status, body, complete });
       const req = http.get(url, (res) => {
-        res.on('data', () => {});
-        res.on('error', () => resolve());
-        res.on('close', () => resolve());
+        status = res.statusCode ?? 0;
+        res.on('data', (c: Buffer) => { body += c.toString(); onData?.(); });
+        res.on('end', () => { complete = true; });
+        res.on('error', done);
+        res.on('close', done);
       });
-      req.on('error', () => resolve());
-      setTimeout(() => { req.destroy(); resolve(); }, 1500);
+      req.on('error', done);
+      setTimeout(() => { req.destroy(); done(); }, 1500);
     });
   }
 
   it('an upstream answering with non-HTTP bytes does not crash the proxy', async () => {
     const url = await createRawUpstream((s) => { s.write('GARBAGE not http at all\r\n\r\n'); });
     const p = await startProxyWith(url);
-    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    let settled: Settled | undefined;
+    const errors = await collectProcessErrors(async () => {
+      settled = await getAndSettle(`${p.url}/svc/x`);
+    });
     expect(errors).toEqual([]);
+    expect(settled?.status).toBe(502);
+    expect(settled?.body).toContain('Bad Gateway');
     expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
   });
 
@@ -1365,8 +1376,13 @@ describe('proxy survives responses and sockets that already ended', () => {
       setTimeout(() => s.write('more garbage'), 80);
     });
     const p = await startProxyWith(url);
-    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    let settled: Settled | undefined;
+    const errors = await collectProcessErrors(async () => {
+      settled = await getAndSettle(`${p.url}/svc/x`);
+    });
     expect(errors).toEqual([]);
+    expect(settled?.status).toBe(200);
+    // The head was already sent, so the proxy can only close the response.
     expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
   });
 
@@ -1376,19 +1392,47 @@ describe('proxy survives responses and sockets that already ended', () => {
       setTimeout(() => s.write('HTTP/garbled\r\n\r\n'), 30);
     });
     const p = await startProxyWith(url);
-    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    let settled: Settled | undefined;
+    const errors = await collectProcessErrors(async () => {
+      settled = await getAndSettle(`${p.url}/svc/x`);
+    });
     expect(errors).toEqual([]);
+    expect(settled?.status).toBe(200);
+    expect(settled?.complete).toBe(false);
     expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
   });
 
-  it('an upstream that sends a full response then garbage on the same socket does not crash the proxy', async () => {
+  it('an upstream that sends a full response then garbage in the same packet is answered 502 and does not crash the proxy', async () => {
     const url = await createRawUpstream((s) => {
       s.write('HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nokGARBAGE not http\r\n\r\n');
       setTimeout(() => s.write('more GARBAGE'), 30);
     });
     const p = await startProxyWith(url);
-    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    let settled: Settled | undefined;
+    const errors = await collectProcessErrors(async () => {
+      settled = await getAndSettle(`${p.url}/svc/x`);
+    });
     expect(errors).toEqual([]);
+    // The parse error surfaces before the response is delivered.
+    expect(settled?.status).toBe(502);
+    expect(settled?.body).toContain('Bad Gateway');
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
+  });
+
+  it('an upstream that sends a full response and garbage later on the same socket delivers the response', async () => {
+    const url = await createRawUpstream((s) => {
+      s.write('HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok');
+      setTimeout(() => s.write('GARBAGE not http\r\n\r\n'), 30);
+    });
+    const p = await startProxyWith(url);
+    let settled: Settled | undefined;
+    const errors = await collectProcessErrors(async () => {
+      settled = await getAndSettle(`${p.url}/svc/x`);
+    });
+    expect(errors).toEqual([]);
+    expect(settled?.status).toBe(200);
+    expect(settled?.body).toBe('ok');
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
   });
 
   it('an upstream that streams a body and then sends an invalid header block does not crash the proxy', async () => {
@@ -1398,8 +1442,13 @@ describe('proxy survives responses and sockets that already ended', () => {
       setTimeout(() => s.write('data: 2\n\n'), 60);
     });
     const p = await startProxyWith(url);
-    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    let settled: Settled | undefined;
+    const errors = await collectProcessErrors(async () => {
+      settled = await getAndSettle(`${p.url}/svc/x`);
+    });
     expect(errors).toEqual([]);
+    expect(settled?.status).toBe(200);
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
   });
 
   it('the error handler does not write to a response that already ended', async () => {
@@ -1427,6 +1476,8 @@ describe('safeEnd', () => {
       writable: true,
       writableEnded: false,
       destroyed: false,
+      getHeaderNames: () => [] as string[],
+      removeHeader: () => {},
       writeHead: (status: number) => { calls.push(`head:${status}`); },
       end: (body?: string) => { calls.push(`end:${body ?? ''}`); },
       ...over,
@@ -1444,6 +1495,12 @@ describe('safeEnd', () => {
     const { res, calls } = fakeRes({ headersSent: true });
     safeEnd(res, 502, 'x');
     expect(calls).toEqual(['end:']);
+  });
+
+  it('does not fall through to an implicit 200 when not writable and nothing was sent', () => {
+    const { res, calls } = fakeRes({ writable: false });
+    safeEnd(res, 502, 'x');
+    expect(calls).toEqual([]);
   });
 
   it('does nothing for a response that already ended', () => {

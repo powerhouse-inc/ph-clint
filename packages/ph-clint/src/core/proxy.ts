@@ -98,11 +98,16 @@ export function safeEnd(
   try {
     if (res.writableEnded || res.destroyed) return;
     if (!res.headersSent && res.writable) {
-      res.writeHead(status, headers);
+      // Drop headers a half-processed upstream response may already have set
+      // (e.g. its Content-Length), which would truncate or mislabel our body.
+      for (const name of res.getHeaderNames()) res.removeHeader(name);
+      res.writeHead(status, { ...headers, 'Content-Length': Buffer.byteLength(body) });
       res.end(body);
       return;
     }
-    res.end();
+    // Head already sent: close the body. Nothing sent but not writable: leave
+    // it alone (an end() here would emit an implicit 200).
+    if (res.headersSent) res.end();
   } catch {
     // The response went away between the check and the write.
   }
@@ -270,12 +275,18 @@ export async function createProxyServer(
     // A write that lands on a response after it ended (or after the client
     // left) is reported as an 'error' event on the response; without a
     // listener that would be an uncaught exception.
-    res.on('error', (err) => {
-      logger.debug(`Proxy client response error for ${req.url}: ${err.message}`);
-    });
-    req.on('error', (err) => {
-      logger.debug(`Proxy client request error for ${req.url}: ${err.message}`);
-    });
+    const logClientError = (what: string) => (err: Error) => {
+      const code = (err as NodeJS.ErrnoException).code;
+      // These two mean the proxy itself wrote at the wrong time; client
+      // resets (ECONNRESET etc.) are routine.
+      if (code === 'ERR_STREAM_WRITE_AFTER_END' || code === 'ERR_HTTP_HEADERS_SENT') {
+        logger.warn(`Proxy client ${what} error for ${req.url}: ${err.message}`);
+      } else {
+        logger.debug(`Proxy client ${what} error for ${req.url}: ${err.message}`);
+      }
+    };
+    res.on('error', logClientError('response'));
+    req.on('error', logClientError('request'));
     const [rawPath, query] = splitUrl(req.url ?? '/');
     const stripped = stripBase(rawPath);
     if (stripped === undefined) {
