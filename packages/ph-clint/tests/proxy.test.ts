@@ -1320,6 +1320,88 @@ describe('proxy survives responses and sockets that already ended', () => {
     expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
   });
 
+  /** Raw TCP upstream that answers each connection with the given bytes. */
+  async function createRawUpstream(
+    respond: (sock: net.Socket) => void,
+  ): Promise<string> {
+    const socks = new Set<net.Socket>();
+    const server = net.createServer((sock) => {
+      socks.add(sock);
+      sock.on('error', () => {});
+      sock.once('data', () => respond(sock));
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    servers.push({ close: () => new Promise<void>((r) => {
+      for (const sk of socks) sk.destroy();
+      server.close(() => r());
+    }) });
+    return `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  }
+
+  async function getAndSettle(url: string): Promise<void> {
+    await new Promise<void>((resolve) => {
+      const req = http.get(url, (res) => {
+        res.on('data', () => {});
+        res.on('error', () => resolve());
+        res.on('close', () => resolve());
+      });
+      req.on('error', () => resolve());
+      setTimeout(() => { req.destroy(); resolve(); }, 1500);
+    });
+  }
+
+  it('an upstream answering with non-HTTP bytes does not crash the proxy', async () => {
+    const url = await createRawUpstream((s) => { s.write('GARBAGE not http at all\r\n\r\n'); });
+    const p = await startProxyWith(url);
+    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    expect(errors).toEqual([]);
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
+  });
+
+  it('an upstream that sends a partial response then garbage does not crash the proxy', async () => {
+    const url = await createRawUpstream((s) => {
+      s.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n');
+      setTimeout(() => s.write('ZZZ garbage \x00\x01 not a chunk\r\n'), 30);
+      setTimeout(() => s.write('more garbage'), 80);
+    });
+    const p = await startProxyWith(url);
+    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    expect(errors).toEqual([]);
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
+  });
+
+  it('an upstream that sends a status line, then garbage headers, does not crash the proxy', async () => {
+    const url = await createRawUpstream((s) => {
+      s.write('HTTP/1.1 200 OK\r\nContent-Length: 50\r\n\r\npartial');
+      setTimeout(() => s.write('HTTP/garbled\r\n\r\n'), 30);
+    });
+    const p = await startProxyWith(url);
+    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    expect(errors).toEqual([]);
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
+  });
+
+  it('an upstream that sends a full response then garbage on the same socket does not crash the proxy', async () => {
+    const url = await createRawUpstream((s) => {
+      s.write('HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nokGARBAGE not http\r\n\r\n');
+      setTimeout(() => s.write('more GARBAGE'), 30);
+    });
+    const p = await startProxyWith(url);
+    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    expect(errors).toEqual([]);
+  });
+
+  it('an upstream that streams a body and then sends an invalid header block does not crash the proxy', async () => {
+    const url = await createRawUpstream((s) => {
+      s.write('HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\ndata: 1\n\n');
+      setTimeout(() => s.write('\r\n\r\nHTTP/9.9 xx\r\n\r\n'), 30);
+      setTimeout(() => s.write('data: 2\n\n'), 60);
+    });
+    const p = await startProxyWith(url);
+    const errors = await collectProcessErrors(() => getAndSettle(`${p.url}/svc/x`));
+    expect(errors).toEqual([]);
+  });
+
   it('the error handler does not write to a response that already ended', async () => {
     // Drive the real proxy error path with an upstream that resets after the
     // response head, while the client socket is already gone.
