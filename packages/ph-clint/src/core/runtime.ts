@@ -29,7 +29,6 @@ import type {
 import type { ProxyServerInstance } from './proxy.js';
 import { resolvePort } from '../integrations/powerhouse/ports.js';
 import {
-  buildSwitchboardPendingRoute,
   buildSwitchboardRoutes,
   buildSwitchboardProxyUrls,
   deriveBasePath,
@@ -259,11 +258,6 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
     try {
       // 0. Proxy (if enabled, already listening)
       if (proxyInstance) {
-        // Until the switchboard is up, /switchboard/* answers 503 (retry), not
-        // 404: a syncing browser treats a 404 as permanent and stops syncing.
-        if (reactorConfig?.switchboard?.enabled && enableSwitchboard) {
-          proxyInstance.addRoute(buildSwitchboardPendingRoute());
-        }
         output(`Proxy listening on ${proxyInstance.url}`);
       }
 
@@ -293,6 +287,11 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       }
 
       // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor)
+      if (!(reactorConfig?.switchboard?.enabled && enableSwitchboard && cachedReactor?._module)) {
+        // No switchboard will come up: drop the "starting" placeholder the
+        // CLI registered at proxy start, or /switchboard stays 503 forever.
+        proxyInstance?.removeRoutesBySource(SWITCHBOARD_PENDING_SOURCE);
+      }
       if (reactorConfig?.switchboard?.enabled && enableSwitchboard && cachedReactor?._module) {
         log.debug('Starting Switchboard...');
         await startSwitchboardLayer();
