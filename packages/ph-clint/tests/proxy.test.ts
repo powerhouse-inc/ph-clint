@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from '@jest/globals';
 import http from 'node:http';
 import net from 'node:net';
 import zlib from 'node:zlib';
-import { createProxyServer } from '../src/core/proxy.js';
+import { createProxyServer, safeEnd } from '../src/core/proxy.js';
 import type { ProxyServerInstance } from '../src/core/proxy.js';
 import type { ProxyRoute } from '../src/core/proxy-routes.js';
 import {
@@ -1229,5 +1229,155 @@ describe('proxy routes end-to-end', () => {
     // Switchboard still works
     const stillUp = await httpGet(`${proxy.url}/switchboard/graphql`);
     expect(stillUp.status).toBe(200);
+  });
+});
+
+describe('proxy survives responses and sockets that already ended', () => {
+  function startProxyWith(upstreamUrl: string, prefix = '/svc'): Promise<ProxyServerInstance> {
+    return createProxyServer({ port: 0, host: '127.0.0.1', logger }).then((p) => {
+      servers.push({ close: () => p.stop() });
+      p.addRoute({ prefix, upstream: new URL(upstreamUrl), ws: false, source: 'svc' });
+      return p;
+    });
+  }
+
+  /** Collects process-level errors raised while the callback runs. */
+  async function collectProcessErrors(run: () => Promise<void>): Promise<Error[]> {
+    const errors: Error[] = [];
+    const onError = (e: Error) => { errors.push(e); };
+    const saved = process.listeners('uncaughtException');
+    process.removeAllListeners('uncaughtException');
+    process.on('uncaughtException', onError);
+    try {
+      await run();
+      await new Promise((r) => setTimeout(r, 100));
+    } finally {
+      process.removeListener('uncaughtException', onError);
+      for (const l of saved) process.on('uncaughtException', l);
+    }
+    return errors;
+  }
+
+  it('a client that disconnects mid-stream does not crash the proxy', async () => {
+    const upstream = await createSseUpstream(500);
+    const p = await startProxyWith(upstream.url);
+    const errors = await collectProcessErrors(async () => {
+      await new Promise<void>((resolve) => {
+        const req = http.get(`${p.url}/svc/events`, (res) => {
+          res.once('data', () => { req.destroy(); resolve(); });
+        });
+        req.on('error', () => {});
+      });
+      await new Promise((r) => setTimeout(r, 700));
+    });
+    expect(errors).toEqual([]);
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
+  });
+
+  it('an upstream that dies after headers were sent ends the response once', async () => {
+    const upstream = await createStalledUpstream();
+    const p = await startProxyWith(upstream.url);
+    const errors = await collectProcessErrors(async () => {
+      await new Promise<void>((resolve) => {
+        const req = http.get(`${p.url}/svc/x`, (res) => {
+          res.on('data', () => { upstream.server.closeAllConnections(); });
+          res.on('error', () => resolve());
+          res.on('close', () => resolve());
+        });
+        req.on('error', () => resolve());
+      });
+    });
+    expect(errors).toEqual([]);
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
+  });
+
+  it('a client that half-closes mid-upload while the upstream streams does not crash the proxy', async () => {
+    // The client sends an incomplete body and FINs, keeping its read side open.
+    // The proxy sees a request error while the response is still streaming.
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      const t = setInterval(() => res.write('chunk\n'), 20);
+      setTimeout(() => { clearInterval(t); res.end(); }, 400);
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    servers.push({ close: () => new Promise<void>((r) => { server.closeAllConnections(); server.close(() => r()); }) });
+    const port = (server.address() as { port: number }).port;
+    const p = await startProxyWith(`http://127.0.0.1:${port}`);
+    const errors = await collectProcessErrors(async () => {
+      await new Promise<void>((resolve) => {
+        const sock = net.connect(p.port, '127.0.0.1', () => {
+          sock.write('POST /svc/up HTTP/1.1\r\nHost: x\r\nContent-Length: 100\r\n\r\npartial');
+          setTimeout(() => sock.end(), 100);
+        });
+        sock.on('error', () => {});
+        sock.on('data', () => {});
+        sock.on('close', () => resolve());
+        setTimeout(() => { sock.destroy(); resolve(); }, 1500);
+      });
+      await new Promise((r) => setTimeout(r, 500));
+    });
+    expect(errors).toEqual([]);
+    expect((await httpGet(`${p.url}/_proxy/health`)).status).toBe(200);
+  });
+
+  it('the error handler does not write to a response that already ended', async () => {
+    // Drive the real proxy error path with an upstream that resets after the
+    // response head, while the client socket is already gone.
+    const upstream = await createStalledUpstream();
+    const p = await startProxyWith(upstream.url);
+    const errors = await collectProcessErrors(async () => {
+      await new Promise<void>((resolve) => {
+        const req = http.get(`${p.url}/svc/x`, (res) => {
+          res.once('data', () => { req.destroy(); upstream.server.closeAllConnections(); resolve(); });
+        });
+        req.on('error', () => {});
+      });
+    });
+    expect(errors).toEqual([]);
+  });
+});
+
+describe('safeEnd', () => {
+  function fakeRes(over: Partial<Record<string, unknown>> = {}) {
+    const calls: string[] = [];
+    const res = {
+      headersSent: false,
+      writable: true,
+      writableEnded: false,
+      destroyed: false,
+      writeHead: (status: number) => { calls.push(`head:${status}`); },
+      end: (body?: string) => { calls.push(`end:${body ?? ''}`); },
+      ...over,
+    };
+    return { res: res as unknown as http.ServerResponse, calls };
+  }
+
+  it('writes head and body on a fresh response', () => {
+    const { res, calls } = fakeRes();
+    safeEnd(res, 502, 'x');
+    expect(calls).toEqual(['head:502', 'end:x']);
+  });
+
+  it('only ends a response whose head is already sent', () => {
+    const { res, calls } = fakeRes({ headersSent: true });
+    safeEnd(res, 502, 'x');
+    expect(calls).toEqual(['end:']);
+  });
+
+  it('does nothing for a response that already ended', () => {
+    const { res, calls } = fakeRes({ headersSent: true, writableEnded: true, writable: false });
+    safeEnd(res, 502, 'x');
+    expect(calls).toEqual([]);
+  });
+
+  it('does nothing when the client socket is destroyed', () => {
+    const { res, calls } = fakeRes({ destroyed: true });
+    safeEnd(res, 502, 'x');
+    expect(calls).toEqual([]);
+  });
+
+  it('never throws when the response fails mid-write', () => {
+    const { res } = fakeRes({ writeHead: () => { throw new Error('ERR_STREAM_WRITE_AFTER_END'); } });
+    expect(() => safeEnd(res, 502, 'x')).not.toThrow();
   });
 });
