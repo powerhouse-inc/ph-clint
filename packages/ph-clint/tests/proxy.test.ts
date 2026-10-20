@@ -5,7 +5,12 @@ import zlib from 'node:zlib';
 import { createProxyServer } from '../src/core/proxy.js';
 import type { ProxyServerInstance } from '../src/core/proxy.js';
 import type { ProxyRoute } from '../src/core/proxy-routes.js';
-import { buildSwitchboardRoutes, buildServiceRoutes } from '../src/core/proxy-routes.js';
+import {
+  buildSwitchboardRoutes,
+  buildServiceRoutes,
+  buildSwitchboardPendingRoute,
+  SWITCHBOARD_PENDING_SOURCE,
+} from '../src/core/proxy-routes.js';
 import type { ServiceDefinition, ServiceInstanceStatus } from '../src/core/types.js';
 import { createLogger } from '../src/core/logger.js';
 
@@ -342,6 +347,29 @@ describe('createProxyServer', () => {
 
     // A non-boundary near-miss does not match.
     expect((await httpGet(`${p.url}/switchboard/attachmentsX`)).status).toBe(404);
+  });
+
+  it('answers 503 (not 404) under a switchboard that is still starting', async () => {
+    // Between "Proxy listening" and "Switchboard ready" the proxy has no
+    // /switchboard routes. A 404 there tells a syncing browser the endpoint is
+    // gone; its sync channel treats that as permanent, stops polling and
+    // dead-letters every push, so messages sent across an agent restart never
+    // reach the agent until the page is reloaded. 503 says "retry".
+    const upstream = await createUpstream('sb');
+    const p = await startProxy();
+    p.addRoute(buildSwitchboardPendingRoute());
+
+    const starting = await fetch(`${p.url}/switchboard/graphql/r`);
+    expect(starting.status).toBe(503);
+    expect(starting.headers.get('retry-after')).toBe('2');
+    await starting.text();
+
+    for (const route of buildSwitchboardRoutes(`${upstream.url}/graphql`)) p.addRoute(route);
+    p.removeRoutesBySource(SWITCHBOARD_PENDING_SOURCE);
+
+    const ready = await httpGet(`${p.url}/switchboard/graphql/r`);
+    expect(ready.status).toBe(200);
+    expect(JSON.parse(ready.body).path).toBe('/graphql/r');
   });
 
   it('returns 502 when upstream is unreachable', async () => {

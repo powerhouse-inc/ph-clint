@@ -210,6 +210,33 @@ describe('createCliRuntime()', () => {
       expect(lines).toContain('Reactor ready (drive: test-drive)');
     });
 
+    it('holds /switchboard as "starting" on the proxy until the switchboard is up', async () => {
+      // Registered before the reactor boots, so a browser syncing through the
+      // proxy during an agent restart gets 503 (retry) rather than 404.
+      const added: Array<{ prefix: string; source: string }> = [];
+      const runtime = createCliRuntime(createMinimalDeps({
+        reactorConfig: {
+          create: async () => {
+            expect(added.map((r) => r.prefix)).toContain('/switchboard');
+            return createMockReactor();
+          },
+          switchboard: { enabled: true },
+        } as CliRuntimeDeps['reactorConfig'],
+        proxyInstance: {
+          port: 8080,
+          host: 'localhost',
+          url: 'http://localhost:8080',
+          addRoute: (r) => { added.push(r); },
+          removeRoutesBySource: () => {},
+          getRoutes: () => [],
+          stop: async () => {},
+        },
+      }));
+
+      await runtime.startupSequence(() => {});
+      expect(added).toContainEqual(expect.objectContaining({ prefix: '/switchboard', unavailable: true }));
+    });
+
     it('outputs "Proxy listening" when proxyInstance is provided', async () => {
       const lines: string[] = [];
       const runtime = createCliRuntime(createMinimalDeps({

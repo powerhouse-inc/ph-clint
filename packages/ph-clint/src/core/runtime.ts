@@ -28,7 +28,13 @@ import type {
 } from '../integrations/powerhouse/types.js';
 import type { ProxyServerInstance } from './proxy.js';
 import { resolvePort } from '../integrations/powerhouse/ports.js';
-import { buildSwitchboardRoutes, buildSwitchboardProxyUrls, deriveBasePath } from './proxy-routes.js';
+import {
+  buildSwitchboardPendingRoute,
+  buildSwitchboardRoutes,
+  buildSwitchboardProxyUrls,
+  deriveBasePath,
+  SWITCHBOARD_PENDING_SOURCE,
+} from './proxy-routes.js';
 import { createRemoteAttachmentService } from '@powerhousedao/reactor-attachments';
 
 /**
@@ -193,6 +199,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
         proxyInstance.addRoute(route);
         log.debug(`  proxy: ${route.prefix} → ${route.upstream?.toString() ?? route.redirectTo ?? ''}`);
       }
+      proxyInstance.removeRoutesBySource(SWITCHBOARD_PENDING_SOURCE);
     }
 
     context.emit?.('powerhouse:switchboard:ready', {
@@ -252,6 +259,11 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
     try {
       // 0. Proxy (if enabled, already listening)
       if (proxyInstance) {
+        // Until the switchboard is up, /switchboard/* answers 503 (retry), not
+        // 404: a syncing browser treats a 404 as permanent and stops syncing.
+        if (reactorConfig?.switchboard?.enabled && enableSwitchboard) {
+          proxyInstance.addRoute(buildSwitchboardPendingRoute());
+        }
         output(`Proxy listening on ${proxyInstance.url}`);
       }
 
