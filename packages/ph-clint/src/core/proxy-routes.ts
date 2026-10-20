@@ -33,6 +33,12 @@ export interface ProxyRoute {
    * with a `'/'` catch-all without shadowing longer prefixes.
    */
   exact?: boolean;
+  /**
+   * The upstream behind this prefix is still starting: matching requests get
+   * 503 + Retry-After instead of being proxied. A 404 would tell clients the
+   * endpoint does not exist, which some treat as permanent.
+   */
+  unavailable?: boolean;
 }
 
 /**
@@ -175,6 +181,24 @@ export function buildSwitchboardRoutes(
     ws: spec.ws ?? false,
     source: 'switchboard',
   }));
+}
+
+/** Source label of the placeholder that holds `/switchboard` while it starts. */
+export const SWITCHBOARD_PENDING_SOURCE = 'switchboard-pending';
+
+/**
+ * Placeholder for the whole `/switchboard` surface between "proxy listening"
+ * and "switchboard ready" (boot, and every agent restart). The real routes
+ * (`/switchboard/graphql`, `/switchboard/d/`, …) are longer prefixes, so they
+ * win as soon as they are added; the placeholder is then removed.
+ */
+export function buildSwitchboardPendingRoute(): ProxyRoute {
+  return {
+    prefix: '/switchboard',
+    ws: false,
+    source: SWITCHBOARD_PENDING_SOURCE,
+    unavailable: true,
+  };
 }
 
 /**

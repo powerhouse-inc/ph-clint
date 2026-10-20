@@ -51,7 +51,7 @@ import { createReplSession } from '../interactive/session.js';
 import { formatZodError } from './errors.js';
 import { createLogger } from './logger.js';
 import { createProxyServer, type ProxyServerInstance } from './proxy.js';
-import { buildServiceRoutes, resolveImplicitProxyRoot } from './proxy-routes.js';
+import { buildServiceRoutes, buildSwitchboardPendingRoute, resolveImplicitProxyRoot } from './proxy-routes.js';
 import { createCliRuntime } from './runtime.js';
 import { initLifecycle } from './lifecycle.js';
 import type { BootTimings, LifecycleInitContext } from './types.js';
@@ -1214,6 +1214,14 @@ export function defineCli<
         publicUrl: proxyPublicUrl,
         logger: log,
       });
+      // Hold /switchboard as "starting" (503, retryable) from the moment the
+      // proxy listens: lifecycle init, an interactive agent boot and the
+      // reactor all run before the switchboard routes exist, and a 404 in
+      // that window makes a syncing browser give up for good.
+      // startSwitchboardLayer replaces it with the real routes.
+      if (reactorConfig?.switchboard?.enabled && !noApiFlag) {
+        proxyInstance.addRoute(buildSwitchboardPendingRoute());
+      }
       for (const route of options.proxyRoutes ?? []) {
         try {
           proxyInstance.addRoute({

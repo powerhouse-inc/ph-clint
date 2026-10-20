@@ -210,6 +210,31 @@ describe('createCliRuntime()', () => {
       expect(lines).toContain('Reactor ready (drive: test-drive)');
     });
 
+    it('drops the /switchboard "starting" placeholder when no switchboard will start', async () => {
+      // The CLI registers the placeholder as soon as the proxy listens. When
+      // step 2 is skipped (here: a reactor without a module) nothing would
+      // ever replace it, so /switchboard would answer 503 forever.
+      const removed: string[] = [];
+      const runtime = createCliRuntime(createMinimalDeps({
+        reactorConfig: {
+          create: async () => createMockReactor(),
+          switchboard: { enabled: true },
+        } as CliRuntimeDeps['reactorConfig'],
+        proxyInstance: {
+          port: 8080,
+          host: 'localhost',
+          url: 'http://localhost:8080',
+          addRoute: () => {},
+          removeRoutesBySource: (source) => { removed.push(source); },
+          getRoutes: () => [],
+          stop: async () => {},
+        },
+      }));
+
+      await runtime.startupSequence(() => {});
+      expect(removed).toContain('switchboard-pending');
+    });
+
     it('outputs "Proxy listening" when proxyInstance is provided', async () => {
       const lines: string[] = [];
       const runtime = createCliRuntime(createMinimalDeps({

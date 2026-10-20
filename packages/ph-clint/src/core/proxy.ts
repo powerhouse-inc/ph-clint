@@ -258,6 +258,7 @@ export async function createProxyServer(
             source: r.source,
             ...(r.redirectTo ? { redirectTo: r.redirectTo } : {}),
             ...(r.exact ? { exact: true } : {}),
+            ...(r.unavailable ? { unavailable: true } : {}),
       }))));
       return;
     }
@@ -272,6 +273,12 @@ export async function createProxyServer(
     if (route.redirectTo) {
       res.writeHead(302, { Location: prefixRedirect(route.redirectTo) + query });
       res.end();
+      return;
+    }
+
+    if (route.unavailable) {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '2' });
+      res.end(JSON.stringify({ error: 'Service Unavailable', message: 'starting', path: pathname }));
       return;
     }
 

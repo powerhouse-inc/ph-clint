@@ -28,7 +28,12 @@ import type {
 } from '../integrations/powerhouse/types.js';
 import type { ProxyServerInstance } from './proxy.js';
 import { resolvePort } from '../integrations/powerhouse/ports.js';
-import { buildSwitchboardRoutes, buildSwitchboardProxyUrls, deriveBasePath } from './proxy-routes.js';
+import {
+  buildSwitchboardRoutes,
+  buildSwitchboardProxyUrls,
+  deriveBasePath,
+  SWITCHBOARD_PENDING_SOURCE,
+} from './proxy-routes.js';
 import { createRemoteAttachmentService } from '@powerhousedao/reactor-attachments';
 
 /**
@@ -193,6 +198,7 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
         proxyInstance.addRoute(route);
         log.debug(`  proxy: ${route.prefix} → ${route.upstream?.toString() ?? route.redirectTo ?? ''}`);
       }
+      proxyInstance.removeRoutesBySource(SWITCHBOARD_PENDING_SOURCE);
     }
 
     context.emit?.('powerhouse:switchboard:ready', {
@@ -281,6 +287,11 @@ export function createCliRuntime(deps: CliRuntimeDeps): CliRuntime {
       }
 
       // 2. Switchboard (GraphQL + MCP endpoint wrapping reactor)
+      if (!(reactorConfig?.switchboard?.enabled && enableSwitchboard && cachedReactor?._module)) {
+        // No switchboard will come up: drop the "starting" placeholder the
+        // CLI registered at proxy start, or /switchboard stays 503 forever.
+        proxyInstance?.removeRoutesBySource(SWITCHBOARD_PENDING_SOURCE);
+      }
       if (reactorConfig?.switchboard?.enabled && enableSwitchboard && cachedReactor?._module) {
         log.debug('Starting Switchboard...');
         await startSwitchboardLayer();
