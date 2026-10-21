@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamChunk } from '@powerhousedao/ph-clint';
-import { addAssistantMessage, addUserMessage, failTurn, finishAssistantMessage, interruptAgent, markMessagePickedUp, reducer, retryTurn, startSession, utils } from 'document-models/chat-session/v1';
+import { addAssistantMessage, addToolResult, addUserMessage, failTurn, finishAssistantMessage, interruptAgent, markMessagePickedUp, reducer, retryTurn, startSession, utils } from 'document-models/chat-session/v1';
 import type { Message } from 'document-models/chat-session/v1';
 import { CONTINUE_PROMPT, processChatSessionDocs, waitForChatTurns } from './chat-session-watch.js';
 import { actionTypes, chunks, makeFakeAgent, makeFakeReactor, makeTriggerContext, sessionWithUserMessage, T0, T1, type AgentCall, type FakeReactor } from './testing/fakes.js';
@@ -323,6 +323,68 @@ describe('chat-session-watch — restart', () => {
     expectSessionKeptActive(twice);
   });
 
+  function toolStep(fake: FakeReactor, n: number): void {
+    fake.apply(
+      addAssistantMessage({ id: `a${n}`, content: [{ id: `a${n}-p1`, type: 'TOOL_CALL', toolCallId: `c${n}`, toolName: 'build', args: '{}' }], createdAt: T1 }),
+      addToolResult({ id: `t${n}`, content: [{ id: `t${n}-p1`, type: 'TOOL_RESULT', toolCallId: `c${n}`, toolName: 'build', result: 'ok', isError: false }], createdAt: T1 }),
+    );
+  }
+
+  it('a steer sent into a turn cut off by a restart does not hide it', async () => {
+    // Steer arrived while a tool ran; the restart came before the next step.
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const steer = nextId();
+    fake.apply(
+      markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }),
+      addAssistantMessage({ id: 'a1', content: [{ id: 'a1-p1', type: 'TOOL_CALL', toolCallId: 'c1', toolName: 'build', args: '{}' }], createdAt: T1 }),
+      textMessage(steer, 'add a Ready column'),
+      markMessagePickedUp({ messageId: steer, pickedUpAt: T2 }),
+      addToolResult({ id: 't1', content: [{ id: 't1-p1', type: 'TOOL_RESULT', toolCallId: 'c1', toolName: 'build', result: 'ok', isError: false }], createdAt: T2 }),
+    );
+    const injected: string[][] = [];
+    const agent = makeFakeAgent([
+      (call) => {
+        injected.push(runStep(call));
+        return chunks({ type: 'text-delta', text: 'Built, adding the column.' }, { type: 'finish', finishReason: 'stop' });
+      },
+    ]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toBe(`${CONTINUE_PROMPT}\n\nAlready completed in this turn:\n- build({}) → ok`);
+    // The steer no step had read reaches the resumed turn first.
+    expect(injected).toEqual([[`${STEER_PREFIX}add a Ready column`]]);
+    expect(message(fake, 'a1')?.finishReason).toBe('restart');
+    expect(failTurnInputs(fake)).toEqual([]);
+    expectSessionKeptActive(fake);
+  });
+
+  it('a resumed turn lists tool calls from before a steer', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const steer = nextId();
+    fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }));
+    toolStep(fake, 1);
+    fake.apply(textMessage(steer, 'add a Ready column'), markMessagePickedUp({ messageId: steer, pickedUpAt: T2 }));
+    fake.apply(addAssistantMessage({ id: 'a2', content: [{ id: 'a2-p1', type: 'TEXT', text: 'Adding the col' }], createdAt: T2 }));
+    const injected: string[][] = [];
+    const agent = makeFakeAgent([
+      (call) => {
+        injected.push(runStep(call));
+        return chunks({ type: 'text-delta', text: 'umn.' }, { type: 'finish', finishReason: 'stop' });
+      },
+    ]);
+
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toBe(`${CONTINUE_PROMPT}\n\nAlready completed in this turn:\n- build({}) → ok`);
+    // Already read by the step that wrote a2: not injected again.
+    expect(injected).toEqual([[]]);
+    expect(message(fake, 'a2')?.finishReason).toBe('restart');
+    expect(failTurnInputs(fake)).toEqual([]);
+  });
+
   it('leaves finished and failed turns alone', async () => {
     const fake = makeFakeReactor(sessionWithUserMessage());
     fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }), failTurn({ id: 'f1', userMessageId: 'u1', code: 'PROVIDER_ERROR', message: 'x', retryable: true, failedAt: T2 }));
@@ -573,10 +635,17 @@ describe('chat-session-watch — steering', () => {
     expectSessionKeptActive(fake);
   });
 
-  it('a stop discards steers the turn did not reach', async () => {
+  it('a stop keeps steers for the next turn', async () => {
     const fake = makeFakeReactor(sessionWithUserMessage());
     const g = gatedTurn('final-step');
-    const agent = makeFakeAgent([g.turn]);
+    const nextTurn: string[][] = [];
+    const agent = makeFakeAgent([
+      g.turn,
+      (call) => {
+        nextTurn.push(runStep(call));
+        return chunks({ type: 'text-delta', text: 'Continuing with a Ready column.' }, { type: 'finish', finishReason: 'stop' });
+      },
+    ]);
     const ctx = makeTriggerContext(fake, agent);
 
     await processChatSessionDocs([fake.doc()], ctx);
@@ -588,9 +657,121 @@ describe('chat-session-watch — steering', () => {
     g.release();
     await waitForChatTurns();
 
+    // Stopped: nothing runs now.
     expect(agent.calls).toHaveLength(1);
     expect(hasInFlightTurn('thread-1')).toBe(false);
     await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(1);
+
+    // The next turn reads the kept steer at its first step.
+    fake.apply(textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'));
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe('continue');
+    expect(nextTurn).toEqual([[`${STEER_PREFIX}add a Ready column`]]);
+    expectSessionKeptActive(fake);
+  });
+
+  it('a steer missing from the read after the turn runs as a normal turn', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const reached = deferred();
+    const gate = deferred();
+    const agent = makeFakeAgent([
+      async function* (call) {
+        runStep(call);
+        yield { type: 'tool-call', toolCallId: 'c1', toolName: 'build', args: {} };
+        yield { type: 'tool-result', toolCallId: 'c1', toolName: 'build', result: 'ok', isError: false };
+        runStep(call);
+        reached.resolve();
+        await gate.promise;
+        yield { type: 'finish', finishReason: 'stop' };
+      },
+      () => chunks({ type: 'text-delta', text: 'Answered.' }, { type: 'finish', finishReason: 'stop' }),
+    ]);
+    const ctx = makeTriggerContext(fake, agent);
+
+    await processChatSessionDocs([fake.doc()], ctx);
+    await reached.promise;
+    const stale = fake.doc();
+    const id = nextId();
+    fake.apply(textMessage(id, 'add a Ready column'));
+    await processChatSessionDocs([fake.doc()], ctx);
+    expect(message(fake, id)?.pickedUpAt).toBeTruthy();
+    // The read after the turn does not show the steer yet.
+    const client = fake.reactor.client as unknown as { get: () => Promise<unknown> };
+    const realGet = client.get;
+    client.get = () => Promise.resolve(stale);
+    gate.resolve();
+    await waitForChatTurns();
+    client.get = realGet;
+    expect(agent.calls).toHaveLength(1);
+
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe('add a Ready column');
+    expect(lastMessage(fake).content[0].text).toBe('Answered.');
+  });
+
+  it('messages after one with an attachment wait for it, in order', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const g = gatedTurn('between-steps');
+    const agent = makeFakeAgent([g.turn, () => chunks({ type: 'text-delta', text: 'Logo in.' }, { type: 'finish', finishReason: 'stop' }), () => chunks({ type: 'text-delta', text: 'Blue now.' }, { type: 'finish', finishReason: 'stop' })]);
+    const ctx = makeTriggerContext(fake, agent);
+
+    await processChatSessionDocs([fake.doc()], ctx);
+    await g.reached;
+    const [s1, att, s2] = [nextId(), nextId(), nextId()];
+    fake.apply(textMessage(s1, 'add a Ready column'));
+    fake.apply(
+      addUserMessage({
+        id: att,
+        content: [
+          { id: `${att}-p1`, type: 'TEXT', text: 'use this logo' },
+          { id: `${att}-p2`, type: 'FILE', attachment: 'ref-2', filename: 'logo.svg', mediaType: 'image/svg+xml' },
+        ],
+        createdAt: T2,
+      }),
+    );
+    fake.apply(textMessage(s2, 'then make it blue'));
+    await processChatSessionDocs([fake.doc()], ctx);
+
+    expect(message(fake, s1)?.pickedUpAt).toBeTruthy();
+    expect(message(fake, att)?.pickedUpAt).toBeFalsy();
+    expect(message(fake, s2)?.pickedUpAt).toBeFalsy();
+
+    g.release();
+    await waitForChatTurns();
+
+    expect(g.injected[1]).toEqual([`${STEER_PREFIX}add a Ready column`]);
+    expect(agent.calls.map((c) => c.prompt)).toEqual(['hello', 'use this logo', 'then make it blue']);
+    expect(message(fake, s2)?.pickedUpAt).toBeTruthy();
+    expect(lastMessage(fake).content[0].text).toBe('Blue now.');
+    expectSessionKeptActive(fake);
+  });
+
+  it('a retry does not steer older unanswered messages into its turn', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const legacy = nextId();
+    fake.apply(
+      markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }),
+      failTurn({ id: 'f1', userMessageId: 'u1', code: 'PROVIDER_ERROR', message: 'x', retryable: true, failedAt: T1 }),
+      textMessage(legacy, 'from before pickup tracking'),
+      addAssistantMessage({ id: 'a-legacy', content: [{ id: 'a-legacy-p1', type: 'TEXT', text: 'old answer' }], createdAt: T2 }),
+      finishAssistantMessage({ messageId: 'a-legacy', finishReason: 'stop', finishedAt: T2 }),
+      retryTurn({ userMessageId: 'u1', requestedAt: T2 }),
+    );
+    const g = gatedTurn('between-steps');
+    const agent = makeFakeAgent([g.turn]);
+    const ctx = makeTriggerContext(fake, agent);
+
+    await processChatSessionDocs([fake.doc()], ctx);
+    await g.reached;
+    await processChatSessionDocs([fake.doc()], ctx);
+    g.release();
+    await waitForChatTurns();
+
+    expect(message(fake, legacy)?.pickedUpAt).toBeFalsy();
+    expect(g.injected).toEqual([[], []]);
     expect(agent.calls).toHaveLength(1);
   });
 
