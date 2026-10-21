@@ -100,14 +100,15 @@ export async function extractAttachments(message: Message, options: ExtractAttac
   for (const part of attachmentParts) {
     const cached = seen.get(part.id);
     if (cached) {
-      if (includeExtracted) {
-        try {
-          results.push({ ...cached, bytes: await readFile(cached.localPath) });
-        } catch (err) {
-          log?.error(`${TAG} failed to read extracted part ${part.id} back:`, err);
-        }
+      if (!includeExtracted) continue;
+      try {
+        results.push({ ...cached, bytes: await readFile(cached.localPath) });
+        continue;
+      } catch (err) {
+        // Gone from disk: extract it again.
+        log?.warn(`${TAG} could not read extracted part ${part.id} back, extracting it again:`, err);
+        seen.delete(part.id);
       }
-      continue;
     }
 
     try {

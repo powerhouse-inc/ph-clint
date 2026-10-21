@@ -1,3 +1,4 @@
+import { existsSync, rmSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamChunk } from '@powerhousedao/ph-clint';
 import { abortSession, addAssistantMessage, addToolResult, addUserMessage, failTurn, finishAssistantMessage, interruptAgent, markMessagePickedUp, reducer, retryTurn, startSession, utils } from 'document-models/chat-session/v1';
@@ -867,7 +868,8 @@ describe('chat-session-watch — steering', () => {
     expectSessionKeptActive(fake);
   });
 
-  it('a file message a pause stopped at step 0 is sent again with its file', async () => {
+  /** A fresh session with an attachment service; the first message is answered. */
+  async function sessionWithFiles() {
     const { fake } = freshSession();
     Object.assign(fake.reactor, {
       attachments: { get: () => Promise.resolve({ body: new TextEncoder().encode('<svg/>'), header: { mimeType: 'image/svg+xml' } }) },
@@ -875,27 +877,108 @@ describe('chat-session-watch — steering', () => {
     let paused = false;
     const agent = pausableAgent(() => paused);
     await runPass(fake, agent);
+    return { fake, agent, pause: (value: boolean) => (paused = value) };
+  }
 
-    paused = true;
-    const m = nextId();
+  function fileMessage(id: string) {
     // Attachment only: no text at all.
-    fake.apply(addUserMessage({ id: m, content: [{ id: `${m}-file`, type: 'FILE', attachment: 'ref-logo', filename: 'logo.svg', mediaType: 'image/svg+xml' }], createdAt: T2 }));
+    return addUserMessage({ id, content: [{ id: `${id}-file`, type: 'FILE', attachment: `ref-${id}`, filename: 'logo.svg', mediaType: 'image/svg+xml' }], createdAt: T2 });
+  }
+
+  /** Every USER message has a reply after it. */
+  function everyMessageAnswered(fake: FakeReactor): boolean {
+    const msgs = fake.doc().state.global.messages;
+    const lastReply = msgs.findLastIndex((m) => m.role === 'ASSISTANT' && !m.failure);
+    return msgs.every((m, i) => m.role !== 'USER' || i < lastReply);
+  }
+
+  it('a file message a pause stopped at step 0 leads the next turn with its file', async () => {
+    const { fake, agent, pause } = await sessionWithFiles();
+    pause(true);
+    const m = nextId();
+    fake.apply(fileMessage(m));
     await runPass(fake, agent);
     expect(agent.calls).toHaveLength(2);
     expect(agent.calls[1].prompt).toContain('[Attached files saved to disk]');
 
-    paused = false;
+    pause(false);
     fake.apply(textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'));
     await runPass(fake, agent);
     await runPass(fake, agent);
 
-    expect(agent.calls).toHaveLength(4);
-    // The file message runs first, with its file; then the new message.
-    expect(agent.calls[2].prompt).toContain('[Attached files saved to disk]');
-    expect(agent.calls[2].prompt).toContain('logo');
-    expect(agent.calls[3].prompt).toBe('continue');
-    expect(lastMessage(fake).content[0].text).toBe('Answer to: continue');
+    // One turn on "continue", carrying the kept file; its reply comes last.
+    expect(agent.calls).toHaveLength(3);
+    const prompt = agent.calls[2].prompt as string;
+    expect(prompt.startsWith('continue\n\n[Attached files saved to disk]\n- logo_')).toBe(true);
+    expect(lastMessage(fake).role).toBe('ASSISTANT');
+    expect(everyMessageAnswered(fake)).toBe(true);
     expectSessionKeptActive(fake);
+  });
+
+  it('a file message, then two messages: every message is answered', async () => {
+    const { fake, agent, pause } = await sessionWithFiles();
+    pause(true);
+    const file = nextId();
+    fake.apply(fileMessage(file));
+    await runPass(fake, agent);
+
+    pause(false);
+    const [cont, next] = [nextId(), nextId()];
+    fake.apply(textMessage(cont, 'continue', '2026-01-01T00:00:03.000Z'), textMessage(next, 'next', '2026-01-01T00:00:04.000Z'));
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(3);
+    const prompt = agent.calls[2].prompt as string;
+    expect(prompt.startsWith('continue\n\nnext\n\n[Attached files saved to disk]\n- logo_')).toBe(true);
+    expect(message(fake, cont)?.pickedUpAt).toBeTruthy();
+    expect(everyMessageAnswered(fake)).toBe(true);
+
+    // Later turns do not repeat any of them.
+    fake.apply(textMessage(nextId(), 'and then', '2026-01-01T00:00:05.000Z'));
+    await runPass(fake, agent);
+    expect(agent.calls[3].prompt).toBe('and then');
+    expect(everyMessageAnswered(fake)).toBe(true);
+  });
+
+  it('after a restart, answered kept messages are not sent again', async () => {
+    // As the merged turn left it, then the process restarted.
+    const { fake, first } = freshSession();
+    const [file, cont] = [nextId(), nextId()];
+    fake.apply(
+      markMessagePickedUp({ messageId: first, pickedUpAt: T1 }),
+      addAssistantMessage({ id: `${first}-a`, content: [{ id: `${first}-a-p1`, type: 'TEXT', text: 'Done.' }], createdAt: T1 }),
+      finishAssistantMessage({ messageId: `${first}-a`, finishReason: 'stop', finishedAt: T1 }),
+      fileMessage(file),
+      markMessagePickedUp({ messageId: file, pickedUpAt: T2 }),
+      textMessage(cont, 'continue', '2026-01-01T00:00:03.000Z'),
+      markMessagePickedUp({ messageId: cont, pickedUpAt: T2 }),
+      addAssistantMessage({ id: `${cont}-a`, content: [{ id: `${cont}-a-p1`, type: 'TEXT', text: 'Logo in.' }], createdAt: T2 }),
+      finishAssistantMessage({ messageId: `${cont}-a`, finishReason: 'stop', finishedAt: T2 }),
+      textMessage(nextId(), 'next', '2026-01-01T00:00:04.000Z'),
+    );
+    const agent = pausableAgent(() => false);
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+    expect(agent.calls.map((c) => c.prompt)).toEqual(['next']);
+    expect(everyMessageAnswered(fake)).toBe(true);
+  });
+
+  it('a kept file gone from disk is extracted again', async () => {
+    const { fake, agent, pause } = await sessionWithFiles();
+    pause(true);
+    fake.apply(fileMessage(nextId()));
+    await runPass(fake, agent);
+    const firstPrompt = agent.calls[1].prompt as string;
+    const savedPath = firstPrompt.slice(firstPrompt.indexOf(': ') + 2).trim();
+    rmSync(savedPath);
+
+    pause(false);
+    fake.apply(textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'));
+    await runPass(fake, agent);
+
+    expect(agent.calls[2].prompt).toContain(savedPath);
+    expect(existsSync(savedPath)).toBe(true);
   });
 
   it("a follow-up after a turn that answered nothing carries that turn's message", async () => {
@@ -986,7 +1069,7 @@ describe('chat-session-watch — steering', () => {
     expect(drainSteers('thread-gone')).toEqual([]);
   });
 
-  it('messages after one with an attachment wait for it, in order', async () => {
+  it('messages from an attachment on wait for the follow-up turn, which answers them together', async () => {
     const fake = makeFakeReactor(sessionWithUserMessage());
     const g = gatedTurn('between-steps');
     const agent = makeFakeAgent([g.turn, () => chunks({ type: 'text-delta', text: 'Logo in.' }, { type: 'finish', finishReason: 'stop' }), () => chunks({ type: 'text-delta', text: 'Blue now.' }, { type: 'finish', finishReason: 'stop' })]);
@@ -1017,9 +1100,11 @@ describe('chat-session-watch — steering', () => {
     await waitForChatTurns();
 
     expect(g.injected[1]).toEqual([`${STEER_PREFIX}add a Ready column`]);
-    expect(agent.calls.map((c) => c.prompt)).toEqual(['hello', 'use this logo', 'then make it blue']);
+    // One follow-up on the newest message; the attachment message leads it.
+    expect(agent.calls.map((c) => c.prompt)).toEqual(['hello', 'use this logo\n\nthen make it blue']);
+    expect(message(fake, att)?.pickedUpAt).toBeTruthy();
     expect(message(fake, s2)?.pickedUpAt).toBeTruthy();
-    expect(lastMessage(fake).content[0].text).toBe('Blue now.');
+    expect(lastMessage(fake).content[0].text).toBe('Logo in.');
     expectSessionKeptActive(fake);
   });
 
