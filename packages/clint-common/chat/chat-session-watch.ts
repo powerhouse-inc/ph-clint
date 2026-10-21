@@ -29,7 +29,7 @@ import { writeAgentStreamToDocument, RetryableStreamError, dispatchFailTurn, des
 import { extractAttachments } from './extract-attachments.js';
 import type { ChatSessionAction, ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
 import { clearRetryRequest, finishAssistantMessage, hasMessageContent, isFailedTurn, markMessagePickedUp } from '@powerhousedao/clint-common/document-models/chat-session';
-import { beginSteerableTurn, drainSteers, endSteerableTurn, enqueueSteer } from './steer.js';
+import { beginSteerableTurn, drainSteers, endSteerableTurn, enqueueSteer, isSteerDelivered, type SteerMessage } from './steer.js';
 
 const DOCUMENT_TYPE = 'powerhouse/chat-session' as const;
 const TAG = '[chat-session-watch]';
@@ -438,14 +438,48 @@ function planFollowUp(state: ChatSessionState, turn: InFlightTurn): { userMessag
   // Queued steers missing from this (stale) read.
   const missing = leftovers.filter((s) => !pending.some((m) => m.id === s.id));
   if (pending.length === 0) {
-    // Nothing to anchor a turn on: release them so the next pass runs them as a normal turn.
-    for (const s of missing) steeredMessageIds.delete(s.id);
-    return null;
+    if (missing.length === 0) return null;
+    // Run them from the queued texts: the last one anchors the turn (it exists in the document, just not in this read).
+    const last = missing[missing.length - 1];
+    return { userMessage: queuedUserMessage(last), earlier: [], earlierTexts: missing.slice(0, -1).map((s) => s.text) };
   }
   const firstWithAttachments = pending.findIndex((m) => !isTextOnly(m));
   const end = firstWithAttachments >= 0 ? firstWithAttachments : pending.length - 1;
+  // Steers sent after the message this turn answers stay queued: that turn reads them at its first step.
+  for (const m of pending.slice(end + 1)) {
+    const steer = leftovers.find((s) => s.id === m.id);
+    if (steer) enqueueSteer(turn.threadId, steer);
+  }
   const earlier = pending.slice(0, end);
   return { userMessage: pending[end], earlier, earlierTexts: [...missing.map((s) => s.text), ...earlier.map(messageText)] };
+}
+
+/** A text USER message rebuilt from a queued steer, for a document read that does not show it yet. */
+function queuedUserMessage(steer: SteerMessage): Message {
+  return {
+    id: steer.id,
+    role: 'USER',
+    content: [{ id: `${steer.id}-text`, type: 'TEXT', text: steer.text, toolCallId: null, toolName: null, args: null, result: null, isError: null, mediaType: null, url: null, attachment: null, filename: null, error: null }],
+    stepIndex: null,
+    createdAt: new Date().toISOString(),
+    usage: null,
+    finishedAt: null,
+    finishReason: null,
+    pickedUpAt: null,
+    failure: null,
+  };
+}
+
+/**
+ * Steers kept from a turn that stopped before reading them: picked-up text
+ * USER messages after the last ASSISTANT message and before the message at
+ * `index`, that no step received. Read from the document, so they survive a
+ * restart.
+ */
+function keptSteers(messages: Message[], index: number): Message[] {
+  const lastAssistant = messages.slice(0, index).findLastIndex((m) => m.role === 'ASSISTANT');
+  if (lastAssistant < 0) return [];
+  return messages.slice(lastAssistant + 1, index).filter((m) => m.role === 'USER' && m.pickedUpAt && hasMessageContent(m) && isTextOnly(m) && !isSteerDelivered(m.id));
 }
 
 /**
@@ -609,6 +643,8 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
 
     // Guard: skip completed/aborted/error sessions
     if (status === 'COMPLETED' || status === 'ABORTED' || status === 'ERROR') {
+      // The session is over: nothing can read its queued steers any more.
+      if (state.threadId && !inFlight.has(documentId)) drainSteers(state.threadId);
       continue;
     }
 
@@ -685,6 +721,20 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
     const afterId = plan.mode === 'retry' ? messages[messages.length - 1].id : plan.userMessage.id;
     inFlight.set(documentId, { threadId, userMessageId: plan.userMessage.id, afterId });
     beginSteerableTurn(threadId);
+    if (plan.mode === 'new') {
+      // Steers kept by a stop come first, once: in the prompt, not again at step 0.
+      const kept = keptSteers(
+        messages,
+        messages.findIndex((m) => m.id === plan.userMessage.id),
+      );
+      if (kept.length > 0) {
+        const keptIds = new Set(kept.map((m) => m.id));
+        const others = drainSteers(threadId).filter((q) => !keptIds.has(q.id));
+        for (const q of others) enqueueSteer(threadId, q);
+        for (const m of kept) steeredMessageIds.add(m.id);
+        plan.earlierTexts = [...kept.map(messageText), ...(plan.earlierTexts ?? [])];
+      }
+    }
     if (plan.mode === 'resume') {
       // Steers sent into the cut-off turn that no step read yet: the resumed turn reads them first.
       for (const m of unconsumedSteers(messages, plan.userMessage.id)) {

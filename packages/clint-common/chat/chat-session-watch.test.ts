@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamChunk } from '@powerhousedao/ph-clint';
-import { addAssistantMessage, addToolResult, addUserMessage, failTurn, finishAssistantMessage, interruptAgent, markMessagePickedUp, reducer, retryTurn, startSession, utils } from 'document-models/chat-session/v1';
+import { abortSession, addAssistantMessage, addToolResult, addUserMessage, failTurn, finishAssistantMessage, interruptAgent, markMessagePickedUp, reducer, retryTurn, startSession, utils } from 'document-models/chat-session/v1';
 import type { Message } from 'document-models/chat-session/v1';
 import { CONTINUE_PROMPT, processChatSessionDocs, waitForChatTurns } from './chat-session-watch.js';
 import { actionTypes, chunks, makeFakeAgent, makeFakeReactor, makeTriggerContext, sessionWithUserMessage, T0, T1, type AgentCall, type FakeReactor } from './testing/fakes.js';
-import { STEER_PREFIX, STEER_THREAD_KEY, createSteerProcessor, hasInFlightTurn } from './steer.js';
+import { STEER_PREFIX, STEER_THREAD_KEY, createSteerProcessor, drainSteers, enqueueSteer, hasInFlightTurn } from './steer.js';
 
 const T2 = '2026-01-01T00:00:02.000Z';
 
@@ -635,9 +635,27 @@ describe('chat-session-watch — steering', () => {
     expectSessionKeptActive(fake);
   });
 
+  /** A turn whose final step is held at the gate; a stop (interruptRequested) ends it without output, as an abort does. */
+  function stoppableTurn(fake: FakeReactor) {
+    const reached = deferred();
+    const gate = deferred();
+    async function* turn(call: AgentCall): AsyncGenerator<StreamChunk> {
+      runStep(call);
+      yield { type: 'tool-call', toolCallId: 'c1', toolName: 'build', args: {} };
+      yield { type: 'tool-result', toolCallId: 'c1', toolName: 'build', result: 'ok', isError: false };
+      runStep(call);
+      reached.resolve();
+      await gate.promise;
+      if (fake.doc().state.global.interruptRequested) return;
+      yield { type: 'text-delta', text: 'Done.' };
+      yield { type: 'finish', finishReason: 'stop' };
+    }
+    return { turn, reached: reached.promise, release: gate.resolve };
+  }
+
   it('a stop keeps steers for the next turn', async () => {
     const fake = makeFakeReactor(sessionWithUserMessage());
-    const g = gatedTurn('final-step');
+    const g = stoppableTurn(fake);
     const nextTurn: string[][] = [];
     const agent = makeFakeAgent([
       g.turn,
@@ -663,53 +681,102 @@ describe('chat-session-watch — steering', () => {
     await runPass(fake, agent);
     expect(agent.calls).toHaveLength(1);
 
-    // The next turn reads the kept steer at its first step.
+    // The next turn gets the kept steer first, once.
     fake.apply(textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'));
     await runPass(fake, agent);
     expect(agent.calls).toHaveLength(2);
-    expect(agent.calls[1].prompt).toBe('continue');
-    expect(nextTurn).toEqual([[`${STEER_PREFIX}add a Ready column`]]);
+    expect(agent.calls[1].prompt).toBe('add a Ready column\n\ncontinue');
+    expect(nextTurn).toEqual([[]]);
     expectSessionKeptActive(fake);
   });
 
-  it('a steer missing from the read after the turn runs as a normal turn', async () => {
+  it('a steer kept by a stop survives a restart and comes first, once', async () => {
+    // Document as a stopped turn left it; the process restarted, so nothing is queued in memory.
     const fake = makeFakeReactor(sessionWithUserMessage());
-    const reached = deferred();
-    const gate = deferred();
+    const kept = nextId();
+    const latest = nextId();
+    fake.apply(
+      markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }),
+      addAssistantMessage({ id: 'a-stopped', content: [{ id: 'a-stopped-p1', type: 'TEXT', text: 'Building' }], createdAt: T1 }),
+      finishAssistantMessage({ messageId: 'a-stopped', finishReason: 'abort', finishedAt: T2 }),
+      textMessage(kept, 'add a Ready column'),
+      markMessagePickedUp({ messageId: kept, pickedUpAt: T2 }),
+      interruptAgent({ _: true }),
+      textMessage(latest, 'continue', '2026-01-01T00:00:03.000Z'),
+    );
+    const injected: string[][] = [];
     const agent = makeFakeAgent([
-      async function* (call) {
-        runStep(call);
-        yield { type: 'tool-call', toolCallId: 'c1', toolName: 'build', args: {} };
-        yield { type: 'tool-result', toolCallId: 'c1', toolName: 'build', result: 'ok', isError: false };
-        runStep(call);
-        reached.resolve();
-        await gate.promise;
-        yield { type: 'finish', finishReason: 'stop' };
+      (call) => {
+        injected.push(runStep(call));
+        return chunks({ type: 'text-delta', text: 'Adding it.' }, { type: 'finish', finishReason: 'stop' });
       },
-      () => chunks({ type: 'text-delta', text: 'Answered.' }, { type: 'finish', finishReason: 'stop' }),
     ]);
+
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toBe('add a Ready column\n\ncontinue');
+    expect(injected).toEqual([[]]);
+    expectSessionKeptActive(fake);
+  });
+
+  /** Run a gated final-step turn with steers that a stale read after the turn does not show. */
+  async function staleReadRun(texts: string[]) {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const g = gatedTurn('final-step');
+    const agent = makeFakeAgent([g.turn, () => chunks({ type: 'text-delta', text: 'Answered.' }, { type: 'finish', finishReason: 'stop' })]);
     const ctx = makeTriggerContext(fake, agent);
 
     await processChatSessionDocs([fake.doc()], ctx);
-    await reached.promise;
+    await g.reached;
     const stale = fake.doc();
-    const id = nextId();
-    fake.apply(textMessage(id, 'add a Ready column'));
-    await processChatSessionDocs([fake.doc()], ctx);
-    expect(message(fake, id)?.pickedUpAt).toBeTruthy();
-    // The read after the turn does not show the steer yet.
+    const ids = texts.map(() => nextId());
+    for (const [i, text] of texts.entries()) {
+      fake.apply(textMessage(ids[i], text));
+      await processChatSessionDocs([fake.doc()], ctx);
+      expect(message(fake, ids[i])?.pickedUpAt).toBeTruthy();
+    }
     const client = fake.reactor.client as unknown as { get: () => Promise<unknown> };
     const realGet = client.get;
     client.get = () => Promise.resolve(stale);
-    gate.resolve();
+    g.release();
     await waitForChatTurns();
     client.get = realGet;
-    expect(agent.calls).toHaveLength(1);
+    return { fake, agent, ids };
+  }
 
-    await runPass(fake, agent);
+  it('a steer missing from the read after the turn still runs, with output after it', async () => {
+    // [u1, a1, t1, steer, a2]: the final step wrote after the steer.
+    const { fake, agent, ids } = await staleReadRun(['add a Ready column']);
     expect(agent.calls).toHaveLength(2);
     expect(agent.calls[1].prompt).toBe('add a Ready column');
+    expect(message(fake, ids[0])?.pickedUpAt).toBeTruthy();
     expect(lastMessage(fake).content[0].text).toBe('Answered.');
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expectSessionKeptActive(fake);
+  });
+
+  it('several steers missing from the read after the turn run together, in order', async () => {
+    const { fake, agent } = await staleReadRun(['add a Ready column', 'make it blue']);
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe('add a Ready column\n\nmake it blue');
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expectSessionKeptActive(fake);
+  });
+
+  it('an ended session drops its queued steers', async () => {
+    let doc = utils.createDocument();
+    doc = reducer(doc, startSession({ threadId: 'thread-gone', resourceId: 'r1', agent: { id: 'agent', name: 'Agent' }, startedAt: T0 }));
+    doc = reducer(doc, abortSession({ endedAt: T1 }));
+    const fake = makeFakeReactor(doc);
+    enqueueSteer('thread-gone', { id: nextId(), text: 'too late' });
+
+    await runPass(fake, makeFakeAgent([() => chunks()]));
+
+    expect(drainSteers('thread-gone')).toEqual([]);
   });
 
   it('messages after one with an attachment wait for it, in order', async () => {

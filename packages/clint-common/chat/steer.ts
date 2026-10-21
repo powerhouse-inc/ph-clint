@@ -28,6 +28,13 @@ export const STEER_PREFIX = 'Steering from the customer (apply now, confirm in o
 
 const queues = new Map<string, SteerMessage[]>();
 const activeTurns = new Map<string, number>();
+/** Ids of steers the processor handed to a running turn (process-local). */
+const delivered = new Set<string>();
+
+/** True once the steer processor has handed this message to a turn in this process. */
+export function isSteerDelivered(messageId: string): boolean {
+  return delivered.has(messageId);
+}
 
 /** Queue a message for the running turn on `threadId`. Idempotent per message id. */
 export function enqueueSteer(threadId: string, message: SteerMessage): void {
@@ -106,7 +113,10 @@ export function createSteerProcessor(): SteerProcessor {
         messageList.markResponseMessageBoundary?.();
         rotateResponseMessageId();
       }
-      for (const steer of steers) messageList.add({ role: 'user', content: steerPrompt(steer.text) }, 'input');
+      for (const steer of steers) {
+        messageList.add({ role: 'user', content: steerPrompt(steer.text) }, 'input');
+        delivered.add(steer.id);
+      }
     },
   };
 }
