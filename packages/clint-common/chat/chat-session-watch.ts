@@ -126,6 +126,13 @@ const inFlight = new Map<string, InFlightTurn>();
  */
 const steeredMessageIds = new Set<string>();
 
+/**
+ * USER messages (`documentId:messageId`) whose turn ended without writing anything (stopped or paused
+ * at its first step). Process-local: after a restart such a message is tried
+ * once more, then waits here.
+ */
+const stoppedWithoutOutput = new Set<string>();
+
 /** Detached turns still running (see waitForChatTurns). */
 const runningTurns = new Set<Promise<void>>();
 
@@ -286,7 +293,7 @@ function findUnfinishedTurn(messages: Message[]): { userMessageId: string; openM
 }
 
 /** Decide whether this document has a turn to run (or to close). Pure. */
-function planTurn(state: ChatSessionState): TurnPlan | null {
+function planTurn(documentId: string, state: ChatSessionState): TurnPlan | null {
   const { messages } = state;
 
   // A requested retry re-runs that user message's turn. Legacy docs read undefined.
@@ -302,6 +309,9 @@ function planTurn(state: ChatSessionState): TurnPlan | null {
     if (!hasMessageContent(lastMessage)) return null;
     // Already handed to the turn that was running when it arrived.
     if (steeredMessageIds.has(lastMessage.id)) return null;
+    // Its turn stopped before any output (a stop or pause): it waits as a
+    // kept message for the next turn instead of being started again.
+    if (stoppedWithoutOutput.has(`${documentId}:${lastMessage.id}`)) return null;
     return { kind: 'run', mode: 'new', userMessage: lastMessage, continueFromStart: false };
   }
 
@@ -471,21 +481,17 @@ function queuedUserMessage(steer: SteerMessage): Message {
 }
 
 /**
- * Steers kept from a turn that stopped before reading them, read from the
- * document so they survive a restart: picked-up text USER messages sent into
- * the stopped turn, before the message at `index`. The scan is bounded by the
- * stopped turn: if its latest reply is still open or was cut off (abort,
- * retry, restart), the messages after that reply; otherwise the turn wrote
- * nothing (or this is the first turn), so its first message is its own prompt
- * and only the messages after it are steers.
+ * Messages kept from turns that stopped before answering them, read from the
+ * document so they survive a restart: picked-up USER messages after the last
+ * ASSISTANT message and before the message at `index`. Each is either a steer
+ * no step read, or the prompt of a turn stopped before any output (a stop or
+ * pause at its first step: no reply was written and agent memory did not
+ * save the turn). Both are unanswered, so both lead the next turn.
  */
 function keptSteers(messages: Message[], index: number): Message[] {
   const before = messages.slice(0, index);
   const lastAssistant = before.findLastIndex((m) => m.role === 'ASSISTANT');
-  const reply = lastAssistant >= 0 ? before[lastAssistant] : undefined;
-  const cutOff = !!reply && !isFailedTurn(reply) && !reply.content.some((p) => p.type === 'ERROR') && (!reply.finishedAt || reply.finishReason === 'abort' || SUPERSEDED_FINISH_REASONS.has(reply.finishReason ?? ''));
-  const sent = before.slice(lastAssistant + 1).filter((m) => m.role === 'USER' && m.pickedUpAt && hasMessageContent(m));
-  return (cutOff ? sent : sent.slice(1)).filter((m) => isTextOnly(m) && !isSteerDelivered(m.id));
+  return before.slice(lastAssistant + 1).filter((m) => m.role === 'USER' && m.pickedUpAt && hasMessageContent(m) && !isSteerDelivered(m.id));
 }
 
 /**
@@ -595,6 +601,10 @@ async function runTurns(
       log?.error(`${TAG} could not read ${documentId} after the turn; queued messages wait for the next change:`, err);
       latest = currentState;
     }
+    const anchorIndex = latest.messages.findIndex((m) => m.id === current.userMessage.id);
+    if (anchorIndex >= 0 && !latest.messages.slice(anchorIndex + 1).some((m) => m.role === 'ASSISTANT' || m.role === 'TOOL')) {
+      stoppedWithoutOutput.add(`${documentId}:${current.userMessage.id}`);
+    }
     // No await between draining the queue and releasing the slot.
     const turn = inFlight.get(documentId) ?? { threadId, userMessageId: current.userMessage.id, afterId: current.userMessage.id };
     const next = planFollowUp(latest, turn);
@@ -685,7 +695,7 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
       continue;
     }
 
-    const plan = planTurn(state);
+    const plan = planTurn(documentId, state);
     if (!plan) continue;
 
     if (plan.kind === 'clear-retry') {
@@ -728,7 +738,7 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
     inFlight.set(documentId, { threadId, userMessageId: plan.userMessage.id, afterId });
     beginSteerableTurn(threadId);
     if (plan.mode === 'new') {
-      // Steers kept by a stop come first, once: in the prompt, not again at step 0.
+      // Messages kept by a stop or pause come first, once: in the prompt, not again at step 0.
       const kept = keptSteers(
         messages,
         messages.findIndex((m) => m.id === plan.userMessage.id),
@@ -737,7 +747,10 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
         const keptIds = new Set(kept.map((m) => m.id));
         const others = drainSteers(threadId).filter((q) => !keptIds.has(q.id));
         for (const q of others) enqueueSteer(threadId, q);
-        for (const m of kept) steeredMessageIds.add(m.id);
+        for (const m of kept) {
+          steeredMessageIds.add(m.id);
+          stoppedWithoutOutput.delete(`${documentId}:${m.id}`);
+        }
         plan.earlierTexts = [...kept.map(messageText), ...(plan.earlierTexts ?? [])];
       }
     }

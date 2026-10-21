@@ -441,6 +441,19 @@ function nextId(): string {
   return `steer-${steerSeq}`;
 }
 
+/**
+ * A started session (`thread-1`) whose first USER message has a unique id: the
+ * watcher remembers kept and steered ids for the life of the process, so tests
+ * that keep the first message must not reuse `u1`.
+ */
+function freshSession(text = 'hello'): { fake: FakeReactor; first: string } {
+  const first = nextId();
+  let doc = utils.createDocument();
+  doc = reducer(doc, startSession({ threadId: 'thread-1', resourceId: 'r1', agent: { id: 'agent', name: 'Agent' }, startedAt: T0 }));
+  doc = reducer(doc, textMessage(first, text, T1));
+  return { fake: makeFakeReactor(doc), first };
+}
+
 function textMessage(id: string, text: string, createdAt = T2) {
   return addUserMessage({ id, content: [{ id: `${id}-p1`, type: 'TEXT', text }], createdAt });
 }
@@ -736,7 +749,7 @@ describe('chat-session-watch — steering', () => {
     return { agent, injected };
   }
 
-  it('a turn stopped before any output keeps its steers, not its own message', async () => {
+  it('a turn stopped before any output keeps its own message and its steers', async () => {
     const fake = makeFakeReactor(sessionWithUserMessage());
     const [anchor, kept] = [nextId(), nextId()];
     fake.apply(
@@ -750,18 +763,108 @@ describe('chat-session-watch — steering', () => {
     );
     const { agent, injected } = await newTurnAfterStop(fake, nextId());
     expect(agent.calls).toHaveLength(1);
-    expect(agent.calls[0].prompt).toBe('add a Ready column\n\ncontinue');
+    expect(agent.calls[0].prompt).toBe('build the kitchen queue\n\nadd a Ready column\n\ncontinue');
     expect(injected).toEqual([[]]);
   });
 
-  it('a stopped first turn keeps its steers after a restart', async () => {
-    const fake = makeFakeReactor(sessionWithUserMessage());
+  it('a stopped first turn keeps its message and steers after a restart', async () => {
+    const { fake, first } = freshSession();
     const kept = nextId();
-    fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }), textMessage(kept, 'add a Ready column'), markMessagePickedUp({ messageId: kept, pickedUpAt: T2 }));
+    fake.apply(markMessagePickedUp({ messageId: first, pickedUpAt: T1 }), textMessage(kept, 'add a Ready column'), markMessagePickedUp({ messageId: kept, pickedUpAt: T2 }));
     const { agent, injected } = await newTurnAfterStop(fake, nextId());
     expect(agent.calls).toHaveLength(1);
-    expect(agent.calls[0].prompt).toBe('add a Ready column\n\ncontinue');
+    expect(agent.calls[0].prompt).toBe('hello\n\nadd a Ready column\n\ncontinue');
     expect(injected).toEqual([[]]);
+  });
+
+  /** An agent whose turns end at step 0 without any output while `paused()` (a pause processor's tripwire: no chunks, no finish). */
+  function pausableAgent(paused: () => boolean) {
+    return makeFakeAgent([
+      (call) => {
+        if (paused()) return chunks();
+        return chunks({ type: 'text-delta', text: `Answer to: ${typeof call.prompt === 'string' ? call.prompt : 'parts'}` }, { type: 'finish', finishReason: 'stop' });
+      },
+    ]);
+  }
+
+  function promptsWith(agent: ReturnType<typeof makeFakeAgent>, text: string): number {
+    return agent.calls.filter((c) => typeof c.prompt === 'string' && c.prompt.includes(text)).length;
+  }
+
+  it('a message whose turn a pause stopped at step 0 leads the next turn, once', async () => {
+    const { fake } = freshSession();
+    let paused = false;
+    const agent = pausableAgent(() => paused);
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(1);
+
+    paused = true;
+    const m = nextId();
+    fake.apply(textMessage(m, 'add a Ready column'));
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expect(message(fake, m)?.pickedUpAt).toBeTruthy();
+    // While paused it waits: no turn is started on it again.
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+
+    paused = false;
+    fake.apply(textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'));
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(3);
+    expect(agent.calls[2].prompt).toBe('add a Ready column\n\ncontinue');
+    expect(promptsWith(agent, 'add a Ready column')).toBe(2);
+    expect(lastMessage(fake).content[0].text).toBe('Answer to: add a Ready column\n\ncontinue');
+    expectSessionKeptActive(fake);
+  });
+
+  it('a message a pause stopped at step 0 survives a restart', async () => {
+    // As the pause left it: answered u1, then M picked up with no reply. The process restarted.
+    const { fake, first } = freshSession();
+    const m = nextId();
+    fake.apply(
+      markMessagePickedUp({ messageId: first, pickedUpAt: T1 }),
+      addAssistantMessage({ id: 'a-u1', content: [{ id: 'a-u1-p1', type: 'TEXT', text: 'Done.' }], createdAt: T1 }),
+      finishAssistantMessage({ messageId: 'a-u1', finishReason: 'stop', finishedAt: T1 }),
+      textMessage(m, 'add a Ready column'),
+      markMessagePickedUp({ messageId: m, pickedUpAt: T2 }),
+    );
+    let paused = true;
+    const agent = pausableAgent(() => paused);
+    // Tried once after the restart (still paused), then it waits.
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(1);
+
+    paused = false;
+    fake.apply(textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'));
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe('add a Ready column\n\ncontinue');
+    expectSessionKeptActive(fake);
+  });
+
+  it('a message a pause stopped at step 0 leads the next turn after a restart, once', async () => {
+    // The pause, the restart and "continue" all happened before this process ran a turn.
+    const { fake, first } = freshSession();
+    const m = nextId();
+    fake.apply(
+      markMessagePickedUp({ messageId: first, pickedUpAt: T1 }),
+      addAssistantMessage({ id: 'a-u1', content: [{ id: 'a-u1-p1', type: 'TEXT', text: 'Done.' }], createdAt: T1 }),
+      finishAssistantMessage({ messageId: 'a-u1', finishReason: 'stop', finishedAt: T1 }),
+      textMessage(m, 'add a Ready column'),
+      markMessagePickedUp({ messageId: m, pickedUpAt: T2 }),
+      textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'),
+    );
+    const agent = pausableAgent(() => false);
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toBe('add a Ready column\n\ncontinue');
+    expectSessionKeptActive(fake);
   });
 
   /** Run a gated final-step turn with steers that a stale read after the turn does not show. */
