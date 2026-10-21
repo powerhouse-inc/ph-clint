@@ -1211,3 +1211,32 @@ describe('chat-session-watch — steering', () => {
     expect(agent.calls).toHaveLength(1);
   });
 });
+
+describe('chat-session-watch — agent writes', () => {
+  it('leaves a session alone while the agent cannot write it, and runs it once it can', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage('build it'));
+    let writable = false;
+    (fake.reactor as { writes?: unknown }).writes = {
+      ready: () => writable,
+      canWrite: () => writable,
+    };
+    const agent = makeFakeAgent([() => chunks({ type: 'text-delta', text: 'ok' }, { type: 'finish', finishReason: 'stop' })]);
+
+    await runPass(fake, agent);
+    expect(fake.dispatched).toEqual([]);
+    expect(agent.calls).toHaveLength(0);
+
+    writable = true;
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(1);
+    expect(actionTypes(fake.dispatched)).toContain('MARK_MESSAGE_PICKED_UP');
+  });
+
+  it('does not start a new session the agent cannot write', async () => {
+    const fake = makeFakeReactor(utils.createDocument());
+    (fake.reactor as { writes?: unknown }).writes = { ready: () => false, canWrite: () => false };
+    const agent = makeFakeAgent([]);
+    await runPass(fake, agent);
+    expect(fake.dispatched).toEqual([]);
+  });
+});

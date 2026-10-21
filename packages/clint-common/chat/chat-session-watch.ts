@@ -208,6 +208,9 @@ async function initCreatedSession(ctx: TriggerContext<{ pending: number }, Recor
     const agent = await ctx.agent();
     if (!reactor || !agent) return;
     const doc = await reactor.client.get<'powerhouse/chat-session'>(documentId);
+    // The agent cannot write this session yet (no signature, or not one it
+    // works on): it is picked up on `powerhouse:writes:ready` instead.
+    if (reactor.writes && !reactor.writes.canWrite(doc)) return;
     const state = doc.state.global;
     if (state.status === 'COMPLETED' || state.status === 'ABORTED' || state.status === 'ERROR') return;
     await ensureSessionInitialized(reactor, documentId, state, agent, log);
@@ -643,6 +646,12 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
 
   for (const doc of docs) {
     const documentId = doc.header.id;
+    // Held while the agent cannot write it (see initCreatedSession): the user
+    // message waits in the document and is answered once writes are possible.
+    if (reactor.writes && !reactor.writes.canWrite(doc)) {
+      log?.debug?.(`${TAG} ${documentId}: the agent cannot write this session yet, leaving it for now`);
+      continue;
+    }
     const state = doc.state.global;
     const { status, messages } = state;
 

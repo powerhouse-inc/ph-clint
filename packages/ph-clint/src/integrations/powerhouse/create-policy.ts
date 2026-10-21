@@ -47,10 +47,20 @@ export async function applyCreatePolicy<T extends HeaderedDocument>(
     return document;
   }
 
-  if (id) return withSignaturePolicy(document, 'legacy', { id });
-
   const getPolicy = (client as PolicyClient).getCreateSignaturePolicy;
-  if (typeof getPolicy !== 'function') return document;
-  const policy = await getPolicy.call(client);
+  const policy = typeof getPolicy === 'function' ? await getPolicy.call(client) : undefined;
+
+  if (id) {
+    // A fixed id only exists on a legacy document; a client that creates
+    // `v2-required` documents never gets a legacy one by the back door.
+    if (policy === 'v2-required') {
+      throw new Error(
+        `Cannot create a document with the fixed id ${id}: this reactor creates documents whose id is derived from their header.`,
+      );
+    }
+    return withSignaturePolicy(document, 'legacy', { id });
+  }
+
+  if (!policy) return document;
   return withSignaturePolicy(document, policy);
 }

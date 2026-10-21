@@ -4,7 +4,14 @@
  */
 
 import type { DocumentModelModule } from 'document-model';
+import type { IReactorClient } from '@powerhousedao/reactor';
 import type { ReactorClientModule } from './types.js';
+import {
+  createGatedSigner,
+  createWriteGuardedClient,
+  signerReady,
+  type ReactorSigningOptions,
+} from './signing.js';
 
 /** Structural type for the @powerhousedao/reactor ReactorBuilder (fluent API). */
 interface ReactorBuilderLike {
@@ -13,10 +20,17 @@ interface ReactorBuilderLike {
   /** Before 6.2.3. */
   withDocumentModels?(m: DocumentModelModule[]): ReactorBuilderLike;
   withKysely(k: unknown): ReactorBuilderLike;
+  withSigner?(signer: unknown): ReactorBuilderLike;
+  withTrustPolicy?(policy: unknown): ReactorBuilderLike;
 }
 
 interface ReactorClientBuilderLike {
   withReactorBuilder(r: unknown): ReactorClientBuilderLike;
+  withReactor?(reactor: unknown, eventBus: unknown, documentIndexer: unknown, documentView: unknown): ReactorClientBuilderLike;
+  withSigner?(signer: unknown): ReactorClientBuilderLike;
+  withSubscriptionManager?(manager: unknown): ReactorClientBuilderLike;
+  withJobAwaiter?(awaiter: unknown): ReactorClientBuilderLike;
+  build?(): Promise<IReactorClient>;
   /** 6.2.3+: what the client creates new documents as. */
   withCreateSignaturePolicy?(policy: 'legacy' | 'v2-required'): ReactorClientBuilderLike;
   buildModule(): Promise<ReactorClientModule>;
@@ -51,7 +65,19 @@ export interface BuildReactorOptions {
    * `applySwitchboardReactorDefaults`. Leave false for standalone reactors.
    */
   enableSync?: boolean;
+  /**
+   * Sign the agent's writes (see `signing.ts`). Without it the reactor has no
+   * signer, creates legacy documents and every write is unsigned.
+   */
+  signing?: ReactorSigningOptions;
 }
+
+/**
+ * The built reactor. `client` is the module's own client: unsigned, and the
+ * one the switchboard serves. `agentClient` is what the agent writes with:
+ * the same client without `signing`, a signing, write-guarded client with it.
+ */
+export type BuiltReactorModule = ReactorClientModule & { agentClient: IReactorClient };
 
 /**
  * Build a ReactorClientModule with persistent PGlite storage.
@@ -65,7 +91,7 @@ export interface BuildReactorOptions {
  */
 export async function buildReactor(
   options: BuildReactorOptions,
-): Promise<ReactorClientModule> {
+): Promise<BuiltReactorModule> {
   // Ensure the storage directory exists
   const { mkdir } = await import('node:fs/promises');
   await mkdir(options.storagePath, { recursive: true });
@@ -104,10 +130,21 @@ export async function buildReactor(
   const clientBuilder = new ReactorClientBuilder().withReactorBuilder(
     reactorBuilder,
   );
-  // The embedded reactor is local and private and has no signer, so it
-  // creates legacy documents: they accept unsigned writes and fixed ids.
-  // Powerhouse 6.2.3 otherwise defaults to `v2-required`, which refuses both.
-  clientBuilder.withCreateSignaturePolicy?.('legacy');
+  const signing = options.signing;
+  if (signing) {
+    // The reactor's own signer (synthesized operations, and its own key is
+    // trusted to sign as its own user) is the live signer itself; the gate
+    // only applies to the agent's client below.
+    reactorBuilder.withSigner?.(signing.signer);
+    if (signing.trustPolicy) reactorBuilder.withTrustPolicy?.(signing.trustPolicy);
+    // The module's client stays unsigned: it is what the switchboard serves.
+    clientBuilder.withCreateSignaturePolicy?.(signing.createSignaturePolicy);
+  } else {
+    // Without a signer the embedded reactor creates legacy documents: they
+    // accept unsigned writes and fixed ids. Powerhouse 6.2.3 otherwise
+    // defaults to `v2-required`, which refuses both.
+    clientBuilder.withCreateSignaturePolicy?.('legacy');
+  }
 
   if (options.enableSync) {
     // Switchboard owns the standard reactor wiring (channel scheme, base
@@ -149,5 +186,38 @@ export async function buildReactor(
     }
   }
 
-  return clientBuilder.buildModule();
+  const module = await clientBuilder.buildModule();
+  if (!signing) return Object.assign(module, { agentClient: module.client });
+
+  const parts = module as unknown as {
+    reactor: unknown;
+    eventBus: unknown;
+    documentIndexer: unknown;
+    documentView: unknown;
+    subscriptionManager: unknown;
+    jobAwaiter: unknown;
+  };
+  const signedBuilder = new ReactorClientBuilder();
+  if (!signedBuilder.withReactor || !signedBuilder.build) {
+    throw new Error('Signed writes need Powerhouse 6.2.3 or later.');
+  }
+  signedBuilder
+    .withReactor(parts.reactor, parts.eventBus, parts.documentIndexer, parts.documentView)
+    .withSigner?.(createGatedSigner(signing.signer));
+  signedBuilder.withCreateSignaturePolicy?.(signing.createSignaturePolicy);
+  signedBuilder.withSubscriptionManager?.(parts.subscriptionManager);
+  signedBuilder.withJobAwaiter?.(parts.jobAwaiter);
+  const signedClient = await signedBuilder.build();
+
+  const agentClient = createWriteGuardedClient(
+    signedClient,
+    module.client,
+    {
+      ready: () => signerReady(signing.signer),
+      legacyDocuments: signing.legacyDocuments,
+      accepts: signing.accepts,
+    },
+    signing.createSignaturePolicy,
+  );
+  return Object.assign(module, { agentClient });
 }
