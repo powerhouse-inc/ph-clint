@@ -256,6 +256,44 @@ describe('createProxyServer', () => {
     expect(res.status).toBe(404);
   });
 
+  it('replaces a client-sent x-forwarded-host with the real Host (no spoofing)', async () => {
+    const seen: http.IncomingHttpHeaders[] = [];
+    const upstream = http.createServer((req, res) => {
+      seen.push(req.headers);
+      res.writeHead(200);
+      res.end('ok');
+    });
+    await new Promise<void>((r) => upstream.listen(0, '127.0.0.1', () => r()));
+    servers.push({ close: () => new Promise<void>((r) => upstream.close(() => r())) });
+    const port = (upstream.address() as { port: number }).port;
+    const p = await startProxy();
+    p.addRoute({ prefix: '/api', upstream: new URL(`http://127.0.0.1:${port}`), ws: false, source: 'test' });
+
+    const send = (headers: Record<string, string>) =>
+      new Promise<void>((resolve, reject) => {
+        const r = http.request(
+          { host: '127.0.0.1', port: p.port, path: '/api/x', headers },
+          (res) => {
+            res.resume();
+            res.on('end', () => resolve());
+          },
+        );
+        r.on('error', reject);
+        r.end();
+      });
+
+    // A DNS-rebinding page: Host is the attacker's name, and it sets its own
+    // X-Forwarded-Host claiming loopback.
+    await send({ host: 'attacker.example:8090', 'x-forwarded-host': 'localhost:8090' });
+    await send({ host: 'localhost:8090' });
+
+    expect(seen[0]['x-forwarded-host']).toBe('attacker.example:8090');
+    expect(seen[1]['x-forwarded-host']).toBe('localhost:8090');
+    // The real client hop is still appended to a client-sent x-forwarded-for.
+    await send({ host: 'localhost:8090', 'x-forwarded-for': '127.0.0.1' });
+    expect(seen[2]['x-forwarded-for']).toBe('127.0.0.1,127.0.0.1');
+  });
+
   it('forwards requests to upstream', async () => {
     const upstream = await createUpstream('hello');
     const p = await startProxy();
