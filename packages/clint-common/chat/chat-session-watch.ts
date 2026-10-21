@@ -307,7 +307,10 @@ function planTurn(documentId: string, state: ChatSessionState): TurnPlan | null 
   if (state.retryRequestedFor) {
     const userMessage = messages.find((m) => m.id === state.retryRequestedFor);
     if (!userMessage || userMessage.role !== 'USER') return { kind: 'clear-retry' };
-    return { kind: 'run', mode: 'retry', userMessage, continueFromStart: hasOutputAfter(messages, userMessage.id) };
+    const continueFromStart = hasOutputAfter(messages, userMessage.id);
+    if (continueFromStart) return { kind: 'run', mode: 'retry', userMessage, continueFromStart };
+    // Re-run from the start: the unanswered messages that led it (only those before it) lead again.
+    return { kind: 'run', mode: 'retry', userMessage, continueFromStart, earlier: keptSteers(messages, messages.indexOf(userMessage)) };
   }
 
   const lastMessage = messages[messages.length - 1];

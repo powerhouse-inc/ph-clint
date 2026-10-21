@@ -915,6 +915,49 @@ describe('chat-session-watch — steering', () => {
     expectSessionKeptActive(fake);
   });
 
+  it('a retry of a failed merged turn sends the kept file and texts again', async () => {
+    const { fake } = freshSession();
+    Object.assign(fake.reactor, {
+      attachments: { get: () => Promise.resolve({ body: new TextEncoder().encode('<svg/>'), header: { mimeType: 'image/svg+xml' } }) },
+    });
+    let paused = false;
+    let failNext = false;
+    const agent = makeFakeAgent([
+      (call) => {
+        if (paused) return chunks();
+        if (failNext) {
+          failNext = false;
+          return chunks({ type: 'error', error: 'Bad Request: invalid tool schema', retryable: false, statusCode: 400 });
+        }
+        return chunks({ type: 'text-delta', text: `Answer to: ${typeof call.prompt === 'string' ? call.prompt : 'parts'}` }, { type: 'finish', finishReason: 'stop' });
+      },
+    ]);
+    await runPass(fake, agent);
+
+    paused = true;
+    const [kept, file] = [nextId(), nextId()];
+    fake.apply(textMessage(kept, 'add a Ready column'));
+    await runPass(fake, agent);
+    fake.apply(fileMessage(file));
+    await runPass(fake, agent);
+
+    paused = false;
+    failNext = true;
+    const cont = nextId();
+    fake.apply(textMessage(cont, 'continue', '2026-01-01T00:00:03.000Z'));
+    await runPass(fake, agent);
+    expect(failTurnInputs(fake)).toEqual([expect.objectContaining({ userMessageId: cont, retryable: false })]);
+
+    fake.apply(retryTurn({ userMessageId: cont, requestedAt: '2026-01-01T00:00:04.000Z' }));
+    await runPass(fake, agent);
+
+    const retryPrompt = agent.calls.at(-1)?.prompt as string;
+    expect(retryPrompt.startsWith('add a Ready column\n\ncontinue\n\n[Attached files saved to disk]\n- logo_')).toBe(true);
+    expect(retryPrompt).toBe(agent.calls.at(-2)?.prompt);
+    expect(lastMessage(fake).content[0].text).toBe(`Answer to: ${retryPrompt}`);
+    expectSessionKeptActive(fake);
+  });
+
   it('a file message, then two messages: every message is answered', async () => {
     const { fake, agent, pause } = await sessionWithFiles();
     pause(true);
