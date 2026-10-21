@@ -215,7 +215,6 @@ export async function buildReactor(
     {
       ready: () => signerReady(signing.signer),
       legacyDocuments: signing.legacyDocuments,
-      accepts: signing.accepts,
     },
     signing.createSignaturePolicy,
   );

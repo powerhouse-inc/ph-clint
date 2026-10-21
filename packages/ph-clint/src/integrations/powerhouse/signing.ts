@@ -57,7 +57,11 @@ export interface ReactorSigningOptions {
    * `sign-when-ready`: signed when the signer has a user, unsigned otherwise.
    */
   legacyDocuments: 'refuse' | 'sign-when-ready';
-  /** Further documents the agent must leave alone (checked with the rules above). */
+  /**
+   * Which documents the agent acts on by itself (`ReactorContext.writes`,
+   * read by triggers such as the chat watch). Writes the agent is asked to
+   * make follow only the signature rules above.
+   */
   accepts?: (document: DocumentHeaderLike) => boolean;
   /**
    * Subscribe to changes of the signer's user; the reactor announces
@@ -118,6 +122,7 @@ export function createGatedSigner<S extends SignerLike>(signer: S): S {
 export interface WriteRules {
   ready(): boolean;
   legacyDocuments: ReactorSigningOptions['legacyDocuments'];
+  /** Only read by `canWrite`. */
   accepts?: ReactorSigningOptions['accepts'];
 }
 
@@ -191,9 +196,6 @@ export function createWriteGuardedClient(
     // A document's policy never changes, so it is remembered by id and slug.
     policies.set(identifier, policy);
     policies.set(document.header.id, policy);
-    if (rules.accepts && !rules.accepts(document)) {
-      throw new DocumentNotWritableError(document.header.id, 'it is outside what this agent works on');
-    }
     return policy;
   }
 
