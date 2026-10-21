@@ -2,7 +2,7 @@
  * Extracts IMAGE and FILE content parts from chat messages and writes them
  * to {workdir}/downloads/ so the agent's tools can read them.
  */
-import { writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Logger, IAttachmentService, AttachmentRef } from '@powerhousedao/ph-clint';
 import type { ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
@@ -26,10 +26,12 @@ export interface ExtractAttachmentsOptions {
   log?: Logger;
   /** Attachment service for resolving attachment:// refs. When omitted, ref-based parts are skipped. */
   service?: IAttachmentService;
+  /** Also return parts extracted by an earlier call (read back from disk), for a message sent to the agent again. */
+  includeExtracted?: boolean;
 }
 
-/** Already-extracted part IDs, keyed by documentId. */
-const extracted = new Map<string, Set<string>>();
+/** Already-extracted parts (without bytes), keyed by documentId, then part id. */
+const extracted = new Map<string, Map<string, Omit<ExtractedAttachment, 'bytes'>>>();
 
 /**
  * Clear the in-memory dedup cache (for testing).
@@ -79,16 +81,16 @@ export function resolveFilename(part: ContentPart, mediaTypeOverride?: string | 
 }
 
 export async function extractAttachments(message: Message, options: ExtractAttachmentsOptions): Promise<ExtractedAttachment[]> {
-  const { workdir, documentId, log, service } = options;
+  const { workdir, documentId, log, service, includeExtracted } = options;
 
   const attachmentParts = message.content.filter((p: ContentPart) => p.type === 'IMAGE' || p.type === 'FILE');
 
   if (attachmentParts.length === 0) return [];
 
-  // Dedup set for this document
+  // Dedup map for this document
   let seen = extracted.get(documentId);
   if (!seen) {
-    seen = new Set();
+    seen = new Map();
     extracted.set(documentId, seen);
   }
 
@@ -96,7 +98,18 @@ export async function extractAttachments(message: Message, options: ExtractAttac
   const downloadsDir = join(workdir, 'downloads');
 
   for (const part of attachmentParts) {
-    if (seen.has(part.id)) continue;
+    const cached = seen.get(part.id);
+    if (cached) {
+      if (!includeExtracted) continue;
+      try {
+        results.push({ ...cached, bytes: await readFile(cached.localPath) });
+        continue;
+      } catch (err) {
+        // Gone from disk: extract it again.
+        log?.warn(`${TAG} could not read extracted part ${part.id} back, extracting it again:`, err);
+        seen.delete(part.id);
+      }
+    }
 
     try {
       let buf: Buffer | null = null;
@@ -129,15 +142,9 @@ export async function extractAttachments(message: Message, options: ExtractAttac
       await mkdir(downloadsDir, { recursive: true });
       await writeFile(localPath, buf);
 
-      seen.add(part.id);
-      results.push({
-        partId: part.id,
-        partType: part.type as 'IMAGE' | 'FILE',
-        filename,
-        localPath,
-        mediaType: resolvedMediaType,
-        bytes: buf,
-      });
+      const entry = { partId: part.id, partType: part.type as 'IMAGE' | 'FILE', filename, localPath, mediaType: resolvedMediaType };
+      seen.set(part.id, entry);
+      results.push({ ...entry, bytes: buf });
     } catch (err) {
       log?.error(`${TAG} failed to extract part ${part.id}:`, err);
     }

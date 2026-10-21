@@ -26,7 +26,7 @@
 import { createDocumentChangeTrigger, type AgentContentPart, type TriggerContext, type Logger, type ReactorContext, type AgentProvider } from '@powerhousedao/ph-clint';
 import { ensureSessionInitialized, type ChatSessionRegistry } from './chat-session-init.js';
 import { writeAgentStreamToDocument, RetryableStreamError, dispatchFailTurn, describeFailure, SUPERSEDED_FINISH_REASONS } from './chat-bridge.js';
-import { extractAttachments } from './extract-attachments.js';
+import { extractAttachments, type ExtractedAttachment } from './extract-attachments.js';
 import type { ChatSessionAction, ChatSessionState, ContentPart, Message } from '@powerhousedao/clint-common/document-models/chat-session';
 import { clearRetryRequest, finishAssistantMessage, hasMessageContent, isFailedTurn, markMessagePickedUp } from '@powerhousedao/clint-common/document-models/chat-session';
 import { beginSteerableTurn, drainSteers, endSteerableTurn, enqueueSteer, isSteerDelivered, type SteerMessage } from './steer.js';
@@ -126,6 +126,13 @@ const inFlight = new Map<string, InFlightTurn>();
  */
 const steeredMessageIds = new Set<string>();
 
+/**
+ * USER messages (`documentId:messageId`) whose turn ended without writing anything (stopped or paused
+ * at its first step). Process-local: after a restart such a message is tried
+ * once more, then waits here.
+ */
+const stoppedWithoutOutput = new Set<string>();
+
 /** Detached turns still running (see waitForChatTurns). */
 const runningTurns = new Set<Promise<void>>();
 
@@ -211,9 +218,16 @@ async function initCreatedSession(ctx: TriggerContext<{ pending: number }, Recor
 
 type TurnMode = 'new' | 'retry' | 'resume';
 
-/** `earlierTexts`: texts of messages queued before `userMessage`, prepended to its prompt (follow-up turns). */
+/**
+ * `earlier`: unanswered messages sent before `userMessage` (kept by a stop or
+ * pause, or sent during the last turn); they lead its prompt, text and files,
+ * in document order. `earlierTexts`: texts with no message to read (queued
+ * steers missing from a stale read), placed first.
+ */
 type TurnPlan =
-  { kind: 'run'; mode: TurnMode; userMessage: Message; continueFromStart: boolean; openMessageId?: string; earlierTexts?: string[] } | { kind: 'clear-retry' } | { kind: 'fail-interrupted'; userMessageId: string; openMessageId?: string };
+  | { kind: 'run'; mode: TurnMode; userMessage: Message; continueFromStart: boolean; openMessageId?: string; earlier?: Message[]; earlierTexts?: string[] }
+  | { kind: 'clear-retry' }
+  | { kind: 'fail-interrupted'; userMessageId: string; openMessageId?: string };
 
 /** True when an ASSISTANT or TOOL message (other than a failure) follows the given message. */
 function hasOutputAfter(messages: Message[], messageId: string): boolean {
@@ -286,14 +300,17 @@ function findUnfinishedTurn(messages: Message[]): { userMessageId: string; openM
 }
 
 /** Decide whether this document has a turn to run (or to close). Pure. */
-function planTurn(state: ChatSessionState): TurnPlan | null {
+function planTurn(documentId: string, state: ChatSessionState): TurnPlan | null {
   const { messages } = state;
 
   // A requested retry re-runs that user message's turn. Legacy docs read undefined.
   if (state.retryRequestedFor) {
     const userMessage = messages.find((m) => m.id === state.retryRequestedFor);
     if (!userMessage || userMessage.role !== 'USER') return { kind: 'clear-retry' };
-    return { kind: 'run', mode: 'retry', userMessage, continueFromStart: hasOutputAfter(messages, userMessage.id) };
+    const continueFromStart = hasOutputAfter(messages, userMessage.id);
+    if (continueFromStart) return { kind: 'run', mode: 'retry', userMessage, continueFromStart };
+    // Re-run from the start: the unanswered messages that led it (only those before it) lead again.
+    return { kind: 'run', mode: 'retry', userMessage, continueFromStart, earlier: keptSteers(messages, messages.indexOf(userMessage)) };
   }
 
   const lastMessage = messages[messages.length - 1];
@@ -302,6 +319,9 @@ function planTurn(state: ChatSessionState): TurnPlan | null {
     if (!hasMessageContent(lastMessage)) return null;
     // Already handed to the turn that was running when it arrived.
     if (steeredMessageIds.has(lastMessage.id)) return null;
+    // Its turn stopped before any output (a stop or pause): it waits as a
+    // kept message for the next turn instead of being started again.
+    if (stoppedWithoutOutput.has(`${documentId}:${lastMessage.id}`)) return null;
     return { kind: 'run', mode: 'new', userMessage: lastMessage, continueFromStart: false };
   }
 
@@ -315,28 +335,31 @@ function planTurn(state: ChatSessionState): TurnPlan | null {
   return { kind: 'run', mode: 'resume', userMessage, continueFromStart: true, openMessageId: unfinished.openMessageId };
 }
 
-/** Build the agent prompt for a user message: text, native images, and saved-attachment paths. */
+/**
+ * Build the agent prompt for a user message and the unanswered messages that
+ * lead it (`earlier`, document order; `earlierTexts` first): their texts as
+ * paragraphs, then native images and saved-attachment paths of all of them.
+ */
 async function buildUserPrompt(
   documentId: string,
   userMessage: Message,
   reactor: ReactorContext<ChatSessionRegistry>,
   ctx: TriggerContext<{ pending: number }, Record<string, unknown>, ChatSessionRegistry>,
   log?: Logger,
+  earlier: Message[] = [],
+  earlierTexts: string[] = [],
 ): Promise<string | AgentContentPart[]> {
-  const userText = userMessage.content
-    .filter((p: ContentPart) => p.type === 'TEXT' && p.text)
-    .map((p: ContentPart) => p.text!)
-    .join('\n');
+  const messagesInOrder = [...earlier, userMessage];
+  const userText = [...earlierTexts, ...messagesInOrder.map(messageText)].filter((t) => t).join('\n\n');
 
   log?.info(`${TAG} processing ${documentId}: ${userText ? `user said "${userText.slice(0, 80)}..."` : 'attachment-only message'}`);
 
-  // Extract file/image attachments to disk
-  const attachments = await extractAttachments(userMessage, {
-    workdir: ctx.context.workdir,
-    documentId,
-    log,
-    service: reactor.attachments,
-  });
+  // Extract file/image attachments to disk. A message sent again (a retry, or
+  // kept after a stop) carries its files again.
+  const attachments: ExtractedAttachment[] = [];
+  for (const message of messagesInOrder) {
+    attachments.push(...(await extractAttachments(message, { workdir: ctx.context.workdir, documentId, log, service: reactor.attachments, includeExtracted: true })));
+  }
 
   // Build multimodal prompt: include images natively so the model
   // can see them, plus file paths so agent tools can read them.
@@ -361,16 +384,6 @@ function messageText(message: Message): string {
     .filter((p: ContentPart) => p.type === 'TEXT' && p.text)
     .map((p: ContentPart) => p.text!)
     .join('\n');
-}
-
-/** Put earlier queued texts in front of a prompt (one paragraph each). */
-function prependTexts(texts: string[], prompt: string | AgentContentPart[]): string | AgentContentPart[] {
-  const earlier = texts.filter((t) => t).join('\n\n');
-  if (!earlier) return prompt;
-  if (typeof prompt === 'string') return prompt ? `${earlier}\n\n${prompt}` : earlier;
-  const textIndex = prompt.findIndex((p) => p.type === 'text');
-  if (textIndex < 0) return [...prompt, { type: 'text', text: earlier }];
-  return prompt.map((p, i) => (i === textIndex && p.type === 'text' ? { type: 'text', text: `${earlier}\n\n${p.text}` } : p));
 }
 
 /** Index of the last message that existed when the turn started; messages after it arrived during the turn. */
@@ -419,9 +432,9 @@ async function steerArrivedMessages(documentId: string, state: ChatSessionState,
 
 /**
  * After a turn ends, decide the follow-up turn: steers the turn did not reach
- * plus messages that could not be steered, in the order they were sent. A
- * message with attachments ends a follow-up turn (it is that turn's prompt,
- * the texts before it lead in); later messages run in the turn after.
+ * plus messages that could not be steered, in the order they were sent. The
+ * newest one anchors the turn (its reply comes last); the others lead its
+ * prompt with their text and files.
  * Must run synchronously with the in-flight release (no await) so no arriving
  * message falls between them.
  */
@@ -443,15 +456,7 @@ function planFollowUp(state: ChatSessionState, turn: InFlightTurn): { userMessag
     const last = missing[missing.length - 1];
     return { userMessage: queuedUserMessage(last), earlier: [], earlierTexts: missing.slice(0, -1).map((s) => s.text) };
   }
-  const firstWithAttachments = pending.findIndex((m) => !isTextOnly(m));
-  const end = firstWithAttachments >= 0 ? firstWithAttachments : pending.length - 1;
-  // Steers sent after the message this turn answers stay queued: that turn reads them at its first step.
-  for (const m of pending.slice(end + 1)) {
-    const steer = leftovers.find((s) => s.id === m.id);
-    if (steer) enqueueSteer(turn.threadId, steer);
-  }
-  const earlier = pending.slice(0, end);
-  return { userMessage: pending[end], earlier, earlierTexts: [...missing.map((s) => s.text), ...earlier.map(messageText)] };
+  return { userMessage: pending[pending.length - 1], earlier: pending.slice(0, -1), earlierTexts: missing.map((s) => s.text) };
 }
 
 /** A text USER message rebuilt from a queued steer, for a document read that does not show it yet. */
@@ -471,21 +476,17 @@ function queuedUserMessage(steer: SteerMessage): Message {
 }
 
 /**
- * Steers kept from a turn that stopped before reading them, read from the
- * document so they survive a restart: picked-up text USER messages sent into
- * the stopped turn, before the message at `index`. The scan is bounded by the
- * stopped turn: if its latest reply is still open or was cut off (abort,
- * retry, restart), the messages after that reply; otherwise the turn wrote
- * nothing (or this is the first turn), so its first message is its own prompt
- * and only the messages after it are steers.
+ * Messages kept unanswered, read from the document so they survive a restart:
+ * USER messages after the last ASSISTANT message and before the message at
+ * `index`. Each is a steer no step read, the prompt of a turn stopped before
+ * any output (a stop or pause at its first step: no reply was written and
+ * agent memory did not save the turn), or a message sent right before the new
+ * one that no turn picked up. All are unanswered, so all lead the next turn.
  */
 function keptSteers(messages: Message[], index: number): Message[] {
   const before = messages.slice(0, index);
   const lastAssistant = before.findLastIndex((m) => m.role === 'ASSISTANT');
-  const reply = lastAssistant >= 0 ? before[lastAssistant] : undefined;
-  const cutOff = !!reply && !isFailedTurn(reply) && !reply.content.some((p) => p.type === 'ERROR') && (!reply.finishedAt || reply.finishReason === 'abort' || SUPERSEDED_FINISH_REASONS.has(reply.finishReason ?? ''));
-  const sent = before.slice(lastAssistant + 1).filter((m) => m.role === 'USER' && m.pickedUpAt && hasMessageContent(m));
-  return (cutOff ? sent : sent.slice(1)).filter((m) => isTextOnly(m) && !isSteerDelivered(m.id));
+  return before.slice(lastAssistant + 1).filter((m) => m.role === 'USER' && hasMessageContent(m) && !isSteerDelivered(m.id));
 }
 
 /**
@@ -520,13 +521,16 @@ async function runAgentTurn(
     const claim: ChatSessionAction[] = [];
     if (plan.mode === 'retry') claim.push(clearRetryRequest({ _: true }));
     if (plan.openMessageId) claim.push(finishAssistantMessage({ messageId: plan.openMessageId, finishReason: 'restart', finishedAt: new Date().toISOString() }));
+    // Unanswered messages leading this turn that no turn picked up yet.
+    const pickedUpAt = new Date().toISOString();
+    for (const m of plan.earlier ?? []) if (!m.pickedUpAt) claim.push(markMessagePickedUp({ messageId: m.id, pickedUpAt }));
     claim.push(pickUp());
     await execute(claim);
 
     // Lazy session init: assigns threadId if not set
     const threadId = await ensureSessionInitialized(reactor, documentId, state, agent, log);
 
-    let prompt: string | AgentContentPart[] = plan.continueFromStart ? await loadContinuePrompt(reactor, documentId, userMessageId) : prependTexts(plan.earlierTexts ?? [], await buildUserPrompt(documentId, plan.userMessage, reactor, ctx, log));
+    let prompt: string | AgentContentPart[] = plan.continueFromStart ? await loadContinuePrompt(reactor, documentId, userMessageId) : await buildUserPrompt(documentId, plan.userMessage, reactor, ctx, log, plan.earlier, plan.earlierTexts);
     if (plan.continueFromStart) log?.info(`${TAG} continuing turn for ${documentId} (${plan.mode})`);
     const maxRetries = plan.mode === 'resume' ? 0 : STREAM_MAX_RETRIES;
     let continuing = plan.continueFromStart;
@@ -595,6 +599,9 @@ async function runTurns(
       log?.error(`${TAG} could not read ${documentId} after the turn; queued messages wait for the next change:`, err);
       latest = currentState;
     }
+    const anchorIndex = latest.messages.findIndex((m) => m.id === current.userMessage.id);
+    const noOutput = anchorIndex >= 0 && !latest.messages.slice(anchorIndex + 1).some((m) => m.role === 'ASSISTANT' || m.role === 'TOOL');
+    if (noOutput) stoppedWithoutOutput.add(`${documentId}:${current.userMessage.id}`);
     // No await between draining the queue and releasing the slot.
     const turn = inFlight.get(documentId) ?? { threadId, userMessageId: current.userMessage.id, afterId: current.userMessage.id };
     const next = planFollowUp(latest, turn);
@@ -604,20 +611,12 @@ async function runTurns(
       return;
     }
     inFlight.set(documentId, { threadId, userMessageId: next.userMessage.id, afterId: next.userMessage.id });
-    log?.info(`${TAG} ${documentId} running the next turn for ${next.earlierTexts.length + 1} message(s) sent during the last one`);
-    const unpicked = next.earlier.filter((m) => !m.pickedUpAt);
-    if (unpicked.length > 0) {
-      const pickedUpAt = new Date().toISOString();
-      await reactor.client
-        .execute<'powerhouse/chat-session'>(
-          documentId,
-          'main',
-          unpicked.map((m) => markMessagePickedUp({ messageId: m.id, pickedUpAt })),
-        )
-        .catch((e: unknown) => log?.error(`${TAG} failed to mark messages picked up for ${documentId}:`, e));
-    }
+    // The turn that just ended answered nothing: its messages lead the next one, so a reply there covers them.
+    const earlier = noOutput ? [...(current.earlier ?? []), current.userMessage, ...next.earlier] : next.earlier;
+    const earlierTexts = noOutput ? [...(current.earlierTexts ?? []), ...next.earlierTexts] : next.earlierTexts;
+    log?.info(`${TAG} ${documentId} running the next turn for ${earlier.length + earlierTexts.length + 1} message(s)`);
     for (const m of next.earlier) steeredMessageIds.add(m.id);
-    current = { kind: 'run', mode: 'new', userMessage: next.userMessage, continueFromStart: false, earlierTexts: next.earlierTexts };
+    current = { kind: 'run', mode: 'new', userMessage: next.userMessage, continueFromStart: false, earlier, earlierTexts };
     currentState = latest;
   }
 }
@@ -685,7 +684,7 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
       continue;
     }
 
-    const plan = planTurn(state);
+    const plan = planTurn(documentId, state);
     if (!plan) continue;
 
     if (plan.kind === 'clear-retry') {
@@ -728,7 +727,7 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
     inFlight.set(documentId, { threadId, userMessageId: plan.userMessage.id, afterId });
     beginSteerableTurn(threadId);
     if (plan.mode === 'new') {
-      // Steers kept by a stop come first, once: in the prompt, not again at step 0.
+      // Messages kept by a stop or pause come first, once: in the prompt, not again at step 0.
       const kept = keptSteers(
         messages,
         messages.findIndex((m) => m.id === plan.userMessage.id),
@@ -737,8 +736,10 @@ export async function processChatSessionDocs(docs: ChatSessionDocumentLike[], ct
         const keptIds = new Set(kept.map((m) => m.id));
         const others = drainSteers(threadId).filter((q) => !keptIds.has(q.id));
         for (const q of others) enqueueSteer(threadId, q);
+        for (const m of kept) stoppedWithoutOutput.delete(`${documentId}:${m.id}`);
         for (const m of kept) steeredMessageIds.add(m.id);
-        plan.earlierTexts = [...kept.map(messageText), ...(plan.earlierTexts ?? [])];
+        // The new message stays the anchor (its reply comes last); the kept ones lead with their text and files.
+        plan.earlier = [...kept, ...(plan.earlier ?? [])];
       }
     }
     if (plan.mode === 'resume') {
