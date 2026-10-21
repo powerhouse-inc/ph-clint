@@ -114,6 +114,20 @@ export function safeEnd(
 }
 
 /**
+ * Drop a client-sent `x-forwarded-host` so http-proxy's xfwd sets it from the
+ * real incoming `Host` (it keeps an existing value: `xfh = xfh || host`).
+ * `changeOrigin` rewrites `Host` to the upstream, so `x-forwarded-host` is the
+ * only place upstreams see the browser's host — a client-chosen value there
+ * would defeat their Host checks (e.g. DNS-rebinding guards). An ingress in
+ * front preserves `Host`, so its public host still arrives.
+ * (`x-forwarded-for`/`-port`/`-proto` are appended to, never replaced, so the
+ * real hop is always present in them.)
+ */
+export function stripClientForwardedHost(req: { headers: http.IncomingHttpHeaders }): void {
+  delete req.headers['x-forwarded-host'];
+}
+
+/**
  * Create and start an embedded reverse proxy server.
  */
 export async function createProxyServer(
@@ -351,6 +365,7 @@ export async function createProxyServer(
     } else {
       delete req.headers['x-forwarded-prefix'];
     }
+    stripClientForwardedHost(req);
     req.url = (targetPath || '/') + query;
     proxy.web(req, res, { target, changeOrigin: true });
   });
@@ -416,6 +431,7 @@ export async function createProxyServer(
     } else {
       delete req.headers['x-forwarded-prefix'];
     }
+    stripClientForwardedHost(req);
     req.url = (targetPath || '/') + query;
     proxy.ws(req, socket, head, { target, changeOrigin: true });
   });
