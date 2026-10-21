@@ -867,6 +867,67 @@ describe('chat-session-watch — steering', () => {
     expectSessionKeptActive(fake);
   });
 
+  it('a file message a pause stopped at step 0 is sent again with its file', async () => {
+    const { fake } = freshSession();
+    Object.assign(fake.reactor, {
+      attachments: { get: () => Promise.resolve({ body: new TextEncoder().encode('<svg/>'), header: { mimeType: 'image/svg+xml' } }) },
+    });
+    let paused = false;
+    const agent = pausableAgent(() => paused);
+    await runPass(fake, agent);
+
+    paused = true;
+    const m = nextId();
+    // Attachment only: no text at all.
+    fake.apply(addUserMessage({ id: m, content: [{ id: `${m}-file`, type: 'FILE', attachment: 'ref-logo', filename: 'logo.svg', mediaType: 'image/svg+xml' }], createdAt: T2 }));
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toContain('[Attached files saved to disk]');
+
+    paused = false;
+    fake.apply(textMessage(nextId(), 'continue', '2026-01-01T00:00:03.000Z'));
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+
+    expect(agent.calls).toHaveLength(4);
+    // The file message runs first, with its file; then the new message.
+    expect(agent.calls[2].prompt).toContain('[Attached files saved to disk]');
+    expect(agent.calls[2].prompt).toContain('logo');
+    expect(agent.calls[3].prompt).toBe('continue');
+    expect(lastMessage(fake).content[0].text).toBe('Answer to: continue');
+    expectSessionKeptActive(fake);
+  });
+
+  it("a follow-up after a turn that answered nothing carries that turn's message", async () => {
+    const { fake } = freshSession('build the kitchen queue');
+    const reached = deferred();
+    const gate = deferred();
+    const agent = makeFakeAgent([
+      // eslint-disable-next-line require-yield
+      async function* (call) {
+        runStep(call);
+        reached.resolve();
+        await gate.promise;
+        // Stopped at its first step: nothing written.
+      },
+      (call) => chunks({ type: 'text-delta', text: `Answer to: ${typeof call.prompt === 'string' ? call.prompt : 'parts'}` }, { type: 'finish', finishReason: 'stop' }),
+    ]);
+    const ctx = makeTriggerContext(fake, agent);
+
+    await processChatSessionDocs([fake.doc()], ctx);
+    await reached.promise;
+    fake.apply(textMessage(nextId(), 'add a Ready column'));
+    await processChatSessionDocs([fake.doc()], ctx);
+    gate.resolve();
+    await waitForChatTurns();
+
+    expect(agent.calls).toHaveLength(2);
+    expect(agent.calls[1].prompt).toBe('build the kitchen queue\n\nadd a Ready column');
+    await runPass(fake, agent);
+    expect(agent.calls).toHaveLength(2);
+    expectSessionKeptActive(fake);
+  });
+
   /** Run a gated final-step turn with steers that a stale read after the turn does not show. */
   async function staleReadRun(texts: string[]) {
     const fake = makeFakeReactor(sessionWithUserMessage());

@@ -240,6 +240,25 @@ describe('extractAttachments', () => {
     expect(second).toHaveLength(0);
   });
 
+  it('returns already-extracted parts again when asked, read back from disk', async () => {
+    const part = makePart({
+      id: 'again01abcdef',
+      type: 'IMAGE',
+      mediaType: 'image/png',
+      attachment: TEST_REF,
+    });
+    const message = makeMessage([part]);
+    const service = makeService(FIXTURE_BYTES);
+    const opts = { workdir, documentId: 'doc-again', service };
+
+    const first = await extractAttachments(message, opts);
+    const again = await extractAttachments(message, { ...opts, includeExtracted: true });
+
+    expect(again).toHaveLength(1);
+    expect(again[0]).toMatchObject({ partId: first[0].partId, localPath: first[0].localPath, filename: first[0].filename });
+    expect(Buffer.compare(again[0].bytes, first[0].bytes)).toBe(0);
+  });
+
   it('preserves partType from the original content part, not the resolved mediaType', async () => {
     // A FILE part whose service header returns image/png should still have partType 'FILE'.
     const part = makePart({
