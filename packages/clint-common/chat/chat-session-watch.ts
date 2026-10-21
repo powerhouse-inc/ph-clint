@@ -471,15 +471,21 @@ function queuedUserMessage(steer: SteerMessage): Message {
 }
 
 /**
- * Steers kept from a turn that stopped before reading them: picked-up text
- * USER messages after the last ASSISTANT message and before the message at
- * `index`, that no step received. Read from the document, so they survive a
- * restart.
+ * Steers kept from a turn that stopped before reading them, read from the
+ * document so they survive a restart: picked-up text USER messages sent into
+ * the stopped turn, before the message at `index`. The scan is bounded by the
+ * stopped turn: if its latest reply is still open or was cut off (abort,
+ * retry, restart), the messages after that reply; otherwise the turn wrote
+ * nothing (or this is the first turn), so its first message is its own prompt
+ * and only the messages after it are steers.
  */
 function keptSteers(messages: Message[], index: number): Message[] {
-  const lastAssistant = messages.slice(0, index).findLastIndex((m) => m.role === 'ASSISTANT');
-  if (lastAssistant < 0) return [];
-  return messages.slice(lastAssistant + 1, index).filter((m) => m.role === 'USER' && m.pickedUpAt && hasMessageContent(m) && isTextOnly(m) && !isSteerDelivered(m.id));
+  const before = messages.slice(0, index);
+  const lastAssistant = before.findLastIndex((m) => m.role === 'ASSISTANT');
+  const reply = lastAssistant >= 0 ? before[lastAssistant] : undefined;
+  const cutOff = !!reply && !isFailedTurn(reply) && !reply.content.some((p) => p.type === 'ERROR') && (!reply.finishedAt || reply.finishReason === 'abort' || SUPERSEDED_FINISH_REASONS.has(reply.finishReason ?? ''));
+  const sent = before.slice(lastAssistant + 1).filter((m) => m.role === 'USER' && m.pickedUpAt && hasMessageContent(m));
+  return (cutOff ? sent : sent.slice(1)).filter((m) => isTextOnly(m) && !isSteerDelivered(m.id));
 }
 
 /**

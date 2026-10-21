@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { STEER_PREFIX, STEER_THREAD_KEY, beginSteerableTurn, createSteerProcessor, drainSteers, endSteerableTurn, enqueueSteer, hasInFlightTurn, type SteerProcessInputStepArgs } from './steer.js';
+import { STEER_PREFIX, STEER_THREAD_KEY, beginSteerableTurn, createSteerProcessor, drainSteers, endSteerableTurn, enqueueSteer, hasInFlightTurn, isSteerDelivered, type SteerProcessInputStepArgs } from './steer.js';
 
 function stepArgs(threadId: string | undefined, rotate = false) {
   const added: Array<{ role: string; content: string; source: string }> = [];
@@ -84,6 +84,15 @@ describe('steer processor', () => {
     createSteerProcessor().processInputStep({ messageList: step.args.messageList });
     expect(step.added).toEqual([]);
     expect(drainSteers('p-4')).toHaveLength(1);
+  });
+
+  it("forgets delivered steers when the thread's turn ends", () => {
+    beginSteerableTurn('p-6');
+    enqueueSteer('p-6', { id: 'p6-s1', text: 'go' });
+    createSteerProcessor().processInputStep(stepArgs('p-6').args);
+    expect(isSteerDelivered('p6-s1')).toBe(true);
+    endSteerableTurn('p-6');
+    expect(isSteerDelivered('p6-s1')).toBe(false);
   });
 
   it('injects without rotating when the caller cannot rotate the response message', () => {

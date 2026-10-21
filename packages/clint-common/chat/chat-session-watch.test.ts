@@ -635,7 +635,7 @@ describe('chat-session-watch — steering', () => {
     expectSessionKeptActive(fake);
   });
 
-  /** A turn whose final step is held at the gate; a stop (interruptRequested) ends it without output, as an abort does. */
+  /** A turn whose final step is held at the gate; a stop (interruptRequested) aborts it, as the interrupt listener does. */
   function stoppableTurn(fake: FakeReactor) {
     const reached = deferred();
     const gate = deferred();
@@ -646,7 +646,7 @@ describe('chat-session-watch — steering', () => {
       runStep(call);
       reached.resolve();
       await gate.promise;
-      if (fake.doc().state.global.interruptRequested) return;
+      if (fake.doc().state.global.interruptRequested) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
       yield { type: 'text-delta', text: 'Done.' };
       yield { type: 'finish', finishReason: 'stop' };
     }
@@ -719,6 +719,49 @@ describe('chat-session-watch — steering', () => {
     expect(agent.calls[0].prompt).toBe('add a Ready column\n\ncontinue');
     expect(injected).toEqual([[]]);
     expectSessionKeptActive(fake);
+  });
+
+  /** The turn for the last message of a document a stopped turn left behind (after a restart: nothing queued in memory). */
+  async function newTurnAfterStop(fake: FakeReactor, latest: string) {
+    fake.apply(interruptAgent({ _: true }), textMessage(latest, 'continue', '2026-01-01T00:00:03.000Z'));
+    const injected: string[][] = [];
+    const agent = makeFakeAgent([
+      (call) => {
+        injected.push(runStep(call));
+        return chunks({ type: 'text-delta', text: 'On it.' }, { type: 'finish', finishReason: 'stop' });
+      },
+    ]);
+    await runPass(fake, agent);
+    await runPass(fake, agent);
+    return { agent, injected };
+  }
+
+  it('a turn stopped before any output keeps its steers, not its own message', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const [anchor, kept] = [nextId(), nextId()];
+    fake.apply(
+      markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }),
+      addAssistantMessage({ id: 'a-done', content: [{ id: 'a-done-p1', type: 'TEXT', text: 'Done.' }], createdAt: T1 }),
+      finishAssistantMessage({ messageId: 'a-done', finishReason: 'stop', finishedAt: T1 }),
+      textMessage(anchor, 'build the kitchen queue'),
+      markMessagePickedUp({ messageId: anchor, pickedUpAt: T2 }),
+      textMessage(kept, 'add a Ready column'),
+      markMessagePickedUp({ messageId: kept, pickedUpAt: T2 }),
+    );
+    const { agent, injected } = await newTurnAfterStop(fake, nextId());
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toBe('add a Ready column\n\ncontinue');
+    expect(injected).toEqual([[]]);
+  });
+
+  it('a stopped first turn keeps its steers after a restart', async () => {
+    const fake = makeFakeReactor(sessionWithUserMessage());
+    const kept = nextId();
+    fake.apply(markMessagePickedUp({ messageId: 'u1', pickedUpAt: T1 }), textMessage(kept, 'add a Ready column'), markMessagePickedUp({ messageId: kept, pickedUpAt: T2 }));
+    const { agent, injected } = await newTurnAfterStop(fake, nextId());
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toBe('add a Ready column\n\ncontinue');
+    expect(injected).toEqual([[]]);
   });
 
   /** Run a gated final-step turn with steers that a stale read after the turn does not show. */

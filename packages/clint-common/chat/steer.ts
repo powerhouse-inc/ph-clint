@@ -28,12 +28,13 @@ export const STEER_PREFIX = 'Steering from the customer (apply now, confirm in o
 
 const queues = new Map<string, SteerMessage[]>();
 const activeTurns = new Map<string, number>();
-/** Ids of steers the processor handed to a running turn (process-local). */
-const delivered = new Set<string>();
+/** Ids of steers the processor handed to the running turn, per thread; cleared when the thread's turn ends. */
+const delivered = new Map<string, Set<string>>();
 
-/** True once the steer processor has handed this message to a turn in this process. */
+/** True when the steer processor has handed this message to the turn running on a thread. */
 export function isSteerDelivered(messageId: string): boolean {
-  return delivered.has(messageId);
+  for (const ids of delivered.values()) if (ids.has(messageId)) return true;
+  return false;
 }
 
 /** Queue a message for the running turn on `threadId`. Idempotent per message id. */
@@ -60,7 +61,10 @@ export function beginSteerableTurn(threadId: string): void {
 export function endSteerableTurn(threadId: string): void {
   const count = (activeTurns.get(threadId) ?? 0) - 1;
   if (count > 0) activeTurns.set(threadId, count);
-  else activeTurns.delete(threadId);
+  else {
+    activeTurns.delete(threadId);
+    delivered.delete(threadId);
+  }
 }
 
 /** True while an agent turn for `threadId` is running in this process. */
@@ -113,9 +117,11 @@ export function createSteerProcessor(): SteerProcessor {
         messageList.markResponseMessageBoundary?.();
         rotateResponseMessageId();
       }
+      const ids = delivered.get(threadId) ?? new Set<string>();
+      delivered.set(threadId, ids);
       for (const steer of steers) {
         messageList.add({ role: 'user', content: steerPrompt(steer.text) }, 'input');
-        delivered.add(steer.id);
+        ids.add(steer.id);
       }
     },
   };
