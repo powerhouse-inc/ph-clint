@@ -7,7 +7,7 @@ import { rm, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { z } from 'zod';
 import { defineCommand } from '../src/core/command.js';
-import { createMastraHelpers } from '../src/integrations/mastra/index.js';
+import { CLINT_THREAD_ID_KEY, createMastraHelpers } from '../src/integrations/mastra/index.js';
 import { commandsToMastraTools } from '../src/integrations/mastra/tools.js';
 import { mapMastraStream } from '../src/integrations/mastra/stream.js';
 import { createMemoryWorkdirStore, createWorkdirStore } from '../src/core/store.js';
@@ -255,6 +255,23 @@ describe('createMastraHelpers', () => {
     const provider = helpers.wrapAgent(agent);
     for await (const _ of provider.stream('hi', { threadId: 't1' })) { /* drain */ }
     expect(calls[0].savePerStep).toBe(true);
+  });
+
+  it('wrapAgent passes the chat thread id to input processors via requestContext', async () => {
+    const helpers = createMastraHelpers(makeAgentSetupContext());
+    const { calls, agent } = createCapturingAgent();
+    const provider = helpers.wrapAgent(agent);
+    for await (const _ of provider.stream('hi', { threadId: 't1' })) { /* drain */ }
+    expect(calls[0].requestContext.get(CLINT_THREAD_ID_KEY)).toBe('t1');
+    expect(CLINT_THREAD_ID_KEY).toBe('clint.threadId');
+  });
+
+  it('wrapAgent sets no requestContext without a thread', async () => {
+    const helpers = createMastraHelpers(makeAgentSetupContext());
+    const { calls, agent } = createCapturingAgent();
+    const provider = helpers.wrapAgent(agent);
+    for await (const _ of provider.stream('hi')) { /* drain */ }
+    expect('requestContext' in calls[0]).toBe(false);
   });
 
   it('wrapAgent omits untilIdle from stream opts by default', async () => {
