@@ -78,8 +78,18 @@ jobs:
             if npm view "$name" version >/dev/null 2>&1; then
               echo "skip $name (already published)"
             else
-              npm publish "$t" --access public --tag "$TAG" --loglevel verbose 2>&1 | grep -E "oidc|npm (error|notice) (code|Publishing|\\+)|^\\+ " || true
-              npm view "$name" version >/dev/null 2>&1 && echo "published $name" || { echo "::error::failed $name"; failed=1; }
+              if ! npm publish "$t" --access public --tag "$TAG" --loglevel verbose; then
+                echo "::error::npm publish failed for $name"
+                failed=1
+                continue
+              fi
+              # The registry can take a few seconds to answer for a fresh version.
+              ok=""
+              for _ in 1 2 3 4 5 6; do
+                if npm view "$name" version >/dev/null 2>&1; then ok=1; break; fi
+                sleep 5
+              done
+              [ -n "$ok" ] && echo "published $name" || { echo "::error::published $name but it is not visible"; failed=1; }
             fi
           done
           [ -z "${failed:-}" ]
