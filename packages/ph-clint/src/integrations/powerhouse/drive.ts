@@ -22,15 +22,20 @@ const DRIVE_DOCUMENT_TYPE = 'powerhouse/document-drive' as const;
 export async function ensureDrive(
   reactorModule: ReactorClientModule,
   driveConfig?: DriveConfig,
-): Promise<{ id: string; name: string }> {
+): Promise<{ id: string; name: string; deferred?: boolean }> {
   const { client, reactor } = reactorModule;
   const driveName = driveConfig?.name ?? 'default';
   const wantedId = driveConfig?.id;
   const preferredEditor = driveConfig?.preferredEditor;
 
+  // A host-resolved id (e.g. a pointer to a drive created earlier) wins.
+  const resolved = await driveConfig?.resolveId?.(client);
+  if (resolved) return { id: resolved, name: driveName };
+
   // Find existing document-drive documents
   const existing = await reactor.findByType(DRIVE_DOCUMENT_TYPE);
-  if (existing?.results?.length) {
+  const matchByName = driveConfig?.matchByName !== false;
+  if (existing?.results?.length && (wantedId || matchByName)) {
     // If a deterministic ID was requested, check if it already exists
     if (wantedId) {
       const match = existing.results.find((r) => r.header.id === wantedId);
@@ -38,7 +43,7 @@ export async function ensureDrive(
     }
 
     // Match by name — load each to check
-    for (const result of existing.results) {
+    for (const result of matchByName ? existing.results : []) {
       const doc = await client.get(result.header.id) as any;
       const docName = doc.name ?? doc.header?.name ?? doc.state?.global?.name;
       if (docName === driveName) {
@@ -46,9 +51,13 @@ export async function ensureDrive(
       }
     }
     // No name match — if default name and single drive, use it
-    if (driveName === 'default' && existing.results.length === 1) {
+    if (matchByName && driveName === 'default' && existing.results.length === 1) {
       return { id: existing.results[0].header.id, name: driveName };
     }
+  }
+
+  if (driveConfig?.canCreate && !driveConfig.canCreate()) {
+    return { id: '', name: driveName, deferred: true };
   }
 
   // Create a new drive document. Goes through the doc-build path when a
@@ -73,6 +82,7 @@ export async function ensureDrive(
   }
 
   await client.rename(driveId, driveName);
+  await driveConfig?.onCreated?.(driveId);
   return { id: driveId, name: driveName };
 }
 

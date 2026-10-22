@@ -49,11 +49,19 @@ export { defineRegistry } from './integrations/powerhouse/registry.js';
 export { createDocumentChangeTrigger } from './integrations/powerhouse/change-trigger.js';
 export type { DocumentChangeTriggerOptions } from './integrations/powerhouse/change-trigger.js';
 export { isDocType } from './integrations/powerhouse/type-guard.js';
+export {
+  SignerNotReadyError,
+  DocumentNotWritableError,
+  signerReady,
+  policyOfHeader,
+} from './integrations/powerhouse/signing.js';
+export type { ReactorSigningOptions, SignaturePolicy } from './integrations/powerhouse/signing.js';
 export type {
   ReactorContext,
   ReactorSetupContext,
   ReactorConfiguration,
   DriveConfig,
+  ReactorWrites,
   DriveEntry,
   FolderEntry,
   FolderOperations,
